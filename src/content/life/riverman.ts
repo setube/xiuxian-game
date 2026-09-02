@@ -494,6 +494,17 @@ export const rivermanScenes: SceneLibrary = {
             text: '你身上有那个人的气。他死了？',
             doubt: '你不知道「气」是什么，也不知道自己身上为什么会有别人的东西。',
           },
+          /**
+           * 他顺带打量了你一眼。
+           *
+           * 这是全作第一次有人看见「悟性」和「神魂」——玩家活了十六年，
+           * 听过的评价全是记性、力气、读书快慢，此刻忽然多出两个他
+           * 连词义都不懂的说法。
+           *
+           * 而说这话的是个炼气修士，判断力只有五十几分。
+           * 他很可能看错了，玩家却会把这句话记一辈子。
+           */
+          { type: 'observe', observer: 'adept' },
           { type: 'flag', key: 'knows-the-book', value: true },
           {
             type: 'chronicle',

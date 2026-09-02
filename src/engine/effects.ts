@@ -1,10 +1,12 @@
 import { useCharacterStore } from '@/stores/character'
 import { useHouseholdStore } from '@/stores/household'
 import { useWorldStore } from '@/stores/world'
+import { observerById } from '@/content/observers'
 import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 
 import { toChineseNumber } from './describe'
 import { fillString } from './interpolate'
+import { observe } from './observe'
 import { pickWeighted } from './random'
 
 /**
@@ -61,7 +63,7 @@ function applyOne(
   world: WorldStore,
   character: CharacterStore,
   household: HouseholdStore,
-): NarrativeBlock | null {
+): NarrativeBlock | NarrativeBlock[] | null {
   switch (effect.type) {
     case 'time':
       // 年龄跟着时序走，不必单独加
@@ -94,6 +96,29 @@ function applyOne(
       // 评说本身由对话说出，此处不重复报账；底栏「人物」会亮起未读点
       character.claim(effect.key, effect.source, effect.text, world.time, effect.doubt)
       return null
+    case 'observe': {
+      /**
+       * 有人打量了你一眼。
+       *
+       * 铁律在这里落地：这个分支只调 character.claim，
+       * 一行 adjustAttribute 也没有。别人怎么看你，改变的是你对自己的理解，
+       * 不是你这个人——否则「评价」不过是换个说法把属性面板还给玩家。
+       *
+       * 说出口的话当场落进正文（剧本没法写死，它是算出来的），
+       * 同时存进认知层，供玩家日后翻看时发现两句话对不上。
+       */
+      const observer = observerById(effect.observer)
+      if (!observer) {
+        console.error(`剧本请了一个不存在的人来看：${effect.observer}`)
+        return null
+      }
+      const spoken: NarrativeBlock[] = []
+      for (const remark of observe(observer)) {
+        character.claim(remark.aspect, remark.source, remark.text, world.time, remark.doubt)
+        spoken.push({ kind: 'dialogue', speaker: remark.source, text: remark.text })
+      }
+      return spoken
+    }
     case 'relation': {
       const isNew = character.adjustRelation(effect.id, effect.name, effect.delta, effect.note)
       return isNew ? record(`识得 · ${effect.name}`) : null
@@ -172,7 +197,8 @@ export function applyEffects(effects?: readonly Effect[]): NarrativeBlock[] {
     // 先换占位符再结算：写进 store 的就该是玩家会读到的那句话，
     // 而不是一个等着被谁替换的模板
     const receipt = applyOne(localize(effect), world, character, household)
-    if (receipt) receipts.push(receipt)
+    if (Array.isArray(receipt)) receipts.push(...receipt)
+    else if (receipt) receipts.push(receipt)
   }
   return receipts
 }

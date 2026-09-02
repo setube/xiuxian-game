@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { createId } from '@/engine/id'
+import { randomBetween } from '@/engine/random'
 import type {
   AspectKey,
   Aspects,
@@ -42,10 +43,26 @@ function blankAspects(): Aspects {
   }
 }
 
-/** 灵根从未测过，故为 0。其余跟着出身走 */
+/**
+ * 掷定这一世的身子骨与根骨。
+ *
+ * `root` 与 `spirit` 是修行资质与神魂：从没有人测过，玩家一辈子可能都不知道，
+ * 但它们**在出生那一刻就已经定了**。修士十六年后看见的，
+ * 是早就长在那里的东西，不是被谁的评价创造出来的。
+ *
+ * 它们与出身完全无关——王府的孩子和农户的孩子在这一掷上平等。
+ * 这是全作最要紧的一处平等：凡间的一切在这里都不作数。
+ */
 function rollAttributes(): Attributes {
   const household = useHouseholdStore()
-  return { root: 0, ...originAttributes(household.trade) }
+  const origin = originAttributes(household.trade)
+  return {
+    ...origin,
+    // 记性受出身影响很小，主要是天生的
+    memory: clamp(origin.memory + randomBetween(-8, 8), ATTRIBUTE_MIN, ATTRIBUTE_MAX),
+    root: randomBetween(1, 100),
+    spirit: randomBetween(10, 90),
+  }
 }
 
 function clamp(value: number, min: number, max: number): number {

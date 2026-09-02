@@ -38,8 +38,14 @@ export interface Origin {
   capital?: string
   /** 家境初值区间 */
   standing: { from: number; to: number }
-  /** 隐藏刻度初值。生在哪一家，身子骨和见识本来就不一样 */
-  attributes: Omit<Attributes, 'root'>
+  /**
+   * 隐藏刻度初值。生在哪一家，身子骨和见识本来就不一样。
+   *
+   * 唯独不含 root 与 spirit：修行资质与神魂由出生那一刻单独掷，
+   * 跟你家做什么营生毫无关系。王府的孩子和农户的孩子在那一掷上平等——
+   * 这是全作最要紧的一处平等，凡间的一切在那里都不作数。
+   */
+  attributes: Omit<Attributes, 'root' | 'spirit'>
   /** 起名用字。识字人家才取雅字，这本身就是家境 */
   given: readonly string[]
   father: string
@@ -56,7 +62,7 @@ export const ORIGINS: readonly Origin[] = [
     weight: 78,
     locales: ['柳溪村', '下河屯', '青石铺', '杏花坞', '王家庄', '桑园里', '芦花荡'],
     standing: { from: 26, to: 38 },
-    attributes: { insight: 30, body: 42, will: 40, fortune: 30 },
+    attributes: { memory: 32, insight: 30, body: 42, will: 40, fortune: 30 },
     given: ['禾', '石', '根', '田', '来', '福'],
     father: '在地里。农忙时天不亮就出门。',
     mother: '操持家中六亩田，也接些针线活。',
@@ -71,7 +77,7 @@ export const ORIGINS: readonly Origin[] = [
     weight: 22,
     locales: ['石坳', '北岭', '鹰嘴崖', '黑松坡', '猎户屯'],
     standing: { from: 28, to: 40 },
-    attributes: { insight: 34, body: 48, will: 44, fortune: 26 },
+    attributes: { memory: 40, insight: 34, body: 48, will: 44, fortune: 26 },
     given: ['山', '虎', '岩', '猛', '青', '林'],
     father: '进山。少则三日，多则半月。',
     mother: '在家硝皮子，也认得几味草药。',
@@ -86,7 +92,7 @@ export const ORIGINS: readonly Origin[] = [
     weight: 20,
     locales: ['南关外', '东窑', '铁匠巷', '砖窑口', '锯木场'],
     standing: { from: 38, to: 50 },
-    attributes: { insight: 42, body: 36, will: 38, fortune: 28 },
+    attributes: { memory: 44, insight: 42, body: 36, will: 38, fortune: 28 },
     given: ['木', '直', '规', '斧', '成', '砚'],
     father: '做木工。既做嫁妆，也做棺材。',
     mother: '帮着打下手，家中琐事都归她。',
@@ -101,7 +107,7 @@ export const ORIGINS: readonly Origin[] = [
     weight: 18,
     locales: ['西街', '南市', '绸缎街', '货栈巷', '通汇坊'],
     standing: { from: 56, to: 70 },
-    attributes: { insight: 40, body: 28, will: 34, fortune: 40 },
+    attributes: { memory: 46, insight: 40, body: 28, will: 34, fortune: 40 },
     given: ['安', '瑞', '丰', '砚', '知', '书'],
     father: '守着铺子。见的人多，话不多。',
     mother: '管着后院和账上的零碎。',
@@ -126,7 +132,7 @@ export const ORIGINS: readonly Origin[] = [
     weight: 16,
     locales: ['北门外', '官道旁', '十里铺', '渡口街', '驿马巷'],
     standing: { from: 44, to: 58 },
-    attributes: { insight: 42, body: 36, will: 34, fortune: 42 },
+    attributes: { memory: 44, insight: 42, body: 36, will: 34, fortune: 42 },
     given: ['来', '迎', '安', '顺', '通', '达'],
     father: '守着店。天南地北的人他都见过，话却不多。',
     mother: '灶上、账上、被褥，都是她一个人。',
@@ -148,7 +154,7 @@ export const ORIGINS: readonly Origin[] = [
     weight: 14,
     locales: ['鼓楼下', '十字街', '状元桥', '望江楼下', '闹市口'],
     standing: { from: 52, to: 66 },
-    attributes: { insight: 44, body: 34, will: 32, fortune: 38 },
+    attributes: { memory: 42, insight: 44, body: 34, will: 32, fortune: 38 },
     given: ['醇', '香', '满', '丰', '酌', '盈'],
     father: '掌勺。一年到头闻着油烟，手上全是烫疤。',
     mother: '在前堂招呼客人。嘴上不饶人，账算得比谁都清。',
@@ -174,7 +180,7 @@ export const ORIGINS: readonly Origin[] = [
     weight: 13,
     locales: ['东街', '药王巷', '回春巷', '济世坊', '晒药坪'],
     standing: { from: 50, to: 62 },
-    attributes: { insight: 46, body: 30, will: 36, fortune: 32 },
+    attributes: { memory: 52, insight: 46, body: 30, will: 36, fortune: 32 },
     given: ['芝', '苓', '参', '术', '和', '济'],
     father: '坐堂看诊。三代都是郎中。',
     mother: '管着药柜。认得的药比父亲还多，只是不出诊。',
@@ -196,7 +202,7 @@ export const ORIGINS: readonly Origin[] = [
     weight: 11,
     locales: ['西关', '校场后街', '武库巷', '演武场东', '镖行街'],
     standing: { from: 46, to: 60 },
-    attributes: { insight: 32, body: 52, will: 48, fortune: 24 },
+    attributes: { memory: 38, insight: 32, body: 52, will: 48, fortune: 24 },
     given: ['镖', '威', '镇', '雄', '行', '平'],
     father: '走镖。一趟出去两三个月，回来先脱靴子看脚。',
     mother: '在家管镖银，也会两手拳脚。',
@@ -219,7 +225,7 @@ export const ORIGINS: readonly Origin[] = [
     weight: 7,
     locales: ['衙后街', '学政巷', '儒林坊', '府前街', '清风巷'],
     standing: { from: 72, to: 88 },
-    attributes: { insight: 48, body: 26, will: 30, fortune: 44 },
+    attributes: { memory: 50, insight: 48, body: 26, will: 30, fortune: 44 },
     given: ['珩', '瑜', '彦', '承', '儒', '旸'],
     father: '在府衙当差，八品。早出晚归，回来多半在书房。',
     mother: '出自书香人家。管着内宅，也教你认字。',
@@ -246,7 +252,7 @@ export const ORIGINS: readonly Origin[] = [
     weight: 4,
     locales: ['靖王府', '恭王府', '庄王府', '肃王府', '宁王府', '睿王府'],
     standing: { from: 88, to: 96 },
-    attributes: { insight: 46, body: 28, will: 28, fortune: 50 },
+    attributes: { memory: 48, insight: 46, body: 28, will: 28, fortune: 50 },
     given: ['琰', '璟', '宸', '瑾', '澈', '昭'],
     father: '就藩在此的王爷。一年到头见不了几面。',
     mother: '王妃。管着王府内外，说话比父亲还有分量。',
@@ -277,7 +283,7 @@ export const ORIGINS: readonly Origin[] = [
     locales: ['东宫', '长庆殿'],
     capital: CAPITAL,
     standing: { from: 94, to: 100 },
-    attributes: { insight: 50, body: 24, will: 26, fortune: 54 },
+    attributes: { memory: 52, insight: 50, body: 24, will: 26, fortune: 54 },
     given: ['琮', '玹', '曜', '徽', '宜', '婉'],
     father: '当今天子。你一年见他的次数，数得过来。',
     mother: '你的母妃。位分不高不低，在宫里说话轻。',

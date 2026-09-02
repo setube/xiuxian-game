@@ -29,8 +29,30 @@ export interface GameTime {
 // 角色 · 内部刻度
 // ============================================================
 
-/** 引擎判定用的隐藏刻度，0–100。绝不渲染，只供 Condition 取用。 */
-export type AttributeKey = 'root' | 'insight' | 'body' | 'will' | 'fortune'
+/**
+ * 引擎判定用的隐藏刻度，0–100。绝不渲染，只供 Condition 与观察系统取用。
+ *
+ * `memory` 与 `insight` 必须分开，这是整个认知层的地基：
+ * 私塾先生凭读书快慢夸你「聪慧」，他量的其实是记性；
+ * 修士说的「悟性」是另一样东西。一个记性极好、悟性平平的人，
+ * 会在十六岁之前被所有人当作聪明孩子，然后在修行上撞墙——
+ * 两个词合成一个刻度，这个故事就讲不出来了。
+ */
+export type AttributeKey =
+  /** 体魄 */
+  | 'body'
+  /** 记性。背书、认药、记路，凡人世界里最容易被看见的一样 */
+  | 'memory'
+  /** 悟性。修行界说的那个「悟」，凡人几乎无从判断 */
+  | 'insight'
+  /** 心性 */
+  | 'will'
+  /** 气运 */
+  | 'fortune'
+  /** 修行资质（灵根）。从没测过，所以初值为 0 */
+  | 'root'
+  /** 神魂。修士才看得见 */
+  | 'spirit'
 
 export type Attributes = Record<AttributeKey, number>
 
@@ -130,6 +152,68 @@ export interface AspectClaim {
   /** 你对这句话的理解——通常是不理解 */
   doubt?: string
   at: GameTime
+}
+
+// ============================================================
+// 观察：真实属性 → 观察能力 → 观察结果 → 语言 → 玩家理解
+// ============================================================
+
+/**
+ * 一把尺子。
+ *
+ * 它量的东西**不等于任何一个真实属性**——这是整套系统的立足点。
+ * 私塾先生眼里的「聪慧」，记性占七成、悟性占三成，
+ * 因为他只能从背书快慢去推断；修士说的「悟性」才是那一样单独的东西。
+ *
+ * 于是「先生说的聪明和修士说的悟性根本不是一回事」不再是一句设定，
+ * 而是两把权重不同的尺子量出来的两个数。
+ */
+export interface Lens {
+  /** 这把尺子的名字，只用于调试与走查 */
+  id: string
+  /** 量的是哪几样真实属性，各占多重 */
+  weights: Partial<Record<AttributeKey, number>>
+  /** 量出来的话挂到哪一面下 */
+  aspect: AspectKey
+}
+
+/**
+ * 一个会开口评价你的人。
+ *
+ * `acuity` 是他的判断力，不是他的地位：
+ * 乡下郎中看身体比宗门长老准，长老看资质比郎中准。
+ * 判断力低的人不是会说谎，是会看错——他说的是他真看到的。
+ */
+export interface Observer {
+  id: string
+  /** 玩家会怎么称呼他 */
+  name: string
+  /** 他会看哪几样，各有多准 */
+  readings: readonly Reading[]
+}
+
+export interface Reading {
+  lens: Lens
+  /**
+   * 判断力，0–100。
+   *
+   * 它决定观察结果偏离真值多远。一个炼气修士看「悟性」只有五十几分的准头，
+   * 所以他说「悟性一般」的时候，可能真的看错了——
+   * 而玩家永远不会知道他看错了。
+   */
+  acuity: number
+  /** 他管这把尺子叫什么：先生叫「聪慧」，修士叫「悟性」 */
+  calls: string
+  /** 分档措辞。同一个数，不同的人说法不同 */
+  phrasing: readonly Phrase[]
+  /** 玩家听完这句话之后的困惑。不写就是听懂了 */
+  doubt?: string
+}
+
+/** 一档措辞。自上而下取第一个够得着的 */
+export interface Phrase {
+  atLeast: number
+  says: string
 }
 
 export interface Aspect {
@@ -276,6 +360,20 @@ export type Effect =
   | { type: 'aspect'; key: AspectKey; self: string | null }
   /** 别人对你的评说。只增不改，认知的错位就藏在这里 */
   | { type: 'claim'; key: AspectKey; source: string; text: string; doubt?: string }
+  /**
+   * 有人打量了你一眼。
+   *
+   * 跟 claim 的区别是根本性的：claim 是剧本作者写死的一句话，
+   * observe 是**算出来的**——拿这个人的尺子去量你的真实属性，
+   * 按他的判断力加上偏差，再按他的说话习惯选一档措辞。
+   *
+   * 所以同一个角色，先生说「记性极好」，炼气修士说「悟性一般」，
+   * 宗门长老说「资质不错，悟性普通」。三句话都是真话，
+   * 都来自同一份真实数据，只是量的东西和量的准头不同。
+   *
+   * 铁律：它只往认知层写，一个字也不碰真实属性。
+   */
+  | { type: 'observe'; observer: string }
   | { type: 'relation'; id: string; name: string; delta: number; note?: string }
   | {
       type: 'knowledge'

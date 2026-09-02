@@ -204,8 +204,13 @@ export function rollName(trade: Trade): string {
   return `${pick(SURNAMES) ?? '沈'}${pick(origin.given) ?? '生'}`
 }
 
-/** 取某一出身的隐藏刻度初值。灵根不在其列——那是从没测过的东西 */
-export function originAttributes(trade: Trade): Omit<Attributes, 'root'> {
+/**
+ * 取某一出身的隐藏刻度初值。
+ *
+ * 不含 root 与 spirit——修行资质与神魂在出生那一刻单独掷，
+ * 出身管不着。那是全作唯一一处王府的孩子和农户的孩子完全平等的地方。
+ */
+export function originAttributes(trade: Trade): Omit<Attributes, 'root' | 'spirit'> {
   const origin = ORIGINS.find((item) => item.trade === trade) ?? ORIGINS[0]!
   return { ...origin.attributes }
 }

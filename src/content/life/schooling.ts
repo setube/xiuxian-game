@@ -340,20 +340,23 @@ export const schoolingScenes: SceneLibrary = {
         onEnter: [
           { type: 'time', months: 6 },
           { type: 'relation', id: 'teacher', name: '周先生', delta: 8, note: '教你念书的人。' },
-          {
-            type: 'claim',
-            key: 'learning',
-            source: '周先生',
-            text: '你这孩子，记性比旁人好些。',
-            doubt: '你不知道这算不算一句夸奖，也不知道「比旁人好些」到底好到哪里。',
-          },
-          { type: 'attribute', key: 'insight', delta: 3 },
+          /**
+           * 先生说什么，不是写死的，是算出来的。
+           *
+           * 他量的是「读书快慢」，而那把尺子里记性占七成。
+           * 于是一个记性极好、悟性平平的孩子会被他夸「聪明」——
+           * 十六年后修士说「悟性一般」，玩家会觉得矛盾。
+           * 这个误解就是从这一刻埋下的。
+           */
+          { type: 'observe', observer: 'teacher' },
+          { type: 'attribute', key: 'memory', delta: 3 },
         ],
         blocks: [
           { kind: 'narration', text: '那天散学，先生把你留了一下。' },
-          { kind: 'narration', text: '他让你把前天教的一段背一遍。你背下来了。' },
-          { kind: 'narration', text: '先生看了你一会儿。' },
-          { kind: 'dialogue', speaker: '周先生', text: '你这孩子，记性比旁人好些。' },
+          { kind: 'narration', text: '他让你把前天教的一段背一遍。' },
+          { kind: 'narration', text: '先生看了你一会儿，说了两句话。' },
+          // 说了什么落在「人物」面板的学识一栏下——正文不复述，
+          // 免得写死的对话和算出来的评语对不上
           { kind: 'narration', text: '然后他就让你回去了。' },
           { kind: 'narration', text: '你不知道他为什么忽然说这个。', tone: 'faint' },
         ],
@@ -371,21 +374,20 @@ export const schoolingScenes: SceneLibrary = {
         onEnter: [
           { type: 'time', months: 6 },
           { type: 'attribute', key: 'body', delta: 6 },
-          {
-            type: 'claim',
-            key: 'body',
-            source: '同村的老把式',
-            text: '这孩子有把子力气，是块干活的料。',
-            doubt: '你不知道这算不算一句好话。',
-          },
+          // 老把式看身子骨。他的判断力比郎中低，说法也糙
+          { type: 'observe', observer: 'fighter' },
         ],
         blocks: [
           { kind: 'narration', text: '秋收那几天，全村都在地里。' },
           { kind: 'narration', text: '你一个人扛了一捆稻走了半里地，没歇。' },
           { kind: 'narration', text: '同村一个老把式看见了，跟你母亲说了一句。' },
-          { kind: 'dialogue', speaker: '老把式', text: '这孩子有把子力气，是块干活的料。' },
-          { kind: 'narration', text: '母亲笑了笑，没接话。' },
         ],
+        next: 'after',
+      },
+
+      after: {
+        id: 'after',
+        blocks: [{ kind: 'narration', text: '母亲笑了笑，没接话。' }],
       },
     },
   },
