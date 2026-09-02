@@ -2,7 +2,7 @@ import { useCharacterStore } from '@/stores/character'
 import { useHouseholdStore } from '@/stores/household'
 import { usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
-import type { Condition } from '@/types/game'
+import type { Condition, RegionKey } from '@/types/game'
 
 import { stageOf } from './stages'
 
@@ -57,6 +57,15 @@ function matches(
     if (condition.bond.alive !== undefined) {
       const anyAlive = ids.some((id) => people.isAlive(id))
       if (anyAlive !== condition.bond.alive) return false
+    }
+  }
+
+  if (condition.region) {
+    const state = world.regionState()
+    for (const [key, range] of Object.entries(condition.region)) {
+      const value = state[key as RegionKey]
+      if (range.atLeast !== undefined && value < range.atLeast) return false
+      if (range.atMost !== undefined && value > range.atMost) return false
     }
   }
 

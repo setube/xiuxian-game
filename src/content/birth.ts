@@ -7,6 +7,7 @@ import {
 } from '@/content/circumstances'
 import { pick, randomBetween } from '@/engine/random'
 import { makePerson, rollTemper, usePeopleStore } from '@/stores/people'
+import { useWorldStore } from '@/stores/world'
 import type { Chapter, Gender, Trade } from '@/types/game'
 
 /**
@@ -120,8 +121,13 @@ export interface Birth {
  */
 export function beBorn(trade: Trade, home: string): Birth {
   const people = usePeopleStore()
+  // 先把世界推到玩家出生那一年。他睁开眼时这个府是什么光景，
+  // 是前面十几年一年一年变成的——那些年跟他没有关系，但确实发生过
+  useWorldStore().seedHistory()
   const origin = ORIGINS.find((item) => item.trade === trade) ?? ORIGINS[0]!
   const circumstance = rollCircumstance()
+  // 爹娘生在玩家出生之前多少年——按世界纪年算，不是按玩家的年龄算
+  const bornYear = useWorldStore().time.year
 
   const bloodline = circumstance.kin.some((k) => k.bond === '生父')
   const surname = pick(SURNAMES) ?? '沈'
@@ -154,7 +160,7 @@ export function beBorn(trade: Trade, home: string): Birth {
               ? (pick(MALE_GIVEN[trade]) ?? '怀山')
               : stranger.given,
         gender,
-        bornYear: 1 - gap,
+        bornYear: bornYear - gap,
         trade: kin.trade ?? (gap > 15 ? origin.trade : '还没成人'),
         temper: rollTemper(),
         health: randomBetween(40, 85),

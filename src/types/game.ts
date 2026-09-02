@@ -448,6 +448,71 @@ export interface ChronicleEntry {
 }
 
 // ============================================================
+// 世界
+// ============================================================
+
+/**
+ * 一个府此刻的光景。
+ *
+ * 这几个数跟 Attributes、standing 一样是隐藏刻度，**绝不上界面**。
+ * 玩家读到的是「今年的米比去年贵了一半」，不是「粮价 168」。
+ *
+ * 它们随时间自己变，玩家不在场也照变——这是「世界」和「玩家身边的一圈剧情」
+ * 的分界线。玩家出生在第九年的江陵府，那个府在第九年是什么样子，
+ * 是前面八年一点一点变成的。
+ */
+export interface RegionState {
+  /** 雨水。50 是常年，低了是旱，高了是涝 */
+  rain: number
+  /** 收成。50 是常年 */
+  harvest: number
+  /** 粮价。100 是常年 */
+  grain: number
+  /** 治安。50 是常年，低了路上不太平 */
+  order: number
+  /** 疫病。0 是没有 */
+  plague: number
+}
+
+/** 世界状态的键。Condition 用它来问「这个府现在什么光景」 */
+export type RegionKey = keyof RegionState
+
+/**
+ * 世界自己会发生的一件事。
+ *
+ * 跟 LifeEvent 的分别是根本性的：
+ * LifeEvent 是**落到玩家头上**的事，WorldEvent 是**发生在世界上**的事。
+ * 玩家可能碰上，也可能一辈子不知道。
+ *
+ * 铁律（第 11 条）：**世界事件只改条件，不替玩家决定结果。**
+ * 旱灾把粮价推上去，但「你家因此卖了地还是借了债」是玩家那一层的事，
+ * 世界这一层不管。
+ */
+export interface WorldEvent {
+  id: string
+  /** 因果链的名字。同链的事排在散事件前面 */
+  chain?: string
+  /** 什么光景下它会发生 */
+  when: Partial<Record<RegionKey, { atLeast?: number; atMost?: number }>>
+  /** 同链上一环发生之后才轮得到它 */
+  after?: string
+  /** 它把这个府变成什么样 */
+  shift: Partial<Record<RegionKey, number>>
+  /** 相对权重。条件够了也未必就发生 */
+  weight?: number
+  /** 一件事不该年年发生。隔几年才能再来一次 */
+  cooldown?: number
+  /**
+   * 编年史上怎么记。
+   *
+   * 只有真正会被人说起的事才写——「今年雨水少了些」不必记，
+   * 「大旱，饿死了人」要记。玩家出生前的这些记录，
+   * 构成了他睁开眼时这个世界已经有的历史。
+   */
+  chronicle?: string
+}
+
+// ============================================================
 // 叙事
 // ============================================================
 
@@ -505,6 +570,14 @@ export interface Condition {
    * 这一条是关系网做出来之后，剧本层必须跟上的守门人。
    */
   bond?: { kind: Bond; alive?: boolean }
+  /**
+   * 这个府此刻的光景。
+   *
+   * 「世界事件改变条件，不直接替玩家决定结果」——这一行就是那个「条件」。
+   * 旱灾把粮价推上去，然后「米贵了你家怎么办」这一卷才有资格发生；
+   * 至于你家是卖地、借债还是把孩子送去当学徒，仍然是玩家自己选。
+   */
+  region?: Partial<Record<RegionKey, { atLeast?: number; atMost?: number }>>
   trade?: Trade
   gender?: Gender
   stage?: LifeStage

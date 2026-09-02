@@ -130,7 +130,13 @@ export const useCharacterStore = defineStore(
      * 年龄不是独立字段，也不是点一下「下一年」加上去的。
      * 它就是时序本身：出生那年是第一年，此后过了多少年就是多少岁。
      */
-    const age = computed(() => Math.max(0, world.time.year - 1))
+    /**
+     * 年龄。
+     *
+     * 从前是 year - 1（人人生在第一年）。现在世界先于玩家存在，
+     * 他可能生在第九年，也可能生在第十七年——**同一个世界，不同的起点。**
+     */
+    const age = computed(() => Math.max(0, world.time.year - world.bornYear))
 
     /** 别人评说过你几次。面板未读提示据此判断 */
     const claimCount = computed(() =>
