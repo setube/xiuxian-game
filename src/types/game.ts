@@ -424,15 +424,54 @@ export interface InventoryItem {
 export type KnowledgeCategory = '世事' | '修行' | '地理' | '人物' | '器物'
 
 /**
+ * 你对一件事知道到什么程度。
+ *
+ * 「知道」和「不知道」两档远远不够。一个人从没听说过修士，
+ * 到听人提过一嘴，到亲眼见过却完全不懂，到自己有个猜测，
+ * 到确信，到亲身验证——这中间隔着很多年。
+ *
+ * 这一层是后面「为什么拿到功法却不会修炼」的地基：
+ * 他手里那册书是真的，可他对「炼气」这件事还停在「听说过」，
+ * 中间那几档没走完，书就只是纸。
+ */
+/**
+ * 能打听的事。
+ *
+ * 定义在这里而不是 content 层，因为 Effect 要引用它——
+ * 剧本写 `{ type: 'ask', about: '年景' }` 时得有类型可查。
+ */
+export type Topic = '年景' | '世道' | '生人' | '家里' | '修士'
+
+export type Grasp =
+  /** 听说过这个名字，仅此而已 */
+  | '听说'
+  /** 亲眼见过，但不明白那是什么 */
+  | '见过'
+  /** 有了自己的猜测。可能是错的 */
+  | '猜想'
+  /** 比较确信 */
+  | '确信'
+  /** 亲身验证过 */
+  | '亲历'
+
+/**
  * 见闻。玩家「知道」某件事，本身就是一种游戏状态。
  *
- * summary 为 null 表示「只听过这个名字，还不知道是什么」——
- * 这一档不能省，它是「玩家知道什么 ≠ 世界真实存在什么」的具体形态。
+ * `grasp` 是他知道到什么程度，`summary` 是他此刻会怎么描述这件事——
+ * **同一个条目在不同的档位上，说法完全不同**：
+ *
+ *   听说：有人说这世上有能飞的人。多半是编的。
+ *   见过：你亲眼见过一个。他站在船头，水面不动。
+ *   猜想：他们大概是修行了什么法门。
+ *
+ * 所以升档不是「补充细节」，是**换一句话**。
  */
 export interface KnowledgeEntry {
   id: string
   title: string
+  /** 他此刻会怎么说这件事。null 表示只记住了个名字 */
   summary: string | null
+  grasp: Grasp
   category: KnowledgeCategory
   learnedAt: GameTime
 }
@@ -661,6 +700,12 @@ export type Effect =
       /** null 表示只听过名字 */
       summary: string | null
       category: KnowledgeCategory
+      /**
+       * 这一次让他认识到哪一档。缺省是「听说」。
+       *
+       * 只能往上走：亲眼见过之后，再听人说一嘴也不会退回「听说」。
+       */
+      grasp?: Grasp
     }
   | { type: 'item'; id: string; name: string; count?: number; unit?: string; note?: string }
   | { type: 'chronicle'; text: string; tone?: InkTone }
@@ -713,6 +758,14 @@ export type Effect =
    * 那跟直接把数值摊开没有区别。
    */
   | { type: 'signs'; limit?: number }
+  /**
+   * 他去问了一个人。
+   *
+   * 跟 signs 的分别：那个是世界给他看的，这个是他自己去要的。
+   * 但要来的不是正确答案，是**那个人的局部世界**——
+   * 对方可能不知道、可能不肯说、可能自己就理解错了。
+   */
+  | { type: 'ask'; who: string; about: Topic }
   /**
    * 世界在幕后掷一次骰，把结果写进旗标。
    *

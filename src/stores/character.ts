@@ -13,6 +13,7 @@ import type {
   KnowledgeCategory,
   KnowledgeEntry,
   Constitution,
+  Grasp,
   Realm,
 } from '@/types/game'
 
@@ -87,6 +88,9 @@ function withConstitution(base: Attributes, constitution: Constitution): Attribu
   }
   return next
 }
+
+/** 认识的深浅，自浅入深。只能往上走 */
+const GRASP_ORDER: readonly Grasp[] = ['听说', '见过', '猜想', '确信', '亲历']
 
 /** learn 的结果。界面据此决定要不要报一句「得知 · ×××」 */
 export type LearnOutcome = 'new' | 'detailed' | 'known'
@@ -189,8 +193,12 @@ export const useCharacterStore = defineStore(
     /**
      * 记下一条见闻。
      *
-     * 「先知其名，后知其详」是常态：炼气二字你早就听过，
-     * 真正弄懂是很久以后的事。所以已有条目若原本没有内容，这次补上仍算一次收获。
+     * 「知道」不是一个开关，是一道有档位的坡：
+     * 听说 → 见过 → 猜想 → 确信 → 亲历。
+     *
+     * **只能往上走。** 一个人亲眼见过修士之后，不会退回「只是听说」——
+     * 所以同一条见闻反复被提起时，低档位的说法不会盖掉高档位的。
+     * 这一条是「炼气二字你早就听过，真正弄懂是很久以后」的机制表达。
      */
     function learn(
       id: string,
@@ -198,25 +206,36 @@ export const useCharacterStore = defineStore(
       summary: string | null,
       category: KnowledgeCategory,
       at: GameTime,
+      grasp: Grasp = '听说',
     ): LearnOutcome {
       const existing = knowledge.value.find((item) => item.id === id)
 
       if (!existing) {
         knowledge.value = [
           ...knowledge.value,
-          { id, title, summary, category, learnedAt: { ...at } },
+          { id, title, summary, grasp, category, learnedAt: { ...at } },
         ]
         return 'new'
       }
 
-      if (existing.summary === null && summary !== null) {
-        knowledge.value = knowledge.value.map((item) =>
-          item.id === id ? { ...item, summary, learnedAt: { ...at } } : item,
-        )
-        return 'detailed'
+      // 认识一件事不会倒退。低档位的说法进不来
+      if (GRASP_ORDER.indexOf(grasp) <= GRASP_ORDER.indexOf(existing.grasp)) {
+        // 同档位补上原先没有的描述，仍算一次收获
+        if (existing.summary === null && summary !== null) {
+          knowledge.value = knowledge.value.map((item) =>
+            item.id === id ? { ...item, summary, learnedAt: { ...at } } : item,
+          )
+          return 'detailed'
+        }
+        return 'known'
       }
 
-      return 'known'
+      knowledge.value = knowledge.value.map((item) =>
+        item.id === id
+          ? { ...item, grasp, summary: summary ?? item.summary, learnedAt: { ...at } }
+          : item,
+      )
+      return 'detailed'
     }
 
     function has(id: string): boolean {

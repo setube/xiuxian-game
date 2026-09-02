@@ -7,6 +7,7 @@ import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 
 import { toChineseNumber } from './describe'
 import { fillString } from './interpolate'
+import { ask } from './inquire'
 import { observe } from './observe'
 import { noticeSigns, signBlocks } from './perceive'
 import { pickWeighted } from './random'
@@ -148,6 +149,7 @@ function applyOne(
         effect.summary,
         effect.category,
         world.time,
+        effect.grasp,
       )
       if (outcome === 'new') return record(`得知 · ${effect.title}`)
       if (outcome === 'detailed') return record(`明白了 · ${effect.title}`)
@@ -192,6 +194,26 @@ function applyOne(
       const learned = effect.name ? people.learnName(effect.id) : false
       if (learned) return record(`原来他叫 · ${people.callOf(effect.id)}`, 'deep')
       return isNew ? record(`识得 · ${calls}`) : null
+    }
+    case 'ask': {
+      /**
+       * 问出来的东西只进认知层。
+       *
+       * 它不改世界，也不改真实属性——它只改变玩家脑子里那份世界模型，
+       * 而那份模型可能是错的。这跟观察系统的铁律是同一条。
+       */
+      const reply = ask(effect.who, effect.about)
+      if (reply.learned) {
+        character.learn(
+          reply.learned.id,
+          reply.learned.title,
+          reply.learned.summary,
+          reply.learned.category,
+          world.time,
+          reply.grasp,
+        )
+      }
+      return reply.blocks
     }
     case 'signs': {
       // 世界的样子落进正文。这是玩家建立自己那份世界模型的唯一材料

@@ -30,11 +30,20 @@ export const dearthScenes: SceneLibrary = {
     nodes: {
       open: {
         id: 'open',
-        onEnter: [{ type: 'time', months: 3 }],
-        blocks: [
-          { kind: 'narration', text: '入秋以后，米价一天一个样。' },
-          { kind: 'narration', text: '街上排队的人比往年多，米铺的门板卸得晚，上得早。' },
+        /**
+         * 开场交给感知层。
+         *
+         * 从前这里写的是「入秋以后，米价一天一个样」——那是**作者知道的世界**。
+         * 可玩家未必知道米价，他可能只看见自己碗里的粥稀了。
+         *
+         * 两套叙事来源不一致，后果不是代码不整洁，是玩家会凭空得到
+         * 他本不该有的认知：一个六岁农家孩子不该知道「米价」这个概念。
+         */
+        onEnter: [
+          { type: 'time', months: 3 },
+          { type: 'signs', limit: 2 },
         ],
+        blocks: [],
         // 同一个消息，落在不同的家里是不同的东西
         branches: [
           { requires: [{ standing: { atLeast: 62 } }], next: 'comfortable' },
@@ -233,11 +242,13 @@ export const dearthScenes: SceneLibrary = {
     nodes: {
       open: {
         id: 'open',
-        onEnter: [{ type: 'time', months: 4 }],
-        blocks: [
-          { kind: 'narration', text: '这一年路上开始不太平。' },
-          { kind: 'narration', text: '村口来过几拨陌生人，都是拖家带口往南去的。' },
+        // 同上：他看见什么由感知层决定。
+        // 「那些人是逃荒的」这个判断，得他自己够得着才有
+        onEnter: [
+          { type: 'time', months: 4 },
+          { type: 'signs', limit: 2 },
         ],
+        blocks: [],
         branches: [
           { requires: [{ trade: '镖局' }], next: 'escort' },
           { requires: [{ trade: '客栈' }], next: 'inn' },
