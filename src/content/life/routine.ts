@@ -21,6 +21,9 @@ export const routineScenes: SceneLibrary = {
     nodes: {
       open: {
         id: 'open',
+        // 抬头看一眼外头。一年一两句，攒十几年——
+        // 玩家那份世界模型就是这么一点一点拼出来的
+        onEnter: [{ type: 'signs', limit: 1 }],
         blocks: [
           { kind: 'narration', text: '日子一天一天过去。' },
           { kind: 'narration', text: '你还太小，帮不上什么忙，也没人管你。' },
@@ -71,6 +74,7 @@ export const routineScenes: SceneLibrary = {
     nodes: {
       open: {
         id: 'open',
+        onEnter: [{ type: 'signs' }],
         blocks: [{ kind: 'narration', text: '又是一年。' }],
         branches: [{ requires: [{ flag: { key: 'schooled', equals: true } }], next: 'student' }],
         next: 'worker',
@@ -174,6 +178,7 @@ export const routineScenes: SceneLibrary = {
     nodes: {
       open: {
         id: 'open',
+        onEnter: [{ type: 'signs' }],
         blocks: [
           { kind: 'narration', text: '你个子高了不少，家里人说话开始带上你了。' },
           { kind: 'narration', text: '这一年要怎么过，多少能由自己说了算。' },
@@ -240,6 +245,7 @@ export const routineScenes: SceneLibrary = {
     nodes: {
       open: {
         id: 'open',
+        onEnter: [{ type: 'signs' }],
         blocks: [
           { kind: 'narration', text: '你成年了。' },
           { kind: 'narration', text: '此后的日子，跟村里所有人一样，一年接着一年。' },

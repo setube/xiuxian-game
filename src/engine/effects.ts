@@ -8,6 +8,7 @@ import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 import { toChineseNumber } from './describe'
 import { fillString } from './interpolate'
 import { observe } from './observe'
+import { noticeSigns, signBlocks } from './perceive'
 import { pickWeighted } from './random'
 
 /**
@@ -191,6 +192,10 @@ function applyOne(
       const learned = effect.name ? people.learnName(effect.id) : false
       if (learned) return record(`原来他叫 · ${people.callOf(effect.id)}`, 'deep')
       return isNew ? record(`识得 · ${calls}`) : null
+    }
+    case 'signs': {
+      // 世界的样子落进正文。这是玩家建立自己那份世界模型的唯一材料
+      return signBlocks(noticeSigns(effect.limit))
     }
     case 'recall': {
       // 人身上的「多年以后才明白」。值得一枚回执——
