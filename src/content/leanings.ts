@@ -68,15 +68,6 @@ export const LEANINGS: readonly Leaning[] = [
     ],
   },
   {
-    id: 'long',
-    says: '你想活得久一点。',
-    stirring: '你怕的东西跟从前不一样了。',
-    echoes: [
-      { tags: ['在家'], text: '你半夜醒过一次，听了很久屋里的动静。' },
-      { tags: ['家里的大人'], text: '你留意到他今年比去年瘦。' },
-    ],
-  },
-  {
     /**
      * 好好过日子。
      *
@@ -263,7 +254,7 @@ export const SPARKS: readonly Spark[] = [
     id: 'the-debt',
     leaning: 'rich',
     weight: 5,
-    requires: [{ flag: { key: 'father-left' } }],
+    requires: [{ flag: { key: 'father-away' } }],
     once: true,
     text: '{elder}是为着一笔债走的。你听见过那个数目。',
   },
@@ -295,30 +286,6 @@ export const SPARKS: readonly Spark[] = [
   // ============================================================
   // 想活得久一点
   // ============================================================
-  {
-    id: 'someone-died',
-    leaning: 'long',
-    weight: 6,
-    requires: [{ bond: { kind: '生父', alive: false } }],
-    once: true,
-    text: '办完丧事的那天夜里，你想的是人怎么就没了。',
-  },
-  {
-    id: 'famine-years',
-    leaning: 'long',
-    weight: 3,
-    requires: [{ knowledge: 'old-famine' }],
-    once: true,
-    text: '老人说早年饿死过不少人。他说的时候很平常。',
-  },
-  {
-    id: 'the-adept-lives',
-    leaning: 'long',
-    weight: 4,
-    requires: [{ knowledge: 'immortal-tale' }],
-    once: true,
-    text: '山里那种人据说不吃不喝也能活。你想的是「活」这个字。',
-  },
 
   // ============================================================
   // 想把日子过安稳

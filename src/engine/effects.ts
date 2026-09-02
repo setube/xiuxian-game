@@ -8,7 +8,7 @@ import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 
 import { beatLines, spend } from './daily'
 import { reconsider } from './diary'
-import { dampen, echoesOn, kindle, readingOf } from './leanings'
+import { branch, dampen, echoesOn, kindle, readingOf } from './leanings'
 import { toChineseNumber } from './describe'
 import {
   appraise,
@@ -549,6 +549,9 @@ function applyOne(
         tone: 'faint',
       }))
       const awakened = kindle(tags)
+      // 攒够了的愿望在这里分岔。往哪儿走，取决于他手边有什么
+      const found = branch()
+      if (found) cooled.push({ kind: 'narration', text: found.text, tone: 'deep' })
       if (!awakened) return cooled.length > 0 ? cooled : null
 
       /**
@@ -576,6 +579,8 @@ function applyOne(
         tone: 'faint',
       }))
       const awakened = kindle([])
+      const found = branch()
+      if (found) cooled.push({ kind: 'narration', text: found.text, tone: 'deep' })
       if (!awakened) return cooled.length > 0 ? cooled : null
       return [
         ...cooled,

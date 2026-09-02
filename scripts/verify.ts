@@ -23,6 +23,8 @@ import { readFileSync } from 'node:fs'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { BEATS } from '../src/content/days'
+import { DAMPERS, SPARKS } from '../src/content/leanings'
+import { OPENINGS } from '../src/content/openings'
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
@@ -319,6 +321,17 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
    * **门禁漏掉一类产出来源，比没有门禁更糟——它会把对的判成错的。**
    */
   for (const beat of BEATS) scanEffects(beat.effects)
+
+  /**
+   * 火种和反向火种的入场条件，同样是前置条件。
+   *
+   * 这是这道门禁的第二个盲区：illness-at-home 在火种里被引用了很久，
+   * 而世上从来没有一个地方设过它——**那条火种一辈子点不着，
+   * 却谁也没发现**。念头系统是新加的一层，它的条件一样要查。
+   */
+  for (const spark of SPARKS) scanConditions(spark.requires, `火种 · ${spark.id}`)
+  for (const damper of DAMPERS) scanConditions(damper.requires, `反向火种 · ${damper.id}`)
+  for (const opening of OPENINGS) scanConditions(opening.requires, `机会 · ${opening.id}`)
 
   /**
    * 引擎里造出来的那些。

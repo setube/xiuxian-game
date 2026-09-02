@@ -1,11 +1,15 @@
 import { DAMPERS, LEANINGS, SPARKS } from '@/content/leanings'
+import { WISH_SPARKS, WISHES } from '@/content/wishes'
 import { openingById } from '@/content/openings'
 import { useLeaningStore } from '@/stores/leanings'
 import { useWorldStore } from '@/stores/world'
 import type { Leaning } from '@/types/leaning'
 
+import { useCharacterStore } from '@/stores/character'
+
 import { meetsAll } from './conditions'
 import { fillString } from './interpolate'
+import { randomBetween } from './random'
 
 /**
  * 念头怎么长起来，又怎么在后面的日子里反复出现。
@@ -49,7 +53,7 @@ export function kindle(tags: readonly string[]): Awakening | null {
   const leaning = useLeaningStore()
   let awakened: Awakening | null = null
 
-  for (const spark of SPARKS) {
+  for (const spark of [...SPARKS, ...WISH_SPARKS]) {
     if (spark.once && world.hasFlag(sparkKey(spark.id))) continue
     // 写了标记就得当天沾着，写了条件就得满足。两样都写就都要
     if (spark.tags && !spark.tags.some((tag) => tags.includes(tag))) continue
@@ -115,7 +119,9 @@ export function selfSense(): string[] {
   const leaning = useLeaningStore()
   const lines: string[] = []
   for (const item of leaning.growing) {
-    const definition = LEANINGS.find((one) => one.id === item.id)
+    // 愿望和念头都要出现在这里——他分不出自己心里那个是哪一种
+    const definition =
+      LEANINGS.find((one) => one.id === item.id) ?? WISHES.find((one) => one.id === item.id)
     if (!definition) continue
     const stage = leaning.stageOf(item.id)
     if (stage === '明白') lines.push(definition.says)
@@ -178,4 +184,72 @@ export function readingOf(openingId: string): string[] {
     if (stage === '反复' || stage === '明白') lines.push(fillString(reading.text))
   }
   return lines
+}
+
+/** 一个愿望分岔的结果 */
+export interface Branching {
+  wish: string
+  /** 长成了哪个念头。null 表示什么也没通向 */
+  into: string | null
+  text: string
+}
+
+/** 愿望长到这里才分岔。比念头「说出口」的门槛低一档——
+ *  一个人先有了模糊的想要，才可能找到一个方向 */
+const BRANCH_AT = 12
+
+/**
+ * 愿望长大了，看看它往哪儿分岔。
+ *
+ * **分岔取决于他手边有什么。** 一个想活久一点的人，
+ * 家里正好开着药铺，他会往医上走；听说过山里那种人的，
+ * 会往「想弄明白」上走；什么也没接触过的——**什么也不长**。
+ *
+ * 最后那一种是这一层最要紧的一格：**愿望不必通向任何地方。**
+ * 若一个愿望必然通向某一条路，那条路就是系统偷偷安排的主线。
+ *
+ * 一个愿望只分岔一次。此后它仍然在，只是不再往外长了——
+ * 他找到了一条路，可他当初那份怕并没有消失。
+ */
+export function branch(): Branching | null {
+  const world = useWorldStore()
+  const leaning = useLeaningStore()
+  const insight = useCharacterStore().attributes.insight
+
+  for (const wish of WISHES) {
+    if (leaning.weightOf(wish.id) < BRANCH_AT) continue
+    if (world.hasFlag(`branched:${wish.id}`)) continue
+
+    const feasible = wish.branches.filter((one) => one.leaning && meetsAll(one.requires))
+    const blank = wish.branches.find((one) => !one.leaning)
+
+    /**
+     * 想不想得通。
+     *
+     * **手边有路，不等于他找得到。** 同样想活久一点、同样听说过
+     * 山里那种人，有的人会把两件事连起来，有的人一辈子也没连上——
+     * 他就是怕，而且不知道能怎么办。
+     *
+     * 没有这一道闸，凡是听说过修士的人都会必然走上那条路，
+     * 「愿望不必通向任何地方」就成了一句空话。
+     */
+    const figuresOut = randomBetween(1, 100) <= 22 + insight * 0.55
+    const taken = feasible.length > 0 && figuresOut ? feasible[0]! : blank
+    if (!taken) continue
+
+    world.setFlag(`branched:${wish.id}`, true)
+    // 记下它究竟通向了哪儿。走查靠它分辨，而不是去猜最重的那个念头
+    if (taken.leaning) world.setFlag('branched-into', taken.leaning)
+    const moment = { at: { ...world.time }, text: fillString(taken.text) }
+    // 不写 leaning 就是「什么也没通向」——他就是怕，而且不知道能怎么办
+    if (taken.leaning) leaning.stir(taken.leaning, taken.weight, moment, world.time)
+    else leaning.stir(wish.id, 0, moment, world.time)
+    return { wish: wish.id, into: taken.leaning ?? null, text: moment.text }
+  }
+  return null
+}
+
+/** 一个 id 是不是愿望。愿望没有 echoes，所以要分得出来 */
+export function isWish(id: string): boolean {
+  return WISHES.some((wish) => wish.id === id)
 }
