@@ -128,8 +128,17 @@ function applyOne(
       return spoken
     }
     case 'relation': {
-      const isNew = character.adjustRelation(effect.id, effect.name, effect.delta, effect.note)
-      return isNew ? record(`识得 · ${effect.name}`) : null
+      /**
+       * 旧写法，等同于 meet。
+       *
+       * 从前 character.relationships 与 people 两套并存，
+       * 同一个人有两处身份来源，迟早对不上。现在统一收进人口册——
+       * **玩家只是 people 图里的一个节点**，别人也是。
+       *
+       * 这个分支留着只为让老剧本继续跑；新剧本一律写 meet。
+       */
+      const isNew = people.meet(effect.id, effect.name, effect.delta, effect.note)
+      return isNew ? record(`识得 · ${people.callOf(effect.id)}`) : null
     }
     case 'knowledge': {
       const outcome = character.learn(

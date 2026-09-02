@@ -26,7 +26,7 @@ const NAMING: Record<Trade, readonly NarrativeBlock[]> = {
     { kind: 'narration', text: '父亲看不懂，但收好了那张纸。那张纸后来一直压在箱底。' },
   ],
   猎户: [
-    { kind: 'narration', text: '你的名字是母亲叫出来的。' },
+    { kind: 'narration', text: '你的名字是{dam}叫出来的。' },
     { kind: 'narration', text: '她在灶前哄你，随口叫了一声，就那么叫下去了：{name}。' },
     { kind: 'narration', text: '父亲从山里回来，听了一遍，点了点头。' },
     { kind: 'narration', text: '这个名字很多年都没有写在纸上过。' },
@@ -60,7 +60,7 @@ const NAMING: Record<Trade, readonly NarrativeBlock[]> = {
     { kind: 'narration', text: '满月那天，父亲翻了半宿的药书。' },
     { kind: 'narration', text: '他说药名里的字都是好字，草木都有性情。' },
     { kind: 'narration', text: '最后写下的是：{name}。' },
-    { kind: 'narration', text: '母亲在旁边看了看，说：这个字，写起来倒也不难。' },
+    { kind: 'narration', text: '{dam}在旁边看了看，说：这个字，写起来倒也不难。' },
     { kind: 'narration', text: '那张纸夹进了药书里。你后来自己翻到过。' },
   ],
   镖局: [

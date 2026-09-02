@@ -83,7 +83,7 @@ export const ORIGINS: readonly Origin[] = [
     mother: '在家硝皮子，也认得几味草药。',
     opening: [
       { kind: 'narration', text: '你生在{prefecture}北面的山脚下，{here}。' },
-      { kind: 'narration', text: '父亲进山打猎，母亲在家硝皮子。' },
+      { kind: 'narration', text: '家里靠打猎过活。皮子硝好了拿去镇上换钱。' },
       { kind: 'narration', text: '你出生那年冬天格外冷。父亲后来说，你是听着狼叫长大的。' },
     ],
   },

@@ -323,7 +323,7 @@ export const encounterScenes: SceneLibrary = {
           { kind: 'narration', text: '他说了一句什么，你没听清。然后他闭上眼，不动了。' },
           { kind: 'divider', variant: 'ink' },
           { kind: 'narration', text: '你在床上躺了将近一个月，一直在发热。' },
-          { kind: 'narration', text: '母亲问你在山上遇见了什么，你说没有。' },
+          { kind: 'narration', text: '{dam}问你在山上遇见了什么，你说没有。' },
           {
             kind: 'narration',
             text: '左腕上留了一圈疤，五个指头的形状。天冷的时候会疼。',

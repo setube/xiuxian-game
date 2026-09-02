@@ -28,7 +28,7 @@ export const routineScenes: SceneLibrary = {
         choices: [
           {
             id: 'follow-mother',
-            label: '整日跟着母亲',
+            label: '整日跟着{dam}',
             echo: '你整日跟在母亲身后。',
             effects: [
               { type: 'time', months: 8 },

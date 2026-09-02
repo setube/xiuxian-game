@@ -91,7 +91,7 @@ export const tradeScenes: SceneLibrary = {
           { kind: 'divider', variant: 'dots' },
           { kind: 'narration', text: '第二天天没亮他就走了，房钱压在桌上。' },
           { kind: 'narration', text: '母亲进去收拾，出来的时候脸色不太对。' },
-          { kind: 'dialogue', speaker: '母亲', text: '被褥是平的。' },
+          { kind: 'dialogue', speaker: '{dam}', text: '被褥是平的。' },
           { kind: 'narration', text: '像是没有人在那张床上躺过。' },
           { kind: 'narration', text: '{elder}说，往后这种客人来了，收钱，别多问。' },
           {
@@ -120,7 +120,7 @@ export const tradeScenes: SceneLibrary = {
           { kind: 'narration', text: '那人上楼时从你身边过去，你闻到一股很冷的味道。' },
           { kind: 'narration', text: '不是雨的味道。' },
           { kind: 'divider', variant: 'dots' },
-          { kind: 'narration', text: '第二天他就走了。母亲收拾房间时说，被褥是平的。' },
+          { kind: 'narration', text: '第二天他就走了。{dam}收拾房间时说，被褥是平的。' },
           { kind: 'narration', text: '你问那是什么人。{elder}说：不该问的别问。' },
           { kind: 'narration', text: '这件事你记了很多年，一直没有答案。', tone: 'faint' },
         ],
@@ -131,7 +131,7 @@ export const tradeScenes: SceneLibrary = {
         onEnter: [{ type: 'time', days: 1 }],
         blocks: [
           { kind: 'narration', text: '第二天你下楼时，那个人已经走了。' },
-          { kind: 'narration', text: '母亲正在收拾那间房，嘴里念叨着什么。' },
+          { kind: 'narration', text: '{dam}正在收拾那间房，嘴里念叨着什么。' },
           { kind: 'narration', text: '你没听清，也没有问。', tone: 'faint' },
         ],
       },
@@ -332,7 +332,7 @@ export const tradeScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '父亲用油纸包了三层，收进了柜子最上一格。' },
           { kind: 'dialogue', speaker: '{elder}', text: '认不出的东西，不能用在人身上。' },
-          { kind: 'narration', text: '过了半年，母亲拿出来看过一次。' },
+          { kind: 'narration', text: '过了半年，{dam}拿出来看过一次。' },
           { kind: 'event', text: '断口还是白的。' },
           { kind: 'narration', text: '她把它包回去，什么也没说。', tone: 'faint' },
         ],

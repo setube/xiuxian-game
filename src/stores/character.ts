@@ -14,7 +14,6 @@ import type {
   KnowledgeEntry,
   Constitution,
   Realm,
-  Relationship,
 } from '@/types/game'
 
 import { beBorn } from '@/content/birth'
@@ -26,8 +25,6 @@ import { useWorldStore } from './world'
 
 const ATTRIBUTE_MIN = 0
 const ATTRIBUTE_MAX = 100
-const AFFINITY_MIN = -100
-const AFFINITY_MAX = 100
 
 const INITIAL_REALM: Realm = '凡人'
 const INITIAL_IDENTITY = '孩童'
@@ -125,7 +122,6 @@ export const useCharacterStore = defineStore(
     const realm = ref<Realm>(INITIAL_REALM)
     const attributes = ref<Attributes>(withConstitution(rollAttributes(), constitution.value))
     const aspects = ref<Aspects>(blankAspects())
-    const relationships = ref<Relationship[]>([])
     /** 出生时一无所知，一条见闻也没有。此后每一条都是学来的 */
     const knowledge = ref<KnowledgeEntry[]>([])
     const inventory = ref<InventoryItem[]>([])
@@ -178,35 +174,6 @@ export const useCharacterStore = defineStore(
           ],
         },
       }
-    }
-
-    /** @returns 是否初识此人 */
-    function adjustRelation(id: string, who: string, delta: number, note?: string): boolean {
-      const existing = relationships.value.find((item) => item.id === id)
-
-      if (!existing) {
-        relationships.value = [
-          ...relationships.value,
-          {
-            id,
-            name: who,
-            affinity: clamp(delta, AFFINITY_MIN, AFFINITY_MAX),
-            ...(note ? { note } : {}),
-          },
-        ]
-        return true
-      }
-
-      relationships.value = relationships.value.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              affinity: clamp(item.affinity + delta, AFFINITY_MIN, AFFINITY_MAX),
-              ...(note ? { note } : {}),
-            }
-          : item,
-      )
-      return false
     }
 
     function knows(id: string): boolean {
@@ -309,7 +276,6 @@ export const useCharacterStore = defineStore(
       realm.value = INITIAL_REALM
       attributes.value = withConstitution(rollAttributes(), constitution.value)
       aspects.value = blankAspects()
-      relationships.value = []
       knowledge.value = []
       inventory.value = []
     }
@@ -322,7 +288,6 @@ export const useCharacterStore = defineStore(
       realm,
       attributes,
       aspects,
-      relationships,
       knowledge,
       inventory,
       claimCount,
@@ -331,7 +296,6 @@ export const useCharacterStore = defineStore(
       setIdentity,
       note,
       claim,
-      adjustRelation,
       knows,
       learn,
       has,
@@ -351,7 +315,6 @@ export const useCharacterStore = defineStore(
         'realm',
         'attributes',
         'aspects',
-        'relationships',
         'knowledge',
         'inventory',
       ],

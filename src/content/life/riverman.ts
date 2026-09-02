@@ -694,7 +694,7 @@ export const rivermanScenes: SceneLibrary = {
         ],
         blocks: [
           { kind: 'narration', text: '你回到家的时候，天已经黑透了。' },
-          { kind: 'narration', text: '母亲问你怎么回来得这样晚。你说路上耽搁了。' },
+          { kind: 'narration', text: '{dam}问你怎么回来得这样晚。你说路上耽搁了。' },
           { kind: 'narration', text: '那天夜里你没有睡着。' },
           { kind: 'seal', text: '凡' },
           {

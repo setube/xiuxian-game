@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia'
 import { computed, watch } from 'vue'
 
 import { useCharacterStore } from '@/stores/character'
+import { usePeopleStore } from '@/stores/people'
 import { useUiStore } from '@/stores/ui'
 import { useWorldStore } from '@/stores/world'
 import type { PanelKey } from '@/types/game'
@@ -17,6 +18,7 @@ import { PANELS } from './panels'
  */
 const ui = useUiStore()
 const character = useCharacterStore()
+const people = usePeopleStore()
 const world = useWorldStore()
 
 const { activePanel, seen } = storeToRefs(ui)
@@ -26,7 +28,7 @@ const counts = computed<Record<PanelKey, number>>(() => ({
   character: character.claimCount,
   inventory: character.inventory.length,
   knowledge: character.knowledge.length,
-  relations: character.relationships.length,
+  relations: people.acquaintedCount,
   chronicle: world.chronicle.length,
   world: world.visited.length,
 }))

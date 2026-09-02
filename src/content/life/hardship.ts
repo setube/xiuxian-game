@@ -63,7 +63,7 @@ export const hardshipScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '开春要买种子，家里拿不出钱。' },
           { kind: 'narration', text: '父亲去了一趟镇上，回来时手里有一小串铜钱。' },
-          { kind: 'narration', text: '他没说是从哪儿来的。母亲问了一句，他没答。' },
+          { kind: 'narration', text: '他没说是从哪儿来的。{dam}问了一句，他没答。' },
           { kind: 'event', text: '后来你才知道，那是借的。' },
           {
             kind: 'narration',
@@ -236,7 +236,7 @@ export const hardshipScenes: SceneLibrary = {
           { kind: 'narration', text: '腊月里的一天下午，院子外面有人叫门。' },
           { kind: 'event', text: '父亲回来了。' },
           { kind: 'narration', text: '他瘦了一圈，脸是黑的，手上多了几道口子。' },
-          { kind: 'narration', text: '母亲从灶间跑出来，站在那里没动，也没说话。' },
+          { kind: 'narration', text: '{dam}从灶间跑出来，站在那里没动，也没说话。' },
           { kind: 'narration', text: '他把一个布包放在桌上，解开，里面是钱。' },
           { kind: 'dialogue', speaker: '父亲', text: '还了一半。' },
           { kind: 'narration', text: '那天晚上家里煮了肉。' },
@@ -311,7 +311,7 @@ export const hardshipScenes: SceneLibrary = {
           { kind: 'event', text: '父亲死在了外地。', tone: 'cinnabar' },
           { kind: 'narration', text: '说是塌方，压住了，抬出来的时候人已经不行了。' },
           { kind: 'narration', text: '尸首没有运回来。太远了。' },
-          { kind: 'narration', text: '母亲听完，问了一句：什么时候的事。' },
+          { kind: 'narration', text: '{dam}听完，问了一句：什么时候的事。' },
           { kind: 'dialogue', text: '八月里。' },
           { kind: 'narration', text: '那时候家里还在等他捎钱回来。' },
         ],
@@ -581,7 +581,11 @@ export const hardshipEvents: readonly LifeEvent[] = [
   {
     id: 'debt-quit',
     window: { from: 9, to: 15 },
-    requires: [{ flag: { key: 'schooled', equals: true } }, { standing: { atMost: 24 } }],
+    requires: [
+      { flag: { key: 'schooled', equals: true } },
+      { bond: { kind: '生母', alive: true } },
+      { standing: { atMost: 24 } },
+    ],
     scene: 'debt:quit',
     weight: 20,
   },

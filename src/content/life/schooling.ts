@@ -146,7 +146,7 @@ export const schoolingScenes: SceneLibrary = {
         ],
         blocks: [
           { kind: 'narration', text: '灶间那场话说了好几个晚上。' },
-          { kind: 'narration', text: '后来母亲把箱底那只银镯子拿了出来，{elder}又去借了一趟。' },
+          { kind: 'narration', text: '后来{dam}把箱底那只银镯子拿了出来，{elder}又去借了一趟。' },
           { kind: 'narration', text: '开春那天，你穿着一身改小的旧衣裳去了村东。' },
           { kind: 'narration', text: '私塾一间旧屋，十来个孩子。先生姓周，五十上下，说话很慢。' },
           { kind: 'dialogue', speaker: '周先生', text: '把手伸出来。' },
@@ -168,7 +168,7 @@ export const schoolingScenes: SceneLibrary = {
           { type: 'chronicle', text: '你进了私塾。' },
         ],
         blocks: [
-          { kind: 'narration', text: '开春那天，母亲给你换了身干净衣裳。' },
+          { kind: 'narration', text: '开春那天，{dam}给你换了身干净衣裳。' },
           { kind: 'narration', text: '私塾在村东，一间旧屋，十来个孩子。' },
           { kind: 'narration', text: '先生姓周，五十上下，说话很慢。' },
           { kind: 'dialogue', speaker: '周先生', text: '把手伸出来。' },
@@ -380,14 +380,14 @@ export const schoolingScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '秋收那几天，全村都在地里。' },
           { kind: 'narration', text: '你一个人扛了一捆稻走了半里地，没歇。' },
-          { kind: 'narration', text: '同村一个老把式看见了，跟你母亲说了一句。' },
+          { kind: 'narration', text: '同村一个老把式看见了，跟你{dam}说了一句。' },
         ],
         next: 'after',
       },
 
       after: {
         id: 'after',
-        blocks: [{ kind: 'narration', text: '母亲笑了笑，没接话。' }],
+        blocks: [{ kind: 'narration', text: '{dam}笑了笑，没接话。' }],
       },
     },
   },
@@ -489,7 +489,7 @@ export const schoolingScenes: SceneLibrary = {
       candy: {
         id: 'candy',
         blocks: [
-          { kind: 'narration', text: '你站得太久，母亲回头找你，最后还是买了一个。' },
+          { kind: 'narration', text: '你站得太久，{dam}回头找你，最后还是买了一个。' },
           { kind: 'narration', text: '那个糖人你舍不得吃，揣了一路。' },
           { kind: 'narration', text: '到家的时候已经化得不成样子了。' },
         ],

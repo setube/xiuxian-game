@@ -16,6 +16,7 @@ import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useNarrativeStore } from '../src/stores/narrative'
+import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 
 const RUNS = 400
@@ -31,6 +32,7 @@ for (let i = 0; i < RUNS; i += 1) {
   const world = useWorldStore()
   const character = useCharacterStore()
   const household = useHouseholdStore()
+  const people = usePeopleStore()
   // 轮着钉死出身，好让十一种都被扫到
   household.trade = ORIGINS[i % ORIGINS.length]!.trade
   const story = useStory(lifeScenes, {
@@ -78,11 +80,20 @@ for (let i = 0; i < RUNS; i += 1) {
     check('物件注', it.note)
     check('物件旧名', it.formerName)
   }
-  for (const r of character.relationships) {
-    check('人际', r.name)
-    check('人际注', r.note)
+  // 人际现在只有一个来源：人口册。玩家自己也是图里的一个节点
+  for (const [id, acquaintance] of Object.entries(household ? people.known : {})) {
+    check('称呼', acquaintance.calls)
+    check('人际注', acquaintance.note)
+    const person = people.personOf(id)
+    if (person) {
+      check('姓', person.surname)
+      check('名', person.given)
+      check('营生', person.trade)
+      check('所在', person.place)
+      for (const chapter of person.history) check('往事', chapter.what)
+    }
   }
-  for (const m of household.members) check('家人', m.note)
+  for (const m of household.members) check('家人', m.relation)
   for (const aspect of Object.values(character.aspects)) {
     check('自述', aspect.self)
     for (const claim of aspect.claims) {

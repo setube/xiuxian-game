@@ -1,7 +1,7 @@
 import { useCharacterStore } from '@/stores/character'
 import { useHouseholdStore } from '@/stores/household'
 import { usePeopleStore } from '@/stores/people'
-import type { NarrativeBlock } from '@/types/game'
+import type { Bond, NarrativeBlock } from '@/types/game'
 
 /**
  * 正文里的占位符。
@@ -25,7 +25,22 @@ import type { NarrativeBlock } from '@/types/game'
  * `{elder}` 与 `{elders}` 是另一类：它们问的不是家世，是**关系网**。
  * 详见下面两个函数——那是「不能假定每个人都有爹娘」在正文层的落点。
  */
-const TOKENS = /\{(name|home|province|prefecture|here|trade|elder|elders)\}/g
+const TOKENS = /\{(name|home|province|prefecture|here|trade|elder|elders|dam)\}/g
+
+/**
+ * 挑一个还在世的关系人，按给定的优先次序。
+ *
+ * 这是 `{elder}` / `{dam}` 共用的那一步：**先问关系网，再落笔**。
+ */
+function callByBond(order: readonly Bond[]): string {
+  const people = usePeopleStore()
+  for (const bond of order) {
+    for (const id of people.kinOf(bond)) {
+      if (people.isAlive(id)) return people.known[id]?.calls ?? '家里的大人'
+    }
+  }
+  return '家里的大人'
+}
 
 /**
  * 「管这个家的大人」此刻是谁。
@@ -37,15 +52,35 @@ const TOKENS = /\{(name|home|province|prefecture|here|trade|elder|elders)\}/g
  * 所以正文写 `{elder}`，落纸时问关系网：有爹叫爹，没爹就叫养你的那个人，
  * 一个都没有就是「家里的大人」。同一句正文，对谁都成立，
  * 而且会跟着这个人的境遇一起变。
+ *
+ * ⚠️ **这是过渡方案，不是终局。**
+ *
+ * `{elder}` 只解决「谁在做这件事」，解决不了「他为什么会做这件事」。
+ * 老乞丐、长姐、寺里的师父、亲爹，不可能共享同一套生活内容——
+ * 「每天傍晚去地里站一会儿」这种句子，换个主语仍然是错的，
+ * 因为讨饭的人没有地。
+ *
+ * 所以往后写新正文的规矩是：
+ *
+ * 1. 只写谁都可能做的事：`{elder}每天傍晚都会出去一趟。`
+ * 2. 真要写只有某种人才做的事，就给那一卷加 requires 把关系锁住，
+ *    然后正文里放心写「父亲」。
+ *
+ * 不要让 `{elder}` 变成祖传抽象。它是拆硬编码用的撬棍，不是地基。
  */
 function elderCall(): string {
-  const people = usePeopleStore()
-  for (const bond of ['生父', '抚养', '生母'] as const) {
-    for (const id of people.kinOf(bond)) {
-      if (people.isAlive(id)) return people.known[id]?.calls ?? '家里的大人'
-    }
-  }
-  return '家里的大人'
+  return callByBond(['生父', '抚养', '生母'])
+}
+
+/**
+ * 「娘」这个位置上此刻是谁。
+ *
+ * 跟 `{elder}` 分开是必须的：一个由长姐拉扯大的孩子，
+ * 「娘把你放在田埂上」是穿帮，但「姐把你放在田埂上」成立。
+ * 同理，生母难产而亡、爹一个人把他带大的，这个位置就是爹。
+ */
+function damCall(): string {
+  return callByBond(['生母', '抚养', '生父'])
 }
 
 /** 「爹娘」这种合称。家里只剩一个人的时候，说「爹和娘」就是穿帮 */
@@ -73,6 +108,7 @@ export function fillString(text: string): string {
 
   return text.replace(TOKENS, (_, token: string) => {
     if (token === 'elder') return elderCall()
+    if (token === 'dam') return damCall()
     if (token === 'elders') return eldersCall()
     if (token === 'name') return character.name
     if (token === 'home') return household.home

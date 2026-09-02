@@ -34,7 +34,7 @@ export const childhoodScenes: SceneLibrary = {
       farm: {
         id: 'farm',
         blocks: [
-          { kind: 'narration', text: '母亲把你放在田埂上，让你别乱跑。' },
+          { kind: 'narration', text: '{dam}把你放在田埂上，让你别乱跑。' },
           { kind: 'narration', text: '她弯着腰在前面走，走得很慢，一直没有直起来过。' },
           { kind: 'narration', text: '天很大，田也很大。你坐了一下午。' },
         ],
@@ -64,7 +64,7 @@ export const childhoodScenes: SceneLibrary = {
         id: 'hunt',
         blocks: [
           { kind: 'narration', text: '{elder}从山里回来，往地上放了一只野兔。' },
-          { kind: 'narration', text: '兔子还是热的。你伸手摸了一下，母亲把你的手打开了。' },
+          { kind: 'narration', text: '兔子还是热的。你伸手摸了一下，{dam}把你的手打开了。' },
           { kind: 'narration', text: '那天晚上家里有肉。你记住了那个味道。' },
         ],
         next: 'close',
@@ -114,7 +114,7 @@ export const childhoodScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '你蹲在楼梯拐角，底下有人在划拳。' },
           { kind: 'narration', text: '一个客人喝多了，拍着桌子说个不停，说的都是别人家的事。' },
-          { kind: 'narration', text: '母亲上去劝了两句，那人就不说了。' },
+          { kind: 'narration', text: '{dam}上去劝了两句，那人就不说了。' },
           { kind: 'narration', text: '你那时候还不懂，只觉得大人说话真好听。' },
         ],
         next: 'close',
@@ -129,16 +129,16 @@ export const childhoodScenes: SceneLibrary = {
             type: 'knowledge',
             id: 'herb-lore',
             title: '认药',
-            summary: '草木各有各的样子和气味。母亲说，认错一味就要出人命。',
+            summary: '草木各有各的样子和气味。{dam}说，认错一味就要出人命。',
             category: '器物',
           },
           { type: 'attribute', key: 'insight', delta: 2 },
         ],
         blocks: [
           { kind: 'narration', text: '后院晒着药。一格一格摊开，晒了满地。' },
-          { kind: 'narration', text: '母亲蹲在旁边翻药，你也蹲着看。' },
+          { kind: 'narration', text: '{dam}蹲在旁边翻药，你也蹲着看。' },
           { kind: 'narration', text: '她随手拈起一片给你闻。你说：苦的。' },
-          { kind: 'dialogue', speaker: '母亲', text: '这个叫黄芩。记住了。' },
+          { kind: 'dialogue', speaker: '{dam}', text: '这个叫黄芩。记住了。' },
           { kind: 'narration', text: '你记住了。那是你认得的第一味药。' },
         ],
         next: 'close',
@@ -158,11 +158,11 @@ export const childhoodScenes: SceneLibrary = {
         ],
         blocks: [
           { kind: 'narration', text: '{elder}那趟镖回来得很晚。' },
-          { kind: 'narration', text: '他坐在院里脱衣裳，背上一道口子，母亲正在给他上药。' },
+          { kind: 'narration', text: '他坐在院里脱衣裳，背上一道口子，{dam}正在给他上药。' },
           { kind: 'narration', text: '你站在门槛上看。他回头看见你，把衣裳拉了上去。' },
           { kind: 'dialogue', speaker: '{elder}', text: '没事。进去。' },
-          { kind: 'narration', text: '那天夜里你听见他跟母亲说，往后那条道不走了。' },
-          { kind: 'narration', text: '母亲问为什么。他没有答。' },
+          { kind: 'narration', text: '那天夜里你听见他跟{dam}说，往后那条道不走了。' },
+          { kind: 'narration', text: '{dam}问为什么。他没有答。' },
         ],
         next: 'close',
       },
@@ -258,7 +258,7 @@ export const childhoodScenes: SceneLibrary = {
         blocks: [
           { kind: 'event', text: '你病了。' },
           { kind: 'narration', text: '起先只是咳，后来烧起来，烧了七八天。' },
-          { kind: 'narration', text: '母亲抱着你坐了几个通宵。家里请了一趟郎中，抓了三副药。' },
+          { kind: 'narration', text: '{dam}抱着你坐了几个通宵。家里请了一趟郎中，抓了三副药。' },
           { kind: 'narration', text: '等你能下地走路，半个多月已经过去了。' },
           {
             kind: 'narration',
@@ -292,7 +292,7 @@ export const childhoodScenes: SceneLibrary = {
         blocks: [
           { kind: 'event', text: '家里添了个孩子。' },
           { kind: 'narration', text: '你多了一个弟妹，也多了一个要看着的人。' },
-          { kind: 'narration', text: '母亲说，往后你是当哥哥（姐姐）的了。' },
+          { kind: 'narration', text: '{dam}说，往后你是当哥哥（姐姐）的了。' },
           { kind: 'narration', text: '饭还是那么多，吃饭的人多了一个。' },
         ],
       },
@@ -308,13 +308,13 @@ export const childhoodScenes: SceneLibrary = {
         id: 'open',
         blocks: [
           { kind: 'narration', text: '那年秋后，家里的米缸见了底。' },
-          { kind: 'narration', text: '母亲把粥熬得很稀。她自己那碗更稀。' },
+          { kind: 'narration', text: '{dam}把粥熬得很稀。她自己那碗更稀。' },
           { kind: 'narration', text: '你还小，不懂这些，只知道饿得快。' },
         ],
         choices: [
           {
             id: 'ask',
-            label: '问母亲为什么粥这么稀',
+            label: '问{dam}为什么粥这么稀',
             echo: '你问了。',
             effects: [
               { type: 'time', days: 1 },
@@ -339,8 +339,8 @@ export const childhoodScenes: SceneLibrary = {
       asked: {
         id: 'asked',
         blocks: [
-          { kind: 'narration', text: '母亲愣了一下。' },
-          { kind: 'dialogue', speaker: '母亲', text: '今年收成不好。' },
+          { kind: 'narration', text: '{dam}愣了一下。' },
+          { kind: 'dialogue', speaker: '{dam}', text: '今年收成不好。' },
           { kind: 'narration', text: '她说完就去洗锅了，背对着你。' },
           { kind: 'narration', text: '你第一次知道，家里的日子是会好会坏的。' },
         ],
@@ -360,7 +360,7 @@ export const childhoodScenes: SceneLibrary = {
         id: 'quiet',
         blocks: [
           { kind: 'narration', text: '你什么也没问。' },
-          { kind: 'narration', text: '母亲看了你一眼，把自己碗里的稠底拨了一半给你。' },
+          { kind: 'narration', text: '{dam}看了你一眼，把自己碗里的稠底拨了一半给你。' },
           { kind: 'narration', text: '你也没说谢谢。' },
         ],
         next: 'close',
@@ -399,7 +399,7 @@ export const childhoodScenes: SceneLibrary = {
           { kind: 'narration', text: '这一年雨水匀，虫也少。' },
           { kind: 'event', text: '秋后收成比往年好。' },
           { kind: 'narration', text: '交完租还有余，父亲挑了两担去镇上卖，换回来一口新锅。' },
-          { kind: 'narration', text: '母亲给你和自己各扯了一块布。' },
+          { kind: 'narration', text: '{dam}给你和自己各扯了一块布。' },
           { kind: 'narration', text: '那年过年，桌上有肉。', tone: 'faint' },
         ],
       },
