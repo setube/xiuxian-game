@@ -32,7 +32,12 @@ jobs:
       - name: 安装依赖
         run: pnpm install --frozen-lockfile
       - name: 构建
+        # 资源前缀由 vite.config.ts 的 base: './' 解决，这里不必再传
         run: pnpm run build
+      - name: 404 兜底
+        # history 模式的单页应用，直接访问子路径时 Pages 会返回它自己的 404 页，
+        # 前端路由根本没机会接管。把 index.html 抄一份当 404 用是通行做法
+        run: cp dist/index.html dist/404.html
       - name: 配置 Pages
         uses: actions/configure-pages@v5
       - name: 上传构建产物
