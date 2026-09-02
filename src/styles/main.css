@@ -1,0 +1,215 @@
+@import 'tailwindcss';
+
+/* ==========================================================================
+   丹青水墨 · 设计令牌
+
+   水墨是这款游戏的视觉风格，不是设计目标本身。
+   颜色直接参与信息层级：
+     浓墨 = 重要   墨色 = 正文   淡墨 = 次要   极淡 = 装饰   朱砂 = 关键/危险
+   框线与压痕负责「这是一个界面」：状态栏、操作区、面板必须看得出边界。
+   ========================================================================== */
+@theme {
+  /* —— 宣纸 —— */
+  --color-paper: #f4efe4;
+  --color-paper-aged: #ebe3d3;
+
+  /* —— 墨色层级 —— */
+  --color-ink-deep: #23201c; /* 浓墨：标题、关键信息 */
+  --color-ink: #3d3934; /* 墨色：正文 */
+  --color-ink-faint: #6f6860; /* 淡墨：次要信息（对比度 ≈4.6:1，达 AA） */
+  --color-ink-ghost: #a89f92; /* 极淡：框线陪衬、树状连接符。不承载文义 */
+
+  /* —— 朱砂 —— */
+  --color-cinnabar: #9d2f26; /* 关键、危险、当前所在 */
+  --color-cinnabar-soft: #b05a4e;
+
+  /* —— 界面骨架 —— */
+  --color-rule: #c9bda7; /* 版框线：古籍的边栏与栏线 */
+  --color-wash: #e6ddca; /* 压痕：可操作区的悬停底色 */
+
+  /* —— 字体 —— */
+  --font-serif:
+    'Songti SC', 'STSong', 'Source Han Serif SC', 'Noto Serif CJK SC', 'Noto Serif SC', 'SimSun',
+    'Times New Roman', serif;
+  --font-kai: 'Kaiti SC', 'STKaiti', 'KaiTi', '楷体', 'Songti SC', 'SimSun', serif;
+
+  /* —— 字号 —— */
+  --text-micro: 0.8125rem; /* 条件提示、时间戳 */
+  --text-note: 0.875rem; /* 状态栏、面板、次要信息 */
+  --text-body: 1.0625rem; /* 正文 */
+  --text-title: 1.25rem; /* 场景标题 */
+
+  /* —— 版框宽度。比纯阅读版心宽，因为要容下状态栏与操作区 —— */
+  --container-frame: 40rem;
+}
+
+/* ==========================================================================
+   基底
+   ========================================================================== */
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    color: var(--color-ink);
+    font-family: var(--font-serif);
+    font-size: var(--text-body);
+    /* 极淡的纸纹：两处晕染 + 一层纤维，合计不超过 3% 不透明度 */
+    background-color: var(--color-paper);
+    background-image:
+      radial-gradient(ellipse 80% 60% at 18% 8%, rgb(0 0 0 / 1.6%), transparent 60%),
+      radial-gradient(ellipse 70% 70% at 85% 88%, rgb(122 92 48 / 2.4%), transparent 55%),
+      repeating-linear-gradient(
+        94deg,
+        rgb(122 92 48 / 1.4%) 0px,
+        rgb(122 92 48 / 1.4%) 1px,
+        transparent 1px,
+        transparent 4px
+      );
+    background-attachment: fixed;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: rgb(157 47 38 / 14%);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-ink-ghost) transparent;
+  }
+}
+
+/* ==========================================================================
+   界面骨架
+   ========================================================================== */
+@layer components {
+  /* 版框：整屏一张纸，上有状态栏、下有面板栏，中间是正在经历的事 */
+  .ink-frame {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: var(--container-frame);
+    height: 100dvh;
+    margin-inline: auto;
+    border-inline: 1px solid var(--color-rule);
+  }
+
+  /* 古籍的双栏线：主线之外再落一道更细的，界面才有「框」的分量 */
+  .ink-rule-b {
+    border-bottom: 1px solid var(--color-rule);
+    box-shadow: 0 3px 0 -2px var(--color-rule);
+  }
+
+  .ink-rule-t {
+    border-top: 1px solid var(--color-rule);
+    box-shadow: 0 -3px 0 -2px var(--color-rule);
+  }
+
+  /* ---- 排版 ---- */
+
+  /* 正文：行距克制。留白靠段落之间，不靠每一行 */
+  .ink-prose {
+    /* 段间距是段落自己的事。写成 .ink-prose + .ink-prose 会漏掉
+       「对话之后紧跟叙事」这一种——那时前一个兄弟是 .dialogue，选择器落空，两段会粘在一起 */
+    margin-block-start: 0.72em;
+    line-height: 1.85;
+    letter-spacing: 0.02em;
+    text-align: justify;
+    text-justify: inter-character;
+  }
+
+  /* 卷首不留天头 */
+  .ink-prose:first-child {
+    margin-block-start: 0;
+  }
+
+  .ink-indent {
+    text-indent: 2em;
+  }
+
+  .ink-title {
+    color: var(--color-ink-deep);
+    font-size: var(--text-title);
+    letter-spacing: 0.3em;
+    /* 字距会在末字右侧多出一格，补回来以保持视觉居中 */
+    text-indent: 0.3em;
+    line-height: 1.6;
+  }
+
+  .ink-note {
+    color: var(--color-ink-faint);
+    font-size: var(--text-note);
+    letter-spacing: 0.06em;
+    line-height: 1.75;
+  }
+
+  /* 栏目名：面板里「身体」「学识」这一级 */
+  .ink-label {
+    color: var(--color-ink-deep);
+    font-size: var(--text-note);
+    letter-spacing: 0.22em;
+    text-indent: 0.22em;
+  }
+
+  /* 树状子条目。知识、行囊、他人之言共用：条目是纲，这一行是目 */
+  .ink-branch {
+    display: flex;
+    gap: 0.4em;
+    color: var(--color-ink-faint);
+    font-size: var(--text-note);
+    line-height: 1.75;
+  }
+
+  .ink-branch::before {
+    content: '└─';
+    flex: none;
+    color: var(--color-ink-ghost);
+  }
+
+  /* 时间戳：他人之言、见闻、编年都要标明「这是哪一年的事」 */
+  .ink-stamp {
+    color: var(--color-ink-faint);
+    font-size: var(--text-micro);
+    letter-spacing: 0.08em;
+  }
+
+  /* 墨落纸上：新文字应当洇出来，而不是弹出来 */
+  .ink-emerge {
+    animation: ink-emerge 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+  }
+}
+
+@keyframes ink-emerge {
+  from {
+    opacity: 0;
+    filter: blur(1.2px);
+    transform: translateY(0.3em);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ink-emerge {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

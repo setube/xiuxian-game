@@ -1,0 +1,405 @@
+/**
+ * 游戏核心数据模型。
+ *
+ * 两条铁律：
+ *
+ * 1. 这是一款游戏，不是一篇散文。状态、选择、反馈都必须是能查、能点、能看见的结构。
+ *
+ * 2. 玩家只能看到角色此刻能够合理认知的信息。
+ *    十六岁的私塾学生不知道自己「悟性 48」，也不知道「气运平平」——
+ *    他只知道「我读过几年书」「我不知道灵根是什么」。
+ *    数值（Attributes）是引擎判定用的内部刻度，永远不出现在界面上；
+ *    玩家读到的是 Aspect：角色的自述，以及别人对他说过的话。
+ */
+
+// ============================================================
+// 时间
+// ============================================================
+
+/** 游戏内时间。以「人间第 N 年」纪年，一年十二月，一月三十日。 */
+export interface GameTime {
+  year: number
+  /** 1–12 */
+  month: number
+  /** 1–30 */
+  day: number
+}
+
+// ============================================================
+// 角色 · 内部刻度
+// ============================================================
+
+/** 引擎判定用的隐藏刻度，0–100。绝不渲染，只供 Condition 取用。 */
+export type AttributeKey = 'root' | 'insight' | 'body' | 'will' | 'fortune'
+
+export type Attributes = Record<AttributeKey, number>
+
+export type Realm = '凡人' | '炼气' | '筑基' | '金丹' | '元婴'
+
+// ============================================================
+// 家世
+// ============================================================
+
+/**
+ * 出身行当。不是开局可选的词条，是你睁开眼时家里就在做的事。
+ *
+ * 它决定的不是数值高低，是你会遇到谁、会听说什么：
+ * 猎户的儿子从小进山，客栈的儿子从小听南来北往的人吹牛，
+ * 药铺的女儿八岁认得三十味药，镖局的孩子见过父亲身上的刀口。
+ *
+ * 王府和皇室排在最后，也最稀有。它们不是「更好的开局」——
+ * 宫墙里的孩子见不到山道上濒死的人，也见不到货郎摊上那册旧书。
+ * **最尊贵的出身，机缘最少。**
+ */
+export type Trade =
+  '农户' | '猎户' | '匠户' | '商户' | '客栈' | '酒楼' | '药铺' | '镖局' | '官宦' | '王府' | '皇室'
+
+/**
+ * 男女。
+ *
+ * 这一版只在两处真正分岔：宗室的称谓（太子/公主、世子/郡主），
+ * 以及院试——本朝女子不应举。其余场景一律不分性别，
+ * 不是因为古代女子的人生和男子一样，而是因为写一半比不写更糟。
+ */
+export type Gender = '男' | '女'
+
+/**
+ * 家人。
+ *
+ * 人没了也不从名册里删，只是 alive 转 false——
+ * 父亲死在外地那年你十四岁，这件事此后一直在你的人生里。
+ */
+export interface FamilyMember {
+  id: string
+  /** 称谓：父、母、兄、姐 */
+  relation: string
+  alive: boolean
+  /** 此人当下的境况，一句话 */
+  note: string
+}
+
+/**
+ * 家境。
+ *
+ * standing 与 debt 是隐藏刻度，和 Attributes 一样绝不上界面。
+ * 玩家读到的是「今年的米撑不到开春」，不是「家产 -50」——
+ * 「家道中落」不是一个词条，是这两个数连着几年往下走之后，
+ * 你被叫去下地干活、私塾再没去成的那一串后果。
+ */
+export interface Household {
+  trade: Trade
+  /** 家境，0–100。隐藏 */
+  standing: number
+  /** 欠债，0 起。隐藏 */
+  debt: number
+  members: FamilyMember[]
+}
+// ============================================================
+// 人生阶段
+// ============================================================
+
+/**
+ * 人生阶段。
+ *
+ * 年龄只是刻度，阶段才决定这一年你可能撞上什么。
+ * 「私塾」不在其列——不是所有人都读得起书，
+ * 那是「启蒙」这一段里的一条岔路，不是人人必经的一站。
+ */
+export type LifeStage = '幼年' | '启蒙' | '少年' | '成年'
+
+// ============================================================
+// 角色 · 认知层
+// ============================================================
+
+/** 角色会去打量自己的几个方面。 */
+export type AspectKey = 'body' | 'learning' | 'cultivation' | 'root'
+
+/**
+ * 他人之言。
+ *
+ * 认知层的关键：一名炼气修士说你「不错」，宗门执事说你「中下」，
+ * 两句话都会留在这里。玩家日后翻看，才会发现当初那个「不错」
+ * 根本不是自己理解的意思。所以评价只增不改。
+ */
+export interface AspectClaim {
+  id: string
+  /** 谁说的：「一名炼气修士」「宗门执事」 */
+  source: string
+  /** 他说了什么 */
+  text: string
+  /** 你对这句话的理解——通常是不理解 */
+  doubt?: string
+  at: GameTime
+}
+
+export interface Aspect {
+  /** 角色的自述。null 表示他连这回事都不知道 */
+  self: string | null
+  claims: AspectClaim[]
+}
+
+export type Aspects = Record<AspectKey, Aspect>
+
+/** 人际。affinity 为 -100（仇怨）至 100（生死之交），同样只用于判定。 */
+export interface Relationship {
+  id: string
+  name: string
+  affinity: number
+  note?: string
+}
+
+/**
+ * 随身之物。
+ *
+ * name 是你此刻会怎么称呼它，不是它究竟是什么。
+ * 山道上捡的那本书，在你眼里很多年都只是「一册旧书」；
+ * 直到某个修士瞥了一眼说出它的名字，它才变成「炼气法门」——
+ * 东西一直没变，变的是你。改名靠 reveal 效果，见下。
+ */
+export interface InventoryItem {
+  id: string
+  name: string
+  count: number
+  /** 量词：枚、册、把…… */
+  unit: string
+  note?: string
+  /** 曾被人点破过。面板据此标出「原先你叫它……」 */
+  formerName?: string
+}
+
+// ============================================================
+// 世界认知
+// ============================================================
+
+export type KnowledgeCategory = '世事' | '修行' | '地理' | '人物' | '器物'
+
+/**
+ * 见闻。玩家「知道」某件事，本身就是一种游戏状态。
+ *
+ * summary 为 null 表示「只听过这个名字，还不知道是什么」——
+ * 这一档不能省，它是「玩家知道什么 ≠ 世界真实存在什么」的具体形态。
+ */
+export interface KnowledgeEntry {
+  id: string
+  title: string
+  summary: string | null
+  category: KnowledgeCategory
+  learnedAt: GameTime
+}
+
+export type FlagValue = boolean | number | string
+
+/** 编年：人生大事记，与逐字正文分开，供回看这一生。 */
+export interface ChronicleEntry {
+  id: string
+  time: GameTime
+  text: string
+  tone?: InkTone
+}
+
+// ============================================================
+// 叙事
+// ============================================================
+
+/**
+ * 墨色即信息层级：
+ *   faint 淡墨（次要）· normal 墨色（正文）· deep 浓墨（重要）· cinnabar 朱砂（关键/危险）
+ */
+export type InkTone = 'faint' | 'normal' | 'deep' | 'cinnabar'
+
+/** 分隔符样式：细线（章节）· 三点（停顿）· 墨迹（场景转换） */
+export type DividerVariant = 'line' | 'dots' | 'ink'
+
+export type NarrativeBlock =
+  /** 叙事正文 */
+  | { kind: 'narration'; text: string; tone?: InkTone; indent?: boolean }
+  /** 对话。speaker 省略时表示上下文已点明是谁在说 */
+  | { kind: 'dialogue'; speaker?: string; text: string; tone?: InkTone }
+  /** 事件：发生了什么，区别于「你看见什么」 */
+  | { kind: 'event'; text: string; tone?: InkTone }
+  /** 回执：引擎结算出的状态变化。以〔〕括起，与叙事分明——这是游戏反馈，不是文学 */
+  | { kind: 'record'; text: string; tone?: InkTone }
+  /** 场景标题 */
+  | { kind: 'heading'; title: string; subtitle?: string }
+  /** 印章：一卷的收束。全局罕用 */
+  | { kind: 'seal'; text: string }
+  /** 回响：玩家刚做出的选择，留在正文里使卷轴连贯 */
+  | { kind: 'echo'; text: string }
+  | { kind: 'divider'; variant?: DividerVariant }
+
+/** 卷轴中的一条。id 用于稳定的 :key。 */
+export interface StreamItem {
+  id: string
+  block: NarrativeBlock
+}
+
+// ============================================================
+// 条件与效果
+// ============================================================
+
+export interface Condition {
+  flag?: { key: string; equals?: FlagValue }
+  attribute?: { key: AttributeKey; atLeast: number }
+  knowledge?: string
+  item?: string
+  /** 年龄闭区间 */
+  age?: { atLeast?: number; atMost?: number }
+  /** 家境刻度闭区间。隐藏刻度，只在这里露面 */
+  standing?: { atLeast?: number; atMost?: number }
+  /** 某位家人是否在世 */
+  family?: { id: string; alive: boolean }
+  trade?: Trade
+  gender?: Gender
+  stage?: LifeStage
+}
+
+/**
+ * 状态变化的唯一表达方式。
+ * 剧本只声明「发生了什么」，怎么落到 store 由 engine/effects.ts 统一结算。
+ */
+export type Effect =
+  | { type: 'time'; years?: number; months?: number; days?: number }
+  | { type: 'attribute'; key: AttributeKey; delta: number }
+  | { type: 'flag'; key: string; value: FlagValue }
+  | { type: 'place'; place: string }
+  /**
+   * 搬家。
+   *
+   * 跟 place 的区别：place 是「你此刻人在哪」，home 是「你家在哪」。
+   * 抄家、削爵、逃荒之后，回家这个动作指向的地方就变了——
+   * 只改 place 的话，收尾那一卷一句「你回到家」会把废太子送回东宫。
+   */
+  | { type: 'home'; place: string }
+  | { type: 'realm'; realm: Realm }
+  | { type: 'identity'; identity: string }
+  /** 改写角色对自己某一面的看法 */
+  | { type: 'aspect'; key: AspectKey; self: string | null }
+  /** 别人对你的评说。只增不改，认知的错位就藏在这里 */
+  | { type: 'claim'; key: AspectKey; source: string; text: string; doubt?: string }
+  | { type: 'relation'; id: string; name: string; delta: number; note?: string }
+  | {
+      type: 'knowledge'
+      id: string
+      title: string
+      /** null 表示只听过名字 */
+      summary: string | null
+      category: KnowledgeCategory
+    }
+  | { type: 'item'; id: string; name: string; count?: number; unit?: string; note?: string }
+  | { type: 'chronicle'; text: string; tone?: InkTone }
+  /** 家境涨落。隐藏刻度，不出回执——玩家该从叙事里读出来，不是从账单上 */
+  | { type: 'household'; standing?: number; debt?: number }
+  /** 家人境况改写。alive 转 false 即此人不在了 */
+  | { type: 'family'; id: string; alive?: boolean; note?: string }
+  /**
+   * 世界在幕后掷一次骰，把结果写进旗标。
+   *
+   * 「机缘」不翻车的关键就在这里：山道上躺着的那个人是猎户、是修士、还是邪修，
+   * 在你看见他之前就已经定了。你的选择改变的是自己撞上什么，
+   * 不是把他变成对你有利的那一种。玩家永远看不到这一掷。
+   */
+  | { type: 'roll'; key: string; among: readonly { value: FlagValue; weight: number }[] }
+  /**
+   * 你终于认出手里这东西是什么。
+   * 「多年以后才明白当年捡到的不是普通书」全靠它落地，
+   * 所以它是少数几个会以朱砂回执报账的效果之一。
+   */
+  | { type: 'reveal'; item: string; name: string; note?: string }
+
+// ============================================================
+// 剧本
+// ============================================================
+
+export interface Choice {
+  id: string
+  label: string
+  /** 朱砂标记：危险、异常，或再无回头路 */
+  critical?: boolean
+  /** 常驻于选项右侧的小字说明 */
+  hint?: string
+  /**
+   * 条件不满足时的灰置理由。
+   * 写了它，这条路就以「够不到」的样子留在选项里，让玩家知道此处有路；
+   * 不写，条件不满足时整条选项隐去。
+   */
+  lockedHint?: string
+  /** 选后留在正文中的回响文字；缺省则回响 label */
+  echo?: string
+  requires?: Condition[]
+  effects?: Effect[]
+  /** null 表示本卷终了 */
+  next: string | null
+}
+
+/** 呈交给界面的选项：附带「此刻能不能选」与「要花掉多少时间」。 */
+export interface ChoiceOption {
+  choice: Choice
+  locked: boolean
+  /** 时间代价，如「三年」「半月」。不花时间的选项为 null */
+  cost: string | null
+}
+
+export interface SceneNode {
+  id: string
+  /** 进入本节点即结算 */
+  onEnter?: Effect[]
+  blocks: NarrativeBlock[]
+  choices?: Choice[]
+  /**
+   * 按条件分流，自上而下取第一个满足的。
+   *
+   * 用在「同一个动作，结果取决于玩家不知道的事」：你上前查看倒在山道上的人，
+   * 选项只有一条，但他是猎户还是邪修早已掷定，从这里分头走。
+   */
+  branches?: { requires: Condition[]; next: string }[]
+  /** 无选项时自动续接的下一节点，用于把长段落切分成有呼吸的几节 */
+  next?: string
+}
+
+export interface Scene {
+  id: string
+  title: string
+  /** 起始节点 id */
+  entry: string
+  nodes: Record<string, SceneNode>
+}
+
+/** 场景库。跨卷跳转写作 `场景id#节点id`，省略 `#节点id` 即从该卷入口进。 */
+export type SceneLibrary = Record<string, Scene>
+
+// ============================================================
+// 年表
+// ============================================================
+
+/**
+ * 人生事件：某一年可能落到你头上的一件事。
+ *
+ * 这里是本作最容易翻车的地方——事件池 + 掷骰 = 随机事件模拟器。
+ * 三条约束把它拉回「人生」：
+ *
+ * 1. **链优先**。写了 chain 的事件排在散事件前面。父亲欠了债，
+ *    接下来该来的是他去外地做工，不是随机撞上的一场庙会。
+ * 2. **条件即因果**。事件靠 requires 串起来，前一件事留下的旗标
+ *    是后一件事的入场券。链条是长出来的，不是编号排出来的。
+ * 3. **窗口不是日程**。window 只说「这事最早最晚可能在几岁发生」，
+ *    条件不满足就永远不发生——很多人的一生里它确实没发生过。
+ */
+export interface LifeEvent {
+  id: string
+  /** 可能发生的年龄闭区间 */
+  window: { from: number; to: number }
+  requires?: Condition[]
+  /** 因果链的名字。同链事件优先于散事件 */
+  chain?: string
+  /** 同级候选中的相对权重，缺省为 1 */
+  weight?: number
+  /** 要演的那一卷，写法同 next */
+  scene: string
+}
+
+// ============================================================
+// 界面
+// ============================================================
+
+/** 底栏六个面板。第三层信息（认知）与第二层（状态）都从这里进。 */
+export type PanelKey = 'character' | 'inventory' | 'knowledge' | 'relations' | 'chronicle' | 'world'
