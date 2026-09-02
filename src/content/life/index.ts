@@ -3,6 +3,7 @@ import type { LifeEvent, LifeStage, SceneLibrary } from '@/types/game'
 import { birthEvents, birthScenes } from './birth'
 import { childhoodEvents, childhoodScenes } from './childhood'
 import { dearthEvents, dearthScenes } from './dearth'
+import { dayEvents, dayScenes } from './day'
 import { encounterEvents, encounterScenes } from './encounters'
 import { hardshipEvents, hardshipScenes } from './hardship'
 import { inquiryEvents, inquiryScenes } from './inquiry'
@@ -45,6 +46,7 @@ export const lifeScenes: SceneLibrary = {
   ...encounterScenes,
   ...youthScenes,
   ...routineScenes,
+  ...dayScenes,
   ...rivermanScenes,
 }
 
@@ -59,6 +61,7 @@ export const lifeEvents: readonly LifeEvent[] = [
   ...tradeEvents,
   ...royalEvents,
   ...encounterEvents,
+  ...dayEvents,
   ...youthEvents,
   ...rivermanEvents,
 ]

@@ -5,6 +5,7 @@ import { useWorldStore } from '@/stores/world'
 import { observerById } from '@/content/observers'
 import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 
+import { beatLines, spend } from './daily'
 import { toChineseNumber } from './describe'
 import {
   appraise,
@@ -464,6 +465,31 @@ function applyOne(
       people.meet('merchant', '走北路的商旅', exchange.turn === '没问出什么' ? 2 : 8)
       world.setFlag('merchant-talks', ((world.getFlag('merchant-talks') as number) ?? 0) + 1)
       return exchange.blocks
+    }
+    case 'daily': {
+      /**
+       * 这一段他去做了那件事。
+       *
+       * 去处是玩家在上一节自己挑的，存在旗标里。这里只做两件事：
+       * 掷出一段落点，把它的正文和后果落下去。
+       *
+       * `day-omen` 那一行是唯一的例外——**撞上一件事的时候，
+       * 这一天就交给它了**。而去哪儿决定了可能撞上什么：
+       * 山那边才有山道上那个人，镇上才有货郎摊上那册书。
+       */
+      const doingId = (world.getFlag(`day-${effect.slot}`) as string | undefined) ?? 'idle'
+      const beat = spend(effect.slot, doingId)
+      if (!beat) return null
+
+      world.setFlag('day-tier', beat.tier)
+      if (beat.omen) world.setFlag('day-omen', beat.omen)
+
+      const blocks: NarrativeBlock[] = beatLines(beat).map((text) => ({
+        kind: 'narration',
+        text: fillString(text),
+      }))
+      const echoes = applyEffects(beat.effects)
+      return [...blocks, ...echoes]
     }
     case 'signs': {
       // 世界的样子落进正文。这是玩家建立自己那份世界模型的唯一材料
