@@ -311,7 +311,7 @@ export const kinEvents: readonly LifeEvent[] = [
     // 话赶话说到那儿的事。撞不上就撞不上，那件事照样在他身上
     id: 'dad-north',
     window: { from: 8, to: 16 },
-    requires: [{ family: { id: 'father', alive: true } }],
+    requires: [{ bond: { kind: '生父', alive: true } }],
     scene: 'dad:north',
     weight: 7,
   },
@@ -324,14 +324,14 @@ export const kinEvents: readonly LifeEvent[] = [
      */
     id: 'dad-adept',
     window: { from: 11, to: 16 },
-    requires: [{ family: { id: 'father', alive: true } }, { knowledge: 'the-north' }],
+    requires: [{ bond: { kind: '生父', alive: true } }, { knowledge: 'the-north' }],
     scene: 'dad:adept',
     weight: 6,
   },
   {
     id: 'mom-past',
     window: { from: 9, to: 16 },
-    requires: [{ family: { id: 'mother', alive: true } }],
+    requires: [{ bond: { kind: '生母', alive: true } }],
     scene: 'mom:past',
     weight: 6,
   },

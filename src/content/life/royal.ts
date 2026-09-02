@@ -374,7 +374,7 @@ export const royalScenes: SceneLibrary = {
           { kind: 'narration', text: '后来就没人看了。' },
           {
             kind: 'narration',
-            text: '父亲把那身蟒袍收进了箱子。此后你再没见他拿出来过。',
+            text: '{elder}把那身蟒袍收进了箱子。此后你再没见他拿出来过。',
             tone: 'faint',
           },
         ],

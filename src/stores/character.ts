@@ -12,14 +12,15 @@ import type {
   InventoryItem,
   KnowledgeCategory,
   KnowledgeEntry,
+  Constitution,
   Realm,
   Relationship,
-  Trade,
 } from '@/types/game'
 
-import { makeParents } from '@/content/parents'
+import { beBorn } from '@/content/birth'
+import { constitutionShift, rollConstitution } from '@/content/circumstances'
 
-import { originAttributes, rollName, useHouseholdStore } from './household'
+import { originAttributes, useHouseholdStore } from './household'
 import { usePeopleStore } from './people'
 import { useWorldStore } from './world'
 
@@ -74,28 +75,20 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 /**
- * 出生：先造父母，再给自己取名。
+ * 把体质叠进隐藏刻度。
  *
- * 这个顺序是这套系统的立场——**父母不是为了玩家而存在的两块牌子**。
- * 他们各有姓名、年岁、脾性，在玩家出生前就已经活了二十几年，
- * 而且那些年发生的事都是真的，只是玩家一件也不知道。
- *
- * 玩家随父姓：父亲叫沈怀山，所以你姓沈。
- *
- * @returns 玩家的姓名
+ * 注意这里**一个字也不碰 root 和 spirit**——
+ * 修行资质跟身子骨没有关系。一个瞎子完全可能是天生的修行胚子，
+ * 这是全作最要紧的一条，也是「残缺不是惩罚」真正的落点。
  */
-function bornInto(trade: Trade, home: string): string {
-  const people = usePeopleStore()
-  const full = rollName(trade)
-  const surname = full.slice(0, 1)
-  const parents = makeParents(trade, surname, home)
-  people.enroll(parents.father)
-  people.enroll(parents.mother)
-  // 一出生就认识爹娘，但那时你还不知道他们叫什么——
-  // 「爹」是称呼，「沈怀山」是名字，那是两回事
-  people.meet('father', '爹', 60)
-  people.meet('mother', '娘', 65)
-  return full
+function withConstitution(base: Attributes, constitution: Constitution): Attributes {
+  const shift = constitutionShift(constitution)
+  const next = { ...base }
+  for (const [key, delta] of Object.entries(shift)) {
+    const attribute = key as keyof Attributes
+    next[attribute] = clamp(next[attribute] + (delta ?? 0), ATTRIBUTE_MIN, ATTRIBUTE_MAX)
+  }
+  return next
 }
 
 /** learn 的结果。界面据此决定要不要报一句「得知 · ×××」 */
@@ -114,10 +107,23 @@ export const useCharacterStore = defineStore(
      * 父亲叫沈怀山，所以你姓沈——不是先掷出一个「沈」，
      * 再倒推出一个姓沈的父亲。
      */
-    const name = ref(bornInto(household.trade, household.home))
+    /**
+     * 出生。
+     *
+     * 顺序是有意的：**先有那张关系网，才有你**。
+     * 你姓什么取决于生父姓什么；生父都没有的孩子，
+     * 姓是收留他的人给的——那也是一条信息。
+     */
+    const birth = beBorn(household.trade, household.home)
+    const name = ref(birth.name)
+    /**
+     * 身子骨的底子。它不是 debuff，是人生的形状——
+     * 腿脚不便的孩子下不了地，可他摸到书的机会比谁都多。
+     */
+    const constitution = ref(rollConstitution())
     const identity = ref(INITIAL_IDENTITY)
     const realm = ref<Realm>(INITIAL_REALM)
-    const attributes = ref<Attributes>(rollAttributes())
+    const attributes = ref<Attributes>(withConstitution(rollAttributes(), constitution.value))
     const aspects = ref<Aspects>(blankAspects())
     const relationships = ref<Relationship[]>([])
     /** 出生时一无所知，一条见闻也没有。此后每一条都是学来的 */
@@ -297,10 +303,11 @@ export const useCharacterStore = defineStore(
     /** 重开一世：家世已由 household 先行重掷，这里按新出身取名、定身子骨。 */
     function reset(): void {
       usePeopleStore().reset()
-      name.value = bornInto(household.trade, household.home)
+      name.value = beBorn(household.trade, household.home).name
+      constitution.value = rollConstitution()
       identity.value = INITIAL_IDENTITY
       realm.value = INITIAL_REALM
-      attributes.value = rollAttributes()
+      attributes.value = withConstitution(rollAttributes(), constitution.value)
       aspects.value = blankAspects()
       relationships.value = []
       knowledge.value = []
@@ -309,6 +316,7 @@ export const useCharacterStore = defineStore(
 
     return {
       name,
+      constitution,
       age,
       identity,
       realm,
@@ -338,6 +346,7 @@ export const useCharacterStore = defineStore(
       key: 'xiuxian:character',
       pick: [
         'name',
+        'constitution',
         'identity',
         'realm',
         'attributes',

@@ -46,7 +46,7 @@ export const childhoodScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '你趴在柜台后面，看父亲跟人说话。' },
           { kind: 'narration', text: '那人穿的衣裳跟街上的人不一样，说话也不一样。' },
-          { kind: 'narration', text: '他走后你问父亲那是哪里人。父亲说，很远。' },
+          { kind: 'narration', text: '他走后你问{elder}那是哪里人。{elder}说，很远。' },
         ],
         onEnter: [
           {
@@ -63,7 +63,7 @@ export const childhoodScenes: SceneLibrary = {
       hunt: {
         id: 'hunt',
         blocks: [
-          { kind: 'narration', text: '父亲从山里回来，往地上放了一只野兔。' },
+          { kind: 'narration', text: '{elder}从山里回来，往地上放了一只野兔。' },
           { kind: 'narration', text: '兔子还是热的。你伸手摸了一下，母亲把你的手打开了。' },
           { kind: 'narration', text: '那天晚上家里有肉。你记住了那个味道。' },
         ],
@@ -157,10 +157,10 @@ export const childhoodScenes: SceneLibrary = {
           },
         ],
         blocks: [
-          { kind: 'narration', text: '父亲那趟镖回来得很晚。' },
+          { kind: 'narration', text: '{elder}那趟镖回来得很晚。' },
           { kind: 'narration', text: '他坐在院里脱衣裳，背上一道口子，母亲正在给他上药。' },
           { kind: 'narration', text: '你站在门槛上看。他回头看见你，把衣裳拉了上去。' },
-          { kind: 'dialogue', speaker: '父亲', text: '没事。进去。' },
+          { kind: 'dialogue', speaker: '{elder}', text: '没事。进去。' },
           { kind: 'narration', text: '那天夜里你听见他跟母亲说，往后那条道不走了。' },
           { kind: 'narration', text: '母亲问为什么。他没有答。' },
         ],
@@ -175,16 +175,16 @@ export const childhoodScenes: SceneLibrary = {
             type: 'knowledge',
             id: 'the-ladder',
             title: '上头还有上头',
-            summary: '父亲在衙门里是个官。可是见了别人，他也要弯腰。',
+            summary: '{elder}在衙门里是个官。可是见了别人，他也要弯腰。',
             category: '世事',
           },
         ],
         blocks: [
-          { kind: 'narration', text: '那天家里来了客人，父亲让你出去见礼。' },
-          { kind: 'narration', text: '你记不清那人长什么样，只记得父亲的背。' },
+          { kind: 'narration', text: '那天家里来了客人，{elder}让你出去见礼。' },
+          { kind: 'narration', text: '你记不清那人长什么样，只记得{elder}的背。' },
           { kind: 'event', text: '父亲弯着腰，一直没有直起来。' },
           { kind: 'narration', text: '你从来没见过他那样。' },
-          { kind: 'narration', text: '客人走后，父亲回书房去了，一晚上没出来。' },
+          { kind: 'narration', text: '客人走后，{elder}回书房去了，一晚上没出来。' },
         ],
         next: 'close',
       },
@@ -228,7 +228,7 @@ export const childhoodScenes: SceneLibrary = {
           { kind: 'narration', text: '你走到哪里，前面的人就矮下去一截。' },
           { kind: 'narration', text: '那时候你以为人本来就是这样走路的。' },
           { kind: 'divider', variant: 'dots' },
-          { kind: 'narration', text: '后来母妃带你去给父亲问安。' },
+          { kind: 'narration', text: '后来母妃带你去给{elder}问安。' },
           { kind: 'event', text: '你看见母妃跪下了。' },
           { kind: 'narration', text: '她按着你的肩，你也跪了下去。' },
           { kind: 'narration', text: '那是你第一次知道，上头还有上头。' },
@@ -423,6 +423,7 @@ export const childhoodEvents: readonly LifeEvent[] = [
   {
     id: 'child-sibling',
     window: { from: 4, to: 6 },
+    requires: [{ bond: { kind: '生母', alive: true } }],
     scene: 'child:sibling',
     weight: 4,
   },
@@ -430,7 +431,7 @@ export const childhoodEvents: readonly LifeEvent[] = [
     // 家底薄的人家才会出这一幕。生在布庄的孩子不会记得饿
     id: 'child-hungry',
     window: { from: 4, to: 6 },
-    requires: [{ standing: { atMost: 40 } }],
+    requires: [{ bond: { kind: '生母', alive: true } }, { standing: { atMost: 40 } }],
     scene: 'child:hungry',
     weight: 5,
   },

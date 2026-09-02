@@ -21,7 +21,7 @@ export const schoolingScenes: SceneLibrary = {
         blocks: [
           { kind: 'heading', title: '七岁' },
           { kind: 'narration', text: '这一年村里几个同龄的孩子开始去私塾了。' },
-          { kind: 'narration', text: '你听见母亲和父亲在灶间说话，说的是束脩。' },
+          { kind: 'narration', text: '你听见{elders}在灶间说话，说的是束脩。' },
         ],
         branches: [
           // 宗室开蒙不问家境。皇子由翰林侍讲，世子有王府西席，
@@ -112,7 +112,7 @@ export const schoolingScenes: SceneLibrary = {
         ],
         blocks: [
           { kind: 'narration', text: '开蒙这件事，家里从来没有商量过。' },
-          { kind: 'narration', text: '过了年，父亲请回来一位西席，姓周，落第多年的秀才。' },
+          { kind: 'narration', text: '过了年，{elder}请回来一位西席，姓周，落第多年的秀才。' },
           { kind: 'narration', text: '书房收拾出来，你一个人一张桌子。' },
           { kind: 'dialogue', speaker: '周先生', text: '把手伸出来。' },
           { kind: 'narration', text: '他看了看你的手，什么也没说。' },
@@ -146,7 +146,7 @@ export const schoolingScenes: SceneLibrary = {
         ],
         blocks: [
           { kind: 'narration', text: '灶间那场话说了好几个晚上。' },
-          { kind: 'narration', text: '后来母亲把箱底那只银镯子拿了出来，父亲又去借了一趟。' },
+          { kind: 'narration', text: '后来母亲把箱底那只银镯子拿了出来，{elder}又去借了一趟。' },
           { kind: 'narration', text: '开春那天，你穿着一身改小的旧衣裳去了村东。' },
           { kind: 'narration', text: '私塾一间旧屋，十来个孩子。先生姓周，五十上下，说话很慢。' },
           { kind: 'dialogue', speaker: '周先生', text: '把手伸出来。' },
@@ -255,13 +255,13 @@ export const schoolingScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '这件事没有再提起。' },
           { kind: 'narration', text: '过了几天，父亲塞给你一把小镰刀。' },
-          { kind: 'dialogue', speaker: '父亲', text: '跟着我。' },
+          { kind: 'dialogue', speaker: '{elder}', text: '跟着我。' },
           { kind: 'narration', text: '同龄的孩子背着布包往村东去的时候，你在往田里去。' },
         ],
         choices: [
           {
             id: 'work',
-            label: '跟着父亲下地',
+            label: '跟着{elder}下地',
             echo: '你跟着去了。',
             effects: [
               { type: 'time', years: 1 },
@@ -526,7 +526,7 @@ export const schoolingEvents: readonly LifeEvent[] = [
   {
     id: 'school-strength',
     window: { from: 9, to: 13 },
-    requires: [{ flag: { key: 'working' } }],
+    requires: [{ flag: { key: 'working' } }, { bond: { kind: '生母', alive: true } }],
     scene: 'school:strength',
     weight: 5,
   },

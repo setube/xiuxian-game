@@ -1,5 +1,6 @@
 import { useCharacterStore } from '@/stores/character'
 import { useHouseholdStore } from '@/stores/household'
+import { usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
 import type { Condition } from '@/types/game'
 
@@ -47,6 +48,16 @@ function matches(
 
   if (condition.family && household.isAlive(condition.family.id) !== condition.family.alive) {
     return false
+  }
+
+  if (condition.bond) {
+    const people = usePeopleStore()
+    const ids = people.kinOf(condition.bond.kind)
+    if (ids.length === 0) return false
+    if (condition.bond.alive !== undefined) {
+      const anyAlive = ids.some((id) => people.isAlive(id))
+      if (anyAlive !== condition.bond.alive) return false
+    }
   }
 
   if (condition.trade && household.trade !== condition.trade) return false

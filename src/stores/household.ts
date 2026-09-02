@@ -75,14 +75,28 @@ export const useHouseholdStore = defineStore(
     const standing = ref(randomBetween(origin.standing.from, origin.standing.to))
     const debt = ref(0)
     /**
-     * 家庭名册。只记「他是我什么人」，不记他是谁——
-     * 姓名、年岁、脾性、此刻在哪，全在人口册那边。
-     * 一个人不会因为你是他儿子就变成另一个人。
+     * 家里还有谁。
+     *
+     * 从关系图上读出来，不再写死「父亲、母亲」——
+     * 有人跟着长姐过，有人是老乞丐养大的，有人一个血亲也没有。
+     * 谁在这个家里，是出生那一刻由境况生成的事实。
      */
-    const members = ref<FamilyMember[]>([
-      { person: 'father', relation: '父亲' },
-      { person: 'mother', relation: '母亲' },
-    ])
+    const members = computed<FamilyMember[]>(() => {
+      const people = usePeopleStore()
+      const seen = new Set<string>()
+      const list: FamilyMember[] = []
+      for (const relation of people.relations) {
+        if (relation.from !== 'me' || relation.until !== null) continue
+        if (relation.bond === 'friend' || relation.bond === '仇') continue
+        if (seen.has(relation.to)) continue
+        seen.add(relation.to)
+        list.push({
+          person: relation.to,
+          relation: people.known[relation.to]?.calls ?? relation.bond,
+        })
+      }
+      return list
+    })
 
     /** 供得起读书吗。启蒙那几年反复问到 */
     const canSchool = computed(() => standing.value >= STANDING_SCHOOLABLE && debt.value === 0)
@@ -148,10 +162,6 @@ export const useHouseholdStore = defineStore(
       capital.value = next.capital ?? null
       standing.value = randomBetween(next.standing.from, next.standing.to)
       debt.value = 0
-      members.value = [
-        { person: 'father', relation: '父亲' },
-        { person: 'mother', relation: '母亲' },
-      ]
     }
 
     return {
@@ -179,17 +189,7 @@ export const useHouseholdStore = defineStore(
     // home 是派生值，存了会在恢复时盖掉 computed。存的是拼它的那三段
     persist: {
       key: 'xiuxian:household',
-      pick: [
-        'trade',
-        'gender',
-        'province',
-        'prefecture',
-        'locale',
-        'capital',
-        'standing',
-        'debt',
-        'members',
-      ],
+      pick: ['trade', 'gender', 'province', 'prefecture', 'locale', 'capital', 'standing', 'debt'],
     },
   },
 )

@@ -505,7 +505,11 @@ export const hardshipEvents: readonly LifeEvent[] = [
      */
     id: 'debt-drought',
     window: { from: 7, to: 10 },
-    requires: [{ trade: '农户' }, { standing: { atMost: 46 } }],
+    requires: [
+      { trade: '农户' },
+      { bond: { kind: '生父', alive: true } },
+      { standing: { atMost: 46 } },
+    ],
     chain: CHAIN,
     scene: 'debt:drought',
     weight: 6,
@@ -513,7 +517,11 @@ export const hardshipEvents: readonly LifeEvent[] = [
   {
     id: 'debt-borrow',
     window: { from: 8, to: 12 },
-    requires: [{ flag: { key: 'drought' } }, { standing: { atMost: 40 } }],
+    requires: [
+      { flag: { key: 'drought' } },
+      { bond: { kind: '生父', alive: true } },
+      { standing: { atMost: 40 } },
+    ],
     chain: CHAIN,
     scene: 'debt:borrow',
   },

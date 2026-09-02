@@ -1,8 +1,18 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
+import { createId } from '@/engine/id'
 import { pick, randomBetween } from '@/engine/random'
-import type { Acquaintance, Chapter, Fate, Gender, Person, Temper } from '@/types/game'
+import type {
+  Acquaintance,
+  Bond,
+  Chapter,
+  Fate,
+  Gender,
+  Person,
+  Relation,
+  Temper,
+} from '@/types/game'
 
 import { useWorldStore } from './world'
 
@@ -39,6 +49,16 @@ export const usePeopleStore = defineStore(
     const roster = ref<Record<string, Person>>({})
     /** 玩家认识的那些人。键同 person id */
     const known = ref<Record<string, Acquaintance>>({})
+    /**
+     * 关系网。
+     *
+     * 一条边一条记录，玩家自己也是图里的一个节点（'me'）。
+     * 所以「成年后自己成家」不需要任何新机制——加两条边而已。
+     *
+     * 断了的关系不删，只置 until：**老乞丐养过你这件事，
+     * 不因为他死了就没发生过。**
+     */
+    const relations = ref<Relation[]>([])
 
     /** 玩家认识几个人。人际面板的角标 */
     const acquaintedCount = computed(() => Object.keys(known.value).length)
@@ -164,6 +184,42 @@ export const usePeopleStore = defineStore(
       return true
     }
 
+    /** 牵一条边。同样的一条不重复牵 */
+    function bind(from: string, to: string, bond: Bond): void {
+      if (
+        relations.value.some(
+          (r) => r.from === from && r.to === to && r.bond === bond && r.until === null,
+        )
+      )
+        return
+      relations.value = [
+        ...relations.value,
+        { id: createId('rel'), from, to, bond, since: world.time.year, until: null },
+      ]
+    }
+
+    /** 这条关系到此为止。不删，只封口——它发生过 */
+    function unbind(to: string, bond: Bond): void {
+      relations.value = relations.value.map((r) =>
+        r.to === to && r.bond === bond && r.until === null ? { ...r, until: world.time.year } : r,
+      )
+    }
+
+    /** 玩家的某一类关系人。默认只取还在延续的 */
+    function kinOf(bond: Bond, includeEnded = false): string[] {
+      return relations.value
+        .filter((r) => r.from === 'me' && r.bond === bond && (includeEnded || r.until === null))
+        .map((r) => r.to)
+    }
+
+    /** 这个人是玩家的什么。一个人可能同时是好几样——姐姐也是抚养人 */
+    function bondsWith(id: string): Bond[] {
+      return relations.value.filter((r) => r.from === 'me' && r.to === id).map((r) => r.bond)
+    }
+
+    /** 谁把你养大的。可能是爹娘，可能是姐姐，可能是个老乞丐 */
+    const guardians = computed(() => kinOf('抚养'))
+
     function isAlive(id: string): boolean {
       return roster.value[id]?.fate === '在'
     }
@@ -205,11 +261,14 @@ export const usePeopleStore = defineStore(
     function reset(): void {
       roster.value = {}
       known.value = {}
+      relations.value = []
     }
 
     return {
       roster,
       known,
+      relations,
+      guardians,
       acquaintedCount,
       personOf,
       ageOf,
@@ -220,12 +279,16 @@ export const usePeopleStore = defineStore(
       recall,
       meet,
       learnName,
+      bind,
+      unbind,
+      kinOf,
+      bondsWith,
       isAlive,
       live,
       reset,
     }
   },
-  { persist: { key: 'xiuxian:people', pick: ['roster', 'known'] } },
+  { persist: { key: 'xiuxian:people', pick: ['roster', 'known', 'relations'] } },
 )
 
 /** 掷一个脾性 */

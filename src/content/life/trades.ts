@@ -93,10 +93,10 @@ export const tradeScenes: SceneLibrary = {
           { kind: 'narration', text: '母亲进去收拾，出来的时候脸色不太对。' },
           { kind: 'dialogue', speaker: '母亲', text: '被褥是平的。' },
           { kind: 'narration', text: '像是没有人在那张床上躺过。' },
-          { kind: 'narration', text: '父亲说，往后这种客人来了，收钱，别多问。' },
+          { kind: 'narration', text: '{elder}说，往后这种客人来了，收钱，别多问。' },
           {
             kind: 'narration',
-            text: '你问父亲那是什么人。他想了半天，说了两个字：修士。',
+            text: '你问{elder}那是什么人。他想了半天，说了两个字：修士。',
             tone: 'deep',
           },
         ],
@@ -121,7 +121,7 @@ export const tradeScenes: SceneLibrary = {
           { kind: 'narration', text: '不是雨的味道。' },
           { kind: 'divider', variant: 'dots' },
           { kind: 'narration', text: '第二天他就走了。母亲收拾房间时说，被褥是平的。' },
-          { kind: 'narration', text: '你问那是什么人。父亲说：不该问的别问。' },
+          { kind: 'narration', text: '你问那是什么人。{elder}说：不该问的别问。' },
           { kind: 'narration', text: '这件事你记了很多年，一直没有答案。', tone: 'faint' },
         ],
       },
@@ -231,7 +231,7 @@ export const tradeScenes: SceneLibrary = {
           { kind: 'narration', text: '此后你再没见过他。' },
           {
             kind: 'narration',
-            text: '你问过父亲山里有没有这样的人。父亲说别听酒话。',
+            text: '你问过父亲山里有没有这样的人。{elder}说别听酒话。',
             tone: 'faint',
           },
         ],
@@ -260,9 +260,9 @@ export const tradeScenes: SceneLibrary = {
           { kind: 'narration', text: '有个采药人挑着担子来卖货。' },
           { kind: 'narration', text: '父亲一样一样验，验到最底下停住了。' },
           { kind: 'narration', text: '那是一小截根，不长，断口是白的，隔了这么久还没干。' },
-          { kind: 'dialogue', speaker: '父亲', text: '这个哪来的？' },
+          { kind: 'dialogue', speaker: '{elder}', text: '这个哪来的？' },
           { kind: 'dialogue', text: '北边山里。石头缝里长的。' },
-          { kind: 'narration', text: '父亲翻了三本药书，一本也没有。' },
+          { kind: 'narration', text: '{elder}翻了三本药书，一本也没有。' },
         ],
         choices: [
           {
@@ -316,7 +316,7 @@ export const tradeScenes: SceneLibrary = {
           {
             id: 'pass',
             label: '认不出的东西不收',
-            echo: '父亲摇了摇头，把那截根退了回去。',
+            echo: '{elder}摇了摇头，把那截根退了回去。',
             effects: [
               { type: 'time', days: 1 },
               { type: 'attribute', key: 'will', delta: 2 },
@@ -331,7 +331,7 @@ export const tradeScenes: SceneLibrary = {
         onEnter: [{ type: 'time', months: 6 }],
         blocks: [
           { kind: 'narration', text: '父亲用油纸包了三层，收进了柜子最上一格。' },
-          { kind: 'dialogue', speaker: '父亲', text: '认不出的东西，不能用在人身上。' },
+          { kind: 'dialogue', speaker: '{elder}', text: '认不出的东西，不能用在人身上。' },
           { kind: 'narration', text: '过了半年，母亲拿出来看过一次。' },
           { kind: 'event', text: '断口还是白的。' },
           { kind: 'narration', text: '她把它包回去，什么也没说。', tone: 'faint' },
@@ -343,8 +343,8 @@ export const tradeScenes: SceneLibrary = {
         onEnter: [{ type: 'time', months: 3 }],
         blocks: [
           { kind: 'narration', text: '你画得不算好，但样子是对的。' },
-          { kind: 'narration', text: '父亲看了一眼，把那张纸夹进了药书里。' },
-          { kind: 'dialogue', speaker: '父亲', text: '往后要是再有人拿来，就认得了。' },
+          { kind: 'narration', text: '{elder}看了一眼，把那张纸夹进了药书里。' },
+          { kind: 'dialogue', speaker: '{elder}', text: '往后要是再有人拿来，就认得了。' },
           { kind: 'narration', text: '那截根他还是退了回去。采药人挑着担子走了。' },
           { kind: 'narration', text: '此后再没有人拿这个东西来过。', tone: 'faint' },
         ],
@@ -382,7 +382,7 @@ export const tradeScenes: SceneLibrary = {
         choices: [
           {
             id: 'ask',
-            label: '问父亲那两个人是怎么没的',
+            label: '问{elder}那两个人是怎么没的',
             critical: true,
             echo: '你还是问了。',
             effects: [
@@ -433,7 +433,7 @@ export const tradeScenes: SceneLibrary = {
             id: 'cultivators-exist',
             title: '修士',
             summary:
-              '这世上有一种人，不是官，不是江湖人。父亲说，遇上了别动手，也别跑，站着让他过去。',
+              '这世上有一种人，不是官，不是江湖人。{elder}说，遇上了别动手，也别跑，站着让他过去。',
             category: '修行',
           },
           { type: 'flag', key: 'heard-of-cultivators', value: true },
@@ -445,15 +445,15 @@ export const tradeScenes: SceneLibrary = {
           },
         ],
         blocks: [
-          { kind: 'narration', text: '父亲沉了很久，把院门关上了。' },
-          { kind: 'dialogue', speaker: '父亲', text: '不是马贼。' },
+          { kind: 'narration', text: '{elder}沉了很久，把院门关上了。' },
+          { kind: 'dialogue', speaker: '{elder}', text: '不是马贼。' },
           { kind: 'narration', text: '他说那天雾大，路上站着一个人，谁也没看清是从哪儿冒出来的。' },
-          { kind: 'dialogue', speaker: '父亲', text: '老赵拔了刀。' },
+          { kind: 'dialogue', speaker: '{elder}', text: '老赵拔了刀。' },
           { kind: 'narration', text: '后面的话他说得很慢。' },
-          { kind: 'dialogue', speaker: '父亲', text: '刀断了。人也断了。' },
+          { kind: 'dialogue', speaker: '{elder}', text: '刀断了。人也断了。' },
           { kind: 'event', text: '「那不是江湖人。那是修士。」', tone: 'cinnabar' },
           { kind: 'narration', text: '你问什么是修士。' },
-          { kind: 'dialogue', speaker: '父亲', text: '不知道。反正惹不起。' },
+          { kind: 'dialogue', speaker: '{elder}', text: '不知道。反正惹不起。' },
           {
             kind: 'narration',
             text: '他又交代了一句：往后要是碰上，别动手，也别跑。站着让他过去。',
@@ -549,18 +549,18 @@ export const tradeScenes: SceneLibrary = {
             type: 'knowledge',
             id: 'unrecorded-cases',
             title: '不记档的案子',
-            summary: '衙门里有些案子是不入档的。父亲说，上头交代下来的，问了对谁都不好。',
+            summary: '衙门里有些案子是不入档的。{elder}说，上头交代下来的，问了对谁都不好。',
             category: '世事',
           },
         ],
         blocks: [
           { kind: 'narration', text: '父亲抬起头，手里还捏着半页纸。' },
           { kind: 'narration', text: '他把纸丢进火盆，才开口。' },
-          { kind: 'dialogue', speaker: '父亲', text: '回去睡。' },
+          { kind: 'dialogue', speaker: '{elder}', text: '回去睡。' },
           { kind: 'narration', text: '你站着没动。' },
           { kind: 'narration', text: '他又看了你一眼，这一次看得久了些。' },
-          { kind: 'dialogue', speaker: '父亲', text: '有些案子是不入档的。上头交代下来的。' },
-          { kind: 'dialogue', speaker: '父亲', text: '你问了，对谁都不好。' },
+          { kind: 'dialogue', speaker: '{elder}', text: '有些案子是不入档的。上头交代下来的。' },
+          { kind: 'dialogue', speaker: '{elder}', text: '你问了，对谁都不好。' },
           { kind: 'narration', text: '那晚之后，书房上了锁。', tone: 'faint' },
         ],
       },

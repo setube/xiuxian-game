@@ -49,7 +49,7 @@ export const rivermanScenes: SceneLibrary = {
         id: 'as-escort',
         onEnter: [{ type: 'time', days: 2 }],
         blocks: [
-          { kind: 'narration', text: '入秋那几日，局里有趟短镖走水路，父亲带上了你。' },
+          { kind: 'narration', text: '入秋那几日，局里有趟短镖走水路，{elder}带上了你。' },
           { kind: 'narration', text: '货交上船，众人在渡口等回程的车。' },
         ],
         next: 'river',
@@ -102,7 +102,7 @@ export const rivermanScenes: SceneLibrary = {
         id: 'as-healer',
         onEnter: [{ type: 'time', days: 2 }],
         blocks: [
-          { kind: 'narration', text: '入秋那几日，父亲让你去渡口收一批从南边运来的药材。' },
+          { kind: 'narration', text: '入秋那几日，{elder}让你去渡口收一批从南边运来的药材。' },
           { kind: 'narration', text: '药点清了，挑夫还没到。' },
         ],
         next: 'river',
@@ -132,7 +132,7 @@ export const rivermanScenes: SceneLibrary = {
         id: 'as-gentry',
         onEnter: [{ type: 'time', days: 2 }],
         blocks: [
-          { kind: 'narration', text: '入秋那几日，父亲让你去渡口送一位同僚上船。' },
+          { kind: 'narration', text: '入秋那几日，{elder}让你去渡口送一位同僚上船。' },
           { kind: 'narration', text: '客套话说完，船开了。你留在岸上。' },
         ],
         next: 'river',
@@ -434,7 +434,7 @@ export const rivermanScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '他的目光在你腰间的药囊上停了一下。' },
           { kind: 'dialogue', text: '你身上带着东西。' },
-          { kind: 'narration', text: '你把那个油纸包取了出来——父亲让你随身带着，说渡口人杂。' },
+          { kind: 'narration', text: '你把那个油纸包取了出来——{elder}让你随身带着，说渡口人杂。' },
           { kind: 'narration', text: '三层油纸拆开，那截根还是老样子。断口白的，不干，也不烂。' },
           { kind: 'narration', text: '这东西在你家柜子最上一格放了好些年，谁也认不出。' },
           { kind: 'narration', text: '他只看了一眼。' },

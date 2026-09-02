@@ -92,6 +92,32 @@ const NAMING: Record<Trade, readonly NarrativeBlock[]> = {
   ],
 }
 
+/**
+ * 名字是谁给的——生下来就没爹的孩子，这一段完全不同。
+ *
+ * 这不是「补一段孤儿文案」。名字由谁取，本身就是这个人一生的第一条信息：
+ * 有爹的孩子，名字是爹在纸上写的、在木头上刻的；
+ * 没爹的孩子，名字是庙里排的、是捡到他的人随口叫的，
+ * 甚至根本没人正经给过他一个名字。
+ */
+const NAMELESS: readonly NarrativeBlock[] = [
+  { kind: 'narration', text: '你的名字不是爹娘给的。' },
+  { kind: 'narration', text: '养你的那个人识不得几个字，想了两天，随口定下两个字：{name}。' },
+  { kind: 'narration', text: '没有写在纸上，也没有报进族谱。' },
+  {
+    kind: 'narration',
+    text: '很多年以后你才想到，自己其实不知道爹娘给没给过你名字。',
+    tone: 'faint',
+  },
+]
+
+/** 生下来就没有生父的开场。不写「家里有六亩薄田」——那不是他的家 */
+const ORPHAN_OPENING: readonly NarrativeBlock[] = [
+  { kind: 'narration', text: '关于你怎么来的，没有人说得清。' },
+  { kind: 'narration', text: '后来听说，那年冬天有人在门口发现了你。' },
+  { kind: 'narration', text: '你活下来了。这件事本身就已经很不容易。' },
+]
+
 /** 从出生跳到能记事那年。四种出身共用 */
 const AWAKENING: readonly NarrativeBlock[] = [
   { kind: 'divider', variant: 'ink' },
@@ -119,12 +145,16 @@ function birthScene(trade: Trade): Scene {
     nodes: {
       open: {
         id: 'open',
-        blocks: [
-          { kind: 'heading', title: '生' },
-          ...origin.opening,
-          { kind: 'divider', variant: 'dots' },
-          ...NAMING[trade],
-        ],
+        blocks: [{ kind: 'heading', title: '生' }],
+        // 生下来就没爹的孩子，读到的是另一段。
+        // 不这么分流的话，弃儿的第一屏是「父亲抱着你走了二里地去取名」
+        branches: [{ requires: [{ bond: { kind: '生父', alive: true } }], next: 'kept' }],
+        next: 'abandoned',
+      },
+
+      kept: {
+        id: 'kept',
+        blocks: [...origin.opening, { kind: 'divider', variant: 'dots' }, ...NAMING[trade]],
         // 封号跟着性别走。生在别家的孩子这一步什么也不发生
         ...(title
           ? {
@@ -132,6 +162,21 @@ function birthScene(trade: Trade): Scene {
               next: 'titled-male',
             }
           : { next: 'wake' }),
+      },
+
+      /**
+       * 生下来就没有生父的那一支。
+       *
+       * 不是「补一段孤儿文案」——这里连开场都换了：
+       * 「你生在柳溪村，家里有六亩薄田」对他不成立，那不是他的家。
+       * 名字由谁取更是这个人一生的第一条信息：
+       * 有爹的孩子，名字是爹在纸上写的、在木头上刻的；
+       * 没爹的孩子，名字是捡到他的人随口定的，没写在纸上，也没进族谱。
+       */
+      abandoned: {
+        id: 'abandoned',
+        blocks: [...ORPHAN_OPENING, { kind: 'divider', variant: 'dots' }, ...NAMELESS],
+        next: 'wake',
       },
       ...(title
         ? {
