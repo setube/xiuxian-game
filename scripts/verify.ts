@@ -22,6 +22,7 @@ import { readFileSync } from 'node:fs'
 
 import { createPinia, setActivePinia } from 'pinia'
 
+import { BEATS } from '../src/content/days'
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
@@ -309,6 +310,15 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     }
   }
   for (const event of lifeEvents) scanConditions(event.requires, `年表 · ${event.id}`)
+
+  /**
+   * 一天里那些落点也会给东西。
+   *
+   * 头一版漏了这里，于是门禁自己报了个假警：saw-the-road 明明由
+   * 「往山那边走走」那一条 beat 设着，扫描却只看场景的 onEnter 和 choices。
+   * **门禁漏掉一类产出来源，比没有门禁更糟——它会把对的判成错的。**
+   */
+  for (const beat of BEATS) scanEffects(beat.effects)
 
   /**
    * 引擎里造出来的那些。

@@ -1,4 +1,5 @@
-import { LEANINGS, SPARKS } from '@/content/leanings'
+import { DAMPERS, LEANINGS, SPARKS } from '@/content/leanings'
+import { openingById } from '@/content/openings'
 import { useLeaningStore } from '@/stores/leanings'
 import { useWorldStore } from '@/stores/world'
 import type { Leaning } from '@/types/leaning'
@@ -119,6 +120,62 @@ export function selfSense(): string[] {
     const stage = leaning.stageOf(item.id)
     if (stage === '明白') lines.push(definition.says)
     else if (stage === '反复') lines.push(definition.stirring)
+  }
+  return lines
+}
+
+/**
+ * 这一天有没有什么事把某个念头压下去了。
+ *
+ * **念头不能只会越来越强。** 跟 `kindle` 走同一套闸门，
+ * 只是方向相反——而且往往顺带把另一个念头顶上来：
+ * 一个念头退下去的时候，接上的通常不是空白。
+ *
+ * @returns 要往这一天的正文里添的那几句
+ */
+export function dampen(tags: readonly string[]): string[] {
+  const world = useWorldStore()
+  const leaning = useLeaningStore()
+  const lines: string[] = []
+
+  for (const damper of DAMPERS) {
+    if (damper.once && world.hasFlag(sparkKey(damper.id))) continue
+    if (damper.tags && !damper.tags.some((tag) => tags.includes(tag))) continue
+    if (!meetsAll(damper.requires)) continue
+    if (damper.chance !== undefined && Math.random() > damper.chance) continue
+
+    // 没长起来的念头压不动。他没想过走，就谈不上打消这个念头
+    if (leaning.weightOf(damper.leaning) <= 0) continue
+
+    const moment = { at: { ...world.time }, text: fillString(damper.text) }
+    leaning.stir(damper.leaning, -damper.weight, moment, world.time)
+    if (damper.instead) {
+      leaning.stir(damper.instead.leaning, damper.instead.weight, moment, world.time)
+    }
+    if (damper.once) world.setFlag(sparkKey(damper.id), true)
+    lines.push(moment.text)
+  }
+  return lines
+}
+
+/**
+ * 他读到这个机会时，看见的是什么。
+ *
+ * 头一句谁都读得到——**那是这件事本来的样子**。
+ * 心里存着念头的人会多读出一句，但那一句**不添信息，只添注意力**：
+ * 「那支商队要往很远的地方去」是他自己想到的，不是别人多告诉他的。
+ *
+ * 埋着的念头什么也不多添——那时候他自己都还没意识到。
+ */
+export function readingOf(openingId: string): string[] {
+  const opening = openingById(openingId)
+  if (!opening) return []
+
+  const leaning = useLeaningStore()
+  const lines = [fillString(opening.plain)]
+  for (const reading of opening.readings) {
+    const stage = leaning.stageOf(reading.leaning)
+    if (stage === '反复' || stage === '明白') lines.push(fillString(reading.text))
   }
   return lines
 }

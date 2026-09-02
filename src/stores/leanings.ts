@@ -43,14 +43,34 @@ export const useLeaningStore = defineStore(
       Object.values(leanings.value).sort((a, b) => b.weight - a.weight),
     )
 
-    /** 他终于说出来的那些。多数人一个也没有 */
-    const named = computed(() => growing.value.filter((item) => item.namedAt !== null))
+    /** 他此刻说得出口的那些。多数人一个也没有 */
+    const named = computed(() => growing.value.filter((item) => item.weight >= NAMED_AT))
 
-    /** 这个念头长到哪一步了 */
+    /**
+     * 他曾经说出过口，如今放下了的那些。
+     *
+     * 这一档单独留着，是因为它跟「从来没想过」完全是两回事——
+     * 一个想走了三年最后留下来的人，跟一个从没动过这个念头的人，
+     * 不是同一个人。
+     */
+    const letGo = computed(() =>
+      growing.value.filter((item) => item.peak >= STIRRING_AT && item.weight < STIRRING_AT),
+    )
+
+    /**
+     * 这个念头此刻长到哪一步了。
+     *
+     * **只看当下的分量，不看他从前说过什么。** 一个说过「我想离开」
+     * 的人，家里出了事、爹娘老了，几年下来这个念头会退回去——
+     * 那不是数据错了，那正是人。
+     *
+     * 而 `namedAt` 留着不动：他确实曾经把这句话说出过口，
+     * 这件事不因为他后来改了主意就没发生过。
+     */
     function stageOf(id: string): LeaningStage {
       const state = leanings.value[id]
       if (!state) return '埋着'
-      if (state.namedAt !== null) return '明白'
+      if (state.weight >= NAMED_AT) return '明白'
       return state.weight >= STIRRING_AT ? '反复' : '埋着'
     }
 
@@ -71,10 +91,18 @@ export const useLeaningStore = defineStore(
       const next: LeaningState = existing
         ? {
             ...existing,
-            weight: existing.weight + weight,
+            // 压到零就打住。念头可以消退，但不该变成「反着想」
+            weight: Math.max(0, existing.weight + weight),
+            peak: Math.max(existing.peak, existing.weight + weight),
             moments: [...existing.moments, moment],
           }
-        : { id, weight, moments: [moment], namedAt: null }
+        : {
+            id,
+            weight: Math.max(0, weight),
+            peak: Math.max(0, weight),
+            moments: [moment],
+            namedAt: null,
+          }
 
       // 刚好越过那道线：他这一刻才把它说出来
       const justNamed = next.namedAt === null && next.weight >= NAMED_AT
@@ -88,11 +116,27 @@ export const useLeaningStore = defineStore(
       return leanings.value[id]?.weight ?? 0
     }
 
+    /** 他最想的时候有多想。用来分辨「放下了」和「从来没有过」 */
+    function peakOf(id: string): number {
+      return leanings.value[id]?.peak ?? 0
+    }
+
     function reset(): void {
       leanings.value = {}
     }
 
-    return { leanings, growing, named, stageOf, atLeast, stir, weightOf, reset }
+    return {
+      leanings,
+      growing,
+      named,
+      letGo,
+      stageOf,
+      atLeast,
+      stir,
+      weightOf,
+      peakOf,
+      reset,
+    }
   },
   { persist: { key: 'xiuxian:leanings', pick: ['leanings'] } },
 )

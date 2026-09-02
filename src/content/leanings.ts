@@ -1,4 +1,4 @@
-import type { Leaning, Spark } from '@/types/leaning'
+import type { Damper, Leaning, Spark } from '@/types/leaning'
 
 /**
  * 念头，和点着念头的那些事。
@@ -363,5 +363,79 @@ export const SPARKS: readonly Spark[] = [
     requires: [{ region: { harvest: { atLeast: 62 } } }],
     chance: 0.2,
     text: '场院上晒得满满的。你站着看了一会儿。',
+  },
+]
+
+/**
+ * 反向的火种：把念头压下去的那些事。
+ *
+ * **念头不能只会越来越强。** 一个人想离开家乡十年，可能最后真的走了，
+ * 也可能因为爹娘老了留下来，也可能出去一趟发现外面并不像自己想的那样。
+ *
+ * 这跟认知系统里那条「解释可以往下掉」是同一个立场：
+ * 玩家对世界的认识会改变，**玩家对自己想要什么的认识也会改变。**
+ *
+ * `instead` 那一项尤其要紧：一个念头被压下去的时候，
+ * 顶上来的往往是另一个念头，而不是一片空白。
+ */
+export const DAMPERS: readonly Damper[] = [
+  {
+    /**
+     * 家里离不得人。
+     *
+     * 这是最常见的那一种——他没有改主意，他只是走不开。
+     * 而年复一年地走不开，跟改了主意其实差不多。
+     */
+    id: 'needed-at-home',
+    leaning: 'leave',
+    weight: 5,
+    instead: { leaning: 'settle', weight: 3 },
+    requires: [{ flag: { key: 'illness-at-home' } }],
+    once: true,
+    text: '家里病倒一个人的那阵子，你没有再提过出门的话。',
+  },
+  {
+    /**
+     * 他老了。
+     *
+     * 一句「你留意到他今年比去年瘦」，比任何劝阻都管用。
+     */
+    id: 'elder-aging',
+    leaning: 'leave',
+    weight: 2,
+    instead: { leaning: 'settle', weight: 2 },
+    tags: ['家里的大人'],
+    chance: 0.14,
+    text: '你留意到他今年比去年瘦。你想的是自己要是不在，谁来管。',
+  },
+  {
+    /**
+     * 走过一趟之后。
+     *
+     * **这一条是 D 那种人生的枢纽。** 他真的走了，也真的回来了——
+     * 而回来的人跟走之前不是同一个人：他现在知道外面是什么样子了。
+     */
+    id: 'been-out-there',
+    leaning: 'leave',
+    weight: 8,
+    instead: { leaning: 'settle', weight: 5 },
+    requires: [{ flag: { key: 'came-back' } }],
+    once: true,
+    text: '你回来了。路上那两个月，你想起家里的次数比想起别处多。',
+  },
+  {
+    /**
+     * 那一伙人又叫你了。
+     *
+     * 「想离开」里有一部分是「这儿没什么好留恋的」。
+     * 这一条把那部分抽掉。
+     */
+    id: 'made-up-with-kids',
+    leaning: 'leave',
+    weight: 2,
+    tags: ['找孩子玩'],
+    requires: [{ flag: { key: 'fell-out-with-kids' } }],
+    chance: 0.12,
+    text: '打谷场上有人喊了你一声。你过去了，谁也没提从前那件事。',
   },
 ]

@@ -8,7 +8,7 @@ import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 
 import { beatLines, spend } from './daily'
 import { reconsider } from './diary'
-import { echoesOn, kindle } from './leanings'
+import { dampen, echoesOn, kindle, readingOf } from './leanings'
 import { toChineseNumber } from './describe'
 import {
   appraise,
@@ -535,8 +535,21 @@ function applyOne(
       const today = diary.closeDay(world.time)
       reconsider()
 
-      const awakened = kindle(today?.tags ?? [])
-      if (!awakened) return null
+      const tags = today?.tags ?? []
+      /**
+       * 压下去的那些，跟点起来的一样要报。
+       *
+       * 念头只会越来越强的话，人物就成了一条经验条。
+       * 而真实的样子是：他没有改主意，他只是走不开——
+       * 年复一年地走不开，跟改了主意其实差不多。
+       */
+      const cooled = dampen(tags).map((text): NarrativeBlock => ({
+        kind: 'narration',
+        text,
+        tone: 'faint',
+      }))
+      const awakened = kindle(tags)
+      if (!awakened) return cooled.length > 0 ? cooled : null
 
       /**
        * 除非他恰好在今天把它说出了口。
@@ -545,9 +558,46 @@ function applyOne(
        * 也不是每个人都等得到。
        */
       return [
+        ...cooled,
         { kind: 'divider', variant: 'dots' },
         { kind: 'event', text: awakened.says, tone: 'deep' },
       ]
+    }
+    case 'reflect': {
+      /**
+       * 停下来重新掂量一回。
+       *
+       * 跟日结时那一遍走的是同一套闸门，区别只在时机：
+       * 有些事不必等到某个寻常日子才让人想明白。
+       */
+      const cooled = dampen([]).map((text): NarrativeBlock => ({
+        kind: 'narration',
+        text,
+        tone: 'faint',
+      }))
+      const awakened = kindle([])
+      if (!awakened) return cooled.length > 0 ? cooled : null
+      return [
+        ...cooled,
+        { kind: 'divider', variant: 'dots' },
+        { kind: 'event', text: awakened.says, tone: 'deep' },
+      ]
+    }
+    case 'reading': {
+      /**
+       * 他读到一个机会。
+       *
+       * 头一句谁都读得到——那是这件事本来的样子。心里存着念头的人
+       * 会多读出一句，而那一句**不添信息，只添注意力**。
+       *
+       * **选项一个没多，世界一寸没变。** 商队本来就要走，
+       * 短工本来就在招——变的只是他注意到了什么。
+       */
+      return readingOf(effect.opening).map((text, index): NarrativeBlock => ({
+        kind: 'narration',
+        text,
+        ...(index > 0 ? { tone: 'deep' as const } : {}),
+      }))
     }
     case 'signs': {
       // 世界的样子落进正文。这是玩家建立自己那份世界模型的唯一材料

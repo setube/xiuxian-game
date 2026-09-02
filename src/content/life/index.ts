@@ -4,6 +4,7 @@ import { birthEvents, birthScenes } from './birth'
 import { childhoodEvents, childhoodScenes } from './childhood'
 import { dearthEvents, dearthScenes } from './dearth'
 import { dayEvents, dayScenes } from './day'
+import { leavingEvents, leavingScenes } from './leaving'
 import { encounterEvents, encounterScenes } from './encounters'
 import { hardshipEvents, hardshipScenes } from './hardship'
 import { inquiryEvents, inquiryScenes } from './inquiry'
@@ -47,6 +48,7 @@ export const lifeScenes: SceneLibrary = {
   ...youthScenes,
   ...routineScenes,
   ...dayScenes,
+  ...leavingScenes,
   ...rivermanScenes,
 }
 
@@ -62,6 +64,7 @@ export const lifeEvents: readonly LifeEvent[] = [
   ...royalEvents,
   ...encounterEvents,
   ...dayEvents,
+  ...leavingEvents,
   ...youthEvents,
   ...rivermanEvents,
 ]
