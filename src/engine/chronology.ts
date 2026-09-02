@@ -50,7 +50,7 @@ export function pickEvent(events: readonly LifeEvent[]): LifeEvent | null {
     (event) =>
       age >= event.window.from &&
       age <= event.window.to &&
-      !hasFired(event.id) &&
+      (event.repeatable === true || !hasFired(event.id)) &&
       meetsAll(event.requires),
   )
   if (candidates.length === 0) return null

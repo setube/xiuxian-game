@@ -91,6 +91,14 @@ export interface Beat {
   text: string | readonly string[]
   effects?: readonly Effect[]
   /**
+   * 这一天沾着什么。
+   *
+   * **日后的新知识靠它把这一天找回来**——没有标记的一天，
+   * 再要紧也没人想得起它。写的时候要问一句：
+   * 这一天里有什么，是多年以后可能被重新理解的？
+   */
+  tags?: readonly string[]
+  /**
    * 撞上了一件事，这一天交给它。
    *
    * 只有 `tier: '大事'` 才写。**去哪儿决定你可能撞上什么**——

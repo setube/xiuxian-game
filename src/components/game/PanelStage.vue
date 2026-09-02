@@ -5,6 +5,7 @@ import { useUiStore } from '@/stores/ui'
 
 import CharacterPanel from './CharacterPanel.vue'
 import ChroniclePanel from './ChroniclePanel.vue'
+import DiaryPanel from './DiaryPanel.vue'
 import InventoryPanel from './InventoryPanel.vue'
 import KnowledgePanel from './KnowledgePanel.vue'
 import PanelSheet from './PanelSheet.vue'
@@ -29,6 +30,7 @@ const { activePanel } = storeToRefs(ui)
     <InventoryPanel v-else-if="activePanel === 'inventory'" />
     <KnowledgePanel v-else-if="activePanel === 'knowledge'" />
     <RelationshipPanel v-else-if="activePanel === 'relations'" />
+    <DiaryPanel v-else-if="activePanel === 'diary'" />
     <ChroniclePanel v-else-if="activePanel === 'chronicle'" />
     <WorldPanel v-else-if="activePanel === 'world'" @restart="emit('restart')" />
   </PanelSheet>

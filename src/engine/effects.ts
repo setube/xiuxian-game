@@ -1,4 +1,5 @@
 import { useCharacterStore } from '@/stores/character'
+import { useDiaryStore } from '@/stores/diary'
 import { useHouseholdStore } from '@/stores/household'
 import { usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
@@ -6,6 +7,7 @@ import { observerById } from '@/content/observers'
 import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 
 import { beatLines, spend } from './daily'
+import { reconsider } from './diary'
 import { toChineseNumber } from './describe'
 import {
   appraise,
@@ -478,6 +480,15 @@ function applyOne(
        * 山那边才有山道上那个人，镇上才有货郎摊上那册书。
        */
       const doingId = (world.getFlag(`day-${effect.slot}`) as string | undefined) ?? 'idle'
+      /**
+       * 先把上一段的记号擦掉。
+       *
+       * `day-omen` 是给这一段用的一次性记号，场景靠它决定要不要
+       * 把这一天交出去。不擦的话它会一直留在旗标里，
+       * **此后每一段都会重新跳进同一卷机缘**——玩家的人生
+       * 会卡在同一个货郎摊前，一年一年地重来。
+       */
+      world.setFlag('day-omen', '')
       const beat = spend(effect.slot, doingId)
       if (!beat) return null
 
@@ -488,8 +499,26 @@ function applyOne(
         kind: 'narration',
         text: fillString(text),
       }))
+      // 这一段发生的事先攒着，到夜里才合成一条日录——否则一天会裂成三天
+      useDiaryStore().jot(
+        blocks.map((block) => ('text' in block ? block.text : '')),
+        beat.tags,
+      )
       const echoes = applyEffects(beat.effects)
       return [...blocks, ...echoes]
+    }
+    case 'diary': {
+      /**
+       * 一天过完了，落成一条。
+       *
+       * 顺手回头看一眼有没有哪一天忽然想明白了——**但不弹给玩家看**。
+       * 想起一件旧事本来就是安静的，日录面板里那一行小字就够了；
+       * 弹出来就变成了发奖，而这套东西的全部立场就是它不发奖。
+       */
+      const diary = useDiaryStore()
+      diary.closeDay(world.time)
+      reconsider()
+      return null
     }
     case 'signs': {
       // 世界的样子落进正文。这是玩家建立自己那份世界模型的唯一材料

@@ -8,6 +8,7 @@ const EMPTY_SEEN: Record<PanelKey, number> = {
   inventory: 0,
   knowledge: 0,
   relations: 0,
+  diary: 0,
   chronicle: 0,
   world: 0,
 }

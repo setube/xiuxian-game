@@ -229,8 +229,21 @@ export const dayScenes: SceneLibrary = {
        */
       close: {
         id: 'close',
-        onEnter: [{ type: 'time', days: 1 }],
-        blocks: [{ kind: 'narration', text: '这一天过去了。', tone: 'faint' }],
+        /**
+         * 一天过完了。
+         *
+         * 时间在这里扣掉的不止一天——**日录记的是被拎出来的那些天，
+         * 不是每一天**。一年三百六十日全写进去，既读不完，
+         * 人生也走不动：十六年是五千八百多天，年表推不到那么远。
+         *
+         * 所以这一卷是「这一年里的某一天」，后面那句
+         * 「后来的日子跟这一天差不多」把其余的时间一并交代掉。
+         */
+        onEnter: [{ type: 'time', days: 1 }, { type: 'diary' }, { type: 'time', months: 3 }],
+        blocks: [
+          { kind: 'narration', text: '这一天过去了。' },
+          { kind: 'narration', text: '后来的日子跟这一天差不多。', tone: 'faint' },
+        ],
       },
     },
   },
@@ -249,6 +262,8 @@ export const dayEvents: readonly LifeEvent[] = [
     id: 'day-ordinary',
     window: { from: 7, to: 16 },
     scene: 'day:ordinary',
-    weight: 20,
+    // 一个人过的日子成千上万。它要是只能发生一次，日录里就只会躺着一条
+    repeatable: true,
+    weight: 9,
   },
 ]

@@ -25,7 +25,13 @@ import { useWorldStore } from '../src/stores/world'
 
 const RUNS = 1000
 /** 一世最多落笔几次。超过就是转不出去了 */
-const MAX_TURNS = 200
+/**
+ * 防死循环的阈值，不是设计约束。
+ *
+ * 加了主动行动系统之后一世的交互次数本来就该上去：一天要点三次，
+ * 一世二十来天就是六十几次，再加上其余的卷。200 是没有「一天」之前的数。
+ */
+const MAX_TURNS = 500
 
 interface Tally {
   finished: number

@@ -561,7 +561,12 @@ export const rivermanScenes: SceneLibrary = {
        */
       'named-false': {
         id: 'named-false',
-        onEnter: [{ type: 'attribute', key: 'insight', delta: 5 }, { type: 'book-named' }],
+        onEnter: [
+          { type: 'attribute', key: 'insight', delta: 5 },
+          { type: 'book-named' },
+          // 日录靠它回头点亮「在镇上买下那册书」的那一天
+          { type: 'flag', key: 'named-by-riverman', value: true },
+        ],
         blocks: [],
         next: 'close',
       },
