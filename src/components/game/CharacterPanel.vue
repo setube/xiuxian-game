@@ -3,11 +3,14 @@ import { storeToRefs } from 'pinia'
 
 import { ASPECTS } from '@/engine/aspects'
 import { describeAge, describeStamp } from '@/engine/describe'
+import { selfSense } from '@/engine/leanings'
 import { useCharacterStore } from '@/stores/character'
+import { useLeaningStore } from '@/stores/leanings'
 import { useHouseholdStore } from '@/stores/household'
 import { usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
 import type { AspectKey } from '@/types/game'
+import { computed } from 'vue'
 
 /**
  * 人物：第二层信息。
@@ -42,6 +45,29 @@ function kinLine(id: string): string {
   const called = acquaintance?.knowsName ? `${person.surname}${person.given}，` : ''
   return `${called}${people.ageOf(id)}岁。${person.trade}`
 }
+
+const leaning = useLeaningStore()
+
+/**
+ * 心里的事。
+ *
+ * 这一段**没有一个数字**，而且这是有意的：别人怎么看你不给数字，
+ * 世界什么光景不给数字，那么你自己是什么人更不该给数字。
+ * 一旦这里出现「离乡 63 / 求医 12」，这个游戏就变成了另一个游戏。
+ *
+ * 他到「反复」这一档时，这里是一句他自己也说不清的话；
+ * 到「明白」了，才是他真正说出口的那一句。
+ * 而**大多数人一辈子这一段都是空的**——那不是缺内容。
+ */
+const sense = computed(() => selfSense())
+
+/** 他做过的那些事。「我好像总是这样做」要玩家自己从这一串里读出来 */
+const traces = computed(() =>
+  leaning
+    .atLeast('反复')
+    .flatMap((item) => item.moments.slice(-3))
+    .sort((a, b) => a.at.year - b.at.year),
+)
 
 const { name, age, identity, realm, aspects } = storeToRefs(character)
 const { trade, gender, home, members, outlook } = storeToRefs(household)
@@ -92,6 +118,26 @@ function isUnknown(key: AspectKey): boolean {
       </ul>
     </section>
 
+    <!--
+      心里的事。空着是常态——大多数人一辈子说不出自己想要什么，
+      而那不是缺内容，那就是大多数人真实的样子
+    -->
+    <section v-if="sense.length > 0" class="leaning">
+      <h3 class="ink-label">心里的事</h3>
+      <p v-for="line in sense" :key="line" class="self">{{ line }}</p>
+
+      <!-- 他做过的那些事。这一串才是那句话的来历 -->
+      <details v-if="traces.length > 0" class="traces">
+        <summary class="ink-stamp">你都做过些什么</summary>
+        <ul>
+          <li v-for="(trace, index) in traces" :key="index">
+            <span class="ink-stamp">第 {{ trace.at.year }} 年</span>
+            <span class="what">{{ trace.text }}</span>
+          </li>
+        </ul>
+      </details>
+    </section>
+
     <section v-for="aspect in ASPECTS" :key="aspect.key" class="aspect">
       <h3 class="ink-label">{{ aspect.label }}</h3>
       <p class="self" :class="{ blank: isUnknown(aspect.key) }">
@@ -112,6 +158,47 @@ function isUnknown(key: AspectKey): boolean {
 </template>
 
 <style scoped>
+/* 心里的事。楷体，因为这一段是他自己的话，不是账目 */
+.leaning .self {
+  font-family: var(--font-kai);
+}
+
+.traces {
+  margin: 0.4rem 0 0;
+  padding-inline-start: 1.4em;
+}
+
+.traces > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.traces > summary::before {
+  content: '▸ ';
+}
+
+.traces[open] > summary::before {
+  content: '▾ ';
+}
+
+.traces ul {
+  margin: 0.3rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.traces li {
+  display: flex;
+  gap: 0.6em;
+  align-items: baseline;
+  line-height: 1.8;
+}
+
+.traces .what {
+  color: var(--color-ink-faint);
+  font-family: var(--font-kai);
+}
+
 /* 四项事实，两列对齐。这一块要一眼扫完，不该有阅读的节奏 */
 .facts {
   display: grid;

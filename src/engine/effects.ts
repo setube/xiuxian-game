@@ -8,6 +8,7 @@ import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 
 import { beatLines, spend } from './daily'
 import { reconsider } from './diary'
+import { echoesOn, kindle } from './leanings'
 import { toChineseNumber } from './describe'
 import {
   appraise,
@@ -499,26 +500,54 @@ function applyOne(
         kind: 'narration',
         text: fillString(text),
       }))
+
+      /**
+       * 念头在这里反复出现。
+       *
+       * **不加选项，不加任务，只在他本来就会做的事情上多一句话。**
+       * 玩家会先觉得这句话眼熟，很久以后才反应过来自己一直在这么干。
+       */
+      const echoes = echoesOn(beat.tags ?? []).map((text): NarrativeBlock => ({
+        kind: 'narration',
+        text,
+        tone: 'faint',
+      }))
+
+      const lines = [...blocks, ...echoes]
       // 这一段发生的事先攒着，到夜里才合成一条日录——否则一天会裂成三天
       useDiaryStore().jot(
-        blocks.map((block) => ('text' in block ? block.text : '')),
+        lines.map((block) => ('text' in block ? block.text : '')),
         beat.tags,
       )
-      const echoes = applyEffects(beat.effects)
-      return [...blocks, ...echoes]
+      return [...lines, ...applyEffects(beat.effects)]
     }
     case 'diary': {
       /**
        * 一天过完了，落成一条。
        *
-       * 顺手回头看一眼有没有哪一天忽然想明白了——**但不弹给玩家看**。
-       * 想起一件旧事本来就是安静的，日录面板里那一行小字就够了；
-       * 弹出来就变成了发奖，而这套东西的全部立场就是它不发奖。
+       * 顺手做两件事，都不弹给玩家看：回头看有没有哪一天忽然想明白了，
+       * 以及今天这一天有没有把某个念头往前推了一点。
+       *
+       * **想起一件旧事本来就是安静的**；而念头更是——
+       * 它一冒出来就跳个框，那就成了任务系统。
        */
       const diary = useDiaryStore()
-      diary.closeDay(world.time)
+      const today = diary.closeDay(world.time)
       reconsider()
-      return null
+
+      const awakened = kindle(today?.tags ?? [])
+      if (!awakened) return null
+
+      /**
+       * 除非他恰好在今天把它说出了口。
+       *
+       * 这是这套东西唯一一次主动开口——而它等了很多年，
+       * 也不是每个人都等得到。
+       */
+      return [
+        { kind: 'divider', variant: 'dots' },
+        { kind: 'event', text: awakened.says, tone: 'deep' },
+      ]
     }
     case 'signs': {
       // 世界的样子落进正文。这是玩家建立自己那份世界模型的唯一材料
