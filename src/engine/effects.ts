@@ -211,6 +211,7 @@ function applyOne(
           reply.learned.category,
           world.time,
           reply.grasp,
+          reply.mistaken,
         )
       }
       return reply.blocks

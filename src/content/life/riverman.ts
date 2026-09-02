@@ -304,6 +304,8 @@ export const rivermanScenes: SceneLibrary = {
             id: 'boat-no-ripple',
             title: '不起波纹的船',
             summary: '有些船行过水面，水面是不动的。凡人的船不会这样。',
+            // 亲眼看到了这个现象——「见过」，而不是「听说」
+            grasp: '见过',
             category: '世事',
           },
           { type: 'chronicle', text: '你在渡口看见一叶不起波纹的船。', tone: 'deep' },
@@ -326,6 +328,7 @@ export const rivermanScenes: SceneLibrary = {
             title: '修士',
             summary:
               '这世上有一种人，不是官，不是江湖人。他们的船行过水面，水面是不动的。你亲眼见了一次。',
+            grasp: '见过',
             category: '修行',
           },
           { type: 'flag', key: 'saw-a-cultivator', value: true },
@@ -478,6 +481,8 @@ export const rivermanScenes: SceneLibrary = {
             title: '他说的那句话',
             summary:
               '山道上那个人说的最后一句，是修士之间的话。青衫人听你学了一遍，只说：他把命交给你了。',
+            // 这件事直接发生在他身上——他跟修士说过话，被对方点破了手里的东西
+            grasp: '亲历',
             category: '修行',
           },
           {
@@ -485,6 +490,7 @@ export const rivermanScenes: SceneLibrary = {
             id: 'qi-refining',
             title: '炼气',
             summary: '修行的第一步。你手里那册书，写的就是这个。你一个字也认不出来。',
+            grasp: '亲历',
             category: '修行',
           },
           {

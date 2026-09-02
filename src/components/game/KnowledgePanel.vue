@@ -41,7 +41,13 @@ const groups = computed<KnowledgeGroup[]>(() =>
 
       <ul class="entries">
         <li v-for="entry in group.entries" :key="entry.id">
-          <p class="title">{{ entry.title }}</p>
+          <p class="title">
+            {{ entry.title }}
+            <!-- 认识的深浅。它跟条目内容一样是给玩家看的状态：
+                 「听说」和「亲历」是两回事，玩家该分得出来。
+                 而这一条是不是错的，玩家永远看不到——他若知道自己错了，那就不叫错了 -->
+            <span class="grasp">{{ entry.grasp }}</span>
+          </p>
           <p class="ink-branch">
             <span v-if="entry.summary">{{ entry.summary }}</span>
             <span v-else class="blank">尚未知晓。</span>
@@ -54,6 +60,14 @@ const groups = computed<KnowledgeGroup[]>(() =>
 </template>
 
 <style scoped>
+/* 认识的深浅。比标题轻一档：它是注解，不是名字 */
+.grasp {
+  margin-inline-start: 0.6em;
+  color: var(--color-ink-faint);
+  font-size: var(--text-micro);
+  letter-spacing: 0.14em;
+}
+
 .group + .group {
   margin-top: 1.3rem;
 }

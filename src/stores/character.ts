@@ -207,13 +207,22 @@ export const useCharacterStore = defineStore(
       category: KnowledgeCategory,
       at: GameTime,
       grasp: Grasp = '听说',
+      mistaken?: '事实' | '因果',
     ): LearnOutcome {
       const existing = knowledge.value.find((item) => item.id === id)
 
       if (!existing) {
         knowledge.value = [
           ...knowledge.value,
-          { id, title, summary, grasp, category, learnedAt: { ...at } },
+          {
+            id,
+            title,
+            summary,
+            grasp,
+            category,
+            learnedAt: { ...at },
+            ...(mistaken ? { mistaken } : {}),
+          },
         ]
         return 'new'
       }
@@ -232,7 +241,14 @@ export const useCharacterStore = defineStore(
 
       knowledge.value = knowledge.value.map((item) =>
         item.id === id
-          ? { ...item, grasp, summary: summary ?? item.summary, learnedAt: { ...at } }
+          ? {
+              ...item,
+              grasp,
+              summary: summary ?? item.summary,
+              learnedAt: { ...at },
+              // 新说法若是对的，就把旧的错误标记抹掉——他终于弄明白了
+              ...(mistaken ? { mistaken } : { mistaken: undefined }),
+            }
           : item,
       )
       return 'detailed'

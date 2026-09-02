@@ -474,6 +474,19 @@ export interface KnowledgeEntry {
   grasp: Grasp
   category: KnowledgeCategory
   learnedAt: GameTime
+  /**
+   * 这条其实是错的。
+   *
+   * **玩家看不见这个标记**——他若知道自己错了，那就不叫错了。
+   * 它只供日后打脸用：某天他亲眼看到真相，才会有一次
+   * 「原来当年老丈说的不对」。
+   *
+   * 分两类，`因果` 比 `事实` 更持久：
+   * 事实错误容易撞破（他亲眼看到北边没打仗），
+   * 因果错误却可能跟他一辈子——他验证了「北边的人在南逃」，
+   * 但仍然以为那是因为兵灾。
+   */
+  mistaken?: '事实' | '因果'
 }
 
 export type FlagValue = boolean | number | string

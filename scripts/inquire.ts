@@ -157,4 +157,47 @@ console.log('\n=== 认识一件事不会倒退 ===\n')
     console.log('  没有倒退。亲眼见过之后，再听人说一嘴也不会退回「只是听说」。')
   }
 }
+
+// —— 五、错误但真诚 ——
+console.log('\n=== 他说的是真话，可他的解释是错的 ===\n')
+{
+  setup(12)
+  const character = useCharacterStore()
+  const world = useWorldStore()
+  let shown = 0
+  for (let i = 0; i < 60 && shown < 1; i += 1) {
+    const reply = ask('neighbour', '生人')
+    if (!reply.got || !reply.learned) continue
+    shown += 1
+    for (const block of reply.blocks) {
+      if (!('text' in block)) continue
+      const who = 'speaker' in block && block.speaker ? `${block.speaker}：` : '    '
+      console.log(`    ${who}${block.text}`)
+    }
+    character.learn(
+      reply.learned.id,
+      reply.learned.title,
+      reply.learned.summary,
+      reply.learned.category,
+      world.time,
+      reply.grasp,
+      reply.mistaken,
+    )
+  }
+
+  const entry = character.knowledge.find((k) => k.id === 'refugees')
+  if (!entry) {
+    console.log('  （这一次没问出来。老人也有不肯说的时候。）')
+  } else {
+    console.log(`\n  他记下的：〔${entry.grasp}〕${entry.summary}`)
+    console.log(`  引擎里的标记：${entry.mistaken ?? '（没有错）'}\n`)
+    console.log('  世界真相：北边闹的是旱，不是兵。老人不是撒谎——')
+    console.log('  他这辈子听惯了「兵灾」，就这么解释了。')
+    console.log('  玩家看不到那个标记。他将带着这个因果走很多年。')
+    if (entry.mistaken !== '因果') {
+      console.log('  ✗ 没有标记成因果错误——「错误但真诚」没有落地。')
+      process.exitCode = 1
+    }
+  }
+}
 console.log()

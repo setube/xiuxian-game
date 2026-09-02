@@ -47,6 +47,8 @@ export interface Reply {
   learned?: Answer['learns']
   /** 认识到哪一档 */
   grasp?: Answer['grasp']
+  /** 他这句其实是错的。玩家看不见，只供日后打脸 */
+  mistaken?: Answer['mistaken']
 }
 
 function meetsRegion(answer: Answer, state: Record<RegionKey, number>): boolean {
@@ -143,5 +145,6 @@ export function ask(informantId: string, topic: Topic): Reply {
     got: true,
     ...(answer.learns ? { learned: answer.learns } : {}),
     ...(answer.grasp ? { grasp: answer.grasp } : {}),
+    ...(answer.mistaken ? { mistaken: answer.mistaken } : {}),
   }
 }
