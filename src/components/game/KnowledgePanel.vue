@@ -43,15 +43,35 @@ const groups = computed<KnowledgeGroup[]>(() =>
         <li v-for="entry in group.entries" :key="entry.id">
           <p class="title">
             {{ entry.title }}
-            <!-- 认识的深浅。它跟条目内容一样是给玩家看的状态：
-                 「听说」和「亲历」是两回事，玩家该分得出来。
-                 而这一条是不是错的，玩家永远看不到——他若知道自己错了，那就不叫错了 -->
-            <span class="grasp">{{ entry.grasp }}</span>
+            <!-- 认知的两根轴，都是给玩家看的状态。
+                 「听说」和「亲历」是两回事，「猜想」和「确信」也是两回事，
+                 而**它们是分开的**——亲眼见过却完全不明白那是什么，
+                 是一个人第一次撞见修士时最真实的样子。
+                 至于这一条是不是错的，玩家永远看不到：他若知道自己错了，那就不叫错了 -->
+            <span class="grasp">{{ entry.contact }} · {{ entry.interpretation }}</span>
           </p>
           <p class="ink-branch">
             <span v-if="entry.summary">{{ entry.summary }}</span>
             <span v-else class="blank">尚未知晓。</span>
           </p>
+
+          <!-- 有人给过另一种说法，而他还没能采信。
+               两个版本并排放着，不是新的把旧的换掉——那才是被人说动之后的真实样子 -->
+          <p v-if="entry.rival" class="ink-branch rival">另有一说：{{ entry.rival }}</p>
+
+          <!-- 他是怎么一步步想到今天这个说法的。
+               只在有过转折时才展开：一条从头到尾没变过的认知，没什么可看的 -->
+          <details v-if="entry.history.length > 1" class="past">
+            <summary class="ink-stamp">你原先是怎么想的</summary>
+            <ol class="moments">
+              <li v-for="(moment, index) in entry.history" :key="index">
+                <span class="ink-stamp when">{{ describeStamp(moment.at) }}</span>
+                <span class="how">{{ moment.how }}</span>
+                <span class="said">{{ moment.summary ?? '只记住了个名字。' }}</span>
+              </li>
+            </ol>
+          </details>
+
           <p class="ink-stamp when">{{ describeStamp(entry.learnedAt) }}</p>
         </li>
       </ul>
@@ -98,8 +118,69 @@ const groups = computed<KnowledgeGroup[]>(() =>
   font-family: var(--font-kai);
 }
 
+/* 另一种说法。比正文淡一档：它还没被他采信，只是并排放着 */
+.rival {
+  color: var(--color-ink-faint);
+  font-family: var(--font-kai);
+}
+
+/* 认知历史。默认收着——摊开来会把「他现在怎么想」压下去 */
+.past {
+  margin: 0.3rem 0 0;
+  padding-inline-start: 1.4em;
+}
+
+.past > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.past > summary::before {
+  content: '▸ ';
+}
+
+.past[open] > summary::before {
+  content: '▾ ';
+}
+
+.moments {
+  margin: 0.3rem 0 0;
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+.moments > li {
+  display: flex;
+  gap: 0.5em;
+  align-items: baseline;
+  line-height: 1.7;
+}
+
+.moments > li + li {
+  margin-top: 0.2rem;
+}
+
+/* 这一步是怎么来的：初识 / 加深 / 动摇 / 有了别的说法 / 弄明白了 */
+.how {
+  flex: none;
+  color: var(--color-cinnabar);
+  font-size: var(--text-micro);
+  letter-spacing: 0.1em;
+}
+
+.said {
+  color: var(--color-ink-faint);
+  font-family: var(--font-kai);
+}
+
 .when {
   margin: 0.1rem 0 0;
   padding-inline-start: 1.4em;
+}
+
+.moments .when {
+  flex: none;
+  margin: 0;
+  padding: 0;
 }
 </style>

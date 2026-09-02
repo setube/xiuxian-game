@@ -45,8 +45,10 @@ export interface Reply {
   got: boolean
   /** 问出来的那条见闻 */
   learned?: Answer['learns']
-  /** 认识到哪一档 */
-  grasp?: Answer['grasp']
+  /** 别人告诉他的，接触就是「听说」 */
+  contact?: Answer['contact']
+  /** 听完之后他形成了什么样的解释 */
+  interpretation?: Answer['interpretation']
   /** 他这句其实是错的。玩家看不见，只供日后打脸 */
   mistaken?: Answer['mistaken']
 }
@@ -144,7 +146,8 @@ export function ask(informantId: string, topic: Topic): Reply {
     blocks,
     got: true,
     ...(answer.learns ? { learned: answer.learns } : {}),
-    ...(answer.grasp ? { grasp: answer.grasp } : {}),
+    ...(answer.contact ? { contact: answer.contact } : { contact: '听说' as const }),
+    ...(answer.interpretation ? { interpretation: answer.interpretation } : {}),
     ...(answer.mistaken ? { mistaken: answer.mistaken } : {}),
   }
 }

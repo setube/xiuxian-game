@@ -131,7 +131,7 @@ export const inquiryScenes: SceneLibrary = {
                 id: 'refugees',
                 title: '村口那些人',
                 summary: '他们带的东西很少，都是些锅碗和铺盖。孩子光着脚。',
-                grasp: '见过',
+                contact: '见过',
                 category: '世事',
               },
             ],

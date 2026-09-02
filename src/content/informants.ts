@@ -1,4 +1,4 @@
-import type { Bond, Condition, Grasp, RegionKey, Topic } from '@/types/game'
+import type { Bond, Condition, Contact, Interpretation, RegionKey, Topic } from '@/types/game'
 
 /**
  * 打听。
@@ -61,8 +61,10 @@ export interface Answer {
   says: string
   /** 说完之后玩家心里的那句。可能是误读 */
   reading?: string
-  /** 这句话让玩家对这件事认识到哪一档 */
-  grasp?: Grasp
+  /** 他这一次离这件事有多近。别人说的，缺省就是「听说」 */
+  contact?: Contact
+  /** 听完之后他形成了什么样的解释 */
+  interpretation?: Interpretation
   /** 问到了什么见闻 */
   learns?: {
     id: string
@@ -126,7 +128,7 @@ export const INFORMANTS: readonly Informant[] = [
         when: { grain: { atLeast: 130 } },
         says: '是贵了些。家里省着点吃。',
         reading: '他说得很轻，你却记住了。',
-        grasp: '确信',
+        interpretation: '确信',
         learns: {
           id: 'lean-year',
           title: '年景',
@@ -140,7 +142,7 @@ export const INFORMANTS: readonly Informant[] = [
         tells: 70,
         when: { grain: { atMost: 118 } },
         says: '今年还成。你操心这个做什么。',
-        grasp: '确信',
+        interpretation: '确信',
       },
       {
         topic: '家里',
@@ -155,7 +157,7 @@ export const INFORMANTS: readonly Informant[] = [
         tells: 62,
         when: { order: { atMost: 42 } },
         says: '这阵子别往远处跑。天黑就回来。',
-        grasp: '确信',
+        interpretation: '确信',
         learns: {
           id: 'unsafe-roads',
           title: '路上不太平',
@@ -192,7 +194,7 @@ export const INFORMANTS: readonly Informant[] = [
         when: { grain: { atLeast: 140 } },
         says: '今年不好做。你别多问。',
         reading: '他一边说一边把米袋往里挪了挪。',
-        grasp: '猜想',
+        interpretation: '猜想',
         learns: {
           id: 'grain-hoarded',
           title: '米铺的米',
@@ -206,7 +208,7 @@ export const INFORMANTS: readonly Informant[] = [
         tells: 48,
         when: { grain: { atMost: 128 } },
         says: '跟去年差不多。你要买多少？',
-        grasp: '确信',
+        interpretation: '确信',
       },
       { topic: '世道', knows: 62, tells: 34, says: '路上的事我不清楚。我又不走远道。' },
     ],
@@ -223,7 +225,7 @@ export const INFORMANTS: readonly Informant[] = [
         when: { grain: { atLeast: 132 } },
         says: '早年闹过一回，比现在还狠。那年我才这么高。',
         reading: '他讲了很久，讲的都是几十年前的事。',
-        grasp: '猜想',
+        interpretation: '猜想',
         learns: {
           id: 'old-famine',
           title: '老辈说的那场荒年',
@@ -249,7 +251,7 @@ export const INFORMANTS: readonly Informant[] = [
         when: { order: { atMost: 44 } },
         says: '往南边去的。听口音是北边来的——北边怕是又打起来了。',
         reading: '你问他怎么知道。他说，不打仗谁往外跑。',
-        grasp: '确信',
+        interpretation: '确信',
         mistaken: '因果',
         learns: {
           id: 'refugees',
@@ -264,7 +266,7 @@ export const INFORMANTS: readonly Informant[] = [
         tells: 92,
         says: '我年轻时听人说过，山里有那种人。信不信由你。',
         reading: '他讲得有鼻子有眼，可你不知道是真是假。',
-        grasp: '听说',
+        interpretation: '猜想',
         learns: {
           id: 'immortal-tale',
           title: '山里的那种人',
@@ -293,7 +295,7 @@ export const INFORMANTS: readonly Informant[] = [
         when: { grain: { atLeast: 148 } },
         says: '本月米价仍在官府限价之内。',
         reading: '你想起街口那家米铺已经三天没开门了。',
-        grasp: '猜想',
+        interpretation: '猜想',
         learns: {
           id: 'price-cap-known',
           title: '官府的限价',

@@ -8,13 +8,16 @@ import type {
   Aspects,
   AttributeKey,
   Attributes,
+  Contact,
   GameTime,
+  Interpretation,
   InventoryItem,
   KnowledgeCategory,
   KnowledgeEntry,
+  KnowledgeMoment,
   Constitution,
-  Grasp,
   Realm,
+  Turn,
 } from '@/types/game'
 
 import { beBorn } from '@/content/birth'
@@ -89,11 +92,49 @@ function withConstitution(base: Attributes, constitution: Constitution): Attribu
   return next
 }
 
-/** 认识的深浅，自浅入深。只能往上走 */
-const GRASP_ORDER: readonly Grasp[] = ['听说', '见过', '猜想', '确信', '亲历']
+/** 接触方式，自远及近。**只能往上走** */
+const CONTACT_ORDER: readonly Contact[] = ['听说', '见过', '亲历']
+
+/** 解释状态，自浅入深。**可以往下掉**——被人说动摇了就往回退一档 */
+const INTERPRETATION_ORDER: readonly Interpretation[] = ['未理解', '猜想', '确信']
 
 /** learn 的结果。界面据此决定要不要报一句「得知 · ×××」 */
 export type LearnOutcome = 'new' | 'detailed' | 'known'
+
+/**
+ * 记一条见闻要交代的事。
+ *
+ * 做成对象而不是位置参数，是因为**「不传」本身有含义**：
+ * 不传 `contact` 就是「离得没更近」，不传 `mistaken` 就是「对错没变」。
+ * 七个位置参数排下去，调用处根本读不出哪个是「没变」哪个是「变成没有」。
+ */
+export interface Learning {
+  id: string
+  title: string
+  category: KnowledgeCategory
+  at: GameTime
+  /** 他此刻会怎么说这件事。不传就沿用原来那句 */
+  summary?: string | null
+  /** 他这一次离这件事更近了吗。不传就不动 */
+  contact?: Contact
+  /** 他这一次形成了什么样的解释。不传就不动 */
+  interpretation?: Interpretation
+  /**
+   * 不传 = 对错不变（他只是换了个说法）；
+   * 传 `null` = 明确纠正，他弄明白了；
+   * 传 `'事实' | '因果'` = 标记成错的。
+   */
+  mistaken?: '事实' | '因果' | null
+  /**
+   * 有人给了另一种说法。
+   *
+   * **它不覆盖原来那句。** 记下来并排放着，同时把他的解释往回打一档——
+   * 他没弄明白什么，只是不再那么肯定了。
+   */
+  rival?: string
+  /** 他被说动摇了：解释往回退一档，说法不变 */
+  shaken?: boolean
+}
 
 export const useCharacterStore = defineStore(
   'character',
@@ -193,85 +234,124 @@ export const useCharacterStore = defineStore(
     /**
      * 记下一条见闻。
      *
-     * 「知道」不是一个开关，是一道有档位的坡：
-     * 听说 → 见过 → 猜想 → 确信 → 亲历。
+     * 「知道」不是一个开关，也不是一道单一的坡。它有三根各自独立的轴：
      *
-     * **只能往上走。** 一个人亲眼见过修士之后，不会退回「只是听说」——
-     * 所以同一条见闻反复被提起时，低档位的说法不会盖掉高档位的。
-     * 这一条是「炼气二字你早就听过，真正弄懂是很久以后」的机制表达。
+     *     接触　听说 → 见过 → 亲历　　**只能往上**
+     *     解释　未理解 → 猜想 → 确信　**可以往下**
+     *     对错　对 / 错　　　　　　　　跟前两根都正交
      *
-     * ## grasp 量的是确定程度，不是离真相多近
+     * 从前这些揉在一个 grasp 字段里，那道梯子混了两个轴——
+     * 于是「亲眼见过但完全不明白那是什么」写不出来，
+     * 而那正是一个人第一次撞见修士时最真实的状态。
      *
-     * 这两件事看着像，差别是根本性的。档位高只说明**他更笃定**，
-     * 不说明他更对。五档乘对错，十格全部合法：
+     * ## 接触只能往上，解释可以往下
      *
-     *     确信 + 错　　最常见的那种人
-     *     亲历 + 错　　他亲手拿过、亲耳听过，仍然理解错了
+     * 亲眼见过之后不会退回「只是听说」，这一条不变。
+     * 但**笃定程度是会掉的**：一句「不是那么回事」就能让一个
+     * 确信多年的人重新不敢肯定。而他动摇之后往往什么也没弄明白，
+     * 只是不再笃定了——这跟「他被纠正了」完全是两回事。
      *
-     * 所以「他变得更确信了」和「他终于弄明白了」必须是两次不同的调用，
-     * 引擎不许从档位上升反推出真相——那会让知识系统退化成
-     * 普通 RPG 的知识解锁：越查越对，最后必然全知。
+     * ## 被人说动之后的三种样子
      *
-     * @param mistaken 不传 = 对错不变（他只是换了个档位）；
-     *                 传 `null` = 明确纠正，他弄明白了；
-     *                 传 `'事实' | '因果'` = 标记成错的。
+     *     ① 动摇　　　　shaken: true
+     *        「你这么一说……我也不敢肯定了。」解释退一档，说法不变。
+     *
+     *     ② 有了别的说法　rival: '……'
+     *        「也可能不是修士，是某种江湖把式。」新说法跟原说法**并排放着**，
+     *        不覆盖。他从此心里有两个版本。
+     *
+     *     ③ 明确纠正　　mistaken: null + 新的 summary
+     *        「原来那天见到的确实是修士。」这一步才抹掉错误标记。
+     *
+     * 只做 ③ 的话，NPC 一开口玩家的世界模型就被改对，那还是百科系统。
+     *
+     * ## 认知历史本身就是内容
+     *
+     * 每一次变化都往 history 里追加一条，旧的绝不删。
+     * 一条一路被改到「对」的知识条目，跟一个人真实的理解过程毫无关系；
+     * 「他原来以为什么、后来听谁说了什么、现在还剩下什么疑问」才是。
      */
-    function learn(
-      id: string,
-      title: string,
-      summary: string | null,
-      category: KnowledgeCategory,
-      at: GameTime,
-      grasp: Grasp = '听说',
-      mistaken?: '事实' | '因果' | null,
-    ): LearnOutcome {
+    function learn(input: Learning): LearnOutcome {
+      const { id, title, category, at, summary, rival, shaken } = input
       const existing = knowledge.value.find((item) => item.id === id)
 
+      const moment = (entry: Omit<KnowledgeEntry, 'history'>, how: Turn): KnowledgeMoment => ({
+        at: { ...at },
+        summary: entry.summary,
+        contact: entry.contact,
+        interpretation: entry.interpretation,
+        how,
+      })
+
       if (!existing) {
-        knowledge.value = [
-          ...knowledge.value,
-          {
-            id,
-            title,
-            summary,
-            grasp,
-            category,
-            learnedAt: { ...at },
-            ...(mistaken ? { mistaken } : {}),
-          },
-        ]
+        const fresh: Omit<KnowledgeEntry, 'history'> = {
+          id,
+          title,
+          summary: summary ?? null,
+          contact: input.contact ?? '听说',
+          interpretation: input.interpretation ?? (summary ? '猜想' : '未理解'),
+          category,
+          learnedAt: { ...at },
+          ...(input.mistaken ? { mistaken: input.mistaken } : {}),
+          ...(rival ? { rival } : {}),
+        }
+        knowledge.value = [...knowledge.value, { ...fresh, history: [moment(fresh, '初识')] }]
         return 'new'
       }
 
-      const rank = GRASP_ORDER.indexOf(grasp)
-      const held = GRASP_ORDER.indexOf(existing.grasp)
-
-      // 认识一件事不会倒退。听人说一嘴，推翻不了亲眼见过
-      if (rank < held) return 'known'
+      // 接触只能往上。听人说一嘴，推翻不了亲眼见过
+      const nextContact =
+        input.contact !== undefined &&
+        CONTACT_ORDER.indexOf(input.contact) > CONTACT_ORDER.indexOf(existing.contact)
+          ? input.contact
+          : existing.contact
 
       /**
-       * 同档位。**档位没动，内容却可能整个换了**——
-       * 他确信那是账册，有人当面告诉他那是符书，他改成确信那是符书。
-       * 若把同档一律当成「已经知道了」，这次纠正就永远进不来：
-       * 玩家听见了正确答案，脑子里那条纹丝不动。
+       * 解释可以往下。三个来源，越靠后越有力：
+       * 剧本直接指定 > 有人给了别的说法 > 被说动摇了。
        */
-      if (rank === held) {
-        const corrects = mistaken !== undefined
-        const rewords = summary !== null && summary !== existing.summary
-        if (!corrects && !rewords) return 'known'
+      let nextInterpretation = input.interpretation ?? existing.interpretation
+      if (rival !== undefined || shaken) {
+        const held = INTERPRETATION_ORDER.indexOf(input.interpretation ?? existing.interpretation)
+        nextInterpretation = INTERPRETATION_ORDER[Math.max(0, held - 1)]!
+      }
+
+      const nextSummary = summary === undefined ? existing.summary : summary
+      const nextMistaken =
+        input.mistaken === undefined ? existing.mistaken : (input.mistaken ?? undefined)
+      const nextRival = rival === undefined ? existing.rival : rival
+
+      const changed =
+        nextContact !== existing.contact ||
+        nextInterpretation !== existing.interpretation ||
+        nextSummary !== existing.summary ||
+        nextMistaken !== existing.mistaken ||
+        nextRival !== existing.rival
+      if (!changed) return 'known'
+
+      /** 这一步是怎么来的。给认知历史用，玩家读得见 */
+      const how: Turn =
+        rival !== undefined
+          ? '有了别的说法'
+          : input.mistaken === null
+            ? '弄明白了'
+            : shaken || nextInterpretation < existing.interpretation
+              ? '动摇'
+              : '加深'
+
+      const updated: Omit<KnowledgeEntry, 'history'> = {
+        ...existing,
+        title,
+        summary: nextSummary,
+        contact: nextContact,
+        interpretation: nextInterpretation,
+        learnedAt: { ...at },
+        mistaken: nextMistaken,
+        rival: nextRival,
       }
 
       knowledge.value = knowledge.value.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              grasp,
-              summary: summary ?? item.summary,
-              learnedAt: { ...at },
-              // 没表态就不动。升档不等于弄明白了——人常常只是更确信自己那个错的
-              mistaken: mistaken === undefined ? item.mistaken : (mistaken ?? undefined),
-            }
-          : item,
+        item.id === id ? { ...updated, history: [...item.history, moment(updated, how)] } : item,
       )
       return 'detailed'
     }

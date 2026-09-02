@@ -45,7 +45,15 @@ function fresh(trade: Trade = '农户', literate = true, insight = 45) {
   household.trade = trade
   character.attributes = { ...character.attributes, insight }
   if (literate) {
-    character.learn('literacy', '识字', '你认得字。', '世事', world.time, '亲历')
+    character.learn({
+      id: 'literacy',
+      title: '识字',
+      summary: '你认得字。',
+      category: '世事',
+      at: world.time,
+      contact: '亲历',
+      interpretation: '确信',
+    })
   }
   return { household, character, world }
 }
@@ -55,7 +63,8 @@ function bookEntry(): KnowledgeEntry | undefined {
 }
 
 function show(entry: KnowledgeEntry): string {
-  return `〔${entry.grasp}${entry.mistaken ? ' · 他不知道自己错了' : ''}〕${entry.summary}`
+  const wrong = entry.mistaken ? ' · 他不知道自己错了' : ''
+  return `〔${entry.contact} · ${entry.interpretation}${wrong}〕${entry.summary}`
 }
 
 let failed = 0
@@ -161,15 +170,16 @@ console.log('\n=== ④ 同一册书，四种人生，四种认知历史 ===\n')
     let seen = appraise(truth)
     for (let i = 0; i < 400 && seen.reading !== wants; i += 1) seen = appraise(truth)
     world.setFlag('pedlar-book-reading', seen.reading)
-    character.learn(
-      'the-pedlar-book',
-      '庙前买的那册书',
-      seen.believes,
-      '器物',
-      world.time,
-      '猜想',
-      seen.mistaken ? '事实' : undefined,
-    )
+    character.learn({
+      id: 'the-pedlar-book',
+      title: '庙前买的那册书',
+      summary: seen.believes,
+      category: '器物',
+      at: world.time,
+      contact: '见过',
+      interpretation: '猜想',
+      mistaken: seen.mistaken ? '事实' : undefined,
+    })
 
     const trail: string[] = [`看见时：${show(bookEntry()!)}`]
     for (const act of acts) {
@@ -221,15 +231,16 @@ console.log('=== 同一册书能长出多少种认知历史 ===\n')
     world.setFlag('pedlar-book', truth)
     const seen = appraise(truth)
     world.setFlag('pedlar-book-reading', seen.reading)
-    character.learn(
-      'the-pedlar-book',
-      '庙前买的那册书',
-      seen.believes,
-      '器物',
-      world.time,
-      '猜想',
-      seen.mistaken ? '事实' : undefined,
-    )
+    character.learn({
+      id: 'the-pedlar-book',
+      title: '庙前买的那册书',
+      summary: seen.believes,
+      category: '器物',
+      at: world.time,
+      contact: '见过',
+      interpretation: '猜想',
+      mistaken: seen.mistaken ? '事实' : undefined,
+    })
 
     // 玩家自己决定在不在意。走查里随机替他挑
     const roll = Math.random()

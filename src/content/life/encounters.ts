@@ -396,49 +396,147 @@ export const encounterScenes: SceneLibrary = {
     },
   },
 
+  /**
+   * 走北路的那个商旅。
+   *
+   * 前两支机缘验的是玩家跟**世界**打交道：山道上躺着的是个人，但对玩家
+   * 而言他跟一册书没有区别——不会争辩，不会含糊其辞，不会自己就理解错了。
+   *
+   * 这一支验的是玩家跟**另一个人**打交道。而人跟物最要紧的区别是：
+   *
+   *   **一个人对世界的理解，本身就是另一个人的局部世界。**
+   *
+   * 所以这一卷会来很多次。同一个商旅，同一条北路，隔两年再坐到你家檐下——
+   * 而这中间**你已经不是原来那个你了**：你上次问出来的那句话，
+   * 决定了你这次会问什么。
+   */
   'omen:merchant': {
     id: 'omen:merchant',
     title: '外乡人',
     entry: 'open',
     nodes: {
+      // 一、注意：屋檐下坐着一个不是本地人的人
       open: {
         id: 'open',
         onEnter: [{ type: 'time', days: 3 }],
+        blocks: [],
+        branches: [
+          // 不是头一回了。他记得你，你也记得他
+          { requires: [{ flag: { key: 'met-merchant' } }], next: 'again' },
+        ],
+        next: 'first',
+      },
+
+      first: {
+        id: 'first',
+        onEnter: [
+          {
+            type: 'meet',
+            id: 'merchant',
+            calls: '走北路的商旅',
+            delta: 4,
+            note: '收粗布往北边贩。每隔一两年从这儿过一趟。',
+          },
+          { type: 'flag', key: 'met-merchant', value: true },
+        ],
         blocks: [
-          { kind: 'narration', text: '入秋以后，铺子里来了个外乡商旅。' },
+          { kind: 'narration', text: '入秋以后，来了个外乡商旅。' },
           { kind: 'narration', text: '他要收一批粗布，说是往北边走。' },
           { kind: 'narration', text: '货谈了三天，晚上就住在后院。' },
           { kind: 'narration', text: '第三天夜里下雨，他坐在檐下喝酒，看见你在旁边。' },
         ],
+        next: 'notice',
+      },
+
+      /**
+       * 他又来了。
+       *
+       * 这一节是这支机缘跟前两支最不一样的地方：**他是个持续存在的人。**
+       * 山道上那个人只出现一次，货郎摊上那册书更是一件死物；
+       * 而这个人会记得你，也会老。
+       */
+      again: {
+        id: 'again',
+        onEnter: [
+          { type: 'time', days: 2 },
+          { type: 'meet', id: 'merchant', delta: 4 },
+        ],
+        blocks: [
+          { kind: 'narration', text: '入秋以后，那个走北路的商旅又来了。' },
+          { kind: 'narration', text: '他还认得你，说你长高了。' },
+          { kind: 'narration', text: '夜里他仍旧坐在檐下喝酒。' },
+        ],
+        next: 'notice',
+      },
+
+      /**
+       * 二、理解：你怎么看待这个人。
+       *
+       * 这一节没有掷骰——**你看他的方式，就是你上次谈完之后留下的那句话**。
+       * 一个还没听说过修士的孩子看见的是「一个走过很多路的人」；
+       * 一个确信修士是江湖高手的少年看见的是「一个可能见过高手的人」。
+       * 同一个人，同一张脸。
+       */
+      notice: {
+        id: 'notice',
+        blocks: [
+          { kind: 'narration', text: '他脸上有风吹出来的红，手背上一道旧疤。' },
+          { kind: 'narration', text: '他不问你的事，也不赶你走。' },
+        ],
+        next: 'interest',
+      },
+
+      /**
+       * 三、兴趣：要不要凑过去。
+       *
+       * 跟前两支一样，这一节**一个条件也不带**：
+       * 觉得他有意思的人可以凑过去，觉得没意思的人可以回屋睡觉。
+       * 引擎不替玩家决定他对什么感兴趣。
+       */
+      interest: {
+        id: 'interest',
+        blocks: [],
         choices: [
           {
-            id: 'ask-road',
-            label: '问他北边是什么样子',
-            echo: '你问他，北边是什么样子。',
-            effects: [
-              { type: 'time', days: 1 },
-              { type: 'attribute', key: 'insight', delta: 4 },
-              {
-                type: 'knowledge',
-                id: 'the-north',
-                title: '北边',
-                summary: '出了关往北，是三千里的荒原。他说走一趟要半年，路上死人是常事。',
-                category: '地理',
-              },
-            ],
-            next: 'talked',
-          },
-          {
-            id: 'pour',
-            label: '给他把酒满上，不说话',
-            echo: '你给他把酒满上。',
+            id: 'talk',
+            label: '凑过去跟他说话',
+            echo: '你在他旁边坐下了。',
             effects: [
               { type: 'time', days: 1 },
               { type: 'attribute', key: 'insight', delta: 2 },
+              { type: 'hearsay' },
+            ],
+            next: 'after',
+          },
+          {
+            /**
+             * 先给他把酒满上。
+             *
+             * 这一条不改变他知道什么，只改变他肯说多少——
+             * **知道和肯说是两回事**，这一条在打听系统里就立住了。
+             */
+            id: 'pour',
+            label: '先给他把酒满上',
+            hint: '他还没开口',
+            echo: '你给他把酒满上。',
+            effects: [
+              { type: 'time', days: 1 },
               { type: 'attribute', key: 'will', delta: 2 },
               { type: 'flag', key: 'poured-for-merchant', value: true },
+              { type: 'meet', id: 'merchant', delta: 8 },
+              { type: 'hearsay' },
             ],
-            next: 'talked',
+            next: 'after',
+          },
+          {
+            id: 'listen',
+            label: '在门边站着听，不出声',
+            echo: '你在门边站着。',
+            effects: [
+              { type: 'time', days: 1 },
+              { type: 'attribute', key: 'insight', delta: 3 },
+            ],
+            next: 'overheard',
           },
           {
             id: 'away',
@@ -450,44 +548,37 @@ export const encounterScenes: SceneLibrary = {
         ],
       },
 
-      talked: {
-        id: 'talked',
-        onEnter: [
-          { type: 'time', days: 2 },
-          { type: 'attribute', key: 'fortune', delta: 2 },
-          {
-            type: 'relation',
-            id: 'merchant',
-            name: '走北路的商旅',
-            delta: 12,
-            note: '在你家住过三天。见过修士。',
-          },
-          {
-            type: 'knowledge',
-            id: 'cultivators-exist',
-            title: '修士',
-            summary:
-              '这世上有一种人，不是官，不是江湖人。商旅说他亲眼见过一个，站在船头，船底下的水不动。',
-            category: '修行',
-          },
-          { type: 'flag', key: 'heard-of-cultivators', value: true },
-          {
-            type: 'chronicle',
-            text: '你第一次听人说起修士。说的人是个走北路的商旅。',
-            tone: 'deep',
-          },
-        ],
+      // 四、他答了。五、你把那句话收进了自己的框里
+      after: {
+        id: 'after',
+        onEnter: [{ type: 'time', days: 2 }],
         blocks: [
-          { kind: 'narration', text: '他喝了几杯，话就多了起来。' },
-          { kind: 'narration', text: '说北边的荒原，说路上的马贼，说去年冻死在车上的伙计。' },
-          { kind: 'narration', text: '说到一半他停了停，往院子外面看了一眼。' },
-          { kind: 'dialogue', text: '有一年在渡口，我见过一个人。' },
-          { kind: 'dialogue', text: '他站在船头。那条船走得飞快，可是水面上一点波纹都没有。' },
-          { kind: 'narration', text: '你问他那是什么人。' },
-          { kind: 'dialogue', text: '修士。' },
-          { kind: 'event', text: '你第一次听见这两个字。', tone: 'deep' },
-          { kind: 'narration', text: '他没有再往下说，把杯子里的酒喝完就进屋了。' },
-          { kind: 'narration', text: '第二天他走了。此后再没来过。', tone: 'faint' },
+          { kind: 'narration', text: '雨下到后半夜。他没再说什么，把杯子里的酒喝完就进屋了。' },
+          { kind: 'narration', text: '第二天他走了。他说过两年还从这儿过。', tone: 'faint' },
+        ],
+      },
+
+      /**
+       * 站着听。
+       *
+       * 他没有在跟你说话，所以他没有把话说浅——**你听见的是他跟别人的原话**。
+       * 但没头没尾，你接不上前因后果。
+       * 这一条给的是心思，不是答案。
+       */
+      overheard: {
+        id: 'overheard',
+        onEnter: [{ type: 'time', days: 2 }],
+        blocks: [
+          { kind: 'narration', text: '他在跟掌柜的说话，说的是路上的事。' },
+          { kind: 'dialogue', text: '……那一段我如今是绕着走的。' },
+          { kind: 'narration', text: '掌柜的问为什么。' },
+          { kind: 'dialogue', text: '前年那趟，我在渡口看见点东西。' },
+          { kind: 'narration', text: '后面他压低了声音，你一句也没听清。' },
+          {
+            kind: 'narration',
+            text: '你站了很久，直到脚站麻了。你知道他刚才说了一件要紧的事，可你不知道是什么。',
+            tone: 'faint',
+          },
         ],
       },
 
@@ -528,12 +619,53 @@ export const encounterEvents: readonly LifeEvent[] = [
     scene: 'omen:book',
     weight: 9,
   },
+  /**
+   * 走北路那个商旅，隔一两年从这儿过一趟。
+   *
+   * 拆成三次是有意的：**这一支的验收本来就需要多次对话。**
+   * 一次谈话只能证明「NPC 会作答」，三次才看得出
+   * 「他的世界模型是怎么一年一年长歪的」——
+   * 而那正是这一支真正要证明的事。
+   *
+   * 三条 id 不同，所以年表把它们当三件事；scene 相同，
+   * 所以走进去的是同一个人、同一条北路。他会记得你，也会老。
+   */
   {
-    // 铺子里才有外乡人过夜。生在田里的孩子这辈子碰不上这一幕
-    id: 'omen-merchant',
-    window: { from: 10, to: 16 },
+    // 南来北往的人歇脚的地方：铺子、客栈、酒楼。田里的孩子碰不上这一幕
+    id: 'omen-merchant-1',
+    window: { from: 9, to: 11 },
     requires: [{ trade: '商户' }],
     scene: 'omen:merchant',
-    weight: 6,
+    weight: 8,
+  },
+  {
+    id: 'omen-merchant-2',
+    window: { from: 11, to: 14 },
+    requires: [{ flag: { key: 'met-merchant' } }],
+    scene: 'omen:merchant',
+    weight: 10,
+  },
+  {
+    id: 'omen-merchant-3',
+    window: { from: 14, to: 16 },
+    requires: [{ flag: { key: 'met-merchant' } }],
+    scene: 'omen:merchant',
+    weight: 10,
+  },
+  {
+    // 客栈和酒楼一样住得下外乡人。头一回碰上的窗口比商户晚些——
+    // 掌柜的孩子在柜台后头，跑堂的孩子在灶间，凑到檐下要更大一点
+    id: 'omen-merchant-inn',
+    window: { from: 10, to: 13 },
+    requires: [{ trade: '客栈' }],
+    scene: 'omen:merchant',
+    weight: 8,
+  },
+  {
+    id: 'omen-merchant-tavern',
+    window: { from: 10, to: 13 },
+    requires: [{ trade: '酒楼' }],
+    scene: 'omen:merchant',
+    weight: 8,
   },
 ]

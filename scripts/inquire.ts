@@ -99,14 +99,15 @@ console.log('\n=== 一个孩子把四个人都问了一遍 ===\n')
   ] as [string, Topic][]) {
     const reply = ask(id, topic)
     if (reply.learned) {
-      character.learn(
-        reply.learned.id,
-        reply.learned.title,
-        reply.learned.summary,
-        reply.learned.category,
-        world.time,
-        reply.grasp,
-      )
+      character.learn({
+        id: reply.learned.id,
+        title: reply.learned.title,
+        summary: reply.learned.summary,
+        category: reply.learned.category,
+        at: world.time,
+        contact: reply.contact,
+        interpretation: reply.interpretation,
+      })
     }
     for (const block of reply.blocks) {
       if ('text' in block) {
@@ -117,7 +118,7 @@ console.log('\n=== 一个孩子把四个人都问了一遍 ===\n')
   }
   console.log('\n  他最后攒下的见闻：\n')
   for (const entry of character.knowledge) {
-    console.log(`    〔${entry.grasp}〕${entry.title}`)
+    console.log(`    〔${entry.contact} · ${entry.interpretation}〕${entry.title}`)
     if (entry.summary) console.log(`        ${entry.summary}`)
   }
   console.log('\n  四句话都不假，四句话拼不出真相。他得自己判断信谁。')
@@ -129,28 +130,42 @@ console.log('\n=== 认识一件事不会倒退 ===\n')
   setup()
   const character = useCharacterStore()
   const world = useWorldStore()
-  const steps: [string, Parameters<typeof character.learn>[5]][] = [
-    ['有人说这世上有能飞的人。多半是编的。', '听说'],
-    ['你亲眼见过一个。他站在船头，水面不动。', '见过'],
-    ['他们大概是修行了什么法门。', '猜想'],
+  /**
+   * 三步各动一根轴：先只是听说，然后亲眼见到（接触往上），
+   * 最后自己想出一个解释（解释往上）。**两根轴分开走。**
+   */
+  const steps: [string, '听说' | '见过' | '亲历' | null, '未理解' | '猜想' | null][] = [
+    ['有人说这世上有能飞的人。多半是编的。', '听说', '未理解'],
+    ['你亲眼见过一个。他站在船头，水面不动。', '见过', null],
+    ['他们大概是修行了什么法门。', null, '猜想'],
   ]
-  for (const [summary, grasp] of steps) {
-    character.learn('cultivators-exist', '修士', summary, '修行', world.time, grasp)
+  for (const [summary, contact, interpretation] of steps) {
+    character.learn({
+      id: 'cultivators-exist',
+      title: '修士',
+      summary,
+      category: '修行',
+      at: world.time,
+      ...(contact ? { contact } : {}),
+      ...(interpretation ? { interpretation } : {}),
+    })
     const entry = character.knowledge.find((k) => k.id === 'cultivators-exist')!
-    console.log(`    〔${entry.grasp}〕${entry.summary}`)
+    console.log(`    〔${entry.contact} · ${entry.interpretation}〕${entry.summary}`)
   }
   // 再听人说一嘴，不该退回「听说」
-  character.learn(
-    'cultivators-exist',
-    '修士',
-    '有人说这世上有能飞的人。',
-    '修行',
-    world.time,
-    '听说',
-  )
+  character.learn({
+    id: 'cultivators-exist',
+    title: '修士',
+    summary: '有人说这世上有能飞的人。',
+    category: '修行',
+    at: world.time,
+    contact: '听说',
+  })
   const entry = character.knowledge.find((k) => k.id === 'cultivators-exist')!
-  console.log(`\n  又听人说了一嘴之后：〔${entry.grasp}〕${entry.summary}`)
-  if (entry.grasp !== '猜想') {
+  console.log(
+    `\n  又听人说了一嘴之后：〔${entry.contact} · ${entry.interpretation}〕${entry.summary}`,
+  )
+  if (entry.contact !== '见过') {
     console.log('  ✗ 认识倒退了——这是重大缺陷。')
     process.exitCode = 1
   } else {
@@ -174,22 +189,23 @@ console.log('\n=== 他说的是真话，可他的解释是错的 ===\n')
       const who = 'speaker' in block && block.speaker ? `${block.speaker}：` : '    '
       console.log(`    ${who}${block.text}`)
     }
-    character.learn(
-      reply.learned.id,
-      reply.learned.title,
-      reply.learned.summary,
-      reply.learned.category,
-      world.time,
-      reply.grasp,
-      reply.mistaken,
-    )
+    character.learn({
+      id: reply.learned.id,
+      title: reply.learned.title,
+      summary: reply.learned.summary,
+      category: reply.learned.category,
+      at: world.time,
+      contact: reply.contact,
+      interpretation: reply.interpretation,
+      mistaken: reply.mistaken,
+    })
   }
 
   const entry = character.knowledge.find((k) => k.id === 'refugees')
   if (!entry) {
     console.log('  （这一次没问出来。老人也有不肯说的时候。）')
   } else {
-    console.log(`\n  他记下的：〔${entry.grasp}〕${entry.summary}`)
+    console.log(`\n  他记下的：〔${entry.contact} · ${entry.interpretation}〕${entry.summary}`)
     console.log(`  引擎里的标记：${entry.mistaken ?? '（没有错）'}\n`)
     console.log('  世界真相：北边闹的是旱，不是兵。老人不是撒谎——')
     console.log('  他这辈子听惯了「兵灾」，就这么解释了。')

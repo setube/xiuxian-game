@@ -118,15 +118,21 @@ for (let i = 0; i < RUNS; i += 1) {
       `真相【${truth}】　他以为【${seen.reading}】　他选了「${approach}」　→　${outcome.summary}`
   }
   // 顺带把认知写进去，验证 mistaken 会不会被记住
-  character.learn(
-    'the-man-on-the-road',
-    '山道上那个人',
-    outcome.summary,
-    '人物',
-    useWorldStore().time,
-    outcome.learnedTruth ? '亲历' : '猜想',
-    outcome.learnedTruth ? undefined : seen.reading === truthToReading(truth) ? undefined : '事实',
-  )
+  character.learn({
+    id: 'the-man-on-the-road',
+    title: '山道上那个人',
+    summary: outcome.summary,
+    category: '人物',
+    at: useWorldStore().time,
+    // 他伸手做了事，接触就是「亲历」——哪怕他到最后也没弄明白那人是谁
+    contact: '亲历',
+    interpretation: outcome.learnedTruth ? '确信' : '猜想',
+    mistaken: outcome.learnedTruth
+      ? null
+      : seen.reading === truthToReading(truth)
+        ? undefined
+        : '事实',
+  })
 }
 
 const LABELS: Record<string, string> = {

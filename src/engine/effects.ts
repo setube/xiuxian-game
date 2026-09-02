@@ -18,6 +18,7 @@ import {
   type BookReading,
   type BookTruth,
 } from './book'
+import { currentView, merchantLore, talk, viewWords, willingToday } from './hearsay'
 import { fillString } from './interpolate'
 import { ask } from './inquire'
 import {
@@ -164,14 +165,15 @@ function applyOne(
       return isNew ? record(`识得 · ${people.callOf(effect.id)}`) : null
     }
     case 'knowledge': {
-      const outcome = character.learn(
-        effect.id,
-        effect.title,
-        effect.summary,
-        effect.category,
-        world.time,
-        effect.grasp,
-      )
+      const outcome = character.learn({
+        id: effect.id,
+        title: effect.title,
+        summary: effect.summary,
+        category: effect.category,
+        at: world.time,
+        contact: effect.contact,
+        interpretation: effect.interpretation,
+      })
       if (outcome === 'new') return record(`得知 · ${effect.title}`)
       if (outcome === 'detailed') return record(`明白了 · ${effect.title}`)
       return null
@@ -225,15 +227,16 @@ function applyOne(
        */
       const reply = ask(effect.who, effect.about)
       if (reply.learned) {
-        character.learn(
-          reply.learned.id,
-          reply.learned.title,
-          reply.learned.summary,
-          reply.learned.category,
-          world.time,
-          reply.grasp,
-          reply.mistaken,
-        )
+        character.learn({
+          id: reply.learned.id,
+          title: reply.learned.title,
+          summary: reply.learned.summary,
+          category: reply.learned.category,
+          at: world.time,
+          contact: reply.contact,
+          interpretation: reply.interpretation,
+          mistaken: reply.mistaken,
+        })
       }
       return reply.blocks
     }
@@ -266,15 +269,21 @@ function applyOne(
       }
       if (outcome.marks) world.setFlag(outcome.marks, true)
       // 弄明白那人是谁了，认知才升档；没弄明白的，他记住的仍是自己那个判断
-      character.learn(
-        'the-man-on-the-road',
-        '山道上那个人',
-        outcome.summary,
-        '人物',
-        world.time,
-        outcome.learnedTruth ? '亲历' : '猜想',
-        outcome.learnedTruth ? null : reading === truthToReading(truth) ? undefined : '事实',
-      )
+      character.learn({
+        id: 'the-man-on-the-road',
+        title: '山道上那个人',
+        summary: outcome.summary,
+        category: '人物',
+        at: world.time,
+        // 他伸手做了事，接触就是「亲历」——哪怕他到最后也没弄明白那人是谁
+        contact: '亲历',
+        interpretation: outcome.learnedTruth ? '确信' : '猜想',
+        mistaken: outcome.learnedTruth
+          ? null
+          : reading === truthToReading(truth)
+            ? undefined
+            : '事实',
+      })
       return outcome.blocks
     }
     case 'appraise': {
@@ -288,15 +297,16 @@ function applyOne(
       const truth = rollBookTruth()
       const seen = appraise(truth)
       recordBook(seen, truth)
-      character.learn(
-        'the-pedlar-book',
-        '庙前买的那册书',
-        seen.believes,
-        '器物',
-        world.time,
-        '猜想',
-        seen.mistaken ? '事实' : undefined,
-      )
+      character.learn({
+        id: 'the-pedlar-book',
+        title: '庙前买的那册书',
+        summary: seen.believes,
+        category: '器物',
+        at: world.time,
+        contact: '见过',
+        interpretation: '猜想',
+        mistaken: seen.mistaken ? '事实' : undefined,
+      })
       return [
         { kind: 'narration', text: '你抽出来翻了两页。' },
         { kind: 'narration', text: seen.says, tone: 'deep' },
@@ -325,25 +335,26 @@ function applyOne(
       if (effect.act === '问') {
         const reply = askPedlar(truth, reading)
         if (reply.learned) {
-          character.learn(
-            reply.learned.id,
-            reply.learned.title,
-            reply.learned.summary,
-            reply.learned.category,
-            world.time,
-            '听说',
-          )
+          character.learn({
+            id: reply.learned.id,
+            title: reply.learned.title,
+            summary: reply.learned.summary,
+            category: reply.learned.category,
+            at: world.time,
+            contact: '听说',
+            interpretation: '猜想',
+          })
         }
         // 问完之后他更确信自己原来那个判断了——而对错一个字没变
         if (reply.hardens) {
-          character.learn(
-            'the-pedlar-book',
-            '庙前买的那册书',
-            hardened(believes),
-            '器物',
-            world.time,
-            '确信',
-          )
+          character.learn({
+            id: 'the-pedlar-book',
+            title: '庙前买的那册书',
+            summary: hardened(believes),
+            category: '器物',
+            at: world.time,
+            interpretation: '确信',
+          })
         }
         return reply.blocks
       }
@@ -359,14 +370,16 @@ function applyOne(
          * 引擎在这里只升 `grasp`，`mistaken` 一个字不碰：
          * 他更确信了，但他没有更接近真相。这两件事是正交的。
          */
-        character.learn(
-          'the-pedlar-book',
-          '庙前买的那册书',
-          hardened(believes),
-          '器物',
-          world.time,
-          '确信',
-        )
+        character.learn({
+          id: 'the-pedlar-book',
+          title: '庙前买的那册书',
+          summary: hardened(believes),
+          category: '器物',
+          at: world.time,
+          // 拿在手里翻了很多年，接触是「亲历」——可他一个字也没看懂
+          contact: '亲历',
+          interpretation: '确信',
+        })
         return [
           { kind: 'narration', text: '你把它收进箱子，压在旧衣裳底下。' },
           { kind: 'narration', text: '此后每隔一阵会拿出来翻一次。' },
@@ -393,15 +406,16 @@ function applyOne(
       const truth = (world.getFlag('pedlar-book') as BookTruth) ?? '废纸'
       const naming = nameIt(truth)
       character.reveal('pedlar-book', naming.name, naming.note)
-      character.learn(
-        'the-pedlar-book',
-        '庙前买的那册书',
-        naming.summary,
-        '器物',
-        world.time,
-        '确信',
-        null,
-      )
+      character.learn({
+        id: 'the-pedlar-book',
+        title: '庙前买的那册书',
+        summary: naming.summary,
+        category: '器物',
+        at: world.time,
+        interpretation: '确信',
+        // 明确纠正。这一步才抹掉错误标记——不能从档位上升反推出来
+        mistaken: null,
+      })
       world.record(naming.chronicle)
       return [
         { kind: 'narration', text: '他的目光在你怀里停了一下。' },
@@ -413,6 +427,43 @@ function applyOne(
         { kind: 'narration', text: '你在渡口站了很久，手里捏着那册书。' },
         { kind: 'narration', text: naming.aftermath, tone: 'deep' },
       ]
+    }
+    case 'hearsay': {
+      /**
+       * 跟商旅谈一次。
+       *
+       * 这里最要紧的一行是**没有的那一行**：没有任何地方拿商旅的答案
+       * 去覆盖玩家原来那句话。得到的是一次扰动——
+       * 动摇、多一个并排的说法、明确纠正，或者把真话收编进旧框。
+       *
+       * 一旦写成「NPC 说什么，知识条目就变成什么」，
+       * 这套东西立刻退回百科系统：问得越多越对，最后必然全知。
+       */
+      const lore = merchantLore()
+      const before = currentView()
+      const exchange = talk(lore, before, willingToday())
+
+      if (exchange.turn !== '没问出什么') {
+        world.setFlag('adept-view', exchange.view)
+        character.learn({
+          id: 'cultivators-exist',
+          title: '修士',
+          summary: viewWords(exchange.view),
+          category: '修行',
+          at: world.time,
+          contact: '听说',
+          interpretation: exchange.interpretation,
+          mistaken: exchange.mistaken,
+          ...(exchange.rival ? { rival: exchange.rival } : {}),
+          // 「动摇」是一次纯粹的退档：他没弄明白什么，只是不再笃定
+          ...(exchange.turn === '动摇' ? { shaken: true } : {}),
+        })
+      }
+
+      // 他是个持续存在的人，不是一次性的剧情触发器。这一夜之后关系更近一层
+      people.meet('merchant', '走北路的商旅', exchange.turn === '没问出什么' ? 2 : 8)
+      world.setFlag('merchant-talks', ((world.getFlag('merchant-talks') as number) ?? 0) + 1)
+      return exchange.blocks
     }
     case 'signs': {
       // 世界的样子落进正文。这是玩家建立自己那份世界模型的唯一材料
