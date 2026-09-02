@@ -388,7 +388,7 @@ export const rivermanScenes: SceneLibrary = {
         branches: [
           { requires: [{ item: 'thin-book' }], next: 'named-true' },
           { requires: [{ item: 'odd-root' }], next: 'named-root' },
-          { requires: [{ item: 'old-book' }], next: 'named-false' },
+          { requires: [{ item: 'pedlar-book' }], next: 'named-false' },
           { requires: [{ flag: { key: 'touched-by-wicked' } }], next: 'named-scar' },
         ],
         next: 'unnamed',
@@ -548,50 +548,21 @@ export const rivermanScenes: SceneLibrary = {
         next: 'close',
       },
 
+      /**
+       * 庙前那册书的落点，也是这一支机缘真正的终点。
+       *
+       * 玩家花了钱、揣了好几年、翻过无数次，一直管它叫自己给的那个名字。
+       * 这一刻有人扫了一眼，说出它真正是什么——**而那可能跟他想的完全不是一回事。**
+       *
+       * 整段由 `book-named` 算出来，因为答案取决于当年那一掷：
+       * 写坏的符书、早已散掉的商号的账、抄漏的方子、看不出来路的残卷、
+       * 或者一样他压根不该留在箱子里的东西。六种收尾的余味完全不同，
+       * 一句通用的结语会把它们抹平成同一种人生。
+       */
       'named-false': {
         id: 'named-false',
-        onEnter: [
-          { type: 'attribute', key: 'insight', delta: 5 },
-          // 一样的迟到反馈，一个冷得多的答案。
-          // 玩家花了钱、揣了好几年、翻过无数次——它就是没用
-          {
-            type: 'reveal',
-            item: 'old-book',
-            name: '写坏的符书',
-            note: '庙前货郎那里买的。有人说，是写坏的。没有用。',
-          },
-          {
-            type: 'knowledge',
-            id: 'talisman',
-            title: '符',
-            summary: '有一种字是画出来的，画对了有用，画错了就是废纸。你那册是废纸。',
-            category: '器物',
-          },
-          { type: 'chronicle', text: '你揣了几年的那册书，是写坏的符书。' },
-        ],
-        blocks: [
-          { kind: 'narration', text: '他的目光在你怀里停了一下。' },
-          { kind: 'dialogue', text: '拿出来。' },
-          { kind: 'narration', text: '你把那册旧书拿了出来。' },
-          { kind: 'narration', text: '这些年你翻过很多次，一个字也没认出来过。' },
-          { kind: 'narration', text: '他扫了一眼，随即失去了兴趣。' },
-          { kind: 'event', text: '「符书。写坏的。」', tone: 'deep' },
-          { kind: 'narration', text: '你问：写坏了是什么意思。' },
-          { kind: 'dialogue', text: '就是没用。' },
-          { kind: 'narration', text: '船过去了。' },
-          { kind: 'divider', variant: 'ink' },
-          { kind: 'narration', text: '你在渡口站了很久，手里捏着那册书。' },
-          {
-            kind: 'narration',
-            text: '这些年你一直觉得它是什么要紧的东西。现在你知道了：它不是。',
-            tone: 'faint',
-          },
-          {
-            kind: 'narration',
-            text: '可你也知道了——世上真有写得对的那一种。',
-            tone: 'deep',
-          },
-        ],
+        onEnter: [{ type: 'attribute', key: 'insight', delta: 5 }, { type: 'book-named' }],
+        blocks: [],
         next: 'close',
       },
 

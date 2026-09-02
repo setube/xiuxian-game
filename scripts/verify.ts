@@ -18,6 +18,8 @@
  * 跑法：npx vite-node scripts/verify.ts
  * 失败会以非零码退出，可以直接挂进 CI。
  */
+import { readFileSync } from 'node:fs'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
@@ -25,9 +27,12 @@ import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useNarrativeStore } from '../src/stores/narrative'
 import { usePeopleStore } from '../src/stores/people'
-import type { Bond } from '../src/types/game'
+import type { Bond, Condition, Effect } from '../src/types/game'
 
 const RUNS = 1200
+
+/** 会自己造东西给玩家的那几支引擎。第四道验收要扫它们的源码 */
+const ENGINE_FILES = ['wounded.ts', 'book.ts', 'effects.ts'] as const
 
 /**
  * 一条关系不在场时，正文里不该出现的说法。
@@ -240,6 +245,100 @@ console.log('=== 孤儿节点验收 ===\n')
     console.log(`  ✗ ${orphans.length} 个节点没人指向：\n`)
     for (const id of orphans) console.log(`    ${id}`)
     console.log('\n  它们要么是改剧本时忘了删的，要么是该接上却漏接了。\n')
+    process.exitCode = 1
+  }
+}
+
+// ============================================================
+// 第四道：剧本要的东西，世上得真有人给
+// ============================================================
+/**
+ * 断头路和孤儿节点查的都是**边**，这一道查的是**前置条件**。
+ *
+ * 这一类死路第二、三道全都抓不到，因为节点本身连得好好的：
+ *
+ *     山道那一场：「他从怀里摸出一册薄书，塞进你手里。」
+ *     可引擎从来没造过这件东西。
+ *     十六岁渡口上认得这册书的那个结局，于是永远走不到。
+ *
+ * 真出过一次：把 `omen:wounded` 改成五节点时，六个旧结局节点被删了，
+ * 挂在它们 `onEnter` 上的 `thin-book` 和 `touched-by-wicked` 一起没了。
+ * 正文照样在说他给了你一本书，行囊里空的，而渡口四个结局哑掉两个。
+ *
+ * 所以这一道把剧本**要**的东西和世上**产**的东西对一遍。
+ * 产出可能来自剧本（`item` / `flag` 效果），也可能来自引擎代码
+ * （`wounded.ts` 的 grants、`book.ts` 的 carry），后者扫源码文本。
+ */
+console.log('=== 前置条件验收（要的东西有没有人给）===\n')
+{
+  const neededItems = new Map<string, string[]>()
+  const neededFlags = new Map<string, string[]>()
+  const madeItems = new Set<string>()
+  const madeFlags = new Set<string>()
+
+  const note = (map: Map<string, string[]>, key: string, where: string): void => {
+    const list = map.get(key) ?? []
+    list.push(where)
+    map.set(key, list)
+  }
+
+  const scanConditions = (conditions: readonly Condition[] | undefined, where: string): void => {
+    for (const condition of conditions ?? []) {
+      if (condition.item) note(neededItems, condition.item, where)
+      if (condition.flag) note(neededFlags, condition.flag.key, where)
+    }
+  }
+
+  const scanEffects = (effects: readonly Effect[] | undefined): void => {
+    for (const effect of effects ?? []) {
+      if (effect.type === 'item') madeItems.add(effect.id)
+      if (effect.type === 'flag') madeFlags.add(effect.key)
+      if (effect.type === 'roll') madeFlags.add(effect.key)
+    }
+  }
+
+  for (const [sceneId, scene] of Object.entries(lifeScenes)) {
+    for (const [nodeId, node] of Object.entries(scene.nodes)) {
+      const where = `${sceneId}#${nodeId}`
+      scanEffects(node.onEnter)
+      for (const branch of node.branches ?? []) scanConditions(branch.requires, where)
+      for (const choice of node.choices ?? []) {
+        scanConditions(choice.requires, where)
+        scanEffects(choice.effects)
+      }
+    }
+  }
+  for (const event of lifeEvents) scanConditions(event.requires, `年表 · ${event.id}`)
+
+  /**
+   * 引擎里造出来的那些。
+   *
+   * 它们不写在剧本数据里，扫不到——只能在源码文本里找那个字面量。
+   * 粗，但正好够用：只要没有任何一处代码提到这个 id，它就一定没人给。
+   */
+  const engineSource = ENGINE_FILES.map((file) =>
+    readFileSync(new URL(`../src/engine/${file}`, import.meta.url), 'utf8'),
+  ).join('\n')
+
+  const orphanNeeds: string[] = []
+  for (const [kind, needed, made] of [
+    ['物', neededItems, madeItems],
+    ['旗标', neededFlags, madeFlags],
+  ] as const) {
+    for (const [key, wheres] of needed) {
+      if (made.has(key)) continue
+      if (engineSource.includes(`'${key}'`)) continue
+      orphanNeeds.push(`${kind}〔${key}〕　没有任何地方产出　被要求于：${wheres.join('、')}`)
+    }
+  }
+
+  const total = neededItems.size + neededFlags.size
+  if (orphanNeeds.length === 0) {
+    console.log(`  ${total} 种前置条件，每一种都有出处。\n`)
+  } else {
+    console.log(`  ✗ ${orphanNeeds.length} 种前置条件永远满足不了：\n`)
+    for (const line of orphanNeeds) console.log(`    ${line}`)
+    console.log('\n  正文里说给了玩家，实际没给。那几条路永远走不到。\n')
     process.exitCode = 1
   }
 }

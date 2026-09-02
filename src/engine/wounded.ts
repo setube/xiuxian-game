@@ -199,6 +199,17 @@ export interface Outcome {
   summary: string
   /** 他弄明白那人是谁了吗 */
   learnedTruth: boolean
+  /**
+   * 这一趟他从世界上带走了什么。
+   *
+   * **必须由结果携带，不能散在场景里。** 从前这几件东西写在
+   * 六个既定结局节点的 `onEnter` 上，改成五节点时那些节点被删了，
+   * 于是「他给了你一册书」照样在正文里说，行囊里却什么也没有——
+   * 而十六岁渡口那一场认得的正是这册书，整条线就那么断了。
+   */
+  grants?: { id: string; name: string; note: string }
+  /** 这一趟在他身上留下的、日后还会被人看见的痕迹 */
+  marks?: string
 }
 
 /**
@@ -375,6 +386,8 @@ function resolveLift(truth: WoundedTruth, body: number, will: number, reading: R
       id: 'lift-wicked',
       summary: '你伸手去扶他。那只手抓住了你的手腕，很凉。',
       learnedTruth: true,
+      // 左腕那圈疤。十六岁那年渡口上有人一眼就看见了它
+      marks: 'touched-by-wicked',
       blocks: [
         { kind: 'narration', text: '你蹲下去，伸手去扶他的肩膀。' },
         { kind: 'event', text: '他抓住了你的手腕。', tone: 'cinnabar' },
@@ -400,6 +413,12 @@ function resolveLift(truth: WoundedTruth, body: number, will: number, reading: R
       id: 'lift-adept',
       summary: '你的手刚碰到他，他就睁开了眼。他给了你一册书，然后不见了。',
       learnedTruth: true,
+      // 跟货郎摊上那册不是同一件东西，玩家却分不出来——两本都看不懂，也就都只是「一册书」
+      grants: {
+        id: 'thin-book',
+        name: '一册薄书',
+        note: '山道上那个人塞给你的。纸很薄，字歪歪扭扭，你一个也认不出。',
+      },
       blocks: [
         { kind: 'narration', text: '你蹲下去，手刚碰到他的肩膀。' },
         { kind: 'event', text: '他睁开了眼。', tone: 'cinnabar' },

@@ -6,6 +6,18 @@ import { observerById } from '@/content/observers'
 import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 
 import { toChineseNumber } from './describe'
+import {
+  appraise,
+  bookBelieves,
+  bookCalls,
+  askPedlar,
+  hardened,
+  nameIt,
+  recordBook,
+  rollBookTruth,
+  type BookReading,
+  type BookTruth,
+} from './book'
 import { fillString } from './interpolate'
 import { ask } from './inquire'
 import {
@@ -248,6 +260,11 @@ function applyOne(
       const reading = (world.getFlag('wounded-reading') as Reading) ?? '伤者'
       const outcome = resolve(truth, effect.approach, reading)
       world.setFlag('wounded-outcome', outcome.id)
+      // 他从这一趟里带走的东西。渡口那一场认的就是它，落了这行整条线就断了
+      if (outcome.grants) {
+        character.carry(outcome.grants.id, outcome.grants.name, 1, '册', outcome.grants.note)
+      }
+      if (outcome.marks) world.setFlag(outcome.marks, true)
       // 弄明白那人是谁了，认知才升档；没弄明白的，他记住的仍是自己那个判断
       character.learn(
         'the-man-on-the-road',
@@ -256,9 +273,146 @@ function applyOne(
         '人物',
         world.time,
         outcome.learnedTruth ? '亲历' : '猜想',
-        outcome.learnedTruth ? undefined : reading === truthToReading(truth) ? undefined : '事实',
+        outcome.learnedTruth ? null : reading === truthToReading(truth) ? undefined : '事实',
       )
       return outcome.blocks
+    }
+    case 'appraise': {
+      /**
+       * 他翻了两页，认定这册书是什么。
+       *
+       * 跟 `glance` 一样真相与认知分开存，但这里多写一样东西：
+       * **他的判断当场就进了知识面板**，用他自己的说法写着。
+       * 那句话可能是错的，而他要带着它走很多年。
+       */
+      const truth = rollBookTruth()
+      const seen = appraise(truth)
+      recordBook(seen, truth)
+      character.learn(
+        'the-pedlar-book',
+        '庙前买的那册书',
+        seen.believes,
+        '器物',
+        world.time,
+        '猜想',
+        seen.mistaken ? '事实' : undefined,
+      )
+      return [
+        { kind: 'narration', text: '你抽出来翻了两页。' },
+        { kind: 'narration', text: seen.says, tone: 'deep' },
+      ]
+    }
+    case 'book': {
+      const truth = (world.getFlag('pedlar-book') as BookTruth) ?? '废纸'
+      const reading = (world.getFlag('pedlar-book-reading') as BookReading) ?? '废纸'
+      // 判断在 appraise 那一步就定了。这里查表取回，绝不能重掷
+      const calls = bookCalls(reading)
+      const believes = bookBelieves(reading)
+
+      if (effect.act === '走') {
+        // 他没在意。这册书从此与他无关，而他记下的仍是自己那个判断
+        return [{ kind: 'narration', text: '你把它放回那叠旧纸里，走了。' }]
+      }
+
+      if (effect.act === '翻') {
+        return [
+          { kind: 'narration', text: '纸很脆，一翻就往下掉渣。' },
+          { kind: 'narration', text: '你翻到最后一页，把它放回原处。' },
+          { kind: 'narration', text: '几天后再去庙前，货郎已经不在了。', tone: 'faint' },
+        ]
+      }
+
+      if (effect.act === '问') {
+        const reply = askPedlar(truth, reading)
+        if (reply.learned) {
+          character.learn(
+            reply.learned.id,
+            reply.learned.title,
+            reply.learned.summary,
+            reply.learned.category,
+            world.time,
+            '听说',
+          )
+        }
+        // 问完之后他更确信自己原来那个判断了——而对错一个字没变
+        if (reply.hardens) {
+          character.learn(
+            'the-pedlar-book',
+            '庙前买的那册书',
+            hardened(believes),
+            '器物',
+            world.time,
+            '确信',
+          )
+        }
+        return reply.blocks
+      }
+
+      if (effect.act === '守') {
+        /**
+         * 揣着这些年。
+         *
+         * **这一步不修正认知，只固化认知。** 他每隔一阵拿出来翻一次，
+         * 一次也没看懂，于是最初那个判断一年比一年结实——
+         * 从「像是」变成「就是」。
+         *
+         * 引擎在这里只升 `grasp`，`mistaken` 一个字不碰：
+         * 他更确信了，但他没有更接近真相。这两件事是正交的。
+         */
+        character.learn(
+          'the-pedlar-book',
+          '庙前买的那册书',
+          hardened(believes),
+          '器物',
+          world.time,
+          '确信',
+        )
+        return [
+          { kind: 'narration', text: '你把它收进箱子，压在旧衣裳底下。' },
+          { kind: 'narration', text: '此后每隔一阵会拿出来翻一次。' },
+          { kind: 'narration', text: '翻了很多次，还是那样。', tone: 'faint' },
+        ]
+      }
+
+      // 买下来。行囊里那件东西用的是他自己的叫法，不是它真正的名字
+      character.carry('pedlar-book', calls, 1, '册', believes)
+      world.setFlag('has-pedlar-book', true)
+      return [
+        { kind: 'narration', text: '货郎收钱的时候看了你一眼，没说什么。' },
+        { kind: 'narration', text: '你把书揣进怀里，回家的路上又翻了一遍。' },
+      ]
+    }
+    case 'book-named': {
+      /**
+       * 多年以后，有人说出它真正的名字。
+       *
+       * 这一步同时做两件事：给行囊里那件东西改名（旧名字留在 `formerName` 里不删），
+       * 以及**明确纠正**那条错了很多年的认知——传 `null` 而不是不传，
+       * 因为「他弄明白了」必须是一次显式的表态，不能从档位上升反推出来。
+       */
+      const truth = (world.getFlag('pedlar-book') as BookTruth) ?? '废纸'
+      const naming = nameIt(truth)
+      character.reveal('pedlar-book', naming.name, naming.note)
+      character.learn(
+        'the-pedlar-book',
+        '庙前买的那册书',
+        naming.summary,
+        '器物',
+        world.time,
+        '确信',
+        null,
+      )
+      world.record(naming.chronicle)
+      return [
+        { kind: 'narration', text: '他的目光在你怀里停了一下。' },
+        { kind: 'dialogue', text: '拿出来。' },
+        { kind: 'narration', text: '你把那册书拿了出来。这些年你翻过很多次。' },
+        { kind: 'event', text: naming.said, tone: 'deep' },
+        { kind: 'narration', text: '船过去了。' },
+        { kind: 'divider', variant: 'ink' },
+        { kind: 'narration', text: '你在渡口站了很久，手里捏着那册书。' },
+        { kind: 'narration', text: naming.aftermath, tone: 'deep' },
+      ]
     }
     case 'signs': {
       // 世界的样子落进正文。这是玩家建立自己那份世界模型的唯一材料

@@ -199,6 +199,22 @@ export const useCharacterStore = defineStore(
      * **只能往上走。** 一个人亲眼见过修士之后，不会退回「只是听说」——
      * 所以同一条见闻反复被提起时，低档位的说法不会盖掉高档位的。
      * 这一条是「炼气二字你早就听过，真正弄懂是很久以后」的机制表达。
+     *
+     * ## grasp 量的是确定程度，不是离真相多近
+     *
+     * 这两件事看着像，差别是根本性的。档位高只说明**他更笃定**，
+     * 不说明他更对。五档乘对错，十格全部合法：
+     *
+     *     确信 + 错　　最常见的那种人
+     *     亲历 + 错　　他亲手拿过、亲耳听过，仍然理解错了
+     *
+     * 所以「他变得更确信了」和「他终于弄明白了」必须是两次不同的调用，
+     * 引擎不许从档位上升反推出真相——那会让知识系统退化成
+     * 普通 RPG 的知识解锁：越查越对，最后必然全知。
+     *
+     * @param mistaken 不传 = 对错不变（他只是换了个档位）；
+     *                 传 `null` = 明确纠正，他弄明白了；
+     *                 传 `'事实' | '因果'` = 标记成错的。
      */
     function learn(
       id: string,
@@ -207,7 +223,7 @@ export const useCharacterStore = defineStore(
       category: KnowledgeCategory,
       at: GameTime,
       grasp: Grasp = '听说',
-      mistaken?: '事实' | '因果',
+      mistaken?: '事实' | '因果' | null,
     ): LearnOutcome {
       const existing = knowledge.value.find((item) => item.id === id)
 
@@ -227,16 +243,22 @@ export const useCharacterStore = defineStore(
         return 'new'
       }
 
-      // 认识一件事不会倒退。低档位的说法进不来
-      if (GRASP_ORDER.indexOf(grasp) <= GRASP_ORDER.indexOf(existing.grasp)) {
-        // 同档位补上原先没有的描述，仍算一次收获
-        if (existing.summary === null && summary !== null) {
-          knowledge.value = knowledge.value.map((item) =>
-            item.id === id ? { ...item, summary, learnedAt: { ...at } } : item,
-          )
-          return 'detailed'
-        }
-        return 'known'
+      const rank = GRASP_ORDER.indexOf(grasp)
+      const held = GRASP_ORDER.indexOf(existing.grasp)
+
+      // 认识一件事不会倒退。听人说一嘴，推翻不了亲眼见过
+      if (rank < held) return 'known'
+
+      /**
+       * 同档位。**档位没动，内容却可能整个换了**——
+       * 他确信那是账册，有人当面告诉他那是符书，他改成确信那是符书。
+       * 若把同档一律当成「已经知道了」，这次纠正就永远进不来：
+       * 玩家听见了正确答案，脑子里那条纹丝不动。
+       */
+      if (rank === held) {
+        const corrects = mistaken !== undefined
+        const rewords = summary !== null && summary !== existing.summary
+        if (!corrects && !rewords) return 'known'
       }
 
       knowledge.value = knowledge.value.map((item) =>
@@ -246,8 +268,8 @@ export const useCharacterStore = defineStore(
               grasp,
               summary: summary ?? item.summary,
               learnedAt: { ...at },
-              // 新说法若是对的，就把旧的错误标记抹掉——他终于弄明白了
-              ...(mistaken ? { mistaken } : { mistaken: undefined }),
+              // 没表态就不动。升档不等于弄明白了——人常常只是更确信自己那个错的
+              mistaken: mistaken === undefined ? item.mistaken : (mistaken ?? undefined),
             }
           : item,
       )

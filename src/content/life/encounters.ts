@@ -188,11 +188,23 @@ export const encounterScenes: SceneLibrary = {
     },
   },
 
+  /**
+   * 庙前货郎那一册书。
+   *
+   * 跟山道上那个人走的是同一套五节点，验的却是相反的一种机缘：
+   *
+   *   山道：看见人 → 判断 → 是否管 → 行动 → 当场知道结果
+   *   旧书：看见书 → 判断 → 是否在意 → 是否取得 → 揣十年 → 多年后才明白
+   *
+   * **抓住机会不等于当场获得答案。** 山道上的误读伸手就被戳破；
+   * 这一册的误读可以揣着走十年，而且越揣越笃定。
+   */
   'omen:book': {
     id: 'omen:book',
     title: '旧书',
     entry: 'open',
     nodes: {
+      // 一、注意：你看见了摊角那一叠
       open: {
         id: 'open',
         onEnter: [{ type: 'time', days: 2 }],
@@ -206,6 +218,27 @@ export const encounterScenes: SceneLibrary = {
           // 两件事本来毫不相干，是你自己把它们接上的
           { requires: [{ item: 'thin-book' }], next: 'already' },
         ],
+        next: 'notice',
+      },
+
+      // 二、理解：你把它看成什么。这一判断可能是错的，而且不会当场揭晓
+      notice: {
+        id: 'notice',
+        onEnter: [{ type: 'appraise' }],
+        blocks: [],
+        next: 'interest',
+      },
+
+      /**
+       * 三、兴趣：要不要管这件事。
+       *
+       * **这一节刻意与他读成什么无关。** 把它当废纸的人照样可能顺手买下，
+       * 看出「不该声张」的人也照样可能怕惹事走开。
+       * 引擎在这里不掷骰、不做属性判定——决定权整个交给玩家。
+       */
+      interest: {
+        id: 'interest',
+        blocks: [{ kind: 'narration', text: '货郎在招呼别的客人，没顾上你。' }],
         choices: [
           {
             id: 'buy',
@@ -215,17 +248,19 @@ export const encounterScenes: SceneLibrary = {
             effects: [
               { type: 'time', days: 1 },
               { type: 'household', standing: -1 },
-              {
-                type: 'item',
-                id: 'old-book',
-                name: '一册旧书',
-                count: 1,
-                unit: '册',
-                note: '庙前货郎那里论斤买的。上面的字你不认得。',
-              },
-              { type: 'flag', key: 'has-old-book', value: true },
+              { type: 'book', act: '买' },
             ],
             next: 'bought',
+          },
+          {
+            id: 'ask',
+            label: '问问货郎这是什么',
+            echo: '你把书翻给货郎看。',
+            effects: [
+              { type: 'time', days: 1 },
+              { type: 'book', act: '问' },
+            ],
+            next: 'asked',
           },
           {
             id: 'leaf',
@@ -234,73 +269,99 @@ export const encounterScenes: SceneLibrary = {
             effects: [
               { type: 'time', days: 1 },
               { type: 'attribute', key: 'insight', delta: 1 },
+              { type: 'book', act: '翻' },
             ],
-            next: 'left',
+            next: null,
+          },
+          {
+            id: 'away',
+            label: '不关自己的事，走开',
+            echo: '你走开了。',
+            effects: [{ type: 'book', act: '走' }],
+            next: null,
           },
         ],
       },
 
+      /**
+       * 问完之后仍然要决定买不买。
+       *
+       * 打听不该把行动机会消耗掉——他多知道了一点，但那一点未必
+       * 指向正确的方向。玩家问错了问题，得到的是一个跟这册书无关
+       * 却真实有用的答案。
+       */
+      asked: {
+        id: 'asked',
+        blocks: [],
+        choices: [
+          {
+            id: 'buy-after',
+            label: '还是买下来',
+            hint: '几文钱',
+            echo: '你把那册书买了下来。',
+            effects: [
+              { type: 'time', days: 1 },
+              { type: 'household', standing: -1 },
+              { type: 'book', act: '买' },
+            ],
+            next: 'bought',
+          },
+          {
+            id: 'drop',
+            label: '放回去',
+            echo: '你把它放回那叠旧纸里。',
+            effects: [{ type: 'book', act: '走' }],
+            next: null,
+          },
+        ],
+      },
+
+      // 四、取得
       bought: {
         id: 'bought',
-        blocks: [
-          { kind: 'narration', text: '货郎收钱的时候看了你一眼，没说什么。' },
-          { kind: 'narration', text: '回家的路上你翻开看了看。' },
-        ],
+        blocks: [],
         branches: [
           // 认得字的人看得懂「这不是普通的字」——
           // 不认字的人连这一层都不知道，那对他只是一册废纸
           { requires: [{ knowledge: 'literacy' }], next: 'literate' },
         ],
-        next: 'illiterate',
+        next: 'kept',
       },
 
-      illiterate: {
-        id: 'illiterate',
-        onEnter: [{ type: 'time', months: 1 }],
-        blocks: [
-          { kind: 'narration', text: '上面全是字。你一个也不认得。' },
-          { kind: 'narration', text: '不过纸挺好，比家里糊窗的强。' },
-          { kind: 'narration', text: '你把它塞进箱子里，压在旧衣裳底下。' },
-          { kind: 'narration', text: '过了几个月，你就不太想得起它了。', tone: 'faint' },
-        ],
-      },
-
+      /**
+       * 认字的人多走一步：他拿去问了先生，而先生也不认得。
+       *
+       * 先生那句「别到处给人看」是这一支唯一一条外部信号，
+       * 但它**不揭晓任何东西**——它只是让这件事更可疑，
+       * 而玩家会把这份可疑织进他原本那个（可能是错的）判断里。
+       */
       literate: {
         id: 'literate',
-        onEnter: [
-          { type: 'time', months: 1 },
-          { type: 'attribute', key: 'insight', delta: 3 },
-          {
-            type: 'knowledge',
-            id: 'strange-glyphs',
-            title: '认不出的字',
-            summary: '那册书上的字，笔画像字，可是拆开来看，一个也不是你学过的。',
-            category: '器物',
-          },
-        ],
+        onEnter: [{ type: 'attribute', key: 'insight', delta: 3 }],
         blocks: [
           { kind: 'narration', text: '你在私塾念过几年，认得的字不算少。' },
-          { kind: 'event', text: '可是这一册，你一个字也认不出来。' },
-          { kind: 'narration', text: '不是写得潦草。笔画是清楚的，一笔一笔都清楚。' },
-          { kind: 'narration', text: '只是拆开来看，没有一个是你学过的字。' },
           { kind: 'narration', text: '你拿去问过先生。先生看了半晌，把书还给你。' },
           { kind: 'dialogue', speaker: '周先生', text: '不认得。' },
           { kind: 'narration', text: '他又补了一句：也别到处给人看。' },
-          {
-            kind: 'narration',
-            text: '你把它收进箱子。此后每隔一阵会拿出来翻一次，还是看不懂。',
-            tone: 'faint',
-          },
         ],
+        next: 'kept',
       },
 
-      left: {
-        id: 'left',
-        blocks: [
-          { kind: 'narration', text: '纸很脆，一翻就往下掉渣。' },
-          { kind: 'narration', text: '你把它放回那叠旧纸里，走了。' },
-          { kind: 'narration', text: '几天后再去庙前，货郎已经不在了。', tone: 'faint' },
+      /**
+       * 五、多年持有。
+       *
+       * 这一节是这支机缘跟山道那一支最不一样的地方：
+       * **时间在这里不推进剧情，只加固错误。**
+       * 他每隔一阵翻一次，一次也没看懂，于是那个最初的判断
+       * 从「像是」变成「就是」——更确信，但没有更接近真相。
+       */
+      kept: {
+        id: 'kept',
+        onEnter: [
+          { type: 'time', months: 1 },
+          { type: 'book', act: '守' },
         ],
+        blocks: [{ kind: 'narration', text: '往后很多年，这册书一直在箱子底下。', tone: 'faint' }],
       },
 
       /**
