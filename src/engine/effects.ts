@@ -1,5 +1,6 @@
 import { useCharacterStore } from '@/stores/character'
 import { useHouseholdStore } from '@/stores/household'
+import { usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
 import { observerById } from '@/content/observers'
 import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
@@ -27,6 +28,7 @@ const TEXT_FIELDS = [
   'summary',
   'name',
   'note',
+  'trade',
   'self',
   'source',
   'doubt',
@@ -45,6 +47,7 @@ function localize<T extends Effect>(effect: T): T {
 type WorldStore = ReturnType<typeof useWorldStore>
 type CharacterStore = ReturnType<typeof useCharacterStore>
 type HouseholdStore = ReturnType<typeof useHouseholdStore>
+type PeopleStore = ReturnType<typeof usePeopleStore>
 
 function record(text: string, tone?: InkTone): NarrativeBlock {
   return { kind: 'record', text, ...(tone ? { tone } : {}) }
@@ -63,12 +66,17 @@ function applyOne(
   world: WorldStore,
   character: CharacterStore,
   household: HouseholdStore,
+  people: PeopleStore,
 ): NarrativeBlock | NarrativeBlock[] | null {
   switch (effect.type) {
-    case 'time':
+    case 'time': {
       // 年龄跟着时序走，不必单独加
-      world.advanceTime(effect)
+      const years = world.advanceTime(effect)
+      // 玩家在私塾念书的那几年，在外地做工的父亲也在老去。
+      // NPC 不因离开玩家视野而停止存在，就落实在这一行
+      people.live(years)
       return null
+    }
     case 'attribute':
       character.adjustAttribute(effect.key, effect.delta)
       return null
@@ -150,12 +158,39 @@ function applyOne(
       if (effect.standing !== undefined) household.shiftStanding(effect.standing)
       if (effect.debt !== undefined) household.shiftDebt(effect.debt)
       return null
-    case 'family':
-      household.setMember(effect.id, {
-        ...(effect.alive === undefined ? {} : { alive: effect.alive }),
-        ...(effect.note === undefined ? {} : { note: effect.note }),
+    case 'family': {
+      // 家人也是人。这里只是个方便写法，实际落到人口册上
+      if (effect.alive === false) people.amend(effect.id, { fate: '殁' })
+      if (effect.note !== undefined) people.meet(effect.id, effect.id, 0, effect.note)
+      return null
+    }
+    case 'person': {
+      // 他去了别处、换了差事、没了——都不是把他删掉，是改他的下落
+      people.amend(effect.id, {
+        ...(effect.place === undefined ? {} : { place: effect.place }),
+        ...(effect.trade === undefined ? {} : { trade: effect.trade }),
+        ...(effect.fate === undefined ? {} : { fate: effect.fate }),
+        ...(effect.health === undefined ? {} : { health: effect.health }),
       })
       return null
+    }
+    case 'meet': {
+      // 没写 calls 就是「已经认识的人」，只调好感，不改称呼
+      const calls = effect.calls ?? people.known[effect.id]?.calls ?? '一个人'
+      const isNew = people.meet(effect.id, calls, effect.delta ?? 0, effect.note)
+      // 「知道他叫什么」是单独一件事，值得单独报一句
+      const learned = effect.name ? people.learnName(effect.id) : false
+      if (learned) return record(`原来他叫 · ${people.callOf(effect.id)}`, 'deep')
+      return isNew ? record(`识得 · ${calls}`) : null
+    }
+    case 'recall': {
+      // 人身上的「多年以后才明白」。值得一枚回执——
+      // 玩家刚刚知道了一件早就发生过的事
+      const learned = people.recall(effect.id, effect.chapter)
+      if (!learned) return null
+      const chapter = people.personOf(effect.id)?.history.find((c) => c.id === effect.chapter)
+      return chapter ? record(`原来 · ${chapter.what}`, 'deep') : null
+    }
     case 'roll': {
       // 世界自己掷的骰子。玩家看不到这一行，也永远不会知道另一种可能是什么
       const outcome = pickWeighted(effect.among, (entry) => entry.weight)
@@ -191,12 +226,13 @@ export function applyEffects(effects?: readonly Effect[]): NarrativeBlock[] {
   const world = useWorldStore()
   const character = useCharacterStore()
   const household = useHouseholdStore()
+  const people = usePeopleStore()
 
   const receipts: NarrativeBlock[] = []
   for (const effect of effects) {
     // 先换占位符再结算：写进 store 的就该是玩家会读到的那句话，
     // 而不是一个等着被谁替换的模板
-    const receipt = applyOne(localize(effect), world, character, household)
+    const receipt = applyOne(localize(effect), world, character, household, people)
     if (Array.isArray(receipt)) receipts.push(...receipt)
     else if (receipt) receipts.push(receipt)
   }

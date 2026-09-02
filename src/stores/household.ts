@@ -4,6 +4,8 @@ import { computed, ref } from 'vue'
 import { ORIGINS, SURNAMES, type Origin } from '@/content/origins'
 import { PREFECTURES, type Prefecture } from '@/content/geography'
 import { pick, pickWeighted, randomBetween } from '@/engine/random'
+
+import { usePeopleStore } from './people'
 import type { Attributes, FamilyMember, Gender, NarrativeBlock, Trade } from '@/types/game'
 
 const STANDING_MIN = 0
@@ -72,16 +74,24 @@ export const useHouseholdStore = defineStore(
 
     const standing = ref(randomBetween(origin.standing.from, origin.standing.to))
     const debt = ref(0)
+    /**
+     * 家庭名册。只记「他是我什么人」，不记他是谁——
+     * 姓名、年岁、脾性、此刻在哪，全在人口册那边。
+     * 一个人不会因为你是他儿子就变成另一个人。
+     */
     const members = ref<FamilyMember[]>([
-      { id: 'father', relation: '父亲', alive: true, note: origin.father },
-      { id: 'mother', relation: '母亲', alive: true, note: origin.mother },
+      { person: 'father', relation: '父亲' },
+      { person: 'mother', relation: '母亲' },
     ])
 
     /** 供得起读书吗。启蒙那几年反复问到 */
     const canSchool = computed(() => standing.value >= STANDING_SCHOOLABLE && debt.value === 0)
 
     /** 家里还剩几个大人。劳力少了，孩子就得顶上 */
-    const livingParents = computed(() => members.value.filter((m) => m.alive).length)
+    const livingParents = computed(() => {
+      const people = usePeopleStore()
+      return members.value.filter((m) => people.isAlive(m.person)).length
+    })
 
     /**
      * 家中光景。人物面板只显示这一句——
@@ -122,21 +132,8 @@ export const useHouseholdStore = defineStore(
       locale.value = parts[parts.length - 1] ?? place
     }
 
-    /** 改写某位家人的境况。alive 转 false 即此人不在了 */
-    function setMember(id: string, patch: { alive?: boolean; note?: string }): void {
-      members.value = members.value.map((member) =>
-        member.id === id
-          ? {
-              ...member,
-              ...(patch.alive === undefined ? {} : { alive: patch.alive }),
-              ...(patch.note === undefined ? {} : { note: patch.note }),
-            }
-          : member,
-      )
-    }
-
     function isAlive(id: string): boolean {
-      return members.value.find((member) => member.id === id)?.alive === true
+      return usePeopleStore().isAlive(id)
     }
 
     /** 重开一世：连出身、州府一并重掷，不是把同一个人再演一遍 */
@@ -152,8 +149,8 @@ export const useHouseholdStore = defineStore(
       standing.value = randomBetween(next.standing.from, next.standing.to)
       debt.value = 0
       members.value = [
-        { id: 'father', relation: '父亲', alive: true, note: next.father },
-        { id: 'mother', relation: '母亲', alive: true, note: next.mother },
+        { person: 'father', relation: '父亲' },
+        { person: 'mother', relation: '母亲' },
       ]
     }
 
@@ -174,7 +171,6 @@ export const useHouseholdStore = defineStore(
       shiftStanding,
       shiftDebt,
       moveHome,
-      setMember,
       isAlive,
       reset,
     }

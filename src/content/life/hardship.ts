@@ -121,11 +121,14 @@ export const hardshipScenes: SceneLibrary = {
       open: {
         id: 'open',
         onEnter: [
-          {
-            type: 'family',
-            id: 'father',
-            note: '去外地做工还债。走了快两年了。',
-          },
+          /**
+           * 他没有消失，他去了邻县。
+           *
+           * 这一行是整套 NPC 系统的立场：父亲离家不是把 father 置成 dead，
+           * 是这个人换了个地方谋生。他在那儿老去、生病，
+           * 还以为自己的孩子在老家等他。玩家看不见，但世界记得。
+           */
+          { type: 'person', id: 'father', place: '邻县 · 河堤工地', trade: '修河堤的工' },
           { type: 'flag', key: 'father-away', value: true },
           /**
            * 他回不回得来，在他走出村口的那一刻就定了。
@@ -224,7 +227,7 @@ export const hardshipScenes: SceneLibrary = {
         onEnter: [
           { type: 'time', months: 9 },
           { type: 'household', standing: 6, debt: -8 },
-          { type: 'family', id: 'father', note: '从外地做工回来了。腰不太好。' },
+          { type: 'person', id: 'father', place: '{home}', trade: '{trade}，腰不太好', health: 42 },
           { type: 'flag', key: 'father-home', value: true },
           { type: 'flag', key: 'father-away', value: false },
           { type: 'chronicle', text: '父亲从外地回来了。' },
@@ -265,7 +268,9 @@ export const hardshipScenes: SceneLibrary = {
         onEnter: [
           { type: 'time', years: 1 },
           { type: 'household', standing: -7 },
-          { type: 'family', id: 'father', note: '出门做工，此后再无音信。' },
+          // 「杳」不是「殁」。他还在册子上，可能还活着——
+          // 家里既不能办丧事，也不能指望他回来
+          { type: 'person', id: 'father', fate: '杳' },
           { type: 'flag', key: 'father-missing', value: true },
           { type: 'chronicle', text: '父亲再也没有消息了。', tone: 'deep' },
         ],
@@ -295,7 +300,7 @@ export const hardshipScenes: SceneLibrary = {
         id: 'open',
         onEnter: [
           { type: 'time', months: 7 },
-          { type: 'family', id: 'father', alive: false, note: '死在外地。没有回来。' },
+          { type: 'person', id: 'father', fate: '殁' },
           { type: 'household', standing: -10 },
           { type: 'flag', key: 'father-dead', value: true },
           { type: 'chronicle', text: '父亲死在了外地。', tone: 'cinnabar' },

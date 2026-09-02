@@ -88,16 +88,97 @@ export type Gender = '男' | '女'
 /**
  * 家人。
  *
- * 人没了也不从名册里删，只是 alive 转 false——
- * 父亲死在外地那年你十四岁，这件事此后一直在你的人生里。
+ * 这里只记「他是我什么人」，不记他是谁——姓名、年岁、脾性、此刻在哪，
+ * 全在 Person 那边。一个人不会因为你是他儿子就变成另一个人。
  */
 export interface FamilyMember {
-  id: string
+  /** 指向人口册里的那个人 */
+  person: string
   /** 称谓：父、母、兄、姐 */
   relation: string
-  alive: boolean
-  /** 此人当下的境况，一句话 */
-  note: string
+}
+
+// ============================================================
+// 人
+// ============================================================
+
+/** 脾性。它决定这个人自己会怎么选，不是决定他对你多好 */
+export type Temper = '谨慎' | '温和' | '刚硬' | '精明' | '木讷' | '暴躁'
+
+/** 一个人此刻的下落 */
+export type Fate =
+  /** 在世，知道在哪 */
+  | '在'
+  /** 死了 */
+  | '殁'
+  /** 活不见人死不见尸。跟「殁」是两回事——家里不能办丧事，也不能改嫁 */
+  | '杳'
+
+/**
+ * 他这辈子发生过的一件事。
+ *
+ * `known` 是玩家知不知道，不是发生没发生。
+ * 父亲十八岁跟商队去过北方，这件事从他十八岁那年起就是真的了，
+ * 而玩家可能到十六岁才第一次听说——甚至一辈子不知道。
+ */
+export interface Chapter {
+  id: string
+  /** 他那年多大 */
+  atAge: number
+  what: string
+  known: boolean
+}
+
+/**
+ * 一个真实存在的人。
+ *
+ * 不是事件触发器，也不是「父亲」这个位置上插着的一块牌子。
+ * 他有名有姓、有年纪、有脾气，有自己的去处——
+ * **而且玩家不在场的时候他照样活着**。
+ *
+ * 父亲离家做工，不是把 `father` 置成 `dead` 就完了：
+ * 他人在青州某县，是个商队伙计，穷，还以为自己的孩子在老家等他。
+ * 几年后玩家在茶摊边看见一个中年男人跟伙计争价钱——
+ * 系统不会跳出「【发现父亲】」，玩家得自己认出来，也可能认不出来。
+ */
+export interface Person {
+  id: string
+  surname: string
+  given: string
+  gender: Gender
+  /** 生于世界纪年第几年。年龄由它和当下时序算出来，不单独存 */
+  bornYear: number
+  /** 营生 */
+  trade: string
+  temper: Temper
+  /** 身子骨，隐藏刻度。跟玩家的属性一样绝不上界面 */
+  health: number
+  /** 此刻人在哪。玩家不在场也照样会变 */
+  place: string
+  fate: Fate
+  /** 他这辈子的事。玩家只看得见 known 的那些 */
+  history: Chapter[]
+}
+
+/**
+ * 玩家认识的这个人。
+ *
+ * 世界事实 ≠ 玩家认知，在这里第二次落地：
+ * Person 是他本人，Acquaintance 是玩家眼里的他。
+ *
+ * 所以「知道他叫什么」是一个独立的开关。渡口那个青衫人有名有姓，
+ * 玩家却只会叫他「渡口的青衫人」——直到某天有人当着他的面喊出那个名字。
+ */
+export interface Acquaintance {
+  person: string
+  /** 玩家此刻怎么称呼他：「爹」「周先生」「渡口的青衫人」 */
+  calls: string
+  /** 知道他姓名吗。不知道就一直用 calls */
+  knowsName: boolean
+  /** -100 仇怨，100 生死之交。只用于判定 */
+  affinity: number
+  /** 玩家对这个人的一句话印象 */
+  note?: string
 }
 
 /**
@@ -389,6 +470,41 @@ export type Effect =
   | { type: 'household'; standing?: number; debt?: number }
   /** 家人境况改写。alive 转 false 即此人不在了 */
   | { type: 'family'; id: string; alive?: boolean; note?: string }
+  /**
+   * 改写一个人的下落。
+   *
+   * 跟 family 的区别：family 说的是「我家那位怎么样了」，
+   * person 说的是「这个人现在在哪、干什么、还在不在」——
+   * 后者对世界上任何一个人都成立，跟他是不是你爹无关。
+   *
+   * 父亲离家做工不是把他删掉，是 `{ place: '青州某县', trade: '商队伙计' }`。
+   * 他还在那儿，只是不在你眼前。
+   */
+  | {
+      type: 'person'
+      id: string
+      place?: string
+      trade?: string
+      fate?: Fate
+      health?: number
+    }
+  /**
+   * 玩家认识了一个人，或者跟已经认识的人又亲近／疏远了一点。
+   *
+   * `calls` 是玩家此刻怎么称呼他——「渡口的青衫人」而不是他的名字。
+   * 只在头一次遇见时需要写；对已经认识的人调好感，省掉它就行。
+   *
+   * 名字要另外由 `name: true` 才算知道，因为「认识一个人」和
+   * 「知道他叫什么」本来就是两回事：你可以跟人打十年交道只知道他叫老周。
+   */
+  | { type: 'meet'; id: string; calls?: string; delta?: number; note?: string; name?: boolean }
+  /**
+   * 玩家得知了某人过去的一件事。
+   *
+   * 「原来爹年轻时去过北方」——那件事从他十八岁那年起就是真的，
+   * 玩家今天才知道。这是人身上的「多年以后才明白」。
+   */
+  | { type: 'recall'; id: string; chapter: string }
   /**
    * 世界在幕后掷一次骰，把结果写进旗标。
    *

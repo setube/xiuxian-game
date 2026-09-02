@@ -14,9 +14,13 @@ import type {
   KnowledgeEntry,
   Realm,
   Relationship,
+  Trade,
 } from '@/types/game'
 
+import { makeParents } from '@/content/parents'
+
 import { originAttributes, rollName, useHouseholdStore } from './household'
+import { usePeopleStore } from './people'
 import { useWorldStore } from './world'
 
 const ATTRIBUTE_MIN = 0
@@ -69,6 +73,31 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }
 
+/**
+ * 出生：先造父母，再给自己取名。
+ *
+ * 这个顺序是这套系统的立场——**父母不是为了玩家而存在的两块牌子**。
+ * 他们各有姓名、年岁、脾性，在玩家出生前就已经活了二十几年，
+ * 而且那些年发生的事都是真的，只是玩家一件也不知道。
+ *
+ * 玩家随父姓：父亲叫沈怀山，所以你姓沈。
+ *
+ * @returns 玩家的姓名
+ */
+function bornInto(trade: Trade, home: string): string {
+  const people = usePeopleStore()
+  const full = rollName(trade)
+  const surname = full.slice(0, 1)
+  const parents = makeParents(trade, surname, home)
+  people.enroll(parents.father)
+  people.enroll(parents.mother)
+  // 一出生就认识爹娘，但那时你还不知道他们叫什么——
+  // 「爹」是称呼，「沈怀山」是名字，那是两回事
+  people.meet('father', '爹', 60)
+  people.meet('mother', '娘', 65)
+  return full
+}
+
 /** learn 的结果。界面据此决定要不要报一句「得知 · ×××」 */
 export type LearnOutcome = 'new' | 'detailed' | 'known'
 
@@ -78,7 +107,14 @@ export const useCharacterStore = defineStore(
     const household = useHouseholdStore()
     const world = useWorldStore()
 
-    const name = ref(rollName(household.trade))
+    /**
+     * 姓名与父母，一并定下。
+     *
+     * 顺序是有意的：**先有父母，才有你**。
+     * 父亲叫沈怀山，所以你姓沈——不是先掷出一个「沈」，
+     * 再倒推出一个姓沈的父亲。
+     */
+    const name = ref(bornInto(household.trade, household.home))
     const identity = ref(INITIAL_IDENTITY)
     const realm = ref<Realm>(INITIAL_REALM)
     const attributes = ref<Attributes>(rollAttributes())
@@ -260,7 +296,8 @@ export const useCharacterStore = defineStore(
 
     /** 重开一世：家世已由 household 先行重掷，这里按新出身取名、定身子骨。 */
     function reset(): void {
-      name.value = rollName(household.trade)
+      usePeopleStore().reset()
+      name.value = bornInto(household.trade, household.home)
       identity.value = INITIAL_IDENTITY
       realm.value = INITIAL_REALM
       attributes.value = rollAttributes()
