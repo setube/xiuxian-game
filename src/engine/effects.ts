@@ -8,6 +8,15 @@ import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 import { toChineseNumber } from './describe'
 import { fillString } from './interpolate'
 import { ask } from './inquire'
+import {
+  glance,
+  recordEncounter,
+  resolve,
+  rollTruth,
+  truthToReading,
+  type Reading,
+  type WoundedTruth,
+} from './wounded'
 import { observe } from './observe'
 import { noticeSigns, signBlocks } from './perceive'
 import { pickWeighted } from './random'
@@ -215,6 +224,41 @@ function applyOne(
         )
       }
       return reply.blocks
+    }
+    case 'glance': {
+      /**
+       * 他看了片刻，心里有了个判断。
+       *
+       * 判断写进旗标，**真相也写进旗标，两个分开存**——
+       * 世界记着他是修士，玩家记着那是个醉汉。
+       * 多年以后才可能有一次「原来那天遇见的是修士」；
+       * 而如果他一辈子没走过去，这一句就永远不会出现。
+       */
+      const truth = rollTruth()
+      const seen = glance(truth)
+      recordEncounter(seen, truth)
+      return [
+        { kind: 'narration', text: '你看了片刻。' },
+        { kind: 'narration', text: seen.says, tone: 'deep' },
+      ]
+    }
+    case 'encounter': {
+      // 世界回应这个动作。玩家看到的只有最后发生了什么
+      const truth = (world.getFlag('wounded-man') as WoundedTruth) ?? '猎户'
+      const reading = (world.getFlag('wounded-reading') as Reading) ?? '伤者'
+      const outcome = resolve(truth, effect.approach, reading)
+      world.setFlag('wounded-outcome', outcome.id)
+      // 弄明白那人是谁了，认知才升档；没弄明白的，他记住的仍是自己那个判断
+      character.learn(
+        'the-man-on-the-road',
+        '山道上那个人',
+        outcome.summary,
+        '人物',
+        world.time,
+        outcome.learnedTruth ? '亲历' : '猜想',
+        outcome.learnedTruth ? undefined : reading === truthToReading(truth) ? undefined : '事实',
+      )
+      return outcome.blocks
     }
     case 'signs': {
       // 世界的样子落进正文。这是玩家建立自己那份世界模型的唯一材料

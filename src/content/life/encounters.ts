@@ -68,292 +68,121 @@ export const encounterScenes: SceneLibrary = {
         ],
       },
 
+      /**
+       * ② 理解。
+       *
+       * 从前这里直接跳选项，等于「看见 = 知道那是什么」。
+       * 现在中间插一层：他看了片刻，心里有了个判断，
+       * 而**那个判断可能是错的**——错了也照样往下走。
+       *
+       * 判断从他自己的见识长出来，不是随机发错：
+       * 没听说过修士的人不会往「异人」上想，
+       * 见过血的人一眼看出这是伤不是醉。
+       */
       notice: {
         id: 'notice',
+        onEnter: [{ type: 'glance' }],
         blocks: [
           { kind: 'event', text: '路旁的草丛里有个人。' },
           { kind: 'narration', text: '他侧躺着，身上有血。看不清脸，也看不出是死是活。' },
           { kind: 'narration', text: '四下无人。风把草吹得哗哗响。' },
         ],
+        next: 'interest',
+      },
+
+      /**
+       * ③ 兴趣 + ④ 行动。
+       *
+       * 「兴趣」刻意不做成属性判定——那等于系统替玩家决定这条命值不值得管。
+       * 它就是这几个选项本身：**看见了，理解了，然后你自己决定要不要付代价。**
+       *
+       * 三条路的代价各不相同：扶最快也最险，叫人最稳但要走大半天，
+       * 走近看看什么也不用付，但也多半什么也得不到。
+       */
+      interest: {
+        id: 'interest',
+        blocks: [],
         choices: [
           {
-            id: 'approach',
-            label: '走过去看看',
+            id: 'lift',
+            label: '走过去，把他扶起来',
             critical: true,
-            hint: '不知道他是什么人',
-            echo: '你拨开草丛，走了过去。',
-            effects: [{ type: 'time', days: 1 }],
-            // 这一步只有一个选项能选，但结果早已掷定，从这里分头走
-            next: 'sorted',
+            hint: '你不知道会碰到什么',
+            echo: '你拨开草丛，蹲了下去。',
+            effects: [
+              { type: 'time', days: 2 },
+              { type: 'encounter', approach: '扶' },
+            ],
+            next: 'after',
           },
           {
-            id: 'watch',
-            label: '远远看一会儿，不过去',
-            echo: '你站在路上，看了很久。',
+            id: 'inspect',
+            label: '走近看看，但不碰他',
+            echo: '你走近了几步。',
             effects: [
               { type: 'time', days: 1 },
               { type: 'attribute', key: 'insight', delta: 2 },
-              { type: 'flag', key: 'saw-wounded-man', value: true },
+              { type: 'encounter', approach: '看' },
             ],
-            next: 'watched',
+            next: 'after',
           },
           {
-            id: 'flee',
-            label: '掉头就走',
-            echo: '你转身，快步走了。',
+            id: 'fetch',
+            label: '跑回村里叫人',
+            hint: '一来一回要大半天',
+            echo: '你转身往村里跑。',
+            effects: [
+              { type: 'time', days: 2 },
+              { type: 'attribute', key: 'will', delta: 2 },
+              { type: 'encounter', approach: '叫人' },
+            ],
+            next: 'after',
+          },
+          {
+            /**
+             * 不管。
+             *
+             * 这一条永远留着，而且**它不是「错误选项」**。
+             * 一个人看见路边躺着个不认识的人，转身走开，
+             * 是这世上最寻常的事。
+             *
+             * 走开的人不会知道那是谁——世界记着，他不知道，
+             * 而且一辈子不会知道。
+             */
+            id: 'leave',
+            label: '不关自己的事，接着赶路',
+            echo: '你没有过去。',
             effects: [
               { type: 'time', days: 1 },
-              { type: 'attribute', key: 'fortune', delta: 1 },
-              { type: 'flag', key: 'fled-wounded-man', value: true },
+              { type: 'flag', key: 'left-wounded-man', value: true },
             ],
-            next: 'fled',
+            next: 'walked-on',
           },
         ],
       },
 
-      sorted: {
-        id: 'sorted',
-        blocks: [{ kind: 'narration', text: '你蹲下去，伸手探了探他的鼻息。' }],
-        branches: [
-          { requires: [{ flag: { key: 'wounded-man', equals: '死人' } }], next: 'dead' },
-          { requires: [{ flag: { key: 'wounded-man', equals: '猎户' } }], next: 'hunter' },
-          { requires: [{ flag: { key: 'wounded-man', equals: '武人' } }], next: 'fighter' },
-          { requires: [{ flag: { key: 'wounded-man', equals: '修士' } }], next: 'adept' },
-          { requires: [{ flag: { key: 'wounded-man', equals: '弟子' } }], next: 'disciple' },
-        ],
-        next: 'wicked',
-      },
-
-      dead: {
-        id: 'dead',
-        onEnter: [
-          { type: 'time', days: 2 },
-          { type: 'attribute', key: 'will', delta: 4 },
-          { type: 'chronicle', text: '你在山道上撞见一具尸首。没人认得他。', tone: 'deep' },
-        ],
-        blocks: [
-          { kind: 'narration', text: '没有气了。手是凉的。' },
-          { kind: 'event', text: '这是个死人。' },
-          { kind: 'narration', text: '你跑回村里叫人。里正带着几个汉子来看，说是个外乡人。' },
-          { kind: 'narration', text: '没人认得他。埋在山脚下，坟很小。' },
-          { kind: 'narration', text: '那几天你夜里睡不好。', tone: 'faint' },
-        ],
-      },
-
-      hunter: {
-        id: 'hunter',
-        onEnter: [
-          { type: 'time', days: 3 },
-          { type: 'attribute', key: 'body', delta: 3 },
-          { type: 'attribute', key: 'will', delta: 3 },
-          {
-            type: 'relation',
-            id: 'saved-hunter',
-            name: '山那边的猎户',
-            delta: 30,
-            note: '你在山道上救过他一回。',
-          },
-          { type: 'flag', key: 'saved-a-man', value: true },
-          { type: 'chronicle', text: '你在山道上救了一个人。他是山那边的猎户。' },
-        ],
-        blocks: [
-          { kind: 'narration', text: '还有气。你把他翻过来，是个中年汉子，腿上一道大口子。' },
-          { kind: 'dialogue', text: '……野猪。' },
-          { kind: 'narration', text: '他只说得出这两个字。' },
-          { kind: 'narration', text: '你把他半拖半扶弄下了山，送到最近的村子。' },
-          { kind: 'divider', variant: 'dots' },
-          { kind: 'narration', text: '半个月后，那人拄着棍子找上门来，提了一只野兔。' },
-          { kind: 'dialogue', text: '往后进山有事，到山那边打听我。' },
-        ],
-      },
-
-      fighter: {
-        id: 'fighter',
-        onEnter: [
-          { type: 'time', days: 4 },
-          { type: 'attribute', key: 'body', delta: 4 },
-          { type: 'attribute', key: 'will', delta: 4 },
-          { type: 'flag', key: 'saved-a-man', value: true },
-          {
-            type: 'knowledge',
-            id: 'breathing',
-            title: '一个呼吸的法子',
-            summary: '走山路时用鼻子换气，脚下踩着数。他说走一天不喘。你试过，好像是有用的。',
-            category: '修行',
-          },
-          {
-            type: 'aspect',
-            key: 'body',
-            self: '你走远路不容易累。有个人教过你一个换气的法子。',
-          },
-          { type: 'chronicle', text: '你救的那个人教了你一个呼吸的法子。', tone: 'deep' },
-        ],
-        blocks: [
-          { kind: 'narration', text: '还有气。他睁了一下眼，又闭上了。' },
-          { kind: 'narration', text: '你把他背到山下的破庙里，找了些水。' },
-          { kind: 'narration', text: '他在庙里躺了三天。腰上一直挎着刀，睡着也没解下来。' },
-          { kind: 'narration', text: '第四天早上他能坐起来了。' },
-          { kind: 'dialogue', text: '我没有钱谢你。' },
-          { kind: 'narration', text: '他想了想，让你把手伸出来，按在自己肋下。' },
-          { kind: 'dialogue', text: '走山路的时候这样喘气，脚下数着数。走一天不喘。' },
-          { kind: 'narration', text: '他教了你两遍，第二天就走了。' },
-          { kind: 'narration', text: '你不知道他是谁，也没有问。', tone: 'faint' },
-        ],
-      },
-
-      adept: {
-        id: 'adept',
-        onEnter: [
-          { type: 'time', days: 2 },
-          { type: 'attribute', key: 'fortune', delta: 4 },
-          { type: 'attribute', key: 'will', delta: 2 },
-          { type: 'flag', key: 'met-adept', value: true },
-          // 跟货郎摊上那册不是同一件东西，玩家却分不出来——
-          // 两本都看不懂，也就都只是「一册书」
-          {
-            type: 'item',
-            id: 'thin-book',
-            name: '一册薄书',
-            count: 1,
-            unit: '册',
-            note: '山道上那个人塞给你的。纸很薄，字歪歪扭扭，你一个也认不出。',
-          },
-          // 只知其名不知其详：他说了一句话，你连那句话是什么意思都不知道
-          {
-            type: 'knowledge',
-            id: 'that-sentence',
-            title: '他说的那句话',
-            summary: null,
-            category: '修行',
-          },
-          {
-            type: 'chronicle',
-            text: '山道上那个人给了你一册书，说了一句你听不懂的话。',
-            tone: 'cinnabar',
-          },
-        ],
-        blocks: [
-          { kind: 'narration', text: '你的手刚碰到他，他就睁开了眼。' },
-          { kind: 'event', text: '他的眼睛很亮。伤成那样，眼睛还是亮的。', tone: 'cinnabar' },
-          { kind: 'narration', text: '他看了你很久，久到你想跑。' },
-          { kind: 'narration', text: '然后他从怀里摸出一册薄薄的书，塞进你手里。' },
-          { kind: 'dialogue', text: '……别给人看见。' },
-          { kind: 'narration', text: '后面还有一句，很短，你没听懂。不是本地话，也不像官话。' },
-          { kind: 'narration', text: '你眨了一下眼。' },
-          { kind: 'event', text: '草丛里没有人了。', tone: 'cinnabar' },
-          { kind: 'narration', text: '血还在草叶上。你在原地站了很久，然后跑下了山。' },
-          {
-            kind: 'narration',
-            text: '那本书你翻开过一次，一个字也不认得。回家以后压在了枕头底下。',
-            tone: 'faint',
-          },
-        ],
-      },
-
-      disciple: {
-        id: 'disciple',
-        onEnter: [
-          { type: 'time', days: 5 },
-          { type: 'attribute', key: 'fortune', delta: 3 },
-          { type: 'flag', key: 'saved-a-man', value: true },
-          { type: 'flag', key: 'met-sect-people', value: true },
-          {
-            type: 'item',
-            id: 'silver',
-            name: '碎银子',
-            count: 2,
-            unit: '块',
-            note: '来接人的那两个人给的。你从没见过这么多钱。',
-          },
-          // 只听过这个名字。玩家不知道玄清是什么，游戏也不告诉他
-          {
-            type: 'knowledge',
-            id: 'xuanqing',
-            title: '玄清',
-            summary: null,
-            category: '人物',
-          },
-          { type: 'chronicle', text: '你救的那个人，被两个穿一样衣服的人接走了。', tone: 'deep' },
-        ],
-        blocks: [
-          { kind: 'narration', text: '还有气。是个年轻人，比你大不了几岁，衣裳很干净。' },
-          { kind: 'narration', text: '你把他弄到路边的草棚里，守了一夜。' },
-          { kind: 'divider', variant: 'dots' },
-          { kind: 'narration', text: '第二天来了两个人，走路很快，穿的衣裳跟他一样。' },
-          { kind: 'narration', text: '他们看了你一眼，没多问。其中一个丢下两块碎银子。' },
-          { kind: 'dialogue', text: '多谢。' },
-          { kind: 'narration', text: '扶人走的时候，你听见其中一个说了两个字：玄清。' },
-          { kind: 'narration', text: '你不知道那是人名、地名，还是别的什么。', tone: 'faint' },
-        ],
-      },
-
-      wicked: {
-        id: 'wicked',
-        onEnter: [
-          { type: 'time', days: 20 },
-          { type: 'attribute', key: 'body', delta: -6 },
-          { type: 'attribute', key: 'will', delta: 8 },
-          { type: 'attribute', key: 'fortune', delta: -4 },
-          { type: 'flag', key: 'touched-by-wicked', value: true },
-          {
-            type: 'aspect',
-            key: 'body',
-            self: '你左腕上有一圈疤，五个指头的形状。它冬天会疼。',
-          },
-          {
-            type: 'knowledge',
-            id: 'the-cold-hand',
-            title: '那只手',
-            summary: '山道上那个人抓了你一下。手是凉的，凉得不像人的手。你到现在也没想明白。',
-            category: '人物',
-          },
-          {
-            type: 'chronicle',
-            text: '山道上那个人抓住了你的手腕。你活着回来了。',
-            tone: 'cinnabar',
-          },
-        ],
-        blocks: [
-          { kind: 'narration', text: '你的手指刚碰到他的鼻子。' },
-          { kind: 'event', text: '他抓住了你的手腕。', tone: 'cinnabar' },
-          { kind: 'narration', text: '那只手很凉，凉得不像是人的手。' },
-          { kind: 'narration', text: '他抬起头。你看见他在笑。' },
-          { kind: 'narration', text: '你没有喊出声。你只记得自己在往后拖，鞋跟在土里划出两道沟。' },
-          { kind: 'narration', text: '不知道过了多久，那只手松了。' },
-          { kind: 'narration', text: '他说了一句什么，你没听清。然后他闭上眼，不动了。' },
-          { kind: 'divider', variant: 'ink' },
-          { kind: 'narration', text: '你在床上躺了将近一个月，一直在发热。' },
-          { kind: 'narration', text: '{dam}问你在山上遇见了什么，你说没有。' },
-          {
-            kind: 'narration',
-            text: '左腕上留了一圈疤，五个指头的形状。天冷的时候会疼。',
-            tone: 'faint',
-          },
-        ],
-      },
-
-      watched: {
-        id: 'watched',
+      /** ⑤ 世界回应之后。他做了什么、得到什么，都已经在正文里了 */
+      after: {
+        id: 'after',
         onEnter: [{ type: 'time', days: 1 }],
         blocks: [
-          { kind: 'narration', text: '他一动不动。你也一动不动。' },
-          { kind: 'narration', text: '太阳又往下落了一截。你终究没有走过去。' },
-          { kind: 'narration', text: '天黑前你到了邻村，跟人提了一句。没人当回事。' },
           { kind: 'divider', variant: 'dots' },
-          { kind: 'narration', text: '第二天回程时你特意看了那一段路。' },
-          { kind: 'narration', text: '草丛压平了一片，人不在了。' },
-          { kind: 'narration', text: '此后很多年，你偶尔还会想起这件事。', tone: 'faint' },
+          { kind: 'narration', text: '你接着赶路。天黑前到了邻村。', tone: 'faint' },
         ],
       },
 
-      fled: {
-        id: 'fled',
+      'walked-on': {
+        id: 'walked-on',
         onEnter: [{ type: 'time', days: 1 }],
         blocks: [
-          { kind: 'narration', text: '你走出去很远才敢回头。' },
-          { kind: 'narration', text: '路上什么也没有。草长得很高，看不见那个地方了。' },
-          { kind: 'narration', text: '你没有跟任何人提起。' },
-          { kind: 'narration', text: '这件事后来你几乎忘了。几乎。', tone: 'faint' },
+          { kind: 'narration', text: '你贴着路的另一边走过去，没有回头。' },
+          { kind: 'narration', text: '天黑前到了邻村，事情办完，第二天就回去了。' },
+          { kind: 'narration', text: '回程时你特意看了那一段路。草丛压平了一片，人不在了。' },
+          {
+            kind: 'narration',
+            text: '此后很多年，你偶尔还会想起这件事。',
+            tone: 'faint',
+          },
         ],
       },
     },

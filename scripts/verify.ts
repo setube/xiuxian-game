@@ -123,3 +123,123 @@ if (leaks.size === 0) {
   )
   process.exitCode = 1
 }
+
+// ============================================================
+// 第二道：场景跳转不许有断头路
+// ============================================================
+/**
+ * 节点 id 是字符串，写错一个字 `vue-tsc` 一声不吭。
+ *
+ * 而它错了也不一定当场炸——`omen:wounded` 那种带 `branches` 的节点，
+ * 只有掷到那一支才走得到。**一条打错的跳转可以在库里躺很久，
+ * 直到某个玩家刚好走到那里，人生停在半截。**
+ *
+ * 所以这一条不做随机跑，做静态穷举：把每个 Scene 的每个 next / branches / choices
+ * 都拿出来，看指向的地方到底存不存在。
+ */
+console.log('=== 场景跳转验收（静态穷举全库）===\n')
+{
+  const dangling: { from: string; to: string; via: string }[] = []
+  let edges = 0
+
+  /** `场景id#节点id`：省略 `#节点id` 即从该卷入口进 */
+  function resolveTarget(target: string, ownScene: string): boolean {
+    if (target.includes('#')) {
+      const [sceneId, nodeId] = target.split('#')
+      const scene = sceneId ? lifeScenes[sceneId] : undefined
+      return Boolean(scene && nodeId && scene.nodes[nodeId])
+    }
+    // 不带 # 的：先当本卷节点，再当别卷入口
+    const own = lifeScenes[ownScene]
+    if (own?.nodes[target]) return true
+    return Boolean(lifeScenes[target])
+  }
+
+  for (const [sceneId, scene] of Object.entries(lifeScenes)) {
+    if (!scene.nodes[scene.entry]) {
+      dangling.push({ from: sceneId, to: scene.entry, via: 'entry' })
+    }
+    for (const [nodeId, node] of Object.entries(scene.nodes)) {
+      const where = `${sceneId}#${nodeId}`
+      if (node.next) {
+        edges += 1
+        if (!resolveTarget(node.next, sceneId)) {
+          dangling.push({ from: where, to: node.next, via: 'next' })
+        }
+      }
+      for (const branch of node.branches ?? []) {
+        edges += 1
+        if (!resolveTarget(branch.next, sceneId)) {
+          dangling.push({ from: where, to: branch.next, via: 'branches' })
+        }
+      }
+      for (const choice of node.choices ?? []) {
+        if (choice.next === null) continue
+        edges += 1
+        if (!resolveTarget(choice.next, sceneId)) {
+          dangling.push({ from: where, to: choice.next, via: `choice:${choice.id}` })
+        }
+      }
+    }
+  }
+
+  const scenes = Object.keys(lifeScenes).length
+  if (dangling.length === 0) {
+    console.log(`  ${scenes} 卷、${edges} 条跳转，没有断头路。\n`)
+  } else {
+    console.log(`  ✗ ${dangling.length} 条跳转指向不存在的地方：\n`)
+    for (const edge of dangling) {
+      console.log(`    ${edge.from}　—[${edge.via}]→　${edge.to}`)
+    }
+    console.log('\n  玩家走到这里，人生会停在半截。\n')
+    process.exitCode = 1
+  }
+}
+
+// ============================================================
+// 第三道：库里不许躺着走不到的节点
+// ============================================================
+/**
+ * 断头路的反面。
+ *
+ * 改剧本时最常留下的垃圾不是打错的跳转，是**没人再指向的旧节点**——
+ * 比如 `omen:wounded` 从「真相分流器 + 六个既定结局」改成五节点之后，
+ * 那七个节点如果忘了删，会一直躺在库里：编译得过，跑不到，
+ * 而下一个人读这份剧本时会以为它还在用。
+ */
+console.log('=== 孤儿节点验收 ===\n')
+{
+  const orphans: string[] = []
+  let nodes = 0
+
+  for (const [sceneId, scene] of Object.entries(lifeScenes)) {
+    const reachable = new Set<string>([scene.entry])
+    /** 只收本卷内的落点：跨卷跳转由第二道保证目标存在 */
+    const mark = (target: string): void => {
+      const [head, tail] = target.split('#')
+      if (tail) {
+        if (head === sceneId) reachable.add(tail)
+      } else if (head) {
+        reachable.add(head)
+      }
+    }
+    for (const node of Object.values(scene.nodes)) {
+      if (node.next) mark(node.next)
+      for (const branch of node.branches ?? []) mark(branch.next)
+      for (const choice of node.choices ?? []) if (choice.next) mark(choice.next)
+    }
+    for (const nodeId of Object.keys(scene.nodes)) {
+      nodes += 1
+      if (!reachable.has(nodeId)) orphans.push(`${sceneId}#${nodeId}`)
+    }
+  }
+
+  if (orphans.length === 0) {
+    console.log(`  ${nodes} 个节点，每一个都走得到。\n`)
+  } else {
+    console.log(`  ✗ ${orphans.length} 个节点没人指向：\n`)
+    for (const id of orphans) console.log(`    ${id}`)
+    console.log('\n  它们要么是改剧本时忘了删的，要么是该接上却漏接了。\n')
+    process.exitCode = 1
+  }
+}
