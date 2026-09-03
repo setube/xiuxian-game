@@ -58,12 +58,17 @@
  * 推得越多，门禁就越要懂剧情；再往下加几道，这支脚本会长成半个编辑器。
  *
  * 第七道问的是另一件事：**目录跟内容对不对得上**。
- * `chapters.ts` 里那三格（`called` / `to` / `age`）是人手写的意图，
+ * `chapters.ts` 里那五格（`called` / `to` / `age` / `purpose` / `marks`）是人手写的意图，
  * 不是从数据摘出来的。所以它能红——推出来的摘要永远不会红，
  * 改了实现它跟着变，什么也证明不了。
  *
  * 顺带把前几道的活也省了：从前「这一卷有没有入边」要把年表、日常、
  * 收尾、跨卷跳转全扫一遍才答得上来，现在目录里就写着。
+ *
+ * 五格里 `purpose` 是唯一一格机器读不懂的——它写给几年以后：
+ * 那时内容有几百件，每一件单看都合理，而「这一卷当初是干什么的」
+ * 只剩它能回答。`marks` 是那句话在数据里的影子，
+ * **能验的那一半替不能验的那一半站着岗**。
  *
  * 跑法：npx vite-node scripts/verify.ts
  * 失败会以非零码退出，可以直接挂进 CI。
@@ -82,7 +87,7 @@ import { MAX_EVENT_CHAIN, useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useNarrativeStore } from '../src/stores/narrative'
 import { usePeopleStore } from '../src/stores/people'
-import type { ChapterCall } from '../src/types/chapter'
+import type { Chapter, ChapterCall } from '../src/types/chapter'
 import type { Bond, Condition, Effect } from '../src/types/game'
 
 const RUNS = 300
@@ -809,9 +814,14 @@ console.log('=== 占位内容验收（成年那一卷还走不到吗）===\n')
  *     跨章的边都写在目录里　偷偷多接一条，或者删了一条却忘了删声明
  *     事件窗口不越出章界　　把某件事的年龄往外挪一岁，一整章就漂到人生另一段上去
  *     每章都叫得出来　　　　写好了没接入口，或者接了却没在目录上认领
+ *     说了要留下的还留着　　这一章还在干它当初存在的那件事吗
  *
  * 前三条各自守着一种**静默失败**——出事的时候没有任何东西会报错，
  * 只是玩家读到的东西悄悄变了。第四条守的是相反的方向：内容写了却没人读到。
+ *
+ * 第五条守的是最慢的那一种坏法：一章被改了十次，每次都合理，
+ * 十次之后它已经不干当初那件事了，而没有任何一次改动看起来像个错误。
+ * `purpose` 那句话没法验，`marks` 能验——**能验的那一半替不能验的那一半站着岗**。
  *
  * ## 断言力来自「手写」两个字
  *
@@ -920,6 +930,33 @@ console.log('=== 章节拓扑验收（目录跟内容对得上吗）===\n')
       chapter.called.length === 0 && !CHAPTERS.some((other) => other.to.includes(chapter.id)),
   ).map((chapter) => chapter.id)
 
+  /** 一章实际落下的效果类型 */
+  const marksOf = (chapter: Chapter): Set<string> => {
+    const found = new Set<string>()
+    for (const scene of Object.values(chapter.scenes)) {
+      for (const node of Object.values(scene.nodes)) {
+        for (const effect of node.onEnter ?? []) found.add(effect.type)
+        for (const choice of node.choices ?? []) {
+          for (const effect of choice.effects ?? []) found.add(effect.type)
+        }
+      }
+    }
+    return found
+  }
+
+  /** 说了要留下、实际却一处也没有的痕迹 */
+  const unkept: string[] = []
+  /** 说不出自己为什么存在的章 */
+  const mute: string[] = []
+  for (const chapter of CHAPTERS) {
+    if (chapter.purpose.length === 0) mute.push(chapter.id)
+    const real = marksOf(chapter)
+    for (const mark of chapter.marks) {
+      if (!real.has(mark)) unkept.push(`${chapter.id}　说要留下 ${mark}，这一章里一处也没落`)
+    }
+  }
+  const markCount = CHAPTERS.reduce((sum, chapter) => sum + chapter.marks.length, 0)
+
   const countOf = (call: ChapterCall): number =>
     CHAPTERS.filter((chapter) => chapter.called.includes(call)).length
 
@@ -942,11 +979,15 @@ console.log('=== 章节拓扑验收（目录跟内容对得上吗）===\n')
         `每章都叫得出来，叫法也跟目录一致：年表 ${countOf('年表')} 章，` +
         `日常 ${countOf('日常')} 章，收尾 ${countOf('收尾')} 章`,
     },
+    {
+      holds: unkept.length === 0 && mute.length === 0,
+      text: `每章都说得出自己为什么存在，说了要留下的 ${markCount} 处痕迹也都还在`,
+    },
   ]
 
   const broken = claims.filter((claim) => !claim.holds)
   if (broken.length === 0) {
-    console.log(`  ${CHAPTERS.length} 章的目录跟内容对得上，四项都在：\n`)
+    console.log(`  ${CHAPTERS.length} 章的目录跟内容对得上，五项都在：\n`)
     for (const claim of claims) console.log(`    · ${claim.text}`)
     console.log('')
   } else {
@@ -966,6 +1007,8 @@ console.log('=== 章节拓扑验收（目录跟内容对得上吗）===\n')
     dump('窗口跑出章界的事件：', strays)
     dump('叫法跟目录对不上的章：', miscalled)
     dump('一种入口都没有的章：', orphans)
+    dump('说了却没兑现的痕迹：', unkept)
+    dump('说不出自己为什么存在的章：', mute)
     console.log(
       '\n  目录是手写的，内容是长出来的，两者分岔就说明有一次改动只落了一半。' +
         '\n  要么把改动补齐，要么去 chapters.ts 把新的意图写下来——' +

@@ -48,6 +48,8 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['年表'],
     to: [],
     age: [0, 0],
+    purpose: ['不选出身，出身选你——睁开眼那一刻家里正在做的事，就是开局'],
+    marks: ['identity'],
   },
 
   /** 三到六岁。世界只有院子那么大 */
@@ -58,6 +60,8 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['年表'],
     to: [],
     age: [3, 6],
+    purpose: ['头一回知道自家过得好不好，而这件事此后一直在起作用'],
+    marks: ['household'],
   },
 
   /** 私塾。念不念得成，多半不由你 */
@@ -68,6 +72,11 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['年表'],
     to: [],
     age: [7, 13],
+    purpose: [
+      '识字这道门多半不由自己推开——供得起、咬牙供、供不起，是三种人生',
+      '学识那一面从这里开始分岔',
+    ],
+    marks: ['knowledge', 'aspect'],
   },
 
   /** 欠债、出门做工、死在外地。这一册里最长的一根链条 */
@@ -78,6 +87,11 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['年表'],
     to: [],
     age: [7, 15],
+    purpose: [
+      '一个人的死怎么改掉之后十年',
+      '把「家里少个劳力」变成后面事件读得到的事实，而不是一句旁白',
+    ],
+    marks: ['person', 'household'],
   },
 
   /** 荒年 */
@@ -88,6 +102,8 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['年表'],
     to: [],
     age: [5, 16],
+    purpose: ['同一场旱灾落在不同人家身上，是四种样子'],
+    marks: ['household'],
   },
 
   /** 你问了个大人答不上来的问题 */
@@ -98,6 +114,8 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['年表'],
     to: [],
     age: [6, 16],
+    purpose: ['玩家第一次自己提出问题，而不是等着被问'],
+    marks: ['ask'],
   },
 
   /** 家里人。生老病死婚丧嫁娶 */
@@ -108,6 +126,8 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['年表'],
     to: [],
     age: [8, 16],
+    purpose: ['爹娘也有过去，只是要等很多年他才听说'],
+    marks: ['recall', 'meet'],
   },
 
   /** 手艺。铁匠、木匠、药铺 */
@@ -118,6 +138,8 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['年表'],
     to: [],
     age: [8, 16],
+    purpose: ['见识是从别人的行当里蹭来的，不是学来的'],
+    marks: ['knowledge'],
   },
 
   /** 官府。徭役、赋税、过路的兵 */
@@ -128,6 +150,8 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['年表'],
     to: [],
     age: [9, 15],
+    purpose: ['同样一个世界，从宫墙里头看是另一个'],
+    marks: ['family', 'home'],
   },
 
   /**
@@ -143,6 +167,8 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['年表'],
     to: [],
     age: [9, 16],
+    purpose: ['机缘不抽奖：撞见什么看世界，抓不抓得住看这个人', '给他一件他现在还看不懂的东西'],
+    marks: ['encounter', 'book', 'hearsay'],
   },
 
   /** 十三到十六岁。开始有人拿你当个人看 */
@@ -153,6 +179,8 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['年表'],
     to: [],
     age: [13, 16],
+    purpose: ['开始有人拿他当个人看，也开始有人评说他'],
+    marks: ['aspect', 'identity'],
   },
 
   /**
@@ -169,6 +197,11 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['日常'],
     to: [],
     age: [0, 99],
+    purpose: [
+      '一生中绝大多数年头本来就什么也没发生',
+      '时间是这局里唯一稀缺的东西，而日常是它唯一的出口',
+    ],
+    marks: ['time'],
   },
 
   /**
@@ -184,6 +217,11 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['年表'],
     to: ['encounters'],
     age: [7, 16],
+    purpose: [
+      '玩家第一次不是被事件叫出来才行动，而是自己安排一天',
+      '一天最常见的结果是什么也没发生——正因如此，出事的那天才要紧',
+    ],
+    marks: ['daily', 'diary'],
   },
 
   /** 有人离开了村子 */
@@ -194,6 +232,11 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['年表'],
     to: [],
     age: [10, 16],
+    purpose: [
+      '走还是不走，是这一册里最像分岔的一次选择',
+      '念头改的是他怎么读这个机会，不是机会出不出现',
+    ],
+    marks: ['reading', 'meet'],
   },
 
   /** 病 */
@@ -204,6 +247,8 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['年表'],
     to: [],
     age: [8, 16],
+    purpose: ['家里病倒一个人的那阵子，他会重新想一遍自己到底想要什么'],
+    marks: ['reflect'],
   },
 
   /** 起了心思之后，自己去找。`seek:door` 靠章内跳转进入，没有年表入口 */
@@ -214,6 +259,11 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['年表'],
     to: [],
     age: [12, 16],
+    purpose: [
+      '起了心思之后自己去找——听来的消息真假难辨，跑一趟才知道',
+      '门开不开，他永远不知道是凭什么',
+    ],
+    marks: ['follow', 'knock'],
   },
 
   /**
@@ -230,5 +280,10 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['年表', '收尾'],
     to: [],
     age: [16, 99],
+    purpose: [
+      '把十六年攒下的东西，第一次拿到明白人面前过一眼',
+      '多年以后才明白，当年捡到的不是普通书',
+    ],
+    marks: ['reveal', 'claim'],
   },
 ]
