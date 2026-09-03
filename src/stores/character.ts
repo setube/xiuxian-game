@@ -24,7 +24,6 @@ import { beBorn } from '@/content/birth'
 import { constitutionShift, rollConstitution } from '@/content/circumstances'
 
 import { originAttributes, useHouseholdStore } from './household'
-import { usePeopleStore } from './people'
 import { useWorldStore } from './world'
 
 const ATTRIBUTE_MIN = 0
@@ -410,9 +409,14 @@ export const useCharacterStore = defineStore(
       return true
     }
 
-    /** 重开一世：家世已由 household 先行重掷，这里按新出身取名、定身子骨。 */
+    /**
+     * 重开一世：按新出身取名、定身子骨。
+     *
+     * 家世由 `household` 先重掷，人口册由 `people` 自己清——次序归
+     * `stores/founding.ts` 那张表管，这里不越俎代庖去 reset 别人。
+     * 从前这里有一句 `usePeopleStore().reset()`，是把次序记在了第三个地方。
+     */
     function reset(): void {
-      usePeopleStore().reset()
       name.value = beBorn(household.trade, household.home).name
       constitution.value = rollConstitution()
       identity.value = INITIAL_IDENTITY

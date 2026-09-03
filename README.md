@@ -37,7 +37,7 @@ npx vite-node scripts/simulate.ts   # 随机跑一千世，看人生是否走得
 npx vite-node scripts/verify.ts     # 七道结构门禁（失败以非零码退出）
 npx vite-node scripts/grasp.ts      # 认知三轴门禁
 npx vite-node scripts/settle.ts     # 结算顺序走查：time 写在哪儿都一样
-npx vite-node scripts/founding.ts   # 立基次第门禁：谁必须先建好（失败以非零码退出）
+npx vite-node scripts/founding.ts   # 立基次第门禁：谁先建、重掷有没有漏（失败以非零码退出）
 npx vite-node scripts/shadow.ts     # 分支遮蔽走查：前一条会不会挡住后一条
 ```
 
@@ -560,6 +560,50 @@ const PHASE = {
 而新加一个 store 文件不会让 `StoreName` 自己长出来——所以还扫一遍 `src/stores/`
 里所有 `defineStore('…')` 跟表对账。
 **一道守在没人走的门口的关卡，跟没有这道关卡是一回事。**
+
+### 而「开始一世」有两个入口，第二个抄错了
+
+上面那一段守的是**第一次建**。可开始一世还有另一个入口：**重掷**（`restart()`）。
+
+两个入口要读的是同一个次序——`household` 先，`world` 和 `character` 跟上。
+从前却各写了一遍：setup 里靠顶层调用的先后，`restart()` 里靠手写的四行。
+连读的字段都是同一批：
+
+|             | 建的时候读 household   | 重掷的时候读 household |
+| ----------- | ---------------------- | ---------------------- |
+| `world`     | `world.ts:66,68`       | `world.ts:189,190`     |
+| `character` | `character.ts:159,168` | `character.ts:416,420` |
+
+**抄第二遍的时候漏了两行。** `diary` 和 `leanings` 的 `reset()` 写好了，
+全库没有一处调用。实测重开一世：
+
+```text
+日录　1 → 1     上一世那天还在
+念头　1 → 1     上一世的「求道」还在
+姓名　江瑜 → 许芝
+家世　官宦 → 药铺
+```
+
+两者都 `persist`，所以刷新页面也还在。不报错、不断线——
+**玩家开了新的一世，翻开日录，读到的是上一个人的一生。**
+
+次序知识当时散在三个地方：`defineStore` 的 setup 顺序、`restart()` 的四行、
+还有 `character.reset()` 里那句 `usePeopleStore().reset()`。
+所以修法不是再补两行手写调用，而是把表挪进 `src/stores/founding.ts`，
+两个入口都从它推导——`restart()` 现在只有 `resetAll()` 一句，
+`satisfies Record<StoreName, () => Resettable>` 顺带保证**每个 store 都真有 `reset()`**，
+新加一个忘了写，`vue-tsc` 当场红。
+
+**判据同样是测实际行为，不是读代码推测：** 往八个 store 的 `$state` 里各塞一枚哨兵，
+走玩家真正走的那条路（`story.restart()`），看谁还留着上一世的东西。
+塞法不列字段名——列了就是又一张手写表，又会漏——按值的形状塞：
+数组 push、对象加键、字符串和数字换成认得出来的值。
+（布尔测不到，`true`/`false` 都是合法值塞不进哨兵。这是已知缺口，写下来而不是假装没有。）
+
+两个反例都验过会红：`resetAll()` 里跳过 `diary`，精确报出 `[diary]`；
+把次序倒过来，重掷当场崩在 `world.reset()` 上——**次序在这里是真的要紧，
+不是排得整齐好看。** 而当初那个 bug 本身钉成了永久自检：脚本里留着「手写四行」
+的旧写法，每次跑都得重新抓出 `diary` 和 `leanings` 一次。
 
 ### 写新剧本时
 

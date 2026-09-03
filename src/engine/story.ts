@@ -1,7 +1,6 @@
 import { useCharacterStore } from '@/stores/character'
-import { useHouseholdStore } from '@/stores/household'
+import { resetAll } from '@/stores/founding'
 import { useNarrativeStore } from '@/stores/narrative'
-import { useUiStore } from '@/stores/ui'
 import { useWorldStore } from '@/stores/world'
 import type {
   Choice,
@@ -289,11 +288,12 @@ export function useStory(library: SceneLibrary, plan: LifePlan): Story {
   }
 
   function restart(): void {
-    // 家世要第一个重掷：姓名、身子骨、出生地都从它派生
-    useHouseholdStore().reset()
-    useWorldStore().reset()
-    useCharacterStore().reset()
-    useUiStore().reset()
+    // 次序不在这儿写，在 stores/founding.ts 那张表上：家世要第一个重掷，
+    // 姓名、身子骨、出生地都从它派生。
+    //
+    // 从前这里是手写的四行，漏掉了 diary 和 leanings——两个 reset() 写好了没人调，
+    // 于是重开一世，日录里还是上一世的日子。手抄一遍次序就会漏一遍。
+    resetAll()
     begin()
   }
 
