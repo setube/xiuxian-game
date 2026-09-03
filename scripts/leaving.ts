@@ -166,7 +166,7 @@ const BACK = new Set(['pass', 'stay'])
  * 六成半会去点那一条；心里什么也没存的人读到的只是「管饭」，
  * 一成半才会去点。**选项一个没多，多的只是他点它的机会。**
  */
-function pick(options: readonly { choice: { id: string } }[], wants: boolean) {
+function pick<T extends { choice: { id: string } }>(options: readonly T[], wants: boolean): T {
   const forward = options.filter((option) => FORWARD.has(option.choice.id))
   const back = options.filter((option) => BACK.has(option.choice.id))
   if (forward.length > 0 && back.length > 0) {

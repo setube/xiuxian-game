@@ -89,6 +89,7 @@ import { useNarrativeStore } from '../src/stores/narrative'
 import { usePeopleStore } from '../src/stores/people'
 import type { Chapter, ChapterCall } from '../src/types/chapter'
 import type { Bond, Condition, Effect } from '../src/types/game'
+import { conditionsOf, effectsOf, exitsOf } from './refs'
 
 const RUNS = 300
 
@@ -227,23 +228,10 @@ console.log('=== 场景跳转验收（静态穷举全库）===\n')
     }
     for (const [nodeId, node] of Object.entries(scene.nodes)) {
       const where = `${sceneId}#${nodeId}`
-      if (node.next) {
+      for (const exit of exitsOf(node)) {
         edges += 1
-        if (!resolveTarget(node.next, sceneId)) {
-          dangling.push({ from: where, to: node.next, via: 'next' })
-        }
-      }
-      for (const branch of node.branches ?? []) {
-        edges += 1
-        if (!resolveTarget(branch.next, sceneId)) {
-          dangling.push({ from: where, to: branch.next, via: 'branches' })
-        }
-      }
-      for (const choice of node.choices ?? []) {
-        if (choice.next === null) continue
-        edges += 1
-        if (!resolveTarget(choice.next, sceneId)) {
-          dangling.push({ from: where, to: choice.next, via: `choice:${choice.id}` })
+        if (!resolveTarget(exit.to, sceneId)) {
+          dangling.push({ from: where, to: exit.to, via: exit.via })
         }
       }
     }
@@ -322,9 +310,7 @@ console.log('=== 孤儿节点验收 ===\n')
       }
     }
     for (const node of Object.values(scene.nodes)) {
-      if (node.next) mark(node.next)
-      for (const branch of node.branches ?? []) mark(branch.next)
-      for (const choice of node.choices ?? []) if (choice.next) mark(choice.next)
+      for (const exit of exitsOf(node)) mark(exit.to)
     }
     for (const nodeId of Object.keys(scene.nodes)) {
       nodes += 1
@@ -407,19 +393,18 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
   for (const [sceneId, scene] of Object.entries(lifeScenes)) {
     for (const [nodeId, node] of Object.entries(scene.nodes)) {
       const where = `${sceneId}#${nodeId}`
-      scanEffects(node.onEnter)
-      for (const branch of node.branches ?? []) scanConditions(branch.requires, where)
       /**
-       * 他多看见的那几句，条件一样要查。
+       * 条件和效果都从登记表取，节点的格子一格也不会漏。
        *
-       * 这一格比别处更容易烂：写错了不会断链、不会少选项、
-       * 玩家读到的正文也完好——**只是那一句永远不出现，而没有人在等它**。
+       * 从前这里手写「onEnter、branches、seen、choices」四行。
+       * 而 `seen` 那一行是补上去的——**头一版忘了写，
+       * 于是我编的那个旗标在库里躺着，门禁一声没吭**。
+       * 现在忘不了了：加一格而不在 `refs.ts` 登记，编译就过不去。
        */
-      for (const one of node.seen ?? []) scanConditions(one.requires, `${where} · 所见`)
-      for (const choice of node.choices ?? []) {
-        scanConditions(choice.requires, where)
-        scanEffects(choice.effects)
+      for (const ref of conditionsOf(node)) {
+        scanConditions(ref.requires, ref.tag ? `${where} · ${ref.tag}` : where)
       }
+      scanEffects(effectsOf(node))
     }
   }
   for (const event of lifeEvents) scanConditions(event.requires, `年表 · ${event.id}`)
@@ -713,9 +698,13 @@ console.log('=== 占位内容验收（成年那一卷还走不到吗）===\n')
       if (!node) return true // 跳去别卷了：本卷一句没问
       let answer = false
       if (!node.choices?.length) {
-        const outs: string[] = []
-        if (node.next) outs.push(node.next)
-        for (const branch of node.branches ?? []) outs.push(branch.next)
+        /**
+         * 这里的出边不含选项——**因为进得来这一支就说明选项是空的**。
+         * 从前这两行手写 `next` 和 `branches`，读着像是「故意只看这两格」；
+         * 其实是「这一节没有第三格」。换成登记表之后语义一模一样，
+         * 而将来多一种不问玩家的去向，这里自动跟着看。
+         */
+        const outs = exitsOf(node).map((exit) => exit.to)
         answer =
           outs.length === 0 || // 走到头都没问过
           outs.some((target) => {
@@ -748,14 +737,10 @@ console.log('=== 占位内容验收（成年那一卷还走不到吗）===\n')
   const finaleScene = lifeScenes[lifeFinale]
   const finaleLeaks: string[] = []
   for (const [nodeId, node] of Object.entries(finaleScene?.nodes ?? {})) {
-    const outs: string[] = []
-    if (node.next) outs.push(node.next)
-    for (const branch of node.branches ?? []) outs.push(branch.next)
-    for (const choice of node.choices ?? []) if (choice.next) outs.push(choice.next)
-    for (const target of outs) {
-      const [head, tail] = target.split('#')
+    for (const exit of exitsOf(node)) {
+      const [head, tail] = exit.to.split('#')
       const stays = tail ? head === lifeFinale : Boolean(head && finaleScene?.nodes[head])
-      if (!stays) finaleLeaks.push(`${lifeFinale}#${nodeId} → ${target}`)
+      if (!stays) finaleLeaks.push(`${lifeFinale}#${nodeId} → ${exit.to}`)
     }
   }
 
@@ -875,15 +860,11 @@ console.log('=== 章节拓扑验收（目录跟内容对得上吗）===\n')
   for (const chapter of CHAPTERS) {
     for (const [sceneId, scene] of Object.entries(chapter.scenes)) {
       for (const [nodeId, node] of Object.entries(scene.nodes)) {
-        const outs: string[] = []
-        if (node.next) outs.push(node.next)
-        for (const branch of node.branches ?? []) outs.push(branch.next)
-        for (const choice of node.choices ?? []) if (choice.next) outs.push(choice.next)
-        for (const target of outs) {
-          const to = owner.get(landsOn(sceneId, target))
+        for (const exit of exitsOf(node)) {
+          const to = owner.get(landsOn(sceneId, exit.to))
           if (!to || to === chapter.id) continue
           const edge = `${chapter.id} → ${to}`
-          realEdges.set(edge, [...(realEdges.get(edge) ?? []), `${sceneId}#${nodeId} → ${target}`])
+          realEdges.set(edge, [...(realEdges.get(edge) ?? []), `${sceneId}#${nodeId} → ${exit.to}`])
         }
       }
     }
@@ -942,10 +923,7 @@ console.log('=== 章节拓扑验收（目录跟内容对得上吗）===\n')
     const found = new Set<string>()
     for (const scene of Object.values(chapter.scenes)) {
       for (const node of Object.values(scene.nodes)) {
-        for (const effect of node.onEnter ?? []) found.add(effect.type)
-        for (const choice of node.choices ?? []) {
-          for (const effect of choice.effects ?? []) found.add(effect.type)
-        }
+        for (const effect of effectsOf(node)) found.add(effect.type)
       }
     }
     return found

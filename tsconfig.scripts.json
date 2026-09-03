@@ -1,0 +1,37 @@
+// 门禁和走查这二十八支脚本，也要过一遍类型。
+//
+// 从前它们**一支也没被检查过**：`tsconfig.node.json` 只 include 了
+// `vite.config.ts`，`tsconfig.app.json` 只 include `src/`，
+// 中间那块 `scripts/` 谁也不管。跑得起来是因为 vite-node 会把类型全剥掉。
+//
+// 这件事是在验 `scripts/refs.ts` 那张登记表时撞出来的：
+// 给 `SceneNode` 加一格不登记，`satisfies` 本该当场红，结果编译过了——
+// **因为那个文件根本不在编译范围里**。
+// 一道守在没人走的门口的关卡，跟没有这道关卡是一回事。
+//
+// lib 用 DOM：`scripts/` 自己不碰 DOM，可它们 import 的 `src/` 要。
+// types 里两样：`node` 是脚本自己要的（`node:fs`、`process`）；
+// `pinia-plugin-persistedstate` 是替 `src/stores/` 带的——
+// 那些 store 写了 `persist`，而这一格是插件用模块增强补上去的。
+// app 那边靠 `src/main.ts` 的 import 把增强带进来，脚本这边没人 import 它，
+// 不显式列出来，八个 store 会一起报「persist 不存在」。
+{
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.scripts.tsbuildinfo",
+    "types": ["node", "pinia-plugin-persistedstate"],
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
+    /* Linting：跟 tsconfig.app.json 一致，脚本不该比正文松 */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  },
+  // `src/` 不用列：脚本 import 到哪儿，编译器就跟到哪儿
+  "include": ["scripts/**/*.ts"]
+}

@@ -281,7 +281,7 @@ console.log('=== 同一册书能长出多少种认知历史 ===\n')
         (endings.get(`揣了多年，后来知道那是${truth}`) ?? 0) + 1,
       )
     } else {
-      const key = `揣了一辈子，始终以为是${before.summary.slice(0, 8)}…`
+      const key = `揣了一辈子，始终以为是${(before.summary ?? '（无）').slice(0, 8)}…`
       endings.set(key, (endings.get(key) ?? 0) + 1)
     }
   }

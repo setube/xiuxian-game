@@ -334,10 +334,40 @@ stageOf　　16 岁仍算「少年」，17 岁才成年
 > 而分岔的那一刻没有人在场。同一个道理，`marks` 也完全可以从数据里算出来，
 > 而算出来的那一版永远不会红：它的分量跟 `to`、`called` 一样，全在「手写」两个字上。
 
+### `scripts/refs.ts`：统一索引
+
+`SceneNode` 有七个字段，每一个都可能引用世界状态——出边、前置条件、产生的效果。
+从前 `verify.ts` 里六处遍历各自手写，扫 `exits` 的代码、扫 `conditions` 的代码、
+扫 `effects` 的代码，三者之间没有任何共同点。**每加一种表达能力（比如给某格加一种新的去向），
+就需要去找到所有「遍历出边」的地方，逐一补上。** 漏掉一处，那一格对门禁是透明的。
+
+`scripts/refs.ts` 把这件事收拢成一张登记表：
+
+```ts
+const NODE_REFS = {
+  id: {},
+  blocks: {},
+  onEnter: { effects: (node) => node.onEnter ?? [] },
+  seen:    { conditions: (node) => … },
+  choices: { exits: …, conditions: …, effects: … },
+  branches:{ exits: …, conditions: … },
+  next:    { exits: (node) => … },
+} satisfies Record<keyof SceneNode, FieldRefs>
+```
+
+`satisfies Record<keyof SceneNode, FieldRefs>` 把穷尽性变成编译约束：
+给 `SceneNode` 加一个字段不在这里登记，`vue-tsc --build --force` 立即红。
+登记表既是声明也是实现——`exitsOf` / `conditionsOf` / `effectsOf` 三个提取器
+直接从它摊平，`verify.ts` 里六处手写遍历全改成调提取器，从此不会再有「扫出边的遍历」
+和「扫条件的遍历」各自记账的问题。
+
+这个守卫只在 `scripts/` 被类型检查时才有效。`tsconfig.scripts.json` 把这二十八支脚本
+纳入 tsc 覆盖范围，并加进 `tsconfig.json` 的 references，让 `vue-tsc --build --force`
+一次性把 app、node、scripts 三个范围一起检查。
+
 ### 写新剧本时
 
-- 正文里的长辈写 `{elder}`（管家的大人）、`{dam}`（娘这个位置）、`{elders}`（合称），
-  落纸时由关系网决定那是谁。
+- 正文里的长辈写 `{elder}`
 - **`{elder}` 是过渡方案，不是地基。** 它只解决「谁在做这件事」，
   解决不了「他为什么会做这件事」——老乞丐、长姐、寺里的师父、亲爹，
   不可能共享同一套生活内容。「每天傍晚去地里站一会儿」换个主语仍然是错的，
