@@ -1,6 +1,6 @@
 /* eslint-disable no-console -- 这是一支门禁脚本，标准输出就是它的产物；它不进构建 */
 /**
- * 内容门禁：六道。
+ * 内容门禁：七道。
  *
  * ## 为什么它是门禁而不是走查
  *
@@ -51,6 +51,20 @@
  * 于是第六道把那四个前提钉住。同样不掷随机数：跑三百世没走到，
  * 证明不了走不到。
  *
+ * ## 第七道换了个方向：不再从数据里推事实，而是拿数据去对人说过的话
+ *
+ * 前六道都在问同一类问题——**这份内容自己是不是自洽的**。
+ * 答案全从数据里推：跳转指向存不存在、条件有没有来源、卷有没有入边。
+ * 推得越多，门禁就越要懂剧情；再往下加几道，这支脚本会长成半个编辑器。
+ *
+ * 第七道问的是另一件事：**目录跟内容对不对得上**。
+ * `chapters.ts` 里那三格（`called` / `to` / `age`）是人手写的意图，
+ * 不是从数据摘出来的。所以它能红——推出来的摘要永远不会红，
+ * 改了实现它跟着变，什么也证明不了。
+ *
+ * 顺带把前几道的活也省了：从前「这一卷有没有入边」要把年表、日常、
+ * 收尾、跨卷跳转全扫一遍才答得上来，现在目录里就写着。
+ *
  * 跑法：npx vite-node scripts/verify.ts
  * 失败会以非零码退出，可以直接挂进 CI。
  */
@@ -62,11 +76,13 @@ import { BEATS } from '../src/content/days'
 import { DAMPERS, SPARKS } from '../src/content/leanings'
 import { OPENINGS } from '../src/content/openings'
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
+import { CHAPTERS } from '../src/content/life/chapters'
 import { stageOf } from '../src/engine/stages'
 import { MAX_EVENT_CHAIN, useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useNarrativeStore } from '../src/stores/narrative'
 import { usePeopleStore } from '../src/stores/people'
+import type { ChapterCall } from '../src/types/chapter'
 import type { Bond, Condition, Effect } from '../src/types/game'
 
 const RUNS = 300
@@ -779,6 +795,181 @@ console.log('=== 占位内容验收（成年那一卷还走不到吗）===\n')
       `\n  ${PLACEHOLDER} 现在可能真的走得到了。那是占位内容，不是写好的人生——` +
         '\n  玩家会读到一段谁也没设计过的东西。要么把这一卷补成真内容，' +
         '\n  要么想清楚这次改动是不是本来就打算把成年之后接上。\n',
+    )
+    process.exitCode = 1
+  }
+}
+
+/**
+ * 第七道：章节拓扑验收。
+ *
+ * ## 它对的是四句话
+ *
+ *     章名不重，卷也不重　　`Object.fromEntries` 撞名不报错，后来的直接盖掉前面的
+ *     跨章的边都写在目录里　偷偷多接一条，或者删了一条却忘了删声明
+ *     事件窗口不越出章界　　把某件事的年龄往外挪一岁，一整章就漂到人生另一段上去
+ *     每章都叫得出来　　　　写好了没接入口，或者接了却没在目录上认领
+ *
+ * 前三条各自守着一种**静默失败**——出事的时候没有任何东西会报错，
+ * 只是玩家读到的东西悄悄变了。第四条守的是相反的方向：内容写了却没人读到。
+ *
+ * ## 断言力来自「手写」两个字
+ *
+ * `to` 和 `called` 完全可以从数据里算出来——算出来的版本永远不会红，
+ * 因为它跟着实现走。写下来就不一样：多接一条边，两边对不上，红。
+ * 要绕过去得手动去改那份声明，**而改的那一刻，人就看见自己在做什么了**。
+ *
+ * `age` 是三格里最松的一格，它只管边界不管逐件：往里收不红，越出去才红。
+ * 这道松是有意的——调单件事件的窗口是常规内容工作，不该每次都惊动门禁；
+ * 但把一件十岁的事挪到十七岁，那不是调窗口，那是改了这一章在人生里的位置。
+ */
+console.log('=== 章节拓扑验收（目录跟内容对得上吗）===\n')
+{
+  /** 卷 → 它归哪一章。一卷被两章同时认领，会在这一步露出来 */
+  const owner = new Map<string, string>()
+  const dupScenes: string[] = []
+  const dupChapters: string[] = []
+  const known = new Set<string>()
+  for (const chapter of CHAPTERS) {
+    if (known.has(chapter.id)) dupChapters.push(chapter.id)
+    known.add(chapter.id)
+    for (const sceneId of Object.keys(chapter.scenes)) {
+      const already = owner.get(sceneId)
+      if (already) dupScenes.push(`${sceneId}　被 ${already} 和 ${chapter.id} 同时认领`)
+      else owner.set(sceneId, chapter.id)
+    }
+  }
+
+  /**
+   * 一个跳转落在哪一卷上。
+   *
+   * 带 `#` 的，前半截是卷名；不带的先看它是不是别卷的入口，
+   * 都不是就当本卷的节点 id——卷名一律带冒号，节点 id 一律不带，撞不上。
+   */
+  const landsOn = (from: string, target: string): string => {
+    const [head, tail] = target.split('#')
+    if (!head) return from
+    if (tail) return head
+    return lifeScenes[head] ? head : from
+  }
+
+  /** 实际存在的跨章边，`章→章`，附带是哪几处接的 */
+  const realEdges = new Map<string, string[]>()
+  for (const chapter of CHAPTERS) {
+    for (const [sceneId, scene] of Object.entries(chapter.scenes)) {
+      for (const [nodeId, node] of Object.entries(scene.nodes)) {
+        const outs: string[] = []
+        if (node.next) outs.push(node.next)
+        for (const branch of node.branches ?? []) outs.push(branch.next)
+        for (const choice of node.choices ?? []) if (choice.next) outs.push(choice.next)
+        for (const target of outs) {
+          const to = owner.get(landsOn(sceneId, target))
+          if (!to || to === chapter.id) continue
+          const edge = `${chapter.id} → ${to}`
+          realEdges.set(edge, [...(realEdges.get(edge) ?? []), `${sceneId}#${nodeId} → ${target}`])
+        }
+      }
+    }
+  }
+
+  const declaredEdges = new Set(CHAPTERS.flatMap((c) => c.to.map((to) => `${c.id} → ${to}`)))
+  /** 接了没说的 */
+  const undeclared = [...realEdges.keys()].filter((edge) => !declaredEdges.has(edge))
+  /** 说了没接的。章名写错也落在这里——那条边当然找不到 */
+  const stale = [...declaredEdges].filter((edge) => !realEdges.has(edge))
+
+  /** 窗口跑出章界的事件 */
+  const strays: string[] = []
+  for (const chapter of CHAPTERS) {
+    const [from, to] = chapter.age
+    for (const event of chapter.events) {
+      if (event.window.from < from || event.window.to > to) {
+        strays.push(
+          `${chapter.id}　${event.id}　窗口 ${event.window.from}–${event.window.to}，` +
+            `而这一章写的是 ${from}–${to}`,
+        )
+      }
+    }
+  }
+
+  /** 日常和收尾各落在哪一章 */
+  const routineOwners = new Set(
+    Object.values(lifeRoutine)
+      .map((sceneId) => owner.get(sceneId))
+      .filter((id): id is string => id !== undefined),
+  )
+  const finaleOwner = owner.get(lifeFinale)
+
+  const miscalled: string[] = []
+  for (const chapter of CHAPTERS) {
+    const real: ChapterCall[] = []
+    if (chapter.events.length > 0) real.push('年表')
+    if (routineOwners.has(chapter.id)) real.push('日常')
+    if (finaleOwner === chapter.id) real.push('收尾')
+    if (real.join('、') !== [...chapter.called].join('、')) {
+      miscalled.push(
+        `${chapter.id}　目录写着「${[...chapter.called].join('、') || '没人叫'}」，` +
+          `实际是「${real.join('、') || '没人叫'}」`,
+      )
+    }
+  }
+
+  /** 一种入口都没有的章：年表不叫，日常不叫，收尾不是它，也没有别章跳进来 */
+  const orphans = CHAPTERS.filter(
+    (chapter) =>
+      chapter.called.length === 0 && !CHAPTERS.some((other) => other.to.includes(chapter.id)),
+  ).map((chapter) => chapter.id)
+
+  const countOf = (call: ChapterCall): number =>
+    CHAPTERS.filter((chapter) => chapter.called.includes(call)).length
+
+  const claims: readonly { holds: boolean; text: string }[] = [
+    {
+      holds: dupChapters.length === 0 && dupScenes.length === 0,
+      text: `章名不重，卷也不重——${owner.size} 卷各归一章，没有谁被谁盖掉`,
+    },
+    {
+      holds: undeclared.length === 0 && stale.length === 0,
+      text: `跨章的边有 ${realEdges.size} 条，目录上写着的正好是这几条`,
+    },
+    {
+      holds: strays.length === 0,
+      text: `${lifeEvents.length} 件事件的窗口都落在各自章的年龄段里`,
+    },
+    {
+      holds: miscalled.length === 0 && orphans.length === 0,
+      text:
+        `每章都叫得出来，叫法也跟目录一致：年表 ${countOf('年表')} 章，` +
+        `日常 ${countOf('日常')} 章，收尾 ${countOf('收尾')} 章`,
+    },
+  ]
+
+  const broken = claims.filter((claim) => !claim.holds)
+  if (broken.length === 0) {
+    console.log(`  ${CHAPTERS.length} 章的目录跟内容对得上，四项都在：\n`)
+    for (const claim of claims) console.log(`    · ${claim.text}`)
+    console.log('')
+  } else {
+    console.log(`  ✗ ${broken.length} 项对不上：\n`)
+    for (const claim of broken) console.log(`    ${claim.text}`)
+    const dump = (title: string, lines: readonly string[]): void => {
+      if (lines.length === 0) return
+      console.log(`\n    ${title}`)
+      for (const line of lines) console.log(`      ${line}`)
+    }
+    dump('章名或卷名撞了：', [...dupChapters.map((id) => `章名 ${id} 写了两遍`), ...dupScenes])
+    dump(
+      '接了却没写进目录的边：',
+      undeclared.flatMap((edge) => [edge, ...(realEdges.get(edge) ?? []).map((at) => `  ${at}`)]),
+    )
+    dump('目录上写着、实际却不存在的边：', stale)
+    dump('窗口跑出章界的事件：', strays)
+    dump('叫法跟目录对不上的章：', miscalled)
+    dump('一种入口都没有的章：', orphans)
+    console.log(
+      '\n  目录是手写的，内容是长出来的，两者分岔就说明有一次改动只落了一半。' +
+        '\n  要么把改动补齐，要么去 chapters.ts 把新的意图写下来——' +
+        '\n  写下来这件事本身就是这一道要的东西。\n',
     )
     process.exitCode = 1
   }

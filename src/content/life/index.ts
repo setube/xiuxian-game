@@ -1,22 +1,6 @@
 import type { LifeEvent, LifeStage, SceneLibrary } from '@/types/game'
 
-import { birthEvents, birthScenes } from './birth'
-import { childhoodEvents, childhoodScenes } from './childhood'
-import { dearthEvents, dearthScenes } from './dearth'
-import { dayEvents, dayScenes } from './day'
-import { illnessEvents, illnessScenes } from './illness'
-import { leavingEvents, leavingScenes } from './leaving'
-import { seekingEvents, seekingScenes } from './seeking'
-import { encounterEvents, encounterScenes } from './encounters'
-import { hardshipEvents, hardshipScenes } from './hardship'
-import { inquiryEvents, inquiryScenes } from './inquiry'
-import { kinEvents, kinScenes } from './kin'
-import { rivermanEvents, rivermanScenes } from './riverman'
-import { routineScenes } from './routine'
-import { royalEvents, royalScenes } from './royal'
-import { schoolingEvents, schoolingScenes } from './schooling'
-import { tradeEvents, tradeScenes } from './trades'
-import { youthEvents, youthScenes } from './youth'
+import { CHAPTERS } from './chapters'
 
 /**
  * 凡人。
@@ -35,53 +19,27 @@ import { youthEvents, youthScenes } from './youth'
  * 十六岁那年在渡口收尾。收尾不发奖品，只把你这十六年攒下的东西
  * 第一次拿到明白人面前过一眼：怀里那册看不懂的书，腕上那圈疤，
  * 或者什么也没有。
+ *
+ * ## 这里已经不再是一张手写的清单
+ *
+ * 库和年表都从 `chapters.ts` 摊平出来。从前这两处是各写各的两串 spread，
+ * 顺序还不一样，新写一章要记得在两个地方各加一行——**漏一处的那半章
+ * 会安静地躺在库里，永远没有入口**。现在漏不了：章只声明一次。
  */
-export const lifeScenes: SceneLibrary = {
-  ...birthScenes,
-  ...childhoodScenes,
-  ...schoolingScenes,
-  ...hardshipScenes,
-  ...dearthScenes,
-  ...inquiryScenes,
-  ...kinScenes,
-  ...tradeScenes,
-  ...royalScenes,
-  ...encounterScenes,
-  ...youthScenes,
-  ...routineScenes,
-  ...dayScenes,
-  ...leavingScenes,
-  ...illnessScenes,
-  ...seekingScenes,
-  ...rivermanScenes,
-}
+export const lifeScenes: SceneLibrary = Object.fromEntries(
+  CHAPTERS.flatMap((chapter) => Object.entries(chapter.scenes)),
+)
 
-export const lifeEvents: readonly LifeEvent[] = [
-  ...birthEvents,
-  ...childhoodEvents,
-  ...schoolingEvents,
-  ...hardshipEvents,
-  ...dearthEvents,
-  ...inquiryEvents,
-  ...kinEvents,
-  ...tradeEvents,
-  ...royalEvents,
-  ...encounterEvents,
-  ...dayEvents,
-  ...leavingEvents,
-  ...illnessEvents,
-  ...seekingEvents,
-  ...youthEvents,
-  ...rivermanEvents,
-]
+export const lifeEvents: readonly LifeEvent[] = CHAPTERS.flatMap((chapter) => chapter.events)
 
 /** 无事可叙时回到的日子。每个阶段各有一卷，且每个选项都必须花掉时间 */
 export const lifeRoutine: Record<LifeStage, string> = {
   幼年: 'routine:child',
   启蒙: 'routine:youth',
   少年: 'routine:teen',
-  // 走不到：渡口那一卷十六岁必然触发并收尾，而「成年」要十七岁才开始。
-  // 不是漏接，是这一段人生还没写——原委记在 routine.ts 那一卷上头
+  // 走不到：渡口那一卷从十六岁起就一直在年表候选池里，池子不空，
+  // 就轮不到日常，而「成年」要十七岁才开始。凑法是四个数字合出来的，
+  // 全写在 routine.ts 那一卷上头，`verify.ts` 第六道盯着它们
   成年: 'routine:adult',
 }
 
