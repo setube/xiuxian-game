@@ -146,6 +146,41 @@ export const SPARKS: readonly Spark[] = [
     once: true,
     text: '那一伙人不叫你了。你一个人待着的时候，想的是别处。',
   },
+  /**
+   * 「说出口」那一档实际上是由**一次性的大事**决定的，不是日常攒出来的。
+   *
+   * 一条日常火种一辈子拢共只攒得下两三分——挂满四条也不过十来分，
+   * 离二十一分那道线差得远。所以一个念头能不能被说出口，
+   * 全看它身后有没有几件真发生过的事。
+   *
+   * 「想离开」原先只有四件，加满十五分，一辈子最高长到十九——
+   * **于是「你想离开这里。」这句话玩家永远看不到。**
+   * 这一件补的就是那个缺口：他有过机会，而他没去。
+   */
+  {
+    id: 'let-it-go-by',
+    leaning: 'leave',
+    weight: 4,
+    requires: [{ flag: { key: 'turned-down-caravan' } }],
+    once: true,
+    text: '车队走的那天早上你没去。后来你想起过很多回。',
+  },
+  {
+    id: 'the-book-said-elsewhere',
+    leaning: 'leave',
+    weight: 1,
+    tags: ['私塾'],
+    chance: 0.25,
+    text: '书上又提到一个你没去过的地方。',
+  },
+  {
+    id: 'the-stranger-came-from',
+    leaning: 'leave',
+    weight: 2,
+    tags: ['门口的生人'],
+    chance: 0.5,
+    text: '你问了他从哪儿来。他说的那个名字你没听过。',
+  },
 
   // ============================================================
   // 想学看病
@@ -246,6 +281,62 @@ export const SPARKS: readonly Spark[] = [
     chance: 0.2,
     text: '又是疯跑了一天。',
   },
+  /**
+   * 「被人按住」这件事，一个村里的孩子每年都要遇上几回——
+   * 从前这一层只写了两件大事（塌房、被人吓跑），于是这个念头
+   * 一辈子最高只长到七分，**任何门槛都过不去**。
+   *
+   * 缺的不是大事，是日常：镇上被人喝开、私塾里挨的那一下、
+   * 家里大人对着生人弯下去的那半截腰。
+   */
+  {
+    id: 'shoved-in-town',
+    leaning: 'strong',
+    weight: 1,
+    tags: ['镇上'],
+    chance: 0.3,
+    text: '镇上人多，你被推到一边去了。推你的人没回头。',
+  },
+  {
+    id: 'the-rod',
+    leaning: 'strong',
+    weight: 1,
+    tags: ['私塾'],
+    chance: 0.3,
+    text: '手心上那一下，你半天没抬头。',
+  },
+  {
+    id: 'elder-bowed',
+    leaning: 'strong',
+    weight: 2,
+    tags: ['门口的生人'],
+    chance: 0.5,
+    text: '{elder}对着门口那个人，把腰弯下去了一点。你看见了。',
+  },
+  {
+    id: 'went-over-it-again',
+    leaning: 'strong',
+    weight: 1,
+    tags: ['闲着'],
+    chance: 0.3,
+    text: '白天那件事你又想了一遍，想的是自己当时该怎么办。',
+  },
+  /**
+   * 跟 `let-it-go-by` 同一个道理：「不想再被人按住」原先只有两件大事，
+   * 一件要塌房（百分之一的人生），一件要在特定结局上，
+   * 一辈子最高长到十九——那句「你不想再被人按住。」也是说不出口的。
+   *
+   * 补的这一件挑的是**最锋利的那种无力**：不是自己挨了打，
+   * 是护不住旁边那个更小的。
+   */
+  {
+    id: 'could-not-shield',
+    leaning: 'strong',
+    weight: 5,
+    requires: [{ flag: { key: 'has-sibling' } }],
+    once: true,
+    text: '家里那个小的挨欺负那回，你在旁边。你什么也没做成。',
+  },
 
   // ============================================================
   // 想让家里松快些
@@ -274,6 +365,14 @@ export const SPARKS: readonly Spark[] = [
     once: true,
     text: '货栈那个伙计说过些日子来。你记着日子。',
   },
+  /**
+   * `lean-year` 挂在「粥稀了」上，而那个标记**只在百分之一的人生里出现过**——
+   * 于是「想让家里松快些」一辈子只靠三件一次性的事，最高长到十二分，
+   * 连「反复」那一档都够不着。
+   *
+   * 火种挂在什么标记上，比它给几分要紧得多。下面这三条挂的是
+   * 每一世都会反复出现的日子。
+   */
   {
     id: 'lean-year',
     leaning: 'rich',
@@ -281,6 +380,38 @@ export const SPARKS: readonly Spark[] = [
     tags: ['粥稀了'],
     chance: 0.2,
     text: '今天的粥又稀了。',
+  },
+  {
+    id: 'the-lamp-and-the-tally',
+    leaning: 'rich',
+    weight: 1,
+    tags: ['家里的大人'],
+    chance: 0.25,
+    text: '他们又在灯下算那笔账。今年你听懂了。',
+  },
+  {
+    id: 'what-things-cost',
+    leaning: 'rich',
+    weight: 1,
+    tags: ['镇上'],
+    chance: 0.3,
+    text: '铺子里那些东西，你顺口问了价钱。',
+  },
+  {
+    id: 'counting-the-yard',
+    leaning: 'rich',
+    weight: 1,
+    tags: ['替家里下地'],
+    chance: 0.3,
+    text: '场院上还剩多少，你心里数了一遍。',
+  },
+  {
+    id: 'what-is-left-at-home',
+    leaning: 'rich',
+    weight: 1,
+    tags: ['在家'],
+    chance: 0.3,
+    text: '米缸你揭开看了一眼，又盖上了。',
   },
 
   // ============================================================

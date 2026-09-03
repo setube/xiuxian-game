@@ -35,7 +35,19 @@ import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
 import type { KnowledgeEntry, Trade } from '../src/types/game'
 
-const RUNS = 3000
+/**
+ * 走查跑多少次。
+ *
+ * ## 世数照最稀那一格定，而这一支最稀的一格是「揣了一辈子，始终以为是旧纸」
+ *
+ * 这一支报的是一张七八行的人生分布表，**而 README 把整张表抄了过去**，
+ * 一路抄到小数位。表尾那两行各占六七个点，三百次里是二十个人上下，
+ * σ 有一个半百分点——「6.0%」这个写法比它量得准的东西多了一位。
+ *
+ * 一次结算跑得快，三百次五秒。两千次三十几秒，
+ * 换来的是那张表说的话跟它印出来的位数对得上。
+ */
+const RUNS = 2000
 
 function fresh(trade: Trade = '农户', literate = true, insight = 45) {
   setActivePinia(createPinia())
@@ -81,14 +93,14 @@ console.log('\n=== ① 三个人站在同一个摊子前，看见的是三册不
   ]
   for (const [label, trade, literate, insight] of CASES) {
     const tally = new Map<BookReading, number>()
-    for (let i = 0; i < 800; i += 1) {
+    for (let i = 0; i < 200; i += 1) {
       fresh(trade, literate, insight)
       const seen = appraise('符书')
       tally.set(seen.reading, (tally.get(seen.reading) ?? 0) + 1)
     }
     const parts = [...tally.entries()]
       .sort((a, b) => b[1] - a[1])
-      .map(([reading, n]) => `${reading} ${Math.round((n / 800) * 100)}%`)
+      .map(([reading, n]) => `${reading} ${Math.round((n / 200) * 100)}%`)
     console.log(`  ${label.padEnd(20)} ${parts.join('　')}`)
   }
   console.log('\n  同一册符书：药铺的孩子看见方子，商户的孩子看见账，不认字的只看见纸。')
@@ -102,11 +114,11 @@ console.log('\n=== ② 判断可以是错的，而且当场不揭晓 ===\n')
   let anyWrong = false
   for (const truth of TRUTHS) {
     let wrong = 0
-    for (let i = 0; i < 600; i += 1) {
+    for (let i = 0; i < 200; i += 1) {
       fresh('农户', true, 45)
       if (appraise(truth).mistaken) wrong += 1
     }
-    const rate = (wrong / 600) * 100
+    const rate = (wrong / 200) * 100
     if (rate < 100) anyRight = true
     if (rate > 0) anyWrong = true
     console.log(`  真相【${truth}】　读错的：${rate.toFixed(0)}%`)

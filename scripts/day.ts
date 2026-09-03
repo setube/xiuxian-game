@@ -31,7 +31,20 @@ import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 import type { RegionState, Trade } from '../src/types/game'
 
-const RUNS = 10000
+/**
+ * 走查跑多少天。
+ *
+ * ## 世数照最稀那一格定，而这一支最稀的一格是「大事」
+ *
+ * 这一支验的是长尾，那就得让**尾巴上那一格稳定出现**。
+ * 「大事」占半个点上下：四百天里期望两三次，三批里有两批是零。
+ * 而零在「一档比一档少」那条检查下照样通过——**空的一档
+ * 和最少的一档，在那把尺子下长得一模一样。**
+ *
+ * 期望要到十以上才不会整批落空，反推是两千。
+ * 这一支一天只是一次结算，跑得快，两千不心疼。
+ */
+const RUNS = 2000
 
 /** 太平年景 */
 function calm(): RegionState {
@@ -95,7 +108,9 @@ console.log('\n=== 一个十二岁的孩子，自己安排的一天 ===\n')
 }
 
 // —— 二、长尾 ——
-console.log('\n=== 一万次行动的形状 ===\n')
+// 标题里的次数从常量取。从前这里写死「一万次行动的形状」，
+// 而 RUNS 是 400——**差了二十五倍，README 照抄了那句「一万次」**
+console.log(`\n=== ${RUNS} 次行动的形状 ===\n`)
 {
   const tally = new Map<Tier, number>()
   for (let i = 0; i < RUNS; i += 1) {
@@ -127,6 +142,22 @@ console.log('\n=== 一万次行动的形状 ===\n')
     console.log('  ✗ 「无事」不到 55%——每次行动都在给东西，这是台老虎机，不是人生。')
     bad += 1
   }
+  /**
+   * 空的一档不是「最少的一档」。
+   *
+   * 下面那条单调收窄的检查有个洞：**一档抽到零，它照样「比上一档少」**，
+   * 于是形状检查放行，而实际情况是那条路根本没跑到。
+   * 「大事」只占半个点上下，四百世里期望两三个人——
+   * 三批里有两批是 0.0%，门禁一次也没响。
+   *
+   * 所以先查在不在，再查形状。**没抽到和最少长得不一样。**
+   */
+  for (const tier of TIERS) {
+    if ((tally.get(tier) ?? 0) === 0) {
+      console.log(`  ✗ 「${tier}」一次也没跑出来——这不是长尾，是断头。`)
+      bad += 1
+    }
+  }
   // 长尾必须是单调收窄的：越往下越少
   for (let i = 1; i < shares.length; i += 1) {
     if (shares[i]! > shares[i - 1]!) {
@@ -153,7 +184,7 @@ console.log('\n=== 同一块地，旱年和丰年不是一件事 ===\n')
     ['旱灾中段', dearth()],
   ] as [string, RegionState][]) {
     const seen = new Map<string, number>()
-    for (let i = 0; i < 600; i += 1) {
+    for (let i = 0; i < 200; i += 1) {
       fresh(12, '农户', state)
       const beat = spend('上午', 'work')
       if (!beat) continue
@@ -162,7 +193,7 @@ console.log('\n=== 同一块地，旱年和丰年不是一件事 ===\n')
     }
     console.log(`  【${label}】去地里干活，头一句是：`)
     for (const [line, n] of [...seen.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)) {
-      console.log(`      ${String(Math.round((n / 600) * 100)).padStart(3)}%  ${fillString(line)}`)
+      console.log(`      ${String(Math.round((n / 200) * 100)).padStart(3)}%  ${fillString(line)}`)
     }
     console.log()
   }
@@ -203,10 +234,21 @@ console.log('\n=== 能去哪儿，本身就是处境的一部分 ===\n')
 // —— 五、去哪儿决定撞上什么 ——
 console.log('\n=== 去哪儿，决定你可能撞上什么 ===\n')
 {
+  /**
+   * 这一节的次数单独定，因为它量的是**这一支最稀的那两格**。
+   *
+   * 「往山那边走走」撞上山道上那个人约四个点，「去镇上」撞上那册书约三个点。
+   * 从前跑三百次，那是九个人和十个人——σ 一个百分点上下，
+   * 而 README 抄的是「4.5%」「2.9%」这样的写法。
+   * **一整册「机缘不是年表发下来的」全靠这两个数说话，而它俩晃着。**
+   *
+   * 一天只是一次结算，两千次跑几秒，两格都稳到半个点以内。
+   */
+  const TRIES = 2000
   for (const doing of ['hill', 'town', 'work', 'home']) {
     const omens = new Map<string, number>()
     let n = 0
-    for (let i = 0; i < 4000; i += 1) {
+    for (let i = 0; i < TRIES; i += 1) {
       fresh(13, '农户', calm())
       const beat = spend('上午', doing)
       if (!beat) continue

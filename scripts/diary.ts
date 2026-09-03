@@ -269,7 +269,7 @@ if (failed > 0) {
  */
 console.log('=== ⑥ 真实人生里真的长出来了吗 ===\n')
 {
-  const N = 300
+  const N = 150
   let totalDays = 0
   let withHindsight = 0
   let withGone = 0

@@ -104,9 +104,16 @@ export function echoesOn(tags: readonly string[]): string[] {
   return lines
 }
 
-/** 按 id 取一个念头的定义 */
-export function leaningById(id: string): Leaning | undefined {
-  return LEANINGS.find((item) => item.id === id)
+/**
+ * 他心里那个东西，说出口是哪一句。
+ *
+ * **愿望和念头都要查。** 两者共用一个仓库——他自己分不出心里那个
+ * 是「想活得久一点」（愿望）还是「想学看病」（念头），
+ * 只查一张表就会漏掉另一层，把 id 直接摆到人面前。
+ */
+export function saysOf(id: string): string | undefined {
+  const found = LEANINGS.find((one) => one.id === id) ?? WISHES.find((one) => one.id === id)
+  return found?.says
 }
 
 /**
@@ -194,9 +201,17 @@ export interface Branching {
   text: string
 }
 
-/** 愿望长到这里才分岔。比念头「说出口」的门槛低一档——
- *  一个人先有了模糊的想要，才可能找到一个方向 */
-const BRANCH_AT = 12
+/**
+ * 愿望长到这里才分岔。
+ *
+ * **这个数不跟着念头的门槛走。** 愿望有自己的一套火种（`WISH_SPARKS`），
+ * 攒分量的快慢跟念头不是一回事，所以不能写成「比说出口低一档」——
+ * 那样念头门槛一改，这里就会跟着漂，而漂的理由跟愿望本身毫无关系。
+ *
+ * 它要表达的是另一件事：**一个人先有了模糊的想要，才可能找到一个方向。**
+ * 所以分岔必然发生在他说得出口之前。
+ */
+export const BRANCH_AT = 12
 
 /**
  * 愿望长大了，看看它往哪儿分岔。

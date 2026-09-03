@@ -30,7 +30,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { LEANINGS } from '../src/content/leanings'
 import { WISHES, WISH_SPARKS } from '../src/content/wishes'
-import { branch } from '../src/engine/leanings'
+import { BRANCH_AT, branch } from '../src/engine/leanings'
 import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
@@ -39,7 +39,27 @@ import { useNarrativeStore } from '../src/stores/narrative'
 import { useWorldStore } from '../src/stores/world'
 import type { Trade } from '../src/types/game'
 
-const RUNS = 2000
+/**
+ * ## 世数按最稀的那一格定——可有一格是买不来的
+ *
+ * 第四节的分母是「攒到过分岔门槛的人生」，约占总数的三成。
+ * 四百世的时候合格样本才一百出头，中间那两档连跑三批分别落在
+ * 19 / 29 / 23 和 19 / 10 / 13——**摆动一倍，读起来像有人改过内容。**
+ * 提到一千五百世，合格样本四百六，两档收到 22.6 和 13.5。
+ *
+ * 但最稀的那一格买不来。「不想再被人按住」要求这辈子被邪修
+ * 抓过腕子（`lift-wicked`，三百世里八个人），还得在分岔那一掷里
+ * 压过另外几条——一千五百世下一个也没出现，再翻一倍多半还是零。
+ *
+ * 所以那一格不靠世数交代，靠另外两处：第三节把那个旗标直接设进去，
+ * 证明这条路是通的；第四节报「抽到几种，一共几种」，让没抽到的
+ * 那一种自己报名。**加世数买得到「常见的那几档稳下来」，
+ * 买不到「罕见的那一档出现」——后者得换个法子问。**
+ */
+const RUNS = 1500
+
+/** 这一条没有 leaning：他就是怕，而且不知道能怎么办 */
+const NOWHERE = '什么也没通向'
 
 let failed = 0
 
@@ -150,8 +170,8 @@ console.log('\n=== 三、同一个愿望，五个人走向五个地方 ===\n')
     const world = useWorldStore()
     const leaning = useLeaningStore()
     setup()
-    // 把愿望推到分岔的门槛
-    leaning.stir('live-long', 14, { at: world.time, text: '……' }, world.time)
+    // 把愿望推到分岔的门槛。加一，是为了刚好越过去而不是压在线上
+    leaning.stir('live-long', BRANCH_AT + 1, { at: world.time, text: '……' }, world.time)
     /**
      * 反复掷，直到他想通为止。
      *
@@ -183,6 +203,21 @@ console.log('\n=== 三、同一个愿望，五个人走向五个地方 ===\n')
 // —— 四、真实人生里的分布 ——
 console.log('\n=== 四、真实人生里，这个愿望通向了哪儿 ===\n')
 {
+  /**
+   * 这个愿望一共能通向几个地方，是**数出来的**，不是抽出来的。
+   *
+   * 七条分岔落在四个念头上，加上「什么也没通向」那一条，一共五种落点——
+   * 这个数从 `WISHES` 里直接数得出来，跟跑多少世没有关系。
+   *
+   * 所以底下报的是「抽到几种，一共几种」：**前一个数掉了是抽样的事，
+   * 后一个数掉了是内容的事。** 从前只报前一个，于是四百世下
+   * 「不想再被人按住」那一格没抽到的那两批，表上写的是「通向四个地方」，
+   * 读起来跟「这条路还没写」一模一样。
+   */
+  const branches = WISHES.find((wish) => wish.id === 'live-long')?.branches ?? []
+  const EVERY_WHERE = new Set(branches.map((one) => one.leaning ?? NOWHERE))
+
+  /** 落点 id → 人数。key 用 id 不用 `says`，这样才对得上上面那个集合 */
   const where = new Map<string, number>()
   let wished = 0
   let branched = 0
@@ -205,38 +240,68 @@ console.log('\n=== 四、真实人生里，这个愿望通向了哪儿 ===\n')
     }
     const leaning = useLeaningStore()
     const world = useWorldStore()
-    if (leaning.peakOf('live-long') < 12) continue
+    if (leaning.peakOf('live-long') < BRANCH_AT) continue
     wished += 1
-    if (!world.hasFlag('branched:live-long')) {
-      where.set('还没长到分岔', (where.get('还没长到分岔') ?? 0) + 1)
-      continue
-    }
+    // 攒到了门槛却还没分岔的，不算一种落点——**它是还没走到，不是走到了没处去**
+    if (!world.hasFlag('branched:live-long')) continue
     branched += 1
-    const into = world.getFlag('branched-into') as string | undefined
-    const key = into ? (LEANINGS.find((one) => one.id === into)?.says ?? into) : '什么也没通向'
-    where.set(key, (where.get(key) ?? 0) + 1)
+    const into = (world.getFlag('branched-into') as string | undefined) ?? NOWHERE
+    where.set(into, (where.get(into) ?? 0) + 1)
   }
 
+  const saysOf = (id: string) =>
+    id === NOWHERE ? NOWHERE : (LEANINGS.find((one) => one.id === id)?.says ?? id)
+
   console.log(`  ${RUNS} 世里，${wished} 世的「想活久一点」攒到过分岔的门槛。\n`)
-  for (const [key, n] of [...where.entries()].sort((a, b) => b[1] - a[1])) {
-    console.log(`  ${String(((n / Math.max(1, wished)) * 100).toFixed(1)).padStart(5)}%  ${key}`)
+  for (const [id, n] of [...where.entries()].sort((a, b) => b[1] - a[1])) {
+    console.log(
+      `  ${String(((n / Math.max(1, wished)) * 100).toFixed(1)).padStart(5)}%  ${saysOf(id)}`,
+    )
+  }
+
+  const missing = [...EVERY_WHERE].filter((id) => !where.has(id))
+  console.log(`\n  不重样的去处    抽到 ${where.size} 种，一共 ${EVERY_WHERE.size} 种`)
+  if (missing.length > 0) {
+    console.log(`  （这一批没抽到：${missing.map(saysOf).join('、')}——它们进得去，只是稀）`)
   }
 
   console.log()
-  const shares = [...where.values()]
-  const top = Math.max(...shares, 0)
+  const top = Math.max(...where.values(), 0)
   if (wished === 0) {
     console.log('  ✗ 一个人也没攒到——这个愿望在真实人生里长不起来。')
     failed += 1
+  } else if (EVERY_WHERE.size < 3) {
+    /**
+     * 这一条查的是内容，不是这一批的运气。
+     *
+     * 它跟底下那条「抽到不到三种」看着像，其实是两回事：
+     * 分岔写少了会红在这里，而且**跑一世还是跑一万世，它都一样红**。
+     */
+    console.log(`  ✗ 这个愿望一共只通向 ${EVERY_WHERE.size} 个地方——那还是一条主线。`)
+    failed += 1
   } else if (where.size < 3) {
-    console.log('  ✗ 只通向了不到三个地方——那还是一条主线。')
+    console.log(`  ✗ ${RUNS} 世里只抽到 ${where.size} 种去处——要么世数不够，要么有几条根本进不去。`)
     failed += 1
   } else if (top / wished > 0.7) {
     console.log('  ✗ 七成以上都走了同一条路——那条路就是系统偷偷安排的主线。')
     failed += 1
   } else {
     console.log('  它通向了好几个地方，而没有哪一条占了压倒性的多数。')
-    console.log(`  （其中真的分岔出去的 ${branched} 世，其余的攒着但还没找到路）`)
+    /**
+     * 这一句从前无条件印「其余的攒着但还没找到路」——
+     * 可实测攒到门槛的人**全都**分岔了，那个「其余」是零个人，
+     * 而一句写死的话不会因为它说的是零就闭嘴。
+     *
+     * 攒够就一定分岔，这本身是条该报的结论（分岔那一步不再筛人，
+     * 筛人的是分岔**通向哪里**——那一档里「什么也没通向」占了大半）。
+     * **一个空档和一句轻描淡写的补充，读起来是一回事。**
+     */
+    const waiting = wished - branched
+    if (waiting > 0) {
+      console.log(`  （其中真的分岔出去的 ${branched} 世，另有 ${waiting} 世攒着但还没找到路）`)
+    } else {
+      console.log('  （攒到门槛的全都分岔了——筛人的不是分岔这一步，是它通向哪里）')
+    }
   }
 }
 

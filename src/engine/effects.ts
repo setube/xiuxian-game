@@ -9,6 +9,7 @@ import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 import { beatLines, spend } from './daily'
 import { reconsider } from './diary'
 import { branch, dampen, echoesOn, kindle, readingOf } from './leanings'
+import { askAround, crossed, follow, knock } from './seeking'
 import { toChineseNumber } from './describe'
 import {
   appraise,
@@ -587,6 +588,48 @@ function applyOne(
         { kind: 'divider', variant: 'dots' },
         { kind: 'event', text: awakened.says, tone: 'deep' },
       ]
+    }
+    case 'ask-around': {
+      const lead = askAround()
+      if (!lead) {
+        return [
+          { kind: 'narration', text: '你问了几个人。' },
+          {
+            kind: 'narration',
+            text: '有的没听懂，有的笑了笑。这一回什么也没问着。',
+            tone: 'faint',
+          },
+        ]
+      }
+      // 线索只进认知层。它不改世界，也不保证是真的
+      character.learn({
+        id: `lead:${lead.id}`,
+        title: '听来的一件事',
+        summary: lead.believes,
+        category: '修行',
+        at: world.time,
+        contact: '听说',
+        interpretation: '猜想',
+        mistaken: lead.truth === '假' ? '事实' : undefined,
+      })
+      // 有两条不相干的消息指到了同一处。这是他唯一能用的工具
+      const where = crossed()
+      if (where) {
+        world.setFlag('leads-crossed', true)
+        world.setFlag('following', where)
+      }
+      return [
+        { kind: 'narration', text: `你问到了${lead.from}。` },
+        { kind: 'dialogue', text: lead.says },
+        { kind: 'narration', text: '你记住了。', tone: 'faint' },
+      ]
+    }
+    case 'follow': {
+      const where = (world.getFlag('following') as string | undefined) ?? ''
+      return follow(where).blocks
+    }
+    case 'knock': {
+      return knock(effect.enter).blocks
     }
     case 'reading': {
       /**

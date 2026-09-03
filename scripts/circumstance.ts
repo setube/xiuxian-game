@@ -32,16 +32,28 @@ function born() {
 }
 
 // —— 一、每种境况各印一份 ——
-console.log('\n=== 十种出生境况 ===\n')
+console.log(`\n=== ${CIRCUMSTANCES.length} 种出生境况 ===\n`)
 {
   const shown = new Set<string>()
-  for (let i = 0; i < 6000 && shown.size < CIRCUMSTANCES.length; i += 1) {
+  for (let i = 0; i < 900 && shown.size < CIRCUMSTANCES.length; i += 1) {
     const { character, people } = born()
-    // 从关系图倒推这是哪一种境况：看有没有生父生母、抚养人是谁
-    const hasFather = people.relations.some((r) => r.bond === '生父')
-    const hasMother = people.relations.some((r) => r.bond === '生母')
     const guardians = people.guardians
-    const key = `${hasFather}-${hasMother}-${guardians.join(',')}`
+    /**
+     * 按「他跟谁连着哪几条边」认这是哪一种境况。
+     *
+     * 从前这把尺子只量三样：有没有生父、有没有生母、谁把他养大。
+     * 于是**「有爹有娘」和「有爹有娘还有个哥」量出来是同一种**——
+     * 十种境况里永远只印得出九种，而标题照写「十种」。
+     *
+     * 谁也不会发现，因为这个循环找不齐就一直找到上界为止，
+     * **找不齐和找齐了长得一模一样。** 所以下面补了一道数：
+     * 印出来几种，就得是几种。
+     */
+    const key = people.relations
+      .filter((relation) => relation.from === 'me')
+      .map((relation) => `${relation.bond}:${relation.to}`)
+      .sort()
+      .join('|')
     if (shown.has(key)) continue
     shown.add(key)
 
@@ -65,10 +77,17 @@ console.log('\n=== 十种出生境况 ===\n')
     )
     console.log()
   }
+
+  if (shown.size < CIRCUMSTANCES.length) {
+    console.log(`  ✗ 只跑出 ${shown.size} 种，少了 ${CIRCUMSTANCES.length - shown.size} 种。\n`)
+    process.exitCode = 1
+  }
 }
 
 // —— 二、统计分布 ——
-console.log('=== 四千世统计 ===\n')
+// 标题里的世数从常量取。从前这里写死「四千世」，后来 RUNS 被改成四百，
+// 这一行照旧宣称四千——**走查自己撒了个谎，还是最不容易被发现的那一种**
+console.log(`=== ${RUNS} 世统计 ===\n`)
 const byShape: Record<string, number> = {}
 const rootBy: Record<string, number[]> = {}
 const constitutions: Record<string, number> = {}

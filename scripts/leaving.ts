@@ -35,11 +35,26 @@ import { useNarrativeStore } from '../src/stores/narrative'
 import { useWorldStore } from '../src/stores/world'
 
 /**
- * 「想离开」长到「反复」那一档的人生只有百分之二三——七种念头里的一种，
- * 而且大多数人一辈子一种也长不起来。样本天然稀缺，所以轮次要够，
- * 否则这几个比例会在两次运行之间大幅跳动。
+ * ## 世数按最稀的那一格定
+ *
+ * 这一支统计的是**条件概率**，分母是「动过『想离开』这个念头的人生」。
+ * 照总数拍世数必然出错，可照合格样本拍也不够——
+ * **真正卡住的是四种形状里最稀的那一格。**
+ *
+ * 一千五百世里合格的一百世（十五分之一），
+ * 而 A（最后真的走了）只占这一百世的百分之三——**三个人**。
+ * 若照「三十个合格样本就够了」去拍，五百世筛出三十几个，
+ * A 的期望个数不到一，一多半的批次里它根本不出现，
+ * 于是走查报「这几种人生跑不出来」，看上去像是功能坏了。
+ *
+ * 要让最稀那一格稳定出现，得让「合格样本 × 它的占比」到三以上：
+ * 反推回去正好是一千五百世，而它已经贴着线——所以底下第三节
+ * 的门禁没有押在 A 上，改押在「走出去过的人」这一格更宽的判据上。
+ *
+ * 三个数一层套一层——总世数 → 合格样本 → 最稀那一格。
+ * **拍板要拍在最里头那一层。**
  */
-const RUNS = 2500
+const RUNS = 1500
 
 let failed = 0
 
@@ -131,6 +146,8 @@ interface Lived {
   settled: boolean
   /** 「想离开」被反向火种压过 */
   cooled: boolean
+  /** 这一世里，哪些念头被灭火压过 */
+  damped: string[]
 }
 
 /** 往前一步的那些选项。它们对所有人都开着，区别只在他会不会去点 */
@@ -159,6 +176,24 @@ function pick(options: readonly { choice: { id: string } }[], wants: boolean) {
   return options[Math.floor(Math.random() * options.length)]!
 }
 
+/**
+ * 一段话是不是「这个念头被压下去了」。
+ *
+ * **光比对文字会读反方向。** 反向火种把念头压下去的时候，
+ * 往往顺带顶上来另一个（`instead`），而引擎给这两笔用的是
+ * **同一个 moment 对象**——于是被顶上来的那个念头，
+ * 它的 moments 里也留着同一段文字。
+ *
+ * 只按 `d.text === m.text` 筛，走查就会报「『你想把日子过安稳』
+ * 被压过 80.9%」——可 `DAMPERS` 里压根没有一条压 settle 的。
+ * 那个数字是把「因为它被顶上来」整个读成了「它被压下去」。
+ *
+ * 所以要连 `leaning` 一起对：**压的是谁，得由火种自己说了算。**
+ */
+function wasDamped(id: string, moments: readonly { text: string }[]): boolean {
+  return moments.some((m) => DAMPERS.some((d) => d.leaning === id && d.text === m.text))
+}
+
 function liveALife(): Lived {
   setActivePinia(createPinia())
   const narrative = useNarrativeStore()
@@ -180,17 +215,24 @@ function liveALife(): Lived {
   const leave = leaning.leanings['leave']
   return {
     // 看有没有过这个念头，不看它此刻还剩多少——
-    // 被压回零的人恰恰是 D 那一种，用当下的分量筛会把他们整个漏掉
+    // 被压回零的人恰恰是 D 那一种，用当下的分量筛会把他们整个漏掉。
     // 真长起来过才算：他最想的时候到过「反复」那一档。
-    // 只被点过一次火、从没成气候的不算动过念头
-    everWanted: leaning.peakOf('leave') >= 15,
+    // 只被点过一次火、从没成气候的不算动过念头。
+    //
+    // **门槛由仓库自己说了算。** 这里原先写的是 `peakOf('leave') >= 15`，
+    // 把 STIRRING_AT 的值抄了一份——门槛一改，这一行就跟 `wantsNow`
+    // 对不上：峰值 16 的人算「动过念头」，却永远进不了任何一格。
+    everWanted: leaning.peakStageOf('leave') !== '埋着',
     wantsNow: leaning.stageOf('leave') !== '埋着',
     letGo: leave?.namedAt != null && leaning.stageOf('leave') === '埋着',
     acted: world.hasFlag('toward-leaving'),
     went: world.hasFlag('went-with-caravan'),
     cameBack: world.hasFlag('came-back'),
     settled: leaning.stageOf('settle') !== '埋着',
-    cooled: (leave?.moments ?? []).some((m) => DAMPERS.some((d) => d.text === m.text)),
+    cooled: wasDamped('leave', leave?.moments ?? []),
+    damped: leaning.growing
+      .filter((item) => wasDamped(item.id, item.moments))
+      .map((item) => item.id),
   }
 }
 
@@ -206,6 +248,24 @@ for (let i = 0; i < RUNS; i += 1) lives.push(liveALife())
   const c = wanted.filter((life) => !life.went && !life.wantsNow)
   // 走了一趟，回来之后那个念头被压下去了
   const d = wanted.filter((life) => life.cameBack && life.cooled)
+  /**
+   * ## 最稀那一格稀到一定程度，该改的是判据，不是世数
+   *
+   * A 和 D 各占合格样本的三个点上下——一千五百世跑下来各三个人。
+   * 期望是三，那么**每二十批就有一批抽到零**，走查于是报
+   * 「这几种人生跑不出来」，看上去像功能坏了。往上加世数治得了它，
+   * 可这一支已经是全套里最慢的一支，为一格罕见值再翻一倍不划算。
+   *
+   * 回头看这一格到底在问什么：A（走了）和 D（走了又回来）
+   * **是同一条路上的两种后续**——都得先真的走出去。
+   * 而「走出去之后那个念头退没退」是另一个问题，它不该用
+   * 「这一批里抽到没有」来判死活。
+   *
+   * 所以门禁改成问路通不通：**走出去过的人必须存在。**
+   * A 与 D 各自的比例照报不误，只是不再拿它们卡门禁——
+   * 报出来的数字和守住的底线，本来就不必是同一个。
+   */
+  const wentOut = wanted.filter((life) => life.went || life.cameBack)
 
   const pct = (n: number) => ((n / Math.max(1, wanted.length)) * 100).toFixed(1).padStart(5)
   console.log(`  ${RUNS} 世里，${wanted.length} 世动过「想离开」的念头。其中：\n`)
@@ -213,13 +273,13 @@ for (let i = 0; i < RUNS; i += 1) lives.push(liveALife())
   console.log(`  B　一直没动，留在原地　　　　${pct(b.length)}%`)
   console.log(`  C　念头后来退下去了　　　　　${pct(c.length)}%`)
   console.log(`  D　走了一趟，回来改了方向　　${pct(d.length)}%`)
+  console.log(`\n  真的走出去过的（A 与 D 合起来，去掉重复）　${pct(wentOut.length)}%`)
 
   console.log()
   const missing: string[] = []
-  if (a.length === 0) missing.push('A')
+  if (wentOut.length === 0) missing.push('A/D（真的走出去过）')
   if (b.length === 0) missing.push('B')
   if (c.length === 0) missing.push('C')
-  if (d.length === 0) missing.push('D')
   if (missing.length > 0) {
     console.log(`  ✗ 这几种人生跑不出来：${missing.join('、')}`)
     failed += 1
@@ -235,44 +295,45 @@ for (let i = 0; i < RUNS; i += 1) lives.push(liveALife())
 // —— 四、念头会退，不只会涨 ——
 console.log('\n=== 四、念头不是一条经验条 ===\n')
 {
+  /**
+   * 这一节从第三节那一批人生里读，不另起一轮。
+   *
+   * 从前它自己又跑两百世，而且跑的时候是**一律随机点选项**——
+   * 等于把玩家当成一枚骰子。第三节那一批是按「心里存着念头的人
+   * 更容易往前一步」模拟的，用它既省掉两百世，
+   * 又顺带把那个骰子玩家去掉了。
+   */
   const tally = new Map<string, number>()
-  for (let i = 0; i < 400; i += 1) {
-    setActivePinia(createPinia())
-    const narrative = useNarrativeStore()
-    const story = useStory(lifeScenes, {
-      events: lifeEvents,
-      routine: lifeRoutine,
-      finale: lifeFinale,
-    })
-    story.begin()
-    let turns = 0
-    while (!narrative.ended && turns < 500) {
-      const open = narrative.options.filter((option) => !option.locked)
-      if (open.length === 0) break
-      story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-      turns += 1
-    }
-    const leaning = useLeaningStore()
-    for (const item of leaning.growing) {
-      const fell = item.moments.some((moment) =>
-        DAMPERS.some((damper) => damper.text === moment.text),
-      )
-      if (fell) tally.set(item.id, (tally.get(item.id) ?? 0) + 1)
-    }
+  for (const life of lives) {
+    for (const id of life.damped) tally.set(id, (tally.get(id) ?? 0) + 1)
   }
 
   if (tally.size === 0) {
-    console.log('  ✗ 四百世里没有一个念头退过——那它就只是一条经验条。')
+    console.log(`  ✗ ${RUNS} 世里没有一个念头退过——那它就只是一条经验条。`)
     failed += 1
   } else {
     for (const [id, n] of [...tally.entries()].sort((a, b) => b[1] - a[1])) {
       const says = LEANINGS.find((item) => item.id === id)?.says ?? id
       console.log(
-        `  ${String(((n / 400) * 100).toFixed(1)).padStart(5)}% 的人生里，这个念头被压过：${says}`,
+        `  ${String(((n / RUNS) * 100).toFixed(1)).padStart(5)}% 的人生里，这个念头被压过：${says}`,
       )
     }
     console.log('\n  他没有改主意，他只是走不开——而年复一年地走不开，')
     console.log('  跟改了主意其实差不多。')
+
+    /**
+     * 覆盖面自己报出来，别让读的人以为这是全貌。
+     *
+     * 眼下反向火种只写了「想离开」一个念头，于是上面那张表
+     * 必然只有一行。**一行不是分布**——写死一句「好几个念头都会退」
+     * 就成了替内容吹牛。这一行让缺口自己说话：以后补了别的念头的
+     * 反向火种，它自己会变。
+     */
+    const covered = new Set(DAMPERS.map((d) => d.leaning))
+    console.log(
+      `\n  （反向火种眼下只写了 ${covered.size}/${LEANINGS.length} 个念头——` +
+        `别的念头目前只会涨不会退，这是内容上的缺口，不是机制上的。）`,
+    )
   }
 }
 

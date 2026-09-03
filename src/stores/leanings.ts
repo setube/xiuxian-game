@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
+import { useWorldStore } from './world'
+
 import type { GameTime } from '@/types/game'
 import type { LeaningMoment, LeaningStage, LeaningState } from '@/types/leaning'
 
@@ -24,14 +26,29 @@ import type { LeaningMoment, LeaningStage, LeaningState } from '@/types/leaning'
 /**
  * 从这里开始，他自己才隐约觉出点什么。
  *
- * 两道门槛都是照着真实分布定的，不是拍脑袋：跑四百世量下来，
- * 一个人最重的那个念头中位在 14，九十分位在 17，最高 22。
- * 于是 15 让大约三成的人「觉出点什么」，18 让大约一成的人说得出口。
+ * ## 门槛是一把尺子，可它量的东西不在一个量级上
+ *
+ * 两道门槛都是照着真实分布定的。头一回量的时候最重的那个念头
+ * 中位 14、九十分位 17，于是定了 15 和 18。后来加了愿望分岔和「找」那几卷，
+ * 同一批念头被更多的事推着走，15 就放过了 57% 的人——
+ * 「绝大多数人一辈子说不出口」这句话悄悄不成立了。
+ *
+ * 按新分布重定成 18 和 21 的时候，才露出底下那个真问题：
+ * **七个念头压根不在一个量级上。** 那一次逐个量下来，
+ * 「不想再被人按住」一辈子最高只长到七分，「想让家里松快些」最高十二——
+ * 无论门槛定在 15 还是 18，这两条线**从写下来那天起就说不出口**。
+ * 原因不在门槛，在火种：「想过安稳」有三条日常挂在最常见的标记上，
+ * 而「想让家里松快些」唯一那条挂在「粥稀了」，那个标记只在百分之一的人生里出现过。
+ *
+ * 所以门槛改动之后要做的不只是重量分布，还要**逐个念头看它够不够得着这道线**。
+ * 一条谁也够不着的线，跟没写这条内容是一回事。
+ *
+ * 眼下：反复及以上约四成，说得出口约一成半，七个念头全都够得着。
  */
-const STIRRING_AT = 15
+const STIRRING_AT = 18
 
 /** 到这里他才把它说出来。压得高，是因为大多数人一辈子说不出来 */
-const NAMED_AT = 18
+const NAMED_AT = 21
 
 export const useLeaningStore = defineStore(
   'leanings',
@@ -74,6 +91,19 @@ export const useLeaningStore = defineStore(
       return state.weight >= STIRRING_AT ? '反复' : '埋着'
     }
 
+    /**
+     * 他**最想的时候**到过哪一档。
+     *
+     * 跟 `stageOf` 分开，是因为「他现在还想不想」和「他这辈子想过没有」
+     * 是两个问题。一个想走了三年、最后被家里绊住的人，此刻在【埋着】，
+     * 可他确确实实动过那个念头——用当下的分量去筛，会把这种人整个漏掉。
+     */
+    function peakStageOf(id: string): LeaningStage {
+      const peak = leanings.value[id]?.peak ?? 0
+      if (peak >= NAMED_AT) return '明白'
+      return peak >= STIRRING_AT ? '反复' : '埋着'
+    }
+
     /** 有没有哪个念头到了这一档 */
     function atLeast(stage: LeaningStage): LeaningState[] {
       const order: LeaningStage[] = ['埋着', '反复', '明白']
@@ -109,6 +139,16 @@ export const useLeaningStore = defineStore(
       if (justNamed) next.namedAt = { ...at }
 
       leanings.value = { ...leanings.value, [id]: next }
+      /**
+       * 到了「反复」这一档，置一个旗标。
+       *
+       * **这不是给世界用的，是给他自己的行动用的。**
+       * 「镇上招短工」那种世界发生的事，条件里一个念头也不许有；
+       * 而「他逢人就绕着弯问」是他自己做的事——那当然要看他心里想什么。
+       *
+       * 判据是一句话：**这一卷写的是世界发生了什么，还是他做了什么？**
+       */
+      useWorldStore().setFlag(`leaning:${id}`, next.weight >= STIRRING_AT)
       return justNamed
     }
 
@@ -131,6 +171,7 @@ export const useLeaningStore = defineStore(
       named,
       letGo,
       stageOf,
+      peakStageOf,
       atLeast,
       stir,
       weightOf,

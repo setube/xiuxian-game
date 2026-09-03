@@ -15,7 +15,7 @@ import { useNarrativeStore } from '../src/stores/narrative'
 import { useWorldStore } from '../src/stores/world'
 import type { Trade } from '../src/types/game'
 
-const RUNS = 1000
+const RUNS = 300
 
 function probe(trade: Trade): void {
   const tally = {

@@ -29,13 +29,43 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { LEANINGS, SPARKS } from '../src/content/leanings'
-import { echoesOn, leaningById, selfSense } from '../src/engine/leanings'
+import { WISHES } from '../src/content/wishes'
+import { echoesOn, saysOf, selfSense } from '../src/engine/leanings'
 import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useLeaningStore } from '../src/stores/leanings'
 import { useNarrativeStore } from '../src/stores/narrative'
 
-const RUNS = 600
+/**
+ * 走查跑多少世。
+ *
+ * ## 世数照最稀那一格定，而这一支最稀的一格是「他这辈子动过学看病的念头」
+ *
+ * 三档大分布（始终没有方向／说不清／说出口）三百世就量得住，
+ * 从前也确实只跑三百世。可这一支还要**逐个念头**看它够不够得着——
+ * 而那件事最稀的一格只占一个百分点：三百世里三四个人，
+ * 整批落空的概率有三十分之一。
+ *
+ * **一支三十批响一次假警报的门禁，比没有门禁更坏——它教人把红灯当噪音。**
+ *
+ * 一千世把那一格抬到十来个人，落空率掉到两万分之一，
+ * 顺带让上头那张三档表配得上它印出来的小数位（σ 从三个点降到一个半）。
+ * 一世要走完一辈子，一千世跑一百秒上下。
+ */
+const RUNS = 1000
+
+/**
+ * 一个人心里能长出来的东西，一共七样。
+ *
+ * **六个念头，外加一个愿望。**「你想活得久一点。」不在 `LEANINGS` 里，
+ * 它定义在 `wishes.ts`——可 `leaning.named` 本来就装得下它
+ * （`saysOf` 也是 `LEANINGS ?? WISHES` 两处找），
+ * 而 README 数的那「七个」数的正是七样。
+ *
+ * 底下那张表从前只遍历 `LEANINGS`，于是第七样整个不在表上。
+ * **表少印一行，跟一个念头够不着线，看上去是同一件事——它不出现。**
+ */
+const GROWABLE = [...LEANINGS, ...WISHES]
 
 interface Lived {
   named: string[]
@@ -80,7 +110,7 @@ let failed = 0
 // —— 一、内容里一个数字也不给玩家 ——
 console.log('\n=== 一、他对自己的说法里，没有一个数字 ===\n')
 {
-  console.log('  七种念头，各自的两句话：\n')
+  console.log(`  ${LEANINGS.length} 种念头，各自的两句话：\n`)
   for (const item of LEANINGS) {
     console.log(`  【${item.id}】`)
     console.log(`      反复：${item.stirring}`)
@@ -131,19 +161,54 @@ for (let i = 0; i < RUNS; i += 1) lives.push(liveALife())
 // —— 三、说出来的都是些什么 ——
 console.log('\n=== 三、那些说出来了的人，说的是什么 ===\n')
 {
-  const tally = new Map<string, number>()
+  const said = new Map<string, number>()
+  /**
+   * 动过这个念头的人（含说出口的）。
+   *
+   * ## 「够不够得着这道线」是逐个念头的事，而从前没有人逐个看
+   *
+   * README 里有一句自己写给自己的规矩：「门槛改动之后要做的不只是重量分布，
+   * **还要逐个念头看它够不够得着这道线**」。可这一节从前只统计 `named`，
+   * 印出来是一张按人数排的表——**某个念头一个人也没说出口，它就只是不出现**，
+   * 而不出现和排在最后一行长得一模一样（跟 `day.ts` 那个空档是同一个洞）。
+   *
+   * 三百世跑一批，「你想离开这里」真的可以是 0，README 那句
+   * 「七个念头全都够得着，最低的也有 1.0%」当场就假了。
+   *
+   * 「说出口」那一档量不起：最稀的占三个千分点，要它稳定出现得三千世，
+   * 而这一支一世要走完一辈子，三千世是五分钟。所以门禁落在**宽一档**上——
+   * 「有个说不清的」样本厚得多，而念头够不着线的时候，它这一档也会空。
+   */
+  const stirred = new Map<string, number>()
   for (const life of lives) {
-    for (const id of life.named) tally.set(id, (tally.get(id) ?? 0) + 1)
+    for (const id of life.named) said.set(id, (said.get(id) ?? 0) + 1)
+    for (const id of new Set([...life.named, ...life.stirring])) {
+      stirred.set(id, (stirred.get(id) ?? 0) + 1)
+    }
   }
-  for (const [id, n] of [...tally.entries()].sort((a, b) => b[1] - a[1])) {
-    const says = leaningById(id)?.says ?? id
-    console.log(`  ${String(((n / RUNS) * 100).toFixed(1)).padStart(5)}%  ${says}`)
+
+  const pct = (n: number) => `${((n / RUNS) * 100).toFixed(1)}%`.padStart(6)
+  console.log('  心里长出来的                动过的   说出口的')
+  const ranked = [...GROWABLE].sort((a, b) => (stirred.get(b.id) ?? 0) - (stirred.get(a.id) ?? 0))
+  for (const item of ranked) {
+    const out = said.get(item.id) ?? 0
+    console.log(
+      `  ${item.says.padEnd(26)}${pct(stirred.get(item.id) ?? 0)}   ${pct(out)}${out === 0 ? '　← 一个人也没说出口' : ''}`,
+    )
   }
+
+  const unreachable = GROWABLE.filter((item) => (stirred.get(item.id) ?? 0) === 0)
+  if (unreachable.length > 0) {
+    console.log(`\n  ✗ 这几个念头一辈子也动不起来：${unreachable.map((i) => i.says).join('、')}`)
+    console.log('    火种够不着它们，那它们等于不存在。')
+    failed += 1
+  }
+
   const settleShare =
-    (tally.get('settle') ?? 0) /
+    (said.get('settle') ?? 0) /
     Math.max(
       1,
-      [...tally.values()].reduce((a, b) => a + b, 0),
+      [...said.values()].reduce((a, b) => a + b, 0),
     )
   console.log()
   console.log(`  「把日子过安稳」占了说出口的人里的 ${(settleShare * 100).toFixed(0)}%。`)
@@ -160,7 +225,7 @@ console.log('\n=== 四、一个人是怎么变成这样的 ===\n')
   if (!best) {
     console.log('  （这一批里没有人说出口过）')
   } else {
-    const says = best.named.map((id) => leaningById(id)?.says ?? id)
+    const says = best.named.map((id) => saysOf(id) ?? id)
     for (const moment of best.trace.slice(0, 12)) {
       console.log(`  第 ${String(moment.at).padStart(2)} 年　${moment.text}`)
     }
@@ -179,11 +244,19 @@ console.log('\n=== 五、念头怎么在后面的日子里反复出现 ===\n')
   const leaning = useLeaningStore()
   useCharacterStore()
 
-  // 手动把「想离开」推到「反复」这一档。门槛是 15，所以得推够
-  for (let i = 0; i < 8; i += 1) {
+  /**
+   * 手动把「想离开」推到「反复」这一档。
+   *
+   * **推到那一档为止，别写死推几次。** 头一版写的是「推 8 次 × 2 = 16，
+   * 因为门槛是 15」——后来门槛按新分布提到 18，这一节就悄悄塌了，
+   * 而它报的错是「『反复』这一层没有落地」，看上去像是功能坏了。
+   *
+   * 走查里凡是从门槛推算出来的数字，都得跟着门槛自己走。
+   */
+  for (let i = 0; i < 100 && leaning.stageOf('leave') === '埋着'; i += 1) {
     leaning.stir(
       'leave',
-      2,
+      1,
       { at: { year: 10 + i, month: 3, day: 1 }, text: '你往山那边走了走。' },
       { year: 10 + i, month: 3, day: 1 },
     )

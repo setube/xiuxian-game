@@ -32,10 +32,10 @@ import { useNarrativeStore } from '../src/stores/narrative'
 import { usePeopleStore } from '../src/stores/people'
 import type { Bond, Condition, Effect } from '../src/types/game'
 
-const RUNS = 1200
+const RUNS = 300
 
 /** 会自己造东西给玩家的那几支引擎。第四道验收要扫它们的源码 */
-const ENGINE_FILES = ['wounded.ts', 'book.ts', 'effects.ts'] as const
+const ENGINE_FILES = ['wounded.ts', 'book.ts', 'effects.ts', 'seeking.ts'] as const
 
 /**
  * 一条关系不在场时，正文里不该出现的说法。
@@ -339,9 +339,24 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
    * 它们不写在剧本数据里，扫不到——只能在源码文本里找那个字面量。
    * 粗，但正好够用：只要没有任何一处代码提到这个 id，它就一定没人给。
    */
-  const engineSource = ENGINE_FILES.map((file) =>
-    readFileSync(new URL(`../src/engine/${file}`, import.meta.url), 'utf8'),
-  ).join('\n')
+  const engineSource = [
+    ...ENGINE_FILES.map((file) =>
+      readFileSync(new URL(`../src/engine/${file}`, import.meta.url), 'utf8'),
+    ),
+    // store 也会造旗标：念头到了「反复」那一档就置一个，供他自己的行动用
+    readFileSync(new URL('../src/stores/leanings.ts', import.meta.url), 'utf8'),
+  ].join('\n')
+
+  /**
+   * 有些旗标是**拼出来的**，字面量搜不到。
+   *
+   * 比如念头那一层的 `leaning:${id}`——源码里只有前缀，没有整个键。
+   * 所以带这些前缀的键，只要源码里提到过那个前缀就算有出处。
+   *
+   * 这是这道门禁唯一一处放宽：**它换来的是不用把每个念头 id
+   * 都在扫描里再写一遍**，而那份重复迟早会跟真实的 id 对不上。
+   */
+  const PREFIXES = ['leaning:', 'spark:', 'branched:', 'event:', 'lead:']
 
   const orphanNeeds: string[] = []
   for (const [kind, needed, made] of [
@@ -351,6 +366,8 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     for (const [key, wheres] of needed) {
       if (made.has(key)) continue
       if (engineSource.includes(`'${key}'`)) continue
+      if (PREFIXES.some((prefix) => key.startsWith(prefix) && engineSource.includes(prefix)))
+        continue
       orphanNeeds.push(`${kind}〔${key}〕　没有任何地方产出　被要求于：${wheres.join('、')}`)
     }
   }

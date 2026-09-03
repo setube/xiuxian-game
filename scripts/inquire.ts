@@ -50,7 +50,7 @@ for (const informant of INFORMANTS) {
   setup()
   // 多问几次，把「他今天肯不肯说」的分布摊开
   const said = new Map<string, number>()
-  for (let i = 0; i < 200; i += 1) {
+  for (let i = 0; i < 120; i += 1) {
     setup()
     const reply = ask(informant.id, '年景')
     const line = reply.blocks
@@ -61,7 +61,7 @@ for (const informant of INFORMANTS) {
   }
   console.log(`  【${informant.name}】`)
   for (const [line, n] of [...said.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)) {
-    console.log(`      ${String(Math.round((n / 200) * 100)).padStart(3)}%  ${line}`)
+    console.log(`      ${String(Math.round((n / 120) * 100)).padStart(3)}%  ${line}`)
   }
   console.log()
 }
@@ -69,7 +69,7 @@ for (const informant of INFORMANTS) {
 // —— 二、两道闸：知道 ≠ 肯说 ——
 console.log('=== 知道 ≠ 肯说 ===\n')
 {
-  const ROUNDS = 600
+  const ROUNDS = 200
   for (const [id, topic, label] of [
     ['grain-dealer', '年景', '米铺掌柜（知道 88，肯说 22）'],
     ['elder', '家里', '家里的大人（知道 95，肯说 40）'],

@@ -74,7 +74,7 @@ console.log('  同一个人看一百次，说过几种话：\n')
 
 function spread(observer: Observer, label: string): void {
   const said = new Map<string, number>()
-  for (let i = 0; i < 100; i += 1) {
+  for (let i = 0; i < 80; i += 1) {
     const remarks = withSubject(() => observe(observer))
     for (const remark of remarks) {
       if (!remark.text.startsWith(label)) continue

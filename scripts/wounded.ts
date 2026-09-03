@@ -32,6 +32,20 @@ import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
 
+/**
+ * 走查跑多少次。
+ *
+ * ## 世数照最稀那一格定，而这一支最稀的一格是 D
+ *
+ * 「判断对 → 行动 → 但没做成」只占五个点上下。
+ * 三百次里是十一二个人，σ 有一个多百分点——**而 README 那张表
+ * 是照着这三百次抄的，一路抄到小数位**。同一份代码连跑三批，
+ * D 报 3.3 / 5.0 / 5.7，F 报 5.7 / 8.0 / 12.7，晃出一倍。
+ *
+ * 门禁本身没事（它只问六种在不在，D 期望十几个，落空几乎不可能），
+ * **坏的是那张给人读的表**——跟 `seeking.ts` 栽的是同一跤。
+ * 四千次跑完七秒，D 稳在 4.5–4.9，F 稳在 8.7–8.8。
+ */
 const RUNS = 4000
 
 /** 行动失败或半途而废的那些结局 */
@@ -57,7 +71,7 @@ console.log('\n=== 同一个人躺在那儿，不同的人看出不同的东西 
 {
   for (const truth of ['修士', '猎户', '邪修', '死人'] as WoundedTruth[]) {
     const tally = new Map<string, { n: number; wrong: number }>()
-    for (let i = 0; i < 600; i += 1) {
+    for (let i = 0; i < 200; i += 1) {
       fresh()
       const seen = glance(truth)
       const row = tally.get(seen.reading) ?? { n: 0, wrong: 0 }
@@ -67,7 +81,7 @@ console.log('\n=== 同一个人躺在那儿，不同的人看出不同的东西 
     }
     console.log(`  真相是【${truth}】，玩家读成：`)
     for (const [reading, row] of [...tally.entries()].sort((a, b) => b[1].n - a[1].n)) {
-      const pct = ((row.n / 600) * 100).toFixed(0)
+      const pct = ((row.n / 200) * 100).toFixed(0)
       const mark = row.wrong === row.n ? '　✗ 读错了' : row.wrong === 0 ? '　✓ 读对了' : ''
       console.log(`    ${reading}  ${String(pct).padStart(3)}%${mark}`)
     }
@@ -179,7 +193,7 @@ console.log('\n=== 铁律：气运不决定机缘成不成 ===\n')
    * 所以这里把 body 和 will 钉死，只让 fortune 变。
    */
   const byFortune = new Map<string, { n: number; ok: number }>()
-  for (let i = 0; i < 3000; i += 1) {
+  for (let i = 0; i < 300; i += 1) {
     const { character } = fresh()
     const fortune = (i % 3) * 30 + 20
     character.attributes = { ...character.attributes, body: 50, will: 50, fortune }
@@ -212,13 +226,13 @@ console.log('\n=== 而 body 是真的有用，但对修士不管用 ===\n')
     const line: string[] = []
     for (const body of [30, 50, 70]) {
       let ok = 0
-      for (let i = 0; i < 400; i += 1) {
+      for (let i = 0; i < 150; i += 1) {
         const { character } = fresh()
         character.attributes = { ...character.attributes, body, will: 50 }
         const seen = glance(truth)
         if (!FAILURES.has(resolve(truth, '扶', seen.reading).id)) ok += 1
       }
-      line.push(`body ${body}：${((ok / 400) * 100).toFixed(0)}%`)
+      line.push(`body ${body}：${((ok / 150) * 100).toFixed(0)}%`)
     }
     console.log(`  扶一个【${truth}】　${line.join('　')}`)
   }

@@ -34,7 +34,20 @@ import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 import type { KnowledgeEntry } from '../src/types/game'
 
-const RUNS = 3000
+/**
+ * 走查跑多少次。
+ *
+ * ## 这一支最稀的一格不稀，可它的表照样量不准
+ *
+ * 四种落点（更错／更对／没变／一无所获）各占两三成，没有长尾。
+ * 可**越是四格平分，越量不准**：三百次下每一格 σ 有两个半百分点，
+ * 而 README 那张表写着「28.1% / 25.9% / 23.8% / 22.3%」——
+ * 四个数首尾只差六个点，比误差棒宽不了多少，
+ * **那张表读起来像是排出了名次，其实这四格谁在前谁在后都是抽出来的。**
+ *
+ * 两千次跑二十几秒，σ 降到一个点，名次才立得住。
+ */
+const RUNS = 2000
 
 function fresh(insight = 45) {
   setActivePinia(createPinia())
@@ -85,7 +98,7 @@ console.log('\n=== ② 说的是真的 ≠ 他的解释是真的 ===\n')
   console.log('  落在心思粗细不同的人耳朵里：\n')
   for (const insight of [30, 45, 60, 75]) {
     const tally = new Map<string, number>()
-    for (let i = 0; i < 500; i += 1) {
+    for (let i = 0; i < 200; i += 1) {
       fresh(insight)
       const result = talk('亲眼见过', '很厉害的江湖人', true)
       const key = `${result.turn} → ${result.view}`
@@ -93,7 +106,7 @@ console.log('\n=== ② 说的是真的 ≠ 他的解释是真的 ===\n')
     }
     const parts = [...tally.entries()]
       .sort((a, b) => b[1] - a[1])
-      .map(([key, n]) => `${key} ${Math.round((n / 500) * 100)}%`)
+      .map(([key, n]) => `${key} ${Math.round((n / 200) * 100)}%`)
     console.log(`  心思 ${String(insight).padStart(2)}　${parts.join('　')}`)
   }
   console.log('\n  心思粗的人点点头，说「不是一路人，那就是不同门派的意思吧」——')
@@ -104,7 +117,7 @@ console.log('\n=== ② 说的是真的 ≠ 他的解释是真的 ===\n')
   console.log('\n  同一批人，唯一的区别是他原来已经确信了这件事：\n')
   for (const insight of [45, 60, 75]) {
     const tally = new Map<string, number>()
-    for (let i = 0; i < 500; i += 1) {
+    for (let i = 0; i < 200; i += 1) {
       const { character, world } = fresh(insight)
       // 让他先确信「修士就是很厉害的江湖人」，再去听同一句话
       world.setFlag('adept-view', '很厉害的江湖人')
@@ -123,7 +136,7 @@ console.log('\n=== ② 说的是真的 ≠ 他的解释是真的 ===\n')
     }
     const parts = [...tally.entries()]
       .sort((a, b) => b[1] - a[1])
-      .map(([key, n]) => `${key} ${Math.round((n / 500) * 100)}%`)
+      .map(([key, n]) => `${key} ${Math.round((n / 200) * 100)}%`)
     console.log(`  心思 ${String(insight).padStart(2)}　${parts.join('　')}`)
   }
   console.log('\n  心思 75 的人，只因为原来已经确信，听懂的比例就掉下来一大截。')

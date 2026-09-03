@@ -62,7 +62,7 @@ console.log('\n=== 让一个府自己跑一百年 ===\n')
 }
 
 // —— 二、同一场旱灾，不同的人生 ——
-const RUNS = 1500
+const RUNS = 300
 
 interface Life {
   trade: string

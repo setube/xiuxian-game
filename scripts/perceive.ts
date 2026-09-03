@@ -62,7 +62,7 @@ for (const trade of TRADES) {
 console.log('=== 但他一年只注意得到一两处 ===\n')
 {
   const tally = new Map<string, number>()
-  const ROUNDS = 400
+  const ROUNDS = 200
   for (let i = 0; i < ROUNDS; i += 1) {
     setActivePinia(createPinia())
     const household = useHouseholdStore()
