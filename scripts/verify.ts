@@ -1,10 +1,10 @@
 /* eslint-disable no-console -- 这是一支门禁脚本，标准输出就是它的产物；它不进构建 */
 /**
- * 关系穿帮验收。
+ * 内容门禁：五道。
  *
  * ## 为什么它是门禁而不是走查
  *
- * 上一轮发现：227 个「生下来就没爹」的人生里，227 个的正文
+ * 第一轮发现：227 个「生下来就没爹」的人生里，227 个的正文
  * 仍在写「父亲每天傍晚去地里站一会儿」。
  *
  * **那不是一个内容 bug，是藏在剧本里的系统假设**——
@@ -14,6 +14,33 @@
  * 所以它必须是一条能跑的验收，不能是文档里的一句话：
  *
  *   **任何重要事件，在没有对应关系节点时，都不能产生关系穿帮。**
+ *
+ * ## 这份门禁查什么，改过一次
+ *
+ * 起初它查的是「所有条件有没有来源」。后来撞见两件事，
+ * 它们看着像同一类，其实分属两层：
+ *
+ *     illness-at-home　　火种引用了它，世上没有一处设过它　　　→ 来源问题
+ *     omen:wounded#miss　节点连得好好的，三百世零个人走到　　　→ 路径问题
+ *
+ * 于是这一句正式改成：
+ *
+ *   **门禁检查所有内容元素是否有「来源」和「可观测路径」。**
+ *
+ * 一个事件存在，不代表玩家有机会经历它。普通事件表查的是
+ * 「事件有没有触发」，这里查的是**这个人的人生轨迹是否可能抵达那儿**。
+ * 前四道管来源与连通，第五道管路径。
+ *
+ * ## 还有一条规矩是量出来的：能静态判的，别拿模拟去判
+ *
+ * 「新加一卷却忘了接入口」起先指望第五道抓——漏接一卷，
+ * 那份「三百世没人走到」的名单该多出五到十个。十二批实测下来它抓不到：
+ * 名单自己就在 16 到 37 之间晃（`seek:crossed` 五批整卷缺席，
+ * `royal:fall` 三批），**噪声的幅度比要抓的信号还大**。
+ * 而同一件事静态判只要问一句：这一卷有没有入边。于是它挪去了第三道。
+ *
+ * 留下的规矩是：**先问这件事能不能静态判**。模拟是用来量分布的，
+ * 不是用来判存在的——判存在，抽样迟早会替你判错。
  *
  * 跑法：npx vite-node scripts/verify.ts
  * 失败会以非零码退出，可以直接挂进 CI。
@@ -205,7 +232,7 @@ console.log('=== 场景跳转验收（静态穷举全库）===\n')
 }
 
 // ============================================================
-// 第三道：库里不许躺着走不到的节点
+// 第三道：库里不许躺着走不到的节点，也不许躺着接不上的整卷
 // ============================================================
 /**
  * 断头路的反面。
@@ -214,21 +241,53 @@ console.log('=== 场景跳转验收（静态穷举全库）===\n')
  * 比如 `omen:wounded` 从「真相分流器 + 六个既定结局」改成五节点之后，
  * 那七个节点如果忘了删，会一直躺在库里：编译得过，跑不到，
  * 而下一个人读这份剧本时会以为它还在用。
+ *
+ * ## 后来这一道又多管了一件事：整卷接不上
+ *
+ * 「新加一卷内容，却忘了给它接入口」本来指望第五道抓——
+ * 那一道数「三百世没人走到的节点」，漏接一卷就该多出五到十个。
+ *
+ * **量下来发现它抓不到。** 十二批三百世，那份名单自己就在
+ * 16 到 37 之间晃（均值 23.3，标准差 5.6）：`seek:crossed` 十二批里
+ * 有五批整卷没人走到，`royal:fall` 三批，`birth:皇室` 一批——
+ * 一卷稀，它就整卷从名单里进进出出。**噪声的幅度比要抓的信号还大**，
+ * 于是那个上限无论定在哪儿，都只能在「随机红灯」和「永远不红」之间挑一个。
+ *
+ * 可这件事根本不用靠模拟。一卷只有三种进法：年表事件、四个阶段的日常、
+ * 收尾那一卷，外加别卷跳过来。`begin()` 也只是 `toNextChapter(0)`，
+ * 连出生那一卷都是年表抽出来的——**所以没有哪一卷有资格没有入边**，
+ * 而这是纯静态的，一个随机数也不用掷。
  */
 console.log('=== 孤儿节点验收 ===\n')
 {
   const orphans: string[] = []
   let nodes = 0
 
+  /** 被外面指过的卷。三种外部入口先记下，跨卷跳转在下面的循环里补 */
+  const entered = new Set<string>()
+  for (const event of lifeEvents) {
+    const [head] = event.scene.split('#')
+    if (head) entered.add(head)
+  }
+  for (const sceneId of Object.values(lifeRoutine)) entered.add(sceneId)
+  entered.add(lifeFinale)
+
   for (const [sceneId, scene] of Object.entries(lifeScenes)) {
     const reachable = new Set<string>([scene.entry])
-    /** 只收本卷内的落点：跨卷跳转由第二道保证目标存在 */
+    /**
+     * 本卷内的落点归 `reachable`，指向别卷的归 `entered`。
+     *
+     * 不带 `#` 的写法先当本卷节点，认不出来才当别卷入口——
+     * 跟 `story.ts` 里的 `resolve` 同一个规矩，不然跨卷跳转会被记错帐。
+     */
     const mark = (target: string): void => {
       const [head, tail] = target.split('#')
       if (tail) {
         if (head === sceneId) reachable.add(tail)
+        else if (head) entered.add(head)
       } else if (head) {
-        reachable.add(head)
+        if (scene.nodes[head]) reachable.add(head)
+        else entered.add(head)
       }
     }
     for (const node of Object.values(scene.nodes)) {
@@ -243,11 +302,25 @@ console.log('=== 孤儿节点验收 ===\n')
   }
 
   if (orphans.length === 0) {
-    console.log(`  ${nodes} 个节点，每一个都走得到。\n`)
+    console.log(`  ${nodes} 个节点，每一个都走得到。`)
   } else {
     console.log(`  ✗ ${orphans.length} 个节点没人指向：\n`)
     for (const id of orphans) console.log(`    ${id}`)
-    console.log('\n  它们要么是改剧本时忘了删的，要么是该接上却漏接了。\n')
+    console.log('\n  它们要么是改剧本时忘了删的，要么是该接上却漏接了。')
+    process.exitCode = 1
+  }
+
+  const strays = Object.keys(lifeScenes).filter((sceneId) => !entered.has(sceneId))
+  const scenes = Object.keys(lifeScenes).length
+  if (strays.length === 0) {
+    console.log(`  ${scenes} 卷，每一卷都有人指得到。\n`)
+  } else {
+    console.log(`\n  ✗ ${strays.length} 卷没有任何入口：\n`)
+    for (const id of strays) console.log(`    ${id}`)
+    console.log(
+      '\n  写好了却没接上：年表里没有事件指向它，日常和收尾也不是它。' +
+        '\n  玩家这辈子都读不到这一卷。\n',
+    )
     process.exitCode = 1
   }
 }
@@ -379,6 +452,142 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     console.log(`  ✗ ${orphanNeeds.length} 种前置条件永远满足不了：\n`)
     for (const line of orphanNeeds) console.log(`    ${line}`)
     console.log('\n  正文里说给了玩家，实际没给。那几条路永远走不到。\n')
+    process.exitCode = 1
+  }
+}
+
+// ============================================================
+// 第五道：图上走得到，不代表人生里有人走得到
+// ============================================================
+/**
+ * 前四道查的是**内容有没有来源**，这一道查的是**玩家有没有路走到那儿**。
+ *
+ * 这两件事真的会分开坏。前一轮同时撞见了两个：
+ *
+ *     illness-at-home　　火种引用了它，世上没有一处设过它　　　→ 来源问题
+ *     omen:wounded#miss　节点连得好好的，三百世零个人走到　　　→ 路径问题
+ *
+ * 第三道那个「孤儿节点」查的是**图上**没人指向；这一道查的是
+ * **人生里**没人抵达。`miss` 那个节点第二、三、四道全都放行：
+ * 它有人指向、跳转不断头、条件也不缺——可它的入口是
+ * `insight ≥ 34 || body ≥ 52` 的反面，而童年那些事到十岁之前
+ * 就把每个人的属性都推过了线。三百世三百个人全都绕开了它。
+ *
+ * **一个事件存在，不代表玩家有机会经历它。** 普通事件表查的是
+ * 「事件有没有触发」，这一道查的是「这个人的人生轨迹是否可能抵达这里」。
+ *
+ * ## 但它不能要求「每个节点都有人走到」
+ *
+ * 有些节点稀是对的。「被邪修抓过腕子之后那一条」要求
+ * `事件概率 × 转化概率 × 行为概率`，乘出来三百世本来就轮不到一个人——
+ * **用普通人生模拟去证明这种长尾存在，本身就是错的目标。**
+ * 那种节点该由「可达性」那一层交代：把旗标直接构造进去走一遍。
+ *
+ * 所以这一道只做两件事：把没人走到的名单**印出来**，
+ * 以及守住这份名单别越来越长。上限是量出来的，不是拍的。
+ */
+console.log('=== 可观测路径验收（人生里真走得到吗）===\n')
+{
+  /**
+   * 没人走到的节点上限。
+   *
+   * ## 这个数换过一次，而换掉的理由比数本身重要
+   *
+   * 起先它是 32，凭两批实测（19 和 25）定的，还自以为留足了余量。
+   * 后来把三百世那一批跑了十二遍，量出来的是另一回事：
+   *
+   *     16　21　19　22　20　21　22　24　28　30　37　19
+   *     均值 23.3　标准差 5.6
+   *
+   * **十二批里有一批 37。** 也就是说 32 这个上限大约十二分之一的概率
+   * 会红一次，而红的原因是抽样，不是内容——那正是这一整套走查
+   * 最忌讳的一件事（`probe.ts` 的注释里写过同一句话）。
+   *
+   * 晃得这么厉害是因为这份名单不按「个」跳，按「卷」跳：
+   * `seek:crossed` 十二批里有五批整卷没人走到，`royal:fall` 三批，
+   * `birth:皇室` 一批。一卷稀，它就整卷进进出出。
+   *
+   * ## 于是它不再假装自己能抓「漏接一卷」
+   *
+   * 那件事本来是这个上限的立身之本——漏接一卷该多出五到十个节点。
+   * 可噪声幅度是 ±11，**信号比噪声小，无论上限定在哪儿都抓不到**。
+   * 现在那件事归第三道：一卷有没有入边是纯静态的，一个随机数也不用掷。
+   *
+   * 这一格只剩一个用处：**防灾难性回归**——一次改动把大片内容切下线。
+   * 所以 40 = 均值 + 三个标准差，量出来的，不是拍的。
+   */
+  const UNVISITED_CEILING = 40
+
+  const visits = new Map<string, number>()
+  for (let index = 0; index < RUNS; index += 1) {
+    setActivePinia(createPinia())
+    const narrative = useNarrativeStore()
+    useCharacterStore()
+
+    /**
+     * 顺着玩家真正走过的路记一笔。
+     *
+     * 不能从 `narrative.sceneId` 采样：`enterNode` 会一口气自动接好几节，
+     * 中间那些节点在等到下一次落笔之前就被覆盖了——**而恰恰是它们最容易漏**，
+     * `unseen`、`misread` 这类走到就结束的终端节点全在里头。
+     * 所以在这里包一层 `locate`，它是每进一个节点都会被调到的那个。
+     */
+    const locate = narrative.locate
+    narrative.locate = (sceneId: string, nodeId: string): void => {
+      const key = `${sceneId}#${nodeId}`
+      visits.set(key, (visits.get(key) ?? 0) + 1)
+      locate(sceneId, nodeId)
+    }
+
+    const story = useStory(lifeScenes, {
+      events: lifeEvents,
+      routine: lifeRoutine,
+      finale: lifeFinale,
+    })
+    story.begin()
+
+    let turns = 0
+    while (!narrative.ended && turns < 200) {
+      const open = narrative.options.filter((option) => !option.locked)
+      if (open.length === 0) break
+      story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
+      turns += 1
+    }
+  }
+
+  const unvisited: string[] = []
+  let nodes = 0
+  for (const [sceneId, scene] of Object.entries(lifeScenes)) {
+    for (const nodeId of Object.keys(scene.nodes)) {
+      nodes += 1
+      if (!visits.has(`${sceneId}#${nodeId}`)) unvisited.push(`${sceneId}#${nodeId}`)
+    }
+  }
+
+  const walked = nodes - unvisited.length
+  console.log(
+    `  ${RUNS} 世里走到过 ${walked} 个节点，一共 ${nodes} 个——` +
+      `${((walked / nodes) * 100).toFixed(0)}%。\n`,
+  )
+
+  if (unvisited.length > 0) {
+    console.log(`  这 ${unvisited.length} 个这一批没人走到：\n`)
+    for (const id of unvisited) console.log(`    ${id}`)
+    console.log(
+      '\n  稀不等于坏。这份名单是给人读的，不是给人清零的——' +
+        '\n  读法是去可达性那一层查它：把状态直接构造进去，看那条路通不通。' +
+        '\n\n    scripts/attention.ts 头两节　　那天他有没有把注意力放在那儿' +
+        '\n    scripts/seeking.ts 第七节　　　 seek:crossed / seek:door 两卷（两千世走进去七回上下）' +
+        '\n',
+    )
+  }
+
+  if (unvisited.length > UNVISITED_CEILING) {
+    console.log(
+      `  ✗ 走不到的节点有 ${unvisited.length} 个，比上限 ${UNVISITED_CEILING} 多。\n` +
+        '    这一格量的是「有没有大片内容一次性掉线」——上限是均值加三个标准差。\n' +
+        '    单独漏接一卷它抓不到（噪声比信号大），那件事归第三道的「每一卷都有人指得到」。\n',
+    )
     process.exitCode = 1
   }
 }

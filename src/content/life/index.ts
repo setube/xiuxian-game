@@ -80,6 +80,8 @@ export const lifeRoutine: Record<LifeStage, string> = {
   幼年: 'routine:child',
   启蒙: 'routine:youth',
   少年: 'routine:teen',
+  // 走不到：渡口那一卷十六岁必然触发并收尾，而「成年」要十七岁才开始。
+  // 不是漏接，是这一段人生还没写——原委记在 routine.ts 那一卷上头
   成年: 'routine:adult',
 }
 

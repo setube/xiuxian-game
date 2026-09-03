@@ -10,8 +10,18 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  * 1. **真相在你看见之前就定了。** 山道上躺着的那个人是猎户、是修士、还是邪修，
  *    由 roll 在进场那一刻掷出来，写进旗标。玩家的选择改变的是自己撞上什么，
  *    不是把他变成对自己有利的那一种。
- * 2. **机会摆在面前，看不看得见是另一回事。** 走神的人从这段山道上走过去，
- *    正文里根本不会提有人躺着。他这一生都不会知道那天错过了什么。
+ * 2. **机会摆在面前，看不看得见是另一回事。** 而「没看见」不是一件事，是三件：
+ *
+ *        unseen                没有注意到
+ *        noticed-but-ignored   看见了，但没放在心上
+ *        misread               看见了，理解成另一回事
+ *
+ *    这三种在人生意义上完全不同。第一种他这辈子不知道自己错过了什么；
+ *    第二种他记得草丛里好像有点什么；第三种他记得自己当时那句
+ *    「不过是个醉汉」。压成一个 `miss` 节点，等于把三种人生写成同一句话。
+ *
+ *    分档的依据也不是属性高低。**决定他看不看得见的是那天他心里装着什么**——
+ *    详见 `src/engine/attention.ts`。
  * 3. **抓住了也未必懂。** 你可以捡到一本书、听到一句话、收下一样东西，
  *    然后很多年都不知道那是什么。真正的转折不在拿到的那一刻，
  *    在多年以后有人随口点破的那一刻。
@@ -39,6 +49,19 @@ export const encounterScenes: SceneLibrary = {
               { value: '邪修', weight: 10 },
             ],
           },
+          // 那天的天。它谁都拦不住，可它决定他抬不抬头
+          {
+            type: 'roll',
+            key: 'road-weather',
+            among: [
+              { value: '晴', weight: 42 },
+              { value: '阴', weight: 26 },
+              { value: '起风', weight: 20 },
+              { value: '下雨', weight: 12 },
+            ],
+          },
+          // 心思细不细 + 那天他心里装着什么 + 路上是什么天，合起来掷一次
+          { type: 'attend' },
         ],
         blocks: [
           { kind: 'narration', text: '那天你走山道去邻村。' },
@@ -47,24 +70,61 @@ export const encounterScenes: SceneLibrary = {
             text: '路很长，走了大半日。日头偏西的时候，你在下坡那一段歇了歇脚。',
           },
         ],
+        /**
+         * ① 注意。
+         *
+         * 从前这里是一行阈值：`insight ≥ 34 || body ≥ 52`。
+         * 读起来像一道筛子，量出来三百世三百个人全都过了——
+         * **十一种出身里只有农户两项都够不着，而童年那些事
+         * 到十岁之前就把属性推过了线。** 这一关被童年系统提前解决了。
+         *
+         * 可修法不是把线抬高。抬高只会换来「聪明孩子看见、笨孩子看不见」，
+         * 那是能力检测。要问的是**当时的他有没有把注意力放在那里**——
+         * 一个心思很细的孩子，在满脑子想着家里那个还没退烧的人的下午，
+         * 一样什么都看不见。判定挪进了 `attend`，这里只认它掷出来的结果。
+         */
         branches: [
-          // 看得见与看不见，是这一卷唯一的分水岭。
-          // 两种人都能留意到路边：心思细的，和常年在山里走的。
-          // 看不见的那条路上，正文里根本不会提有人躺着——
-          // 那个人这一生都不知道自己错过了什么
-          { requires: [{ attribute: { key: 'insight', atLeast: 34 } }], next: 'notice' },
-          { requires: [{ attribute: { key: 'body', atLeast: 52 } }], next: 'notice' },
+          { requires: [{ flag: { key: 'attention', equals: 'caught' } }], next: 'notice' },
+          {
+            requires: [{ flag: { key: 'attention', equals: 'glimpsed' } }],
+            next: 'noticed-but-ignored',
+          },
         ],
-        next: 'miss',
+        next: 'unseen',
       },
 
-      miss: {
-        id: 'miss',
+      /**
+       * 第一种错过：**没有注意到。**
+       *
+       * 正文里根本不会提有人躺着。他这一生都不知道那天错过了什么——
+       * 但他读得到自己那天心里装着什么，那一句由 `attend` 印在上一节末尾。
+       */
+      unseen: {
+        id: 'unseen',
         onEnter: [{ type: 'time', days: 1 }],
         blocks: [
           { kind: 'narration', text: '歇够了，你接着赶路。' },
           { kind: 'narration', text: '天黑前到了邻村，事情办完，第二天就回去了。' },
           { kind: 'narration', text: '这一趟没有什么可说的。', tone: 'faint' },
+        ],
+      },
+
+      /**
+       * 第二种错过：**看见了，但没放在心上。**
+       *
+       * 这一档跟上一档在人生意义上完全是两回事。他确实看见了，
+       * 而且他会记得——「那天草丛里好像有点什么」。多年以后
+       * 若有人说起山道上的事，他心里会响一下。
+       *
+       * 走开的理由不是他冷漠，是天色、是脚程、是心里那件更要紧的事。
+       */
+      'noticed-but-ignored': {
+        id: 'noticed-but-ignored',
+        onEnter: [{ type: 'time', days: 1 }],
+        blocks: [
+          { kind: 'narration', text: '路边的草丛好像被压过。你多看了半眼。' },
+          { kind: 'narration', text: '没停。天色不早，还有半程路要走。' },
+          { kind: 'narration', text: '走出去几十步，那点念头就散了。', tone: 'faint' },
         ],
       },
 
@@ -87,7 +147,38 @@ export const encounterScenes: SceneLibrary = {
           { kind: 'narration', text: '他侧躺着，身上有血。看不清脸，也看不出是死是活。' },
           { kind: 'narration', text: '四下无人。风把草吹得哗哗响。' },
         ],
+        /**
+         * 理解决定他停不停下来。
+         *
+         * 从前这里无条件接 `interest`，等于「看见了就一定会考虑要不要管」。
+         * 可认定那是个醉汉的人根本不会停——**他不是不管，他是觉得没什么可管的。**
+         *
+         * 「读成死人」也走这一支，但它跟「读成醉汉」不是一回事：
+         * 地上真躺着个死人的时候，走开是判断对了。两种都落在这一节里，
+         * 分开哪一种是走查的事——`wounded-misread` 那面旗子记着他到底读错没有。
+         */
+        branches: [
+          { requires: [{ flag: { key: 'wounded-reading', equals: '醉汉' } }], next: 'misread' },
+          { requires: [{ flag: { key: 'wounded-reading', equals: '死人' } }], next: 'misread' },
+        ],
         next: 'interest',
+      },
+
+      /**
+       * 第三种错过：**看见了，理解成另一回事。**
+       *
+       * 这一档最容易被压扁成「没看见」，可它跟没看见差得最远：
+       * 他看清了，判断了，然后走了。多年以后若有人点破那天山道上是什么人，
+       * 他想起的不是一片空白，是自己当时那句「不过是个醉汉」。
+       */
+      misread: {
+        id: 'misread',
+        onEnter: [{ type: 'time', days: 1 }],
+        blocks: [
+          { kind: 'narration', text: '你绕开那片草丛，接着赶路。' },
+          { kind: 'narration', text: '天黑前到了邻村，事情办完，第二天就回去了。' },
+          { kind: 'narration', text: '路上你没再想起这件事。', tone: 'faint' },
+        ],
       },
 
       /**

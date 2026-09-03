@@ -7,6 +7,7 @@ import { observerById } from '@/content/observers'
 import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 
 import { beatLines, spend } from './daily'
+import { attend, attendBlocks } from './attention'
 import { reconsider } from './diary'
 import { branch, dampen, echoesOn, kindle, readingOf } from './leanings'
 import { askAround, crossed, follow, knock } from './seeking'
@@ -244,6 +245,19 @@ function applyOne(
         })
       }
       return reply.blocks
+    }
+    case 'attend': {
+      /**
+       * 那天他把注意力放在了哪儿。
+       *
+       * 落一个旗标就够了，剧本按它分三条路走。**心事那一句三条路上都印**——
+       * 这是这一层跟一行属性阈值最要紧的差别：没看见的人读到的不是空白，
+       * 是「你心里想着家里那个人」。他知道自己那天心不在焉，
+       * 只是永远不会知道自己错过了什么。
+       */
+      const attention = attend()
+      world.setFlag('attention', attention.level)
+      return attendBlocks(attention)
     }
     case 'glance': {
       /**

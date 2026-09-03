@@ -15,14 +15,27 @@
  *   D　找到入口但自己放弃
  *   E　找到入口但没有资格
  *
+ * ## 前六节量引擎，第七节量人生
+ *
+ * 前六节把 `askAround` / `follow` / `knock` 当纯函数直接调，
+ * 手里替他掷「他问了几年」。那量的是**这套规则本身是什么形状**。
+ *
+ * 可玩家不是这么碰到它的。他得先有「想弄明白」这个念头，
+ * 先听说过世上有修士，还得那一年的年表刚好抽中问人那一卷。
+ * 第七节走完整人生，量的是**那条路他有没有机会走上去**——
+ * 两个数字差了一个数量级，而**差的那部分正是这一册要说的话**。
+ *
  * 跑法：npx vite-node scripts/seeking.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 
 import { LEADS, PLACES } from '../src/content/leads'
+import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { askAround, crossed, follow, knock, leadsHeard } from '../src/engine/seeking'
+import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
+import { useNarrativeStore } from '../src/stores/narrative'
 import { useWorldStore } from '../src/stores/world'
 
 /**
@@ -318,6 +331,156 @@ console.log(`\n=== 六、一个玩 ${A_PLAYER_PLAYS} 世的人看得到什么 ==
   }
   console.log('\n  十世里多半整整齐齐全是 C。**而那正是这一册要的样子**——')
   console.log('  一个人打听了一辈子什么也没打听着，是常态，不是失败。')
+}
+
+// —— 七、可观测路径：真人生里，他有没有机会走上这条路 ——
+/**
+ * 上面六节量的是规则的形状，这一节量的是**玩家够不够得着**。
+ *
+ * ## 这一节是被一份门禁逼出来的
+ *
+ * `verify.ts` 第五道会把「三百世里没人走到的节点」印成名单。
+ * 第一次跑，`seek:crossed` 和 `seek:door` 两卷九个节点整整齐齐
+ * 一个人也没走到——而 seeking 是刚加的一册。看着像新内容接错了线。
+ *
+ * 查下来不是。链条完好，只是**每一环都在乘**（量级，不是准数）：
+ *
+ *     心里生出「想弄明白」这个念头　　　　　　 4~5%
+ *     还得先听说过世上有修士　　　　　　　　　 37%
+ *     两样都占上　　　　　　　　　　　　　　　 3~4%
+ *     那几年的年表抽中了问人那一卷　　　　　　 3%
+ *     真问着了东西（多半什么也问不着）　　　　 2%
+ *     攒到两条不相干的消息指向同一处　　　　　千分之二到五
+ *
+ * 最后那一格连跑两批是 0.2% 和 0.5%——**它自己就晃一倍**，
+ * 所以上面这张表读的是形状，不是数。而三百世乘出来是一个人上下，
+ * **一个期望值在一附近的格子印出零来不是内容坏了，是三百世不够。**
+ * 这一节跑两千世，所以它有资格替那两卷作证。
+ *
+ * ## 顺带查出一件本来看不见的事
+ *
+ * 「两条对上了」的人里，绝大多数是**十五岁那年**才对上的，
+ * 而用得上它的那一卷窗口是十三到十六。也就是说这条路
+ * 十有八九只赶得上最后一年——**旗标设上的时候，那扇窗快关了。**
+ * 它现在还通，可再往前挪一岁窗口就会当场断掉，
+ * 而断掉的样子跟今天一模一样：名单上多两卷，谁也说不清为什么。
+ */
+console.log('\n=== 七、可观测路径：真人生里走得到吗 ===\n')
+{
+  /**
+   * 世数按最稀那一格定，跟第五节是同一条规矩。
+   *
+   * 门禁认的是「走进那一卷」，实测千分之三点七——两千世里七回上下，
+   * 掷出零的概率不到千分之一。三千世更稳，可它要跑四分三刻钟，
+   * 而这一支是要跟另外二十三支一起跑的。**两千世买到的是同一句结论。**
+   */
+  const LIVES = 2000
+
+  const funnel = {
+    心里生出想弄明白: 0,
+    听说过世上有修士: 0,
+    两样都占上: 0,
+    抽中了问人那一卷: 0,
+    真问着了东西: 0,
+    两条对上了: 0,
+  }
+  /** 那两卷各自被走进去几回。**这才是门禁真正要的那个数** */
+  let enteredCrossed = 0
+  let enteredDoor = 0
+  /** 「两条对上了」是在几岁对上的。窗口是十三到十六，所以这个分布要人看着 */
+  const ages = new Map<number, number>()
+
+  for (let i = 0; i < LIVES; i += 1) {
+    setActivePinia(createPinia())
+    const narrative = useNarrativeStore()
+    const world = useWorldStore()
+    const character = useCharacterStore()
+
+    let asked = 0
+    let crossedAt = -1
+    /**
+     * 顺着他真正走过的路记一笔。
+     *
+     * 不能从 `narrative.sceneId` 采样——`enterNode` 会一口气自动接好几节，
+     * 中间那些在下一次落笔之前就被覆盖了。`locate` 是每进一个节点
+     * 都会被调到的那个，所以包在这里。
+     */
+    const locate = narrative.locate
+    narrative.locate = (sceneId: string, nodeId: string): void => {
+      if (sceneId === 'seek:asking' && nodeId === 'open') asked += 1
+      if (sceneId === 'seek:crossed' && nodeId === 'open') enteredCrossed += 1
+      if (sceneId === 'seek:door' && nodeId === 'open') enteredDoor += 1
+      locate(sceneId, nodeId)
+      // 落笔之后再看：那一句 ask-around 的效果就是在这一步生效的
+      if (crossedAt < 0 && world.hasFlag('leads-crossed')) crossedAt = character.age
+    }
+
+    const story = useStory(lifeScenes, {
+      events: lifeEvents,
+      routine: lifeRoutine,
+      finale: lifeFinale,
+    })
+    story.begin()
+
+    let turns = 0
+    while (!narrative.ended && turns < 200) {
+      const open = narrative.options.filter((option) => !option.locked)
+      if (open.length === 0) break
+      story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
+      turns += 1
+    }
+
+    const knows = character.knowledge.some((one) => one.id === 'cultivators-exist')
+    const wants = world.hasFlag('leaning:know')
+    if (wants) funnel.心里生出想弄明白 += 1
+    if (knows) funnel.听说过世上有修士 += 1
+    if (knows && wants) funnel.两样都占上 += 1
+    if (asked > 0) funnel.抽中了问人那一卷 += 1
+    if (leadsHeard().length > 0) funnel.真问着了东西 += 1
+    if (world.hasFlag('leads-crossed')) {
+      funnel.两条对上了 += 1
+      ages.set(crossedAt, (ages.get(crossedAt) ?? 0) + 1)
+    }
+  }
+
+  console.log(`  ${LIVES} 世完整人生。每一环都在乘：\n`)
+  for (const [label, n] of Object.entries(funnel)) {
+    console.log(
+      `  ${label.padEnd(16)} ${String(n).padStart(5)}   ${((n / LIVES) * 100).toFixed(1).padStart(5)}%`,
+    )
+  }
+
+  console.log(`\n  走进「两条对上了」那一卷：${enteredCrossed} 回`)
+  console.log(`  走进「门前」那一卷：　　  ${enteredDoor} 回`)
+
+  console.log('\n  他是在几岁对上的（而用得上它的那一卷窗口是 13–16）：')
+  for (const [age, n] of [...ages.entries()].sort((a, b) => a[0] - b[0])) {
+    const late = age >= 15 ? '　← 只剩最后一两年' : ''
+    console.log(`    ${age} 岁　${n} 世${late}`)
+  }
+
+  console.log()
+  console.log('  三百世乘出来是一个人上下，所以 verify 第五道会把那两卷印进名单。')
+  console.log('  **那不是内容坏了，是三百世不够。** 这一节替它作证。')
+
+  if (enteredCrossed === 0) {
+    console.log(`\n  ✗ ${LIVES} 世里没有一个人走进那一卷——这条路是断的，不是稀的。`)
+    failed += 1
+  }
+  /**
+   * 门前那一卷只印，不判红。
+   *
+   * 它是上一格的严格子集，三千世实测三回——**两千世期望两回，
+   * 掷出零来是七分之一的事**。把它写成门禁，红灯的原因会是抽样
+   * 而不是内容，而那正是这一整套走查最忌讳的一件事。
+   *
+   * 这条链有 `enteredCrossed` 守着；门前那一段本身归第四节交代，
+   * 那一节直接调 `knock`，两百次一格，稳得多。
+   */
+  if (enteredDoor === 0) {
+    console.log('\n  （门前那一卷这一批没人走到。它是上一格的子集，期望本就在两回上下——')
+    console.log('  　这一格不判红：红起来多半是抽样，不是内容。那一段归第四节量。）')
+  }
 }
 
 console.log()
