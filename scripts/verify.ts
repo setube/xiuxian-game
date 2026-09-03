@@ -78,6 +78,9 @@ import { readFileSync } from 'node:fs'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { BEATS } from '../src/content/days'
+import { ERRANDS } from '../src/content/errands'
+import { HINDSIGHTS } from '../src/content/hindsight'
+import { INFORMANTS } from '../src/content/informants'
 import { DAMPERS, SPARKS } from '../src/content/leanings'
 import { OPENINGS } from '../src/content/openings'
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
@@ -94,7 +97,7 @@ import { conditionsOf, effectsOf, exitsOf } from './refs'
 const RUNS = 300
 
 /** 会自己造东西给玩家的那几支引擎。第四道验收要扫它们的源码 */
-const ENGINE_FILES = ['wounded.ts', 'book.ts', 'effects.ts', 'seeking.ts'] as const
+const ENGINE_FILES = ['wounded.ts', 'book.ts', 'effects.ts', 'seeking.ts', 'errand.ts'] as const
 
 /**
  * 一条关系不在场时，正文里不该出现的说法。
@@ -477,6 +480,18 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     'ask-around': null,
     attend: null,
     knock: null,
+    /**
+     * 寻访这一趟到底落下什么，**效果参数里读不出来**——那儿只有一个 id。
+     *
+     * 真正的产出散在两处：落点表里写着的（`takes` 是认知，`points`
+     * 落 `following` 和 `sure-of` 两个旗标），和引擎自己攒的
+     * （`errands-empty` 数着白跑了几趟，够了就落 `came-up-empty`）。
+     *
+     * 所以这一格只能表态成 `null`，产出那一半交给下面扫源码那一关——
+     * **`errand.ts` 因此必须列进 `ENGINE_FILES`**，
+     * 否则「反向火种要 `came-up-empty`，可没人给」会当场误报。
+     */
+    errand: null,
     follow: null,
     glance: null,
     encounter: null,
@@ -530,6 +545,30 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
   for (const beat of BEATS) scanEffects(beat.effects)
 
   /**
+   * 认知还有两个出处，都在数据表里，剧本效果扫不到。
+   *
+   * - **问人问出来的**：`informants.ts` 每个答案的 `learns`。
+   * - **跑一趟撞上的**：`errands.ts` 每个落点的 `takes`。
+   *
+   * 两处都遍历数据结构，而不是在源码文本里搜那个 id——
+   * 文本搜是给引擎硬编码那几处兜底用的粗办法，
+   * 数据既然是结构化的，就该结构化地读。
+   *
+   * 补这两处是让后见规则那一行有意义的前提：南山那一条要的
+   * `the-daoist-in-nanshan` 正是从寻访落点里来的。
+   */
+  for (const informant of INFORMANTS) {
+    for (const answer of informant.answers) {
+      if (answer.learns) madeKnowledge.add(answer.learns.id)
+    }
+  }
+  for (const errand of ERRANDS) {
+    for (const turnout of errand.turnouts) {
+      if (turnout.takes) madeKnowledge.add(turnout.takes.id)
+    }
+  }
+
+  /**
    * 火种和反向火种的入场条件，同样是前置条件。
    *
    * 这是这道门禁的第二个盲区：illness-at-home 在火种里被引用了很久，
@@ -539,6 +578,20 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
   for (const spark of SPARKS) scanConditions(spark.requires, `火种 · ${spark.id}`)
   for (const damper of DAMPERS) scanConditions(damper.requires, `反向火种 · ${damper.id}`)
   for (const opening of OPENINGS) scanConditions(opening.requires, `机会 · ${opening.id}`)
+
+  /**
+   * 后见规则要的东西，同样是前置条件。
+   *
+   * 这是第三个盲区，跟前两个同一个形状：**一条永远点不亮的后见规则
+   * 比没写更坏——它看着像在工作。** `hindsight.ts` 自己的注释里
+   * 写着「`after` 定太大就等于写了一条永远点不亮的规则」，
+   * 而那句话从前没有任何东西守着。
+   *
+   * `tags` 那一格这里查不了（日录标记来自 `days.ts` 的落点和
+   * 场景 jot，眼下没有统一登记处），缺口明写在这儿：
+   * **点不亮的第二种原因是标记打不上，这一道抓不到。**
+   */
+  for (const rule of HINDSIGHTS) scanConditions(rule.needs, `后见 · ${rule.id}`)
 
   /**
    * 引擎里造出来的那些。

@@ -258,12 +258,14 @@ export const CHAPTERS: readonly Chapter[] = [
     events: seekingEvents,
     called: ['年表'],
     to: [],
-    age: [12, 16],
+    age: [11, 16],
     purpose: [
-      '起了心思之后自己去找——听来的消息真假难辨，跑一趟才知道',
+      '起了心思之后自己去找——一趟一趟地跑，多半一趟一趟地空',
+      '听来的消息真假难辨，跑一趟才知道',
+      '找不到是正常结果。找了这些年一件也对不上，念头就退下去了',
       '门开不开，他永远不知道是凭什么',
     ],
-    marks: ['follow', 'knock'],
+    marks: ['errand', 'follow', 'knock'],
   },
 
   /**

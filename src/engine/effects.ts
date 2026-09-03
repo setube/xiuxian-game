@@ -9,6 +9,7 @@ import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 import { beatLines, spend } from './daily'
 import { attend, attendBlocks } from './attention'
 import { reconsider } from './diary'
+import { goOn } from './errand'
 import { branch, dampen, echoesOn, kindle, readingOf } from './leanings'
 import { askAround, crossed, follow, knock } from './seeking'
 import { toChineseNumber } from './describe'
@@ -648,6 +649,23 @@ function applyOne(
         { kind: 'narration', text: '你记住了。', tone: 'faint' },
       ]
     }
+    case 'errand': {
+      /**
+       * 他跑了一趟。
+       *
+       * 时间不在这里推——同一批里那个 `time` 已经推过了，
+       * 两处都从 `Errand.days` 取。所以这里的 `world.time`
+       * 已经是**这一趟走完那一刻**，落进认知和日录的时间戳是对的。
+       *
+       * 家里的话也在这儿说：跑得远的那两趟要减家境。
+       * 这不是罚，是一个十几岁的人跑三天真正付的代价——
+       * **他不在家的那三天，活是别人干的。**
+       */
+      const visit = goOn(effect.id)
+      if (!visit) return []
+      if (visit.errand.standing) household.shiftStanding(visit.errand.standing)
+      return visit.blocks
+    }
     case 'follow': {
       const where = (world.getFlag('following') as string | undefined) ?? ''
       return follow(where).blocks
@@ -779,6 +797,14 @@ const PHASE = {
   signs: '事实',
   ask: '事实',
   'ask-around': '事实',
+  /**
+   * 跑一趟是「事实」相。
+   *
+   * 那一趟花掉的日子由同一批里的 `time` 推——上下文相先跑，
+   * 所以这一格落地时，`world.time` 已经是他回到家的那一刻。
+   * **一批效果是一个时刻**，而这一趟记在结束那一刻，不是动身那一刻。
+   */
+  errand: '事实',
   attend: '事实',
   knock: '事实',
   follow: '事实',

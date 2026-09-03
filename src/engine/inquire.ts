@@ -43,6 +43,18 @@ export interface Reply {
   blocks: NarrativeBlock[]
   /** 真问出东西了吗 */
   got: boolean
+  /**
+   * 没问出来的时候，是哪一道闸拦住的。
+   *
+   * 上面那段说「两道闸拆开，才能表达『他知道，但他不告诉你』」——
+   * 从前这句话只兑现了一半：正文里确实是两句不同的话，
+   * **可返回值里两者都是 `got: false`，调用的人分不出来。**
+   *
+   * 分出来这一格，是为了让「他不肯说」能在别处结出果子：
+   * 一个心里存着念头的人，会把这句沉默听成「他清楚，只是不肯讲」，
+   * 于是记下一条世上根本没有的线索。见 `errand.ts` 里的 `misread()`。
+   */
+  held?: '不知道' | '不肯说'
   /** 问出来的那条见闻 */
   learned?: Answer['learns']
   /** 别人告诉他的，接触就是「听说」 */
@@ -116,6 +128,7 @@ export function ask(informantId: string, topic: Topic): Reply {
     return {
       blocks: [{ kind: 'narration', text: `${who}${pick(IGNORANCE) ?? IGNORANCE[0]!}` }],
       got: false,
+      held: '不知道',
     }
   }
 
@@ -124,6 +137,7 @@ export function ask(informantId: string, topic: Topic): Reply {
     return {
       blocks: [{ kind: 'narration', text: `${who}${pick(IGNORANCE) ?? IGNORANCE[0]!}` }],
       got: false,
+      held: '不知道',
     }
   }
 
@@ -132,6 +146,7 @@ export function ask(informantId: string, topic: Topic): Reply {
     return {
       blocks: [{ kind: 'narration', text: `${who}${pick(DEFLECTIONS) ?? DEFLECTIONS[0]!}` }],
       got: false,
+      held: '不肯说',
     }
   }
 

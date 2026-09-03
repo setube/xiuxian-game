@@ -1,5 +1,6 @@
 import { LEADS, placeById } from '@/content/leads'
 import { useCharacterStore } from '@/stores/character'
+import { useDiaryStore } from '@/stores/diary'
 import { useWorldStore } from '@/stores/world'
 import type { NarrativeBlock } from '@/types/game'
 import type { AtTheDoor, Following, Lead } from '@/types/lead'
@@ -92,8 +93,27 @@ export interface Trip {
  * **世界怎么回应，只看那地方到底是什么，不看他多想找到。**
  * 这跟机缘那边是同一条：他的选择改变的是自己撞上什么，
  * 不是把那地方变成他希望的样子。
+ *
+ * 出门这一趟要进日录——**而这件事非进不可**：多年以后那一句
+ * 是靠 tag 把旧日子翻回来的，这一天要是没落在日录上，
+ * 后来的重新理解就没有可以落脚的地方。所以 jot 收在唯一的出口，
+ * 不在四个分支里各写一遍。
  */
 export function follow(placeId: string): Trip {
+  const place = placeById(placeId)
+  const trip = walkTo(placeId)
+  if (place?.tag) {
+    useDiaryStore().jot(
+      trip.blocks
+        .map((block) => ('text' in block ? block.text : ''))
+        .filter((one) => one.length > 0),
+      [place.tag],
+    )
+  }
+  return trip
+}
+
+function walkTo(placeId: string): Trip {
   const place = placeById(placeId)
   const world = useWorldStore()
   const insight = useCharacterStore().attributes.insight
@@ -137,8 +157,12 @@ export function follow(placeId: string): Trip {
       closer: false,
       blocks: [
         { kind: 'narration', text: `你找到了${place.calls}。` },
-        { kind: 'narration', text: '就是个寻常地方。跟人说的一点也不像。' },
-        { kind: 'narration', text: '你围着转了两圈，什么也没有。' },
+        ...(place.instead
+          ? place.instead.map((text): NarrativeBlock => ({ kind: 'narration', text }))
+          : [
+              { kind: 'narration', text: '就是个寻常地方。跟人说的一点也不像。' } as const,
+              { kind: 'narration', text: '你围着转了两圈，什么也没有。' } as const,
+            ]),
         { kind: 'narration', text: '回来的路上你没跟人提这一趟。', tone: 'faint' },
       ],
     }
