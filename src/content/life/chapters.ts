@@ -10,6 +10,7 @@ import { illnessEvents, illnessScenes } from './illness'
 import { inquiryEvents, inquiryScenes } from './inquiry'
 import { kinEvents, kinScenes } from './kin'
 import { leavingEvents, leavingScenes } from './leaving'
+import { meetingEvents, meetingScenes } from './meeting'
 import { rivermanEvents, rivermanScenes } from './riverman'
 import { routineScenes } from './routine'
 import { royalEvents, royalScenes } from './royal'
@@ -251,13 +252,13 @@ export const CHAPTERS: readonly Chapter[] = [
     marks: ['reflect'],
   },
 
-  /** 起了心思之后，自己去找。`seek:door` 靠章内跳转进入，没有年表入口 */
+  /** 起了心思之后，自己去找。找着人以后交给 `meeting`，那扇门在会面之后 */
   {
     id: 'seeking',
     scenes: seekingScenes,
     events: seekingEvents,
     called: ['年表'],
-    to: [],
+    to: ['meeting'],
     age: [11, 16],
     purpose: [
       '起了心思之后自己去找——一趟一趟地跑，多半一趟一趟地空',
@@ -266,6 +267,30 @@ export const CHAPTERS: readonly Chapter[] = [
       '门开不开，他永远不知道是凭什么',
     ],
     marks: ['errand', 'follow', 'knock'],
+  },
+
+  /**
+   * 照面。找着人了，可他不知道自己找着的是什么。
+   *
+   * `meet:first` 没有年表入口——它接在 `seeking` 找着人之后。
+   * `meet:temple` 有入口，是玩家自己顺着一句闲话走了半个月。
+   *
+   * `to` 里那条 `seeking` 是回头边：跟上去问，就走到 `seek:door`。
+   */
+  {
+    id: 'meeting',
+    scenes: meetingScenes,
+    events: meetingEvents,
+    called: ['年表'],
+    to: ['seeking'],
+    age: [14, 16],
+    purpose: [
+      '两个人互相打量了一回——他怎么看你，你怎么看他，两边都会看错',
+      '修士不是鉴定机：炼气那个看不见资质，他说的「悟性寻常」是真话也是另一回事',
+      '同一次会面里一句说对一句说岔，而玩家没有办法分出哪句是哪句',
+      '走到这一步不发任何东西——他只是第一次站在一个自己完全不了解的世界跟前',
+    ],
+    marks: ['meeting'],
   },
 
   /**

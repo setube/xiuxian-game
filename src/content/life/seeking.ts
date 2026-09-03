@@ -194,7 +194,7 @@ export const seekingScenes: SceneLibrary = {
         id: 'came-back',
         onEnter: [{ type: 'time', days: 6 }],
         blocks: [],
-        branches: [{ requires: [{ flag: { key: 'found-the-way' } }], next: 'seek:door' }],
+        branches: [{ requires: [{ flag: { key: 'found-the-way' } }], next: 'meet:first' }],
         next: 'again',
       },
 
@@ -352,7 +352,14 @@ export const seekingScenes: SceneLibrary = {
         id: 'after',
         onEnter: [{ type: 'time', days: 10 }],
         blocks: [],
-        branches: [{ requires: [{ flag: { key: 'found-the-way' } }], next: 'seek:door' }],
+        /**
+         * 找着了。
+         *
+         * 从前这里直接去 `seek:door`——摸腕子，收或者不收。
+         * 现在中间隔着 `meet:first`：**他先得跟那个人照个面。**
+         * 照完面才轮到那扇门，而且他未必会走过去。
+         */
+        branches: [{ requires: [{ flag: { key: 'found-the-way' } }], next: 'meet:first' }],
         next: 'home',
       },
 

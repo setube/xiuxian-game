@@ -28,6 +28,7 @@ import {
 import { currentView, merchantLore, talk, viewWords, willingToday } from './hearsay'
 import { fillString } from './interpolate'
 import { ask } from './inquire'
+import { encounterCultivator } from './meeting'
 import {
   glance,
   recordEncounter,
@@ -673,6 +674,17 @@ function applyOne(
     case 'knock': {
       return knock(effect.enter).blocks
     }
+    case 'meeting': {
+      /**
+       * 他跟一个修士照了个面。
+       *
+       * 两头都在那一支里落笔：他说的话进 `aspects.claims`，
+       * 玩家读出来的意思进 `knowledge`。这里只把正文接出来。
+       *
+       * **不改境界，不发东西，不动一格属性**——这一条在门禁里守着。
+       */
+      return encounterCultivator(effect.who)?.blocks ?? []
+    }
     case 'reading': {
       /**
        * 他读到一个机会。
@@ -808,6 +820,7 @@ const PHASE = {
   attend: '事实',
   knock: '事实',
   follow: '事实',
+  meeting: '事实',
   glance: '事实',
   encounter: '事实',
   appraise: '事实',

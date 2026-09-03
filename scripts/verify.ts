@@ -97,7 +97,14 @@ import { conditionsOf, effectsOf, exitsOf } from './refs'
 const RUNS = 300
 
 /** 会自己造东西给玩家的那几支引擎。第四道验收要扫它们的源码 */
-const ENGINE_FILES = ['wounded.ts', 'book.ts', 'effects.ts', 'seeking.ts', 'errand.ts'] as const
+const ENGINE_FILES = [
+  'wounded.ts',
+  'book.ts',
+  'effects.ts',
+  'seeking.ts',
+  'errand.ts',
+  'meeting.ts',
+] as const
 
 /**
  * 一条关系不在场时，正文里不该出现的说法。
@@ -480,6 +487,17 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     'ask-around': null,
     attend: null,
     knock: null,
+    /**
+     * 一次会面落的认知是 `met:{谁}`，**效果参数里只有一个 `who`**。
+     *
+     * 拼得出来，可拼出来就是把引擎里那行模板在门禁里再抄一遍——
+     * 抄的那一份不会红，它只会跟着我改。所以这一格表态成 `null`，
+     * 产出交给下面扫源码那一关，**`meeting.ts` 因此列进 `ENGINE_FILES`**。
+     *
+     * 另一半产出（他说出口的那几句进 `aspects.claims`）根本不在这道门禁的账上：
+     * 这里数的是「谁给谁」的供需，而 claim 没有任何一处剧本会去 requires。
+     */
+    meeting: null,
     /**
      * 寻访这一趟到底落下什么，**效果参数里读不出来**——那儿只有一个 id。
      *
