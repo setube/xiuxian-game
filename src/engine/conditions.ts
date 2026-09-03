@@ -10,71 +10,96 @@ type WorldStore = ReturnType<typeof useWorldStore>
 type CharacterStore = ReturnType<typeof useCharacterStore>
 type HouseholdStore = ReturnType<typeof useHouseholdStore>
 
-function matches(
-  condition: Condition,
-  world: WorldStore,
-  character: CharacterStore,
-  household: HouseholdStore,
-): boolean {
-  if (condition.flag) {
-    const { key, equals } = condition.flag
+interface Ctx {
+  world: WorldStore
+  character: CharacterStore
+  household: HouseholdStore
+}
+
+/**
+ * 一格条件怎么验。拿到的值保证不是 undefined——空着的格子由 `matches` 跳过。
+ */
+type Check<K extends keyof Condition> = (value: NonNullable<Condition[K]>, ctx: Ctx) => boolean
+
+/** 闭区间，两端都可以不写 */
+function within(value: number, range: { atLeast?: number; atMost?: number }): boolean {
+  if (range.atLeast !== undefined && value < range.atLeast) return false
+  if (range.atMost !== undefined && value > range.atMost) return false
+  return true
+}
+
+/**
+ * 十二格条件各自怎么验。
+ *
+ * ## 为什么是一张表，而不是一串 if
+ *
+ * 从前这里是十二段独立的 `if (condition.xxx)`，读起来没问题，
+ * **坏在加第十三格的那一天**：`Condition` 多一格 `technique?`，
+ * 这里不写对应的那一段，TypeScript 一个字也不会说——
+ * 而且失败的方式是最坏的那一种：没有任何 `if` 拦它，
+ * **那一格条件被静默当成「通过」**。剧本写「要会引气诀才能进」，
+ * 引擎读成「谁都能进」，玩家走进一段他不该走进的人生。
+ *
+ * `Effect` 不会这样，它是可辨识联合，`switch` 尾巴上一句
+ * `const unreachable: never = effect` 就能逼着人把新变体处理掉
+ * （见 `effects.ts` 结尾）。`Condition` 是一袋可选字段，没有那个把手，
+ * `assertNever` 在它身上使不上劲。
+ *
+ * 所以换一把锁：**登记表 + `satisfies`**，跟 `scripts/refs.ts` 同一个手法。
+ * 少登记一格，`vue-tsc --build` 当场红。
+ */
+const CHECKS = {
+  flag: (flag, { world }) =>
     // 未指定 equals 时，只要求旗标为「真」
-    if (equals === undefined) {
-      if (!world.hasFlag(key)) return false
-    } else if (world.getFlag(key) !== equals) {
-      return false
-    }
-  }
+    flag.equals === undefined ? world.hasFlag(flag.key) : world.getFlag(flag.key) === flag.equals,
 
-  if (condition.attribute) {
-    if (character.attributes[condition.attribute.key] < condition.attribute.atLeast) return false
-  }
+  attribute: (attribute, { character }) => character.attributes[attribute.key] >= attribute.atLeast,
 
-  if (condition.knowledge && !character.knows(condition.knowledge)) return false
+  knowledge: (id, { character }) => character.knows(id),
 
-  if (condition.item && !character.has(condition.item)) return false
+  item: (id, { character }) => character.has(id),
 
-  if (condition.age) {
-    const { atLeast, atMost } = condition.age
-    if (atLeast !== undefined && character.age < atLeast) return false
-    if (atMost !== undefined && character.age > atMost) return false
-  }
+  age: (age, { character }) => within(character.age, age),
 
-  if (condition.standing) {
-    const { atLeast, atMost } = condition.standing
-    if (atLeast !== undefined && household.standing < atLeast) return false
-    if (atMost !== undefined && household.standing > atMost) return false
-  }
+  standing: (standing, { household }) => within(household.standing, standing),
 
-  if (condition.family && household.isAlive(condition.family.id) !== condition.family.alive) {
-    return false
-  }
+  family: (family, { household }) => household.isAlive(family.id) === family.alive,
 
-  if (condition.bond) {
+  bond: (bond) => {
+    // 这一格才需要人物库，用到时再取——别的条件不必为它初始化一个 store
     const people = usePeopleStore()
-    const ids = people.kinOf(condition.bond.kind)
+    const ids = people.kinOf(bond.kind)
     if (ids.length === 0) return false
-    if (condition.bond.alive !== undefined) {
-      const anyAlive = ids.some((id) => people.isAlive(id))
-      if (anyAlive !== condition.bond.alive) return false
-    }
-  }
+    if (bond.alive === undefined) return true
+    return ids.some((id) => people.isAlive(id)) === bond.alive
+  },
 
-  if (condition.region) {
+  region: (region, { world }) => {
     const state = world.regionState()
-    for (const [key, range] of Object.entries(condition.region)) {
-      const value = state[key as RegionKey]
-      if (range.atLeast !== undefined && value < range.atLeast) return false
-      if (range.atMost !== undefined && value > range.atMost) return false
-    }
+    return Object.entries(region).every(
+      ([key, range]) => !range || within(state[key as RegionKey], range),
+    )
+  },
+
+  trade: (trade, { household }) => household.trade === trade,
+
+  gender: (gender, { household }) => household.gender === gender,
+
+  stage: (stage, { character }) => stageOf(character.age) === stage,
+} satisfies { [K in keyof Condition]-?: Check<K> }
+
+function matches(condition: Condition, ctx: Ctx): boolean {
+  for (const key of Object.keys(CHECKS) as (keyof Condition)[]) {
+    const value = condition[key]
+    if (value === undefined) continue
+    /**
+     * `CHECKS[key]` 和 `condition[key]` 的对应关系由上面那句 `satisfies` 钉死了，
+     * 可遍历的时候 TS 关联不上这两个 `key`——它只知道各自是十二种之一，
+     * 不知道是「同一种」。这里收口成一次 cast，全文件仅此一处。
+     */
+    const check = CHECKS[key] as (value: unknown, ctx: Ctx) => boolean
+    if (!check(value, ctx)) return false
   }
-
-  if (condition.trade && household.trade !== condition.trade) return false
-
-  if (condition.gender && household.gender !== condition.gender) return false
-
-  if (condition.stage && stageOf(character.age) !== condition.stage) return false
-
   return true
 }
 
@@ -82,8 +107,10 @@ function matches(
 export function meetsAll(conditions?: readonly Condition[]): boolean {
   if (!conditions || conditions.length === 0) return true
 
-  const world = useWorldStore()
-  const character = useCharacterStore()
-  const household = useHouseholdStore()
-  return conditions.every((condition) => matches(condition, world, character, household))
+  const ctx: Ctx = {
+    world: useWorldStore(),
+    character: useCharacterStore(),
+    household: useHouseholdStore(),
+  }
+  return conditions.every((condition) => matches(condition, ctx))
 }

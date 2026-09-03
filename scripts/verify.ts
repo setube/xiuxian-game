@@ -366,8 +366,10 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
 {
   const neededItems = new Map<string, string[]>()
   const neededFlags = new Map<string, string[]>()
+  const neededKnowledge = new Map<string, string[]>()
   const madeItems = new Set<string>()
   const madeFlags = new Set<string>()
+  const madeKnowledge = new Set<string>()
 
   const note = (map: Map<string, string[]>, key: string, where: string): void => {
     const list = map.get(key) ?? []
@@ -375,18 +377,127 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     map.set(key, list)
   }
 
+  /**
+   * 一格条件要不要「有人给」，要的话给的是哪一种东西。
+   *
+   * `null` 是明确的「这一格不需要来源」——年龄、性别、行当、家境
+   * 都是人物固有的，世上没有哪一处「产出」它们。
+   *
+   * ## 为什么登记，而不是像从前那样写两行 if
+   *
+   * 从前这里只有 `item` 和 `flag` 两行。少写的那些当时都对：
+   * `age` 确实不需要来源。**可它们是「碰巧对」，不是「说清楚了对」**——
+   * 将来 `Condition` 多一格 `technique?`（会某门功法），
+   * 那一格是需要来源的，而这里不会有任何东西提醒人补上它。
+   *
+   * `satisfies` 把这件事变成编译期的：加一格不表态，`vue-tsc --build` 当场红。
+   * 表态成 `null` 也行——**但那是明写下来的一句话，不是漏掉的一行**。
+   *
+   * 头一次登记就逼出了一格漏的：`knowledge`。剧本里 30 处在问
+   * 「他知不知道这件事」，而这道门禁从来没查过那些 id 有没有人 learn。
+   */
+  const NEEDS = {
+    item: (id) => [neededItems, id],
+    flag: (flag) => [neededFlags, flag.key],
+    knowledge: (id) => [neededKnowledge, id],
+    attribute: null,
+    age: null,
+    standing: null,
+    family: null,
+    bond: null,
+    region: null,
+    trade: null,
+    gender: null,
+    stage: null,
+  } satisfies {
+    [K in keyof Condition]-?:
+      ((value: NonNullable<Condition[K]>) => [Map<string, string[]>, string]) | null
+  }
+
   const scanConditions = (conditions: readonly Condition[] | undefined, where: string): void => {
     for (const condition of conditions ?? []) {
-      if (condition.item) note(neededItems, condition.item, where)
-      if (condition.flag) note(neededFlags, condition.flag.key, where)
+      for (const key of Object.keys(NEEDS) as (keyof Condition)[]) {
+        const value = condition[key]
+        if (value === undefined) continue
+        // 对应关系由上面那句 satisfies 钉死，遍历时 TS 关联不上两个 key，收口成一次 cast
+        const of = NEEDS[key] as ((value: unknown) => [Map<string, string[]>, string]) | null
+        if (!of) continue
+        const [map, id] = of(value)
+        note(map, id, where)
+      }
     }
+  }
+
+  /**
+   * 一种效果产不产出前置条件，产出的是哪一种。
+   *
+   * `null` 是明确的「这一种不产出」——涨属性、过时间、写编年，
+   * 都不会让「某个 id 从此有人给了」。
+   *
+   * ## 这里原本是三行 if
+   *
+   *     if (effect.type === 'item') madeItems.add(effect.id)
+   *     if (effect.type === 'flag') madeFlags.add(effect.key)
+   *     if (effect.type === 'roll') madeFlags.add(effect.key)
+   *
+   * 三行都对，**漏掉的那一行才是问题**：`knowledge`。
+   * 剧本里 30 处在问「他知不知道这件事」，产出那一半却从来没扫过，
+   * 于是这道门禁一边不查、一边看着五条认知在库里躺着。
+   * 补上之后当场报出六条，其中五条是这个漏扫造成的假空白，
+   * 剩下一条 `breathing` 是真的没人给。
+   *
+   * 换成登记表之后，`Effect` 多一个变体就必须在这儿表态。
+   * 表态成 `null` 也行——**那是明写下来的一句话，不是漏掉的一行**。
+   */
+  const MAKES = {
+    item: (effect) => [madeItems, effect.id],
+    flag: (effect) => [madeFlags, effect.key],
+    roll: (effect) => [madeFlags, effect.key],
+    knowledge: (effect) => [madeKnowledge, effect.id],
+    time: null,
+    attribute: null,
+    place: null,
+    home: null,
+    realm: null,
+    identity: null,
+    aspect: null,
+    claim: null,
+    reveal: null,
+    reflect: null,
+    observe: null,
+    relation: null,
+    chronicle: null,
+    household: null,
+    family: null,
+    person: null,
+    meet: null,
+    recall: null,
+    signs: null,
+    ask: null,
+    'ask-around': null,
+    attend: null,
+    knock: null,
+    follow: null,
+    glance: null,
+    encounter: null,
+    appraise: null,
+    book: null,
+    'book-named': null,
+    hearsay: null,
+    daily: null,
+    diary: null,
+    reading: null,
+  } satisfies {
+    [K in Effect['type']]: ((effect: Extract<Effect, { type: K }>) => [Set<string>, string]) | null
   }
 
   const scanEffects = (effects: readonly Effect[] | undefined): void => {
     for (const effect of effects ?? []) {
-      if (effect.type === 'item') madeItems.add(effect.id)
-      if (effect.type === 'flag') madeFlags.add(effect.key)
-      if (effect.type === 'roll') madeFlags.add(effect.key)
+      // 对应关系由上面那句 satisfies 钉死，遍历时 TS 关联不上 type 与取值函数，收口成一次 cast
+      const of = MAKES[effect.type] as ((effect: Effect) => [Set<string>, string]) | null
+      if (!of) continue
+      const [set, id] = of(effect)
+      set.add(id)
     }
   }
 
@@ -458,6 +569,12 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
   for (const [kind, needed, made] of [
     ['物', neededItems, madeItems],
     ['旗标', neededFlags, madeFlags],
+    /**
+     * 认知有两个出处：剧本里 `type: 'knowledge'` 的效果，
+     * 和引擎里硬编码的那几处 `learn`（问答、货郎的书、路上那个人）。
+     * 前者进 `madeKnowledge`，后者靠下面扫源码那一关兜住。
+     */
+    ['认知', neededKnowledge, madeKnowledge],
   ] as const) {
     for (const [key, wheres] of needed) {
       if (made.has(key)) continue
@@ -468,7 +585,7 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     }
   }
 
-  const total = neededItems.size + neededFlags.size
+  const total = neededItems.size + neededFlags.size + neededKnowledge.size
   if (orphanNeeds.length === 0) {
     console.log(`  ${total} 种前置条件，每一种都有出处。\n`)
   } else {

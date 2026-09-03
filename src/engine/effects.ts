@@ -286,6 +286,16 @@ function applyOne(
       if (outcome.grants) {
         character.carry(outcome.grants.id, outcome.grants.name, 1, '册', outcome.grants.note)
       }
+      // 他从这一趟里学到的东西。同上——渡口那一场也认它
+      if (outcome.teaches) {
+        character.learn({
+          ...outcome.teaches,
+          at: world.time,
+          // 有人手把手教了两遍，这是亲历，不是听说
+          contact: '亲历',
+          interpretation: '确信',
+        })
+      }
       if (outcome.marks) world.setFlag(outcome.marks, true)
       // 弄明白那人是谁了，认知才升档；没弄明白的，他记住的仍是自己那个判断
       character.learn({

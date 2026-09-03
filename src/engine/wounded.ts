@@ -1,6 +1,6 @@
 import { useCharacterStore } from '@/stores/character'
 import { useWorldStore } from '@/stores/world'
-import type { NarrativeBlock } from '@/types/game'
+import type { KnowledgeCategory, NarrativeBlock } from '@/types/game'
 
 import { pickWeighted } from './random'
 
@@ -208,6 +208,16 @@ export interface Outcome {
    * 而十六岁渡口那一场认得的正是这册书，整条线就那么断了。
    */
   grants?: { id: string; name: string; note: string }
+  /**
+   * 这一趟他学到的东西。
+   *
+   * 跟 `grants` 是同一条规矩的两半：**世界给的必须由结果携带**。
+   * 而这一半原本是漏的——镖师那一档正文写着「他教了你两遍」，
+   * 认知层却什么也没记，于是十六岁渡口上那句
+   * 「你想起那个教你换气的人」永远不会出现。
+   * 跟一册书那次一模一样：正文说给了，实际没给。
+   */
+  teaches?: { id: string; title: string; summary: string; category: KnowledgeCategory }
   /** 这一趟在他身上留下的、日后还会被人看见的痕迹 */
   marks?: string
 }
@@ -511,6 +521,22 @@ function resolveLift(truth: WoundedTruth, body: number, will: number, reading: R
       id: 'lift-fighter',
       summary: '你把他背到破庙里。他躺了三天，教了你一个呼吸的法子。',
       learnedTruth: true,
+      /**
+       * 他真的学会了一样东西。
+       *
+       * 这个人不是修士，教的也不是功法——**走山路省力气的一个法子**，
+       * 江湖上的粗浅玩意儿。可十六岁那年在渡口上，
+       * 他看见一叶不起波纹的船，凭的就是这点身体上的记忆。
+       *
+       * 世上的门有时候是这样开的：不是有人告诉你门在哪儿，
+       * 是你身上先有了一点东西，站到门口的时候才认得出。
+       */
+      teaches: {
+        id: 'breathing',
+        title: '走山路的喘法',
+        summary: '按在肋下数着数喘气，走一天不累。山道上那个挎刀的人教的，他说这是粗浅玩意儿。',
+        category: '修行',
+      },
       blocks: [
         { kind: 'narration', text: '还有气。他睁了一下眼，又闭上了。' },
         { kind: 'narration', text: '你把他背到山下的破庙里，找了些水。' },
