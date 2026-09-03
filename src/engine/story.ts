@@ -162,6 +162,22 @@ export function useStory(library: SceneLibrary, plan: LifePlan): Story {
   }
 
   /**
+   * 这个人在这一节里多看见的那几句。
+   *
+   * 全部满足的都要出，不是取第一个——**一个人站在江边想起的事，
+   * 本来就可能不止一件**。家里死过人、又一辈子没出过村的孩子，
+   * 两句都该有。这跟 `branches` 恰好相反，那里是分流，取一条就走。
+   *
+   * 一律落 `deep`：这是他自己多想到的一层，不是别人多告诉他的。
+   */
+  function seenOf(node: SceneNode): NarrativeBlock[] {
+    if (!node.seen) return []
+    return node.seen
+      .filter((one) => meetsAll(one.requires))
+      .map((one) => ({ kind: 'narration', text: one.text, tone: 'deep' }))
+  }
+
+  /**
    * 一卷演完，回到年表。
    *
    * 先问「此刻有什么事该发生」，没有就过日子。日子本身要花掉时间，
@@ -224,7 +240,7 @@ export function useStory(library: SceneLibrary, plan: LifePlan): Story {
 
       // 顺序要紧：先结算状态，正文里才能引用变化后的世界；回执随后落在正文末尾
       const receipts = applyEffects(node.onEnter)
-      narrative.append([...inscribe(node.blocks), ...receipts])
+      narrative.append([...inscribe([...node.blocks, ...seenOf(node)]), ...receipts])
       narrative.locate(current.sceneId, node.id)
 
       const options = toOptions(node.choices ?? [])

@@ -24,25 +24,28 @@ import type { AspectKey } from '../src/types/game'
 /**
  * 走查跑多少世。
  *
- * ## 这一支最稀的一格是「资质其实很好，却一辈子没人告诉过他」
+ * ## 照最稀的那一格定，而最稀的不是那个显眼的
  *
- * 那一格是这支走查存在的理由——**到死都不知道自己是什么料的人**——
- * 而它是两件事叠出来的：资质掷得高，且一辈子没撞上肯开口的修士。
- * 三百世里是几十个人，量得住「在不在」，量不住小数点后那一位。
+ * 一眼看去这支最稀的是「资质其实很好，却一辈子没人告诉过他」——
+ * 那一格是这支走查存在的理由。可它三成上下，不缺样本。
+ * 真正稀的是**听过修士评价**：半个点上下，肯开口的修士本来就是稀客。
  *
- * 底下的门禁只查在不在，所以三百世够；而它印出来的那几个百分比
- * 各有两三个点的晃动，读的时候要当约数读。
+ * 从前这一支三百世，那一格期望三个人，一批里落空的概率约 5%——
+ * 二十批响一次假警报。而第一节另起一个一百五十世的循环去捞同一种人，
+ * 落空率 22%，**五批响一次**。两处叠起来，三成的批次会红。
+ *
+ * ## 而那 1% 本身就是噪音
+ *
+ * 三百世报出来的是 1.0%——三个人。照它算，七百世该有七个，够了。
+ * 真跑七百世，是 0.4%。**拿三个人量出来的比例去推该跑几世，
+ * 推出来的那个数本身就带着三倍的误差。**
+ *
+ * 一千二百世把期望顶到六个人上下，落空率降到千分之二。
+ * 这一支于是成了全套里最慢的一支，将近两分钟。慢有慢的道理：
+ * 它守的三条里有两条挂在这半个点上，而**一支五批响一次的门禁
+ * 比没有门禁更坏——它教人把红灯当噪音**。
  */
-const RUNS = 300
-
-/**
- * 第一节最多翻多少世去找一个听过修士评价的人。
- *
- * 提成常量是因为底下那句话要引它。从前那里写死「两百世里没有一个」，
- * 而循环上限一直是 150——**一句只在出错时才印的话，
- * 没有人会在正常的一天里发现它在撒谎。**
- */
-const HUNT = 150
+const RUNS = 1200
 
 function live() {
   setActivePinia(createPinia())
@@ -65,55 +68,48 @@ function live() {
   return character
 }
 
-// —— 一、随便挑一世，把画像整个印出来 ——
-console.log('\n=== 一个人的十六年，他最后知道自己什么 ===\n')
-let noOneWasSeen = false
-{
-  let shown = false
-  for (let i = 0; i < HUNT && !shown; i += 1) {
-    const character = live()
-    // 挑一个听过修士评价的，那种人生才看得出落差
-    if (character.aspects.cultivation.claims.length === 0) continue
-    shown = true
+type Character = ReturnType<typeof live>
 
-    const a = character.attributes
-    console.log('  真实数据（玩家永远看不到）：')
-    console.log(
-      `    记性 ${a.memory}  悟性 ${a.insight}  体魄 ${a.body}  ` +
-        `心性 ${a.will}  资质 ${a.root}  神魂 ${a.spirit}\n`,
-    )
-    console.log('  他这辈子听过的话：\n')
-    for (const [key, aspect] of Object.entries(character.aspects) as [
-      AspectKey,
-      (typeof character.aspects)[AspectKey],
-    ][]) {
-      if (aspect.claims.length === 0 && aspect.self === null) continue
-      console.log(`  【${key}】`)
-      if (aspect.self) console.log(`    自述：${aspect.self}`)
-      for (const claim of aspect.claims) {
-        console.log(`    ${claim.source}：「${claim.text}」`)
-        if (claim.doubt) console.log(`        └ ${claim.doubt}`)
-      }
-      console.log()
+/**
+ * 把一个人这辈子听过的话印出来。
+ *
+ * 从前这一节自己另跑一百五十世去捞样本。删了：**同一批人生跑两遍，
+ * 第二遍还跑得更少**。现在从统计那一轮里顺手留下头一个符合的人，
+ * 一世也不多跑，而样本从一百五十世里挑变成七百世里挑。
+ */
+function printPortrait(character: Character): void {
+  const a = character.attributes
+  console.log('  真实数据（玩家永远看不到）：')
+  console.log(
+    `    记性 ${a.memory}  悟性 ${a.insight}  体魄 ${a.body}  ` +
+      `心性 ${a.will}  资质 ${a.root}  神魂 ${a.spirit}\n`,
+  )
+  console.log('  他这辈子听过的话：\n')
+  for (const [key, aspect] of Object.entries(character.aspects) as [
+    AspectKey,
+    Character['aspects'][AspectKey],
+  ][]) {
+    if (aspect.claims.length === 0 && aspect.self === null) continue
+    console.log(`  【${key}】`)
+    if (aspect.self) console.log(`    自述：${aspect.self}`)
+    for (const claim of aspect.claims) {
+      console.log(`    ${claim.source}：「${claim.text}」`)
+      if (claim.doubt) console.log(`        └ ${claim.doubt}`)
     }
-  }
-  if (!shown) {
-    // 世数从常量取。从前这里写死「两百世」，而上限一直是 150——
-    // **一句只在出错时才印的话，没有人会在正常的一天里发现它在撒谎**
-    console.log(`  （${HUNT} 世里没有一个听过修士评价的，这本身就是个问题）\n`)
-    noOneWasSeen = true
+    console.log()
   }
 }
 
-// —— 二、统计：多少人一辈子没被修士看过 ——
+// —— 统计：多少人一辈子没被修士看过 ——
 // 标题里的世数从常量取。从前这里写死「六百世统计」，而 RUNS 是 300——
 // **数字一个没错，只是分母比它自己宣称的少了一半**
-console.log(`=== ${RUNS} 世统计 ===\n`)
 let heardMortal = 0
 let heardAdept = 0
 let bothLearningAndCultivation = 0
 let goodRootNeverKnew = 0
 const claimCounts: number[] = []
+// 头一个听过修士评价的人生，留着给第一节印。那种人生才看得出落差
+let sample: Character | null = null
 
 for (let i = 0; i < RUNS; i += 1) {
   const character = live()
@@ -126,11 +122,18 @@ for (let i = 0; i < RUNS; i += 1) {
   if (learning > 0 && cultivation > 0) bothLearningAndCultivation += 1
   // 资质其实很好，却一辈子没人告诉过他
   if (character.attributes.root >= 70 && cultivation === 0 && root === 0) goodRootNeverKnew += 1
+  if (!sample && cultivation > 0) sample = character
 
   claimCounts.push(
     Object.values(character.aspects).reduce((sum, aspect) => sum + aspect.claims.length, 0),
   )
 }
+
+console.log('\n=== 一个人的十六年，他最后知道自己什么 ===\n')
+if (sample) printPortrait(sample)
+else console.log(`  （${RUNS} 世里没有一个听过修士评价的）\n`)
+
+console.log(`=== ${RUNS} 世统计 ===\n`)
 
 const pct = (n: number) => `${((n / RUNS) * 100).toFixed(1)}%`
 console.log(`  听过凡人评价（记性/身子骨）        ${pct(heardMortal)}`)
@@ -155,15 +158,15 @@ console.log(
  * - 「资质好却没人告诉他」是 0.0%，读着像**好事**。
  *
  * **一支没有门禁的走查，它报出来的每一个 0 都会被读成世界设定。**
+ *
+ * 后来又拆掉一条：第一节从前捞不到样本就判红，而它跟底下
+ * 「一个人也没听过修行方面的评价」判的是同一件事，只是用了个更小的样本。
+ * **同一件事判两遍，先响的一定是粗的那一遍。**
+ * 取样是取样，判据是判据——捞不到样本只该少印一段，不该红。
  */
 console.log()
 {
   let bad = 0
-
-  if (noOneWasSeen) {
-    console.log('  ✗ 第一节翻遍了也没找到一个听过修士评价的人生。')
-    bad += 1
-  }
 
   // 一、得有人听过修行方面的评价，否则「他到底是不是那块料」这条线根本没落地
   if (heardAdept === 0) {

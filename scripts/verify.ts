@@ -409,6 +409,13 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
       const where = `${sceneId}#${nodeId}`
       scanEffects(node.onEnter)
       for (const branch of node.branches ?? []) scanConditions(branch.requires, where)
+      /**
+       * 他多看见的那几句，条件一样要查。
+       *
+       * 这一格比别处更容易烂：写错了不会断链、不会少选项、
+       * 玩家读到的正文也完好——**只是那一句永远不出现，而没有人在等它**。
+       */
+      for (const one of node.seen ?? []) scanConditions(one.requires, `${where} · 所见`)
       for (const choice of node.choices ?? []) {
         scanConditions(choice.requires, where)
         scanEffects(choice.effects)
