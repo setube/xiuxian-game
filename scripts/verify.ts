@@ -1,6 +1,6 @@
 /* eslint-disable no-console -- 这是一支门禁脚本，标准输出就是它的产物；它不进构建 */
 /**
- * 内容门禁：五道。
+ * 内容门禁：六道。
  *
  * ## 为什么它是门禁而不是走查
  *
@@ -42,6 +42,15 @@
  * 留下的规矩是：**先问这件事能不能静态判**。模拟是用来量分布的，
  * 不是用来判存在的——判存在，抽样迟早会替你判错。
  *
+ * ## 第六道是这条规矩的第二个用处：看住走不到的那一卷
+ *
+ * 库里有一卷是故意走不到的（`routine:adult`，替「凡人之后」占位）。
+ * 它走不到不是自己的性质，是别处四个数字凑出来的结论——**改了哪个都可能
+ * 让它悄悄变成一个活的入口**，而玩家会读到一段谁也没设计过的人生。
+ *
+ * 于是第六道把那四个前提钉住。同样不掷随机数：跑三百世没走到，
+ * 证明不了走不到。
+ *
  * 跑法：npx vite-node scripts/verify.ts
  * 失败会以非零码退出，可以直接挂进 CI。
  */
@@ -53,7 +62,8 @@ import { BEATS } from '../src/content/days'
 import { DAMPERS, SPARKS } from '../src/content/leanings'
 import { OPENINGS } from '../src/content/openings'
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
-import { useStory } from '../src/engine/story'
+import { stageOf } from '../src/engine/stages'
+import { MAX_EVENT_CHAIN, useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useNarrativeStore } from '../src/stores/narrative'
 import { usePeopleStore } from '../src/stores/people'
@@ -587,6 +597,188 @@ console.log('=== 可观测路径验收（人生里真走得到吗）===\n')
       `  ✗ 走不到的节点有 ${unvisited.length} 个，比上限 ${UNVISITED_CEILING} 多。\n` +
         '    这一格量的是「有没有大片内容一次性掉线」——上限是均值加三个标准差。\n' +
         '    单独漏接一卷它抓不到（噪声比信号大），那件事归第三道的「每一卷都有人指得到」。\n',
+    )
+    process.exitCode = 1
+  }
+}
+
+// ============================================================
+// 第六道：占位内容，得证明它还是占位
+// ============================================================
+/**
+ * `routine:adult`（成年之后的日子）是一卷占位内容：类型要求四个阶段各有一卷，
+ * 而凡人这一段总有一天会往后延，它先替那一天占着位子。
+ *
+ * 它现在走不到，而这是设计好的——**问题在于「走不到」不是它自己的性质，
+ * 是别处四个数字凑出来的结论**。谁哪天动了年龄分档、给收尾事件加个条件、
+ * 或者多写两卷不给玩家落笔的事件，它就会突然变成一个活的剧情入口：
+ * 玩家读到一段谁也没设计过的人生，而没有任何东西会喊一声。
+ *
+ * **占位内容没有检查地躺着，就是这么变成隐藏债务的。** 所以这一道把
+ * 那四个前提钉住，动了哪个都红灯。
+ *
+ * ## 为什么不用模拟判
+ *
+ * 「跑三百世没走到」证明不了走不到——这一轮刚在第五道那里量明白：
+ * 稀到千分之三的卷，十二批里有五批整卷缺席。**判存在得静态判。**
+ *
+ * 而这件事恰好判得动，因为 `enterRoutine()` 只有两个入口：
+ * 年表抽不出事（`pickEvent` 返回 null），或者连演的卷数顶到 `MAX_EVENT_CHAIN`。
+ * 两条各堵两道，就是下面四条。
+ *
+ * ## 这四条守的是前提，不是「绝对到不了」
+ *
+ * 头两条是硬的：收尾事件永远在候选池里，年表就永远抽得出事。
+ * 后两条不是——连演那条路上还留着一道窄缝：**假如某一串不落笔的卷
+ * 中途把时间推过了十七岁生日**，顶满之后落回来的就是成年那一卷。
+ * 现在没有这样的串（不落笔就不花时间，时间几乎只走在选项的 effects 里），
+ * 但这一道没有去证明它永远不会有——那要把每条路径上的时间效果都追一遍，
+ * 判据会细到自己先烂掉。
+ *
+ * 所以这一道诚实的说法是：**它盯的是让那一卷保持占位的四个前提，
+ * 谁动了谁红灯**，而不是「这一卷数学上不可能被走到」。
+ * 最该担心的那件事——哪天调了年龄分档，它就从死内容变成活入口，
+ * 而玩家读到的是一段没人设计过的人生——正是第一条盯着的。
+ *
+ * ## 顺带纠一个错
+ *
+ * 这里原先写的理由是「十六岁那年收尾事件必被抽中」。**那句是错的**：
+ * 十六岁之后还有二十来件散事件，权重合起来两百多，收尾权重 1000——
+ * 单轮被挤掉的概率将近两成，人照样能活到十七岁。
+ *
+ * 真正管用的不是「必被抽中」，是**它永远在候选池里**（没有 requires，
+ * 窗口一直开到 99）。池子不空，`pickEvent` 就不会返回 null，
+ * 于是「年表抽不出事」这条路根本不会发生——抽中与否无所谓。
+ */
+console.log('=== 占位内容验收（成年那一卷还走不到吗）===\n')
+{
+  const PLACEHOLDER = 'routine:adult'
+
+  /** 成年从几岁起。拿 `stageOf` 反推，不抄 `stages.ts` 里的分档 */
+  let adultFrom = Number.POSITIVE_INFINITY
+  for (let age = 0; age <= 200; age += 1) {
+    if (stageOf(age) === '成年') {
+      adultFrom = age
+      break
+    }
+  }
+
+  const finaleEvents = lifeEvents.filter((event) => event.scene.split('#')[0] === lifeFinale)
+  const finaleFrom = Math.min(...finaleEvents.map((event) => event.window.from))
+
+  /**
+   * 这一卷有没有可能从头演到尾都不让玩家落笔。
+   *
+   * 从入口起走 `next` / `branches`，撞上带 `choices` 的节点这条路就算会停下来。
+   * 只要**存在**一条走到头都没停过的路，这一卷就算数——宁可多算，
+   * 因为这一格是在数「凑不凑得满连演的上限」，多算才是安全的那一边。
+   */
+  const mayNotAsk = (sceneId: string): boolean => {
+    const scene = lifeScenes[sceneId]
+    if (!scene) return false
+    const memo = new Map<string, boolean>()
+    const walk = (nodeId: string): boolean => {
+      const cached = memo.get(nodeId)
+      if (cached !== undefined) return cached
+      memo.set(nodeId, false) // 环上先记 false，免得自己咬自己
+      const node = scene.nodes[nodeId]
+      if (!node) return true // 跳去别卷了：本卷一句没问
+      let answer = false
+      if (!node.choices?.length) {
+        const outs: string[] = []
+        if (node.next) outs.push(node.next)
+        for (const branch of node.branches ?? []) outs.push(branch.next)
+        answer =
+          outs.length === 0 || // 走到头都没问过
+          outs.some((target) => {
+            const [head, tail] = target.split('#')
+            if (tail) return head === sceneId ? walk(tail) : true
+            return head && scene.nodes[head] ? walk(head) : true
+          })
+      }
+      memo.set(nodeId, answer)
+      return answer
+    }
+    return walk(scene.entry)
+  }
+
+  /**
+   * 可能一句不问、又能在成年那年被抽中的事件。一件都不该有。
+   *
+   * 连演顶到上限要连着 `MAX_EVENT_CHAIN` 卷不给玩家落笔——而不落笔就不花时间
+   * （时间几乎只走在选项的 effects 里），所以这一串演下来年龄基本不动。
+   * 库里凑得出这种卷的有六件，全部封顶在收尾那一年：连演真顶满了，
+   * 人也还没成年，落回去的是少年那一卷。
+   *
+   * **所以这一格看的不是件数，是窗口**：哪天有人把其中一件的窗口
+   * 往成年之后延一年，这条缝就宽了。
+   */
+  const silent = lifeEvents.filter((event) => mayNotAsk(event.scene.split('#')[0] ?? ''))
+  const silentPastAdult = silent.filter((event) => event.window.to >= adultFrom)
+
+  /** 收尾那一卷的跳转有没有跑出卷外。跑出去了，演到它也不一定收得了尾 */
+  const finaleScene = lifeScenes[lifeFinale]
+  const finaleLeaks: string[] = []
+  for (const [nodeId, node] of Object.entries(finaleScene?.nodes ?? {})) {
+    const outs: string[] = []
+    if (node.next) outs.push(node.next)
+    for (const branch of node.branches ?? []) outs.push(branch.next)
+    for (const choice of node.choices ?? []) if (choice.next) outs.push(choice.next)
+    for (const target of outs) {
+      const [head, tail] = target.split('#')
+      const stays = tail ? head === lifeFinale : Boolean(head && finaleScene?.nodes[head])
+      if (!stays) finaleLeaks.push(`${lifeFinale}#${nodeId} → ${target}`)
+    }
+  }
+
+  const claims: readonly { holds: boolean; text: string }[] = [
+    {
+      holds: adultFrom > finaleFrom,
+      text: `收尾从 ${finaleFrom} 岁起可被抽中，而「成年」要到 ${adultFrom} 岁才开始`,
+    },
+    {
+      holds: finaleEvents.every((event) => (event.requires ?? []).length === 0),
+      text: '收尾事件没有前置条件，到了年纪就一直在候选池里',
+    },
+    {
+      holds: finaleLeaks.length === 0,
+      text: '收尾那一卷的跳转都留在卷内，演到它就一定演到底',
+    },
+    {
+      holds: silentPastAdult.length === 0,
+      text:
+        `凑得出连演的事件有 ${silent.length} 件（上限 ${MAX_EVENT_CHAIN} 卷），` +
+        `窗口都在 ${adultFrom} 岁之前封顶`,
+    },
+  ]
+
+  const broken = claims.filter((claim) => !claim.holds)
+  if (broken.length === 0) {
+    console.log(`  ${PLACEHOLDER} 还是走不到，四条前提都在：\n`)
+    for (const claim of claims) console.log(`    · ${claim.text}`)
+    console.log(
+      '\n  前两条堵住「年表抽不出事」，后两条堵住「连演顶到上限」——\n' +
+        '  它只能靠这两条路被叫出来。\n',
+    )
+  } else {
+    console.log(`  ✗ ${broken.length} 条前提不成立了：\n`)
+    for (const claim of broken) console.log(`    ${claim.text}`)
+    if (finaleLeaks.length > 0) {
+      console.log('\n    收尾卷跳出卷外的：')
+      for (const leak of finaleLeaks) console.log(`      ${leak}`)
+    }
+    if (silentPastAdult.length > 0) {
+      console.log('\n    能演到成年那年、又可能一句不问的：')
+      for (const event of silentPastAdult) {
+        console.log(
+          `      ${event.id} → ${event.scene}　窗口 ${event.window.from}–${event.window.to}`,
+        )
+      }
+    }
+    console.log(
+      `\n  ${PLACEHOLDER} 现在可能真的走得到了。那是占位内容，不是写好的人生——` +
+        '\n  玩家会读到一段谁也没设计过的东西。要么把这一卷补成真内容，' +
+        '\n  要么想清楚这次改动是不是本来就打算把成年之后接上。\n',
     )
     process.exitCode = 1
   }
