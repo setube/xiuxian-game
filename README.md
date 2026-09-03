@@ -37,6 +37,7 @@ npx vite-node scripts/simulate.ts   # 随机跑一千世，看人生是否走得
 npx vite-node scripts/verify.ts     # 七道结构门禁（失败以非零码退出）
 npx vite-node scripts/grasp.ts      # 认知三轴门禁
 npx vite-node scripts/settle.ts     # 结算顺序走查：time 写在哪儿都一样
+npx vite-node scripts/founding.ts   # 立基次第门禁：谁必须先建好（失败以非零码退出）
 npx vite-node scripts/shadow.ts     # 分支遮蔽走查：前一条会不会挡住后一条
 ```
 
@@ -363,7 +364,7 @@ const NODE_REFS = {
 直接从它摊平，`verify.ts` 里六处手写遍历全改成调提取器，从此不会再有「扫出边的遍历」
 和「扫条件的遍历」各自记账的问题。
 
-这个守卫只在 `scripts/` 被类型检查时才有效。`tsconfig.scripts.json` 把这二十九支脚本
+这个守卫只在 `scripts/` 被类型检查时才有效。`tsconfig.scripts.json` 把这三十支脚本
 纳入 tsc 覆盖范围，并加进 `tsconfig.json` 的 references，让 `vue-tsc --build --force`
 一次性把 app、node、scripts 三个范围一起检查。
 
@@ -512,6 +513,53 @@ const PHASE = {
 `{flag:{key,equals}}` 的内层全被抹平，两条不同的旗标条件都成了 `{"flag":{}}`，
 当场"抓"出 26 条假的遮蔽。报 0 可能是干净，也可能是瞎。
 于是六个必须抓到、四个必须放过，先证明尺子准，再信它量出的数。
+
+### `scripts/founding.ts`：立基次第
+
+前面三处顺序都在一批 effects 内部。还有一处在更底下：**八个 store 谁先建起来。**
+
+一个人出生的次序是定的——先有你生在哪家，才有你在哪儿，才有你周围那些人，
+最后才有你自己。`character.ts` 里那句「先有父母，才有你」说的是人物，
+这一层说的是同一件事，只是落在了 `defineStore` 上。全库四处：
+
+| 哪一行             | 建的时候读了谁                                                   |
+| ------------------ | ---------------------------------------------------------------- |
+| `world.ts:66`      | `ref(household.home)`——你在哪儿，取决于你生在哪家                |
+| `world.ts:68`      | `ref([household.home])`——到过的地方，第一个是家                  |
+| `character.ts:159` | `beBorn(household.trade, household.home)`——名字要问家里；        |
+|                    | 它内部还会 `usePeopleStore()` 落父母、`useWorldStore()` 取出生年 |
+| `character.ts:168` | `rollAttributes()` 里读 `household.trade`——什么家养出什么身板    |
+
+这四处是**初始化期跨 store 读值**，跟函数体里读值完全是两回事，
+而**代码上看不出区别**：两者写出来都是 `useHouseholdStore()`。
+`people.ts:46` 也在 setup 顶层拿了 `useWorldStore()`，可它只存着不读，
+真正读 `world.` 全在函数体里——所以它建的时候谁也不用等。
+`character.ts` 的 `age` 是 `computed`，惰性求值，同样不算。
+
+**违反了会怎样，试过：** 把 `household` 顶层改成读 `useWorldStore().time.year`，
+造一个环出来。
+
+```text
+先建 household  → place 成了 undefined，而 home 是好的，不报错
+先建 world      → TypeError: Cannot read properties of undefined (reading 'year')
+```
+
+同一个环，换个入口，一个静默污染一个当场崩。Pinia 遇到重入不抛错，
+它把一个**尚未建完的 store** 交给你。静默那条更坏——状态栏上会写着 `undefined`，
+而没有任何东西吭一声。**这又是 `breathing` 那种病的形状**：
+不是坏了，是没有任何东西保证它不坏。
+
+**判据是 `pinia.state.value` 的键。** 单独建一个 store，那里就是连带建起来的所有人：
+建 `household` 应该只有它自己，建 `world` 应该是它加 `household`，
+建 `character` 应该是四个；`diary` / `leanings` / `narrative` / `ui` 各自一个。
+没有「判不出来」的灰色地带——所以这一支是门禁不是走查，
+跟 `shadow.ts` 那种只能少说不能说错的走查不同。
+
+同样先证明尺子会红：表里少写一条依赖、多写一条依赖，两种写坏法都必须被抓到。
+另外 `satisfies` 只管表里的键跟手写的 `StoreName` 对得上，
+而新加一个 store 文件不会让 `StoreName` 自己长出来——所以还扫一遍 `src/stores/`
+里所有 `defineStore('…')` 跟表对账。
+**一道守在没人走的门口的关卡，跟没有这道关卡是一回事。**
 
 ### 写新剧本时
 
