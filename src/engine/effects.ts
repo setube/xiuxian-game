@@ -705,6 +705,95 @@ function applyOne(
 }
 
 /**
+ * 每一种效果属于哪个结算相。
+ *
+ * ## 时间不是一个普通效果
+ *
+ * 三十七种效果里，三十六种在**陈述一件事发生了**：他学会了什么、
+ * 家里少了什么、谁死了。只有 `time` 不是——它不陈述事实，
+ * **它改变其余所有事实的解释上下文**。
+ *
+ * 差别在这里显出来：认知落下来的时候要记 `at: world.time`，
+ * 而 `world.time` 正是 `time` 效果刚改过的东西。于是同一批效果，
+ * 时间写在前写在后，那条认知的时间戳差着一截：
+ *
+ *     [{ time: 3年 }, { knowledge }]   →  记在第三年末
+ *     [{ knowledge }, { time: 3年 }]   →  记在第一天
+ *
+ * 全库五十七处这样的同批，一致率 100%——`time` 全写在第一位。
+ * **可这个 100% 没有出处**：没有一行代码、一句注释要求过它。
+ * 下一个人写在末尾，时间戳就退回去几天，不会有任何东西吭声。
+ *
+ * ## 修法不是立一条「`time` 必须写在第一位」的规矩
+ *
+ * 那条规矩会禁掉本来合法的写法——`[{ 受伤 }, { time: 养了半个月 }]`
+ * 读起来就该是这个次序，而作者不该为了引擎的实现细节把它倒过来写。
+ *
+ * 所以把时间提到**结算的前一相**：这一批里所有 `time` 先走完，
+ * 其余三十六种再按原序落下。剧本爱怎么排怎么排，
+ * **顺序不再影响结果**——不是被门禁查出来的，是压根不存在了。
+ * 跟 `learn()` 里「接触只能往上」是同一个手法：
+ * 能让错误不存在，就别去检查它存不存在。
+ *
+ * 于是「一批效果是一个时刻」成了结构事实：
+ * 批内所有时间戳相同，都是这段经历结束时的那一刻。
+ * 真要表达「先发生 A，三年后发生 B」，那本来就是两个节点，
+ * 不是一批效果——跟 `seen` 那格记的是同一条界线：换节点才是换事件。
+ *
+ * ## 为什么是一张三十七行的表，而不是 `type === 'time'`
+ *
+ * 因为这一相还会长。世界年龄、天气、灵气浓度、因果链——
+ * 凡是「不陈述事实、只改变其余事实如何被解释」的东西，都属于这里。
+ * 写成 `if (effect.type === 'time')`，加第二个的那天不会有人想起这件事，
+ * 而漏掉的后果跟今天一模一样：后面的效果读到的是改之前的世界。
+ *
+ * 表钉在这儿，加第三十八种效果就得表态它是哪一相，不表态编译不过。
+ * `assertNever` 守的是「新变体有没有被处理」，这张表守的是
+ * 「新变体属于哪一相」——两件事，两把锁。
+ */
+const PHASE = {
+  /** 唯一的上下文相。它一动，底下三十六种记下的时刻全跟着变 */
+  time: '上下文',
+
+  attribute: '事实',
+  flag: '事实',
+  roll: '事实',
+  item: '事实',
+  knowledge: '事实',
+  place: '事实',
+  home: '事实',
+  realm: '事实',
+  identity: '事实',
+  aspect: '事实',
+  claim: '事实',
+  reveal: '事实',
+  reflect: '事实',
+  observe: '事实',
+  relation: '事实',
+  chronicle: '事实',
+  household: '事实',
+  family: '事实',
+  person: '事实',
+  meet: '事实',
+  recall: '事实',
+  signs: '事实',
+  ask: '事实',
+  'ask-around': '事实',
+  attend: '事实',
+  knock: '事实',
+  follow: '事实',
+  glance: '事实',
+  encounter: '事实',
+  appraise: '事实',
+  book: '事实',
+  'book-named': '事实',
+  hearsay: '事实',
+  daily: '事实',
+  diary: '事实',
+  reading: '事实',
+} satisfies { [K in Effect['type']]: '上下文' | '事实' }
+
+/**
  * 状态变化的唯一写入口。
  *
  * 剧本只声明「发生了什么」，落到哪个 store、怎么钳制范围，全部在这里决定。
@@ -721,12 +810,25 @@ export function applyEffects(effects?: readonly Effect[]): NarrativeBlock[] {
   const people = usePeopleStore()
 
   const receipts: NarrativeBlock[] = []
-  for (const effect of effects) {
+  /**
+   * 两相结算。上下文先走完，事实再按原序落下。
+   *
+   * `time` 不产生回执（`case 'time'` 返回 null），所以提前它不动正文的次序；
+   * 多条 `time` 同批也无所谓先后——推进的是天数，加法不挑顺序。
+   */
+  const settle = (effect: Effect): void => {
     // 先换占位符再结算：写进 store 的就该是玩家会读到的那句话，
     // 而不是一个等着被谁替换的模板
     const receipt = applyOne(localize(effect), world, character, household, people)
     if (Array.isArray(receipt)) receipts.push(...receipt)
     else if (receipt) receipts.push(receipt)
+  }
+
+  for (const effect of effects) {
+    if (PHASE[effect.type] === '上下文') settle(effect)
+  }
+  for (const effect of effects) {
+    if (PHASE[effect.type] !== '上下文') settle(effect)
   }
   return receipts
 }

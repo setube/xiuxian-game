@@ -1,4 +1,4 @@
-// 门禁和走查这二十八支脚本，也要过一遍类型。
+// 门禁和走查这二十九支脚本，也要过一遍类型。
 //
 // 从前它们**一支也没被检查过**：`tsconfig.node.json` 只 include 了
 // `vite.config.ts`，`tsconfig.app.json` 只 include `src/`，
