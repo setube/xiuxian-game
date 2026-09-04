@@ -1,7 +1,7 @@
 import { useCharacterStore } from '@/stores/character'
 import { useHouseholdStore } from '@/stores/household'
 import { usePeopleStore } from '@/stores/people'
-import type { Bond, NarrativeBlock } from '@/types/game'
+import type { Bond, Manner, NarrativeBlock } from '@/types/game'
 
 import { kinCall, titleNow } from './address'
 import { isNearby } from './nearby'
@@ -35,6 +35,11 @@ import { isNearby } from './nearby'
  * `{title}` 是第四类，也是唯一一个**方向反过来**的：上面那些问的都是
  * 他怎么称呼世界，这一个问的是**世界怎么称呼他**。两个方向的来源
  * 不一样，所以会脱节——见 `engine/address.ts`。
+ *
+ * 这几个记号解析出什么，还要看**这一节是在什么场合说的话**（`SceneNode.manner`）。
+ * 同一个 `{elder}`，家常那几节是「父王」，宣旨那一节是「王爷」。
+ * 场合从节点一路传进来，不由这里去猜——猜的话就得读全局状态，
+ * 而「此刻在不在行礼」根本不是一种状态，它是一句话的属性。
  */
 const TOKENS =
   /\{(name|home|province|prefecture|here|trade|elder|elders|dam|chore|putsAway|title)\}/g
@@ -51,16 +56,20 @@ const TOKENS =
  *
  * 死了的自然也不在身边（见 `engine/nearby.ts`），所以这一改只收紧不放宽。
  *
- * 找着人之后还有一步：**管他叫什么，得看这个人是在哪儿学会说话的。**
- * `kinCall` 答得上来就用那个字（宫里长大的孩子管爹叫「爹爹」），
- * 答不上来才落回 `calls`——境况表里那个「爹」。回落不是兜底失败，
- * 那就是寻常人家那一套本身，十来种营生的人家在这一格上没有分别。
+ * 找着人之后还有一步：**管他叫什么，要看三样东西。**
+ * 这个人身上有没有爵位（`rank`）、此刻在不在行礼（`manner`）、
+ * 以及这孩子是在哪儿学会说话的。`kinCall` 按这个次序往下落，
+ * 三样都答不上来才用 `calls`——境况表里那个「爹」。
+ * 回落不是兜底失败，那就是寻常人家那一套本身。
  */
-function callByBond(order: readonly Bond[]): string {
+function callByBond(order: readonly Bond[], manner: Manner): string {
   const people = usePeopleStore()
   for (const bond of order) {
     for (const id of people.kinOf(bond)) {
-      if (isNearby(id)) return kinCall(bond) ?? people.known[id]?.calls ?? '家里的大人'
+      if (!isNearby(id)) continue
+      return (
+        kinCall(bond, people.personOf(id)?.rank, manner) ?? people.known[id]?.calls ?? '家里的大人'
+      )
     }
   }
   return '家里的大人'
@@ -98,8 +107,8 @@ function callByBond(order: readonly Bond[]): string {
  * 于是那一整卷对皇室不成立，靠的是 `requires: [{ living: ... }]`，
  * 不是换个物件接着演。第 2 条规矩因此有了机器守着的形式。
  */
-function elderCall(): string {
-  return callByBond(['生父', '抚养', '生母'])
+function elderCall(manner: Manner): string {
+  return callByBond(['生父', '抚养', '生母'], manner)
 }
 
 /**
@@ -109,8 +118,8 @@ function elderCall(): string {
  * 「娘把你放在田埂上」是穿帮，但「姐把你放在田埂上」成立。
  * 同理，生母难产而亡、爹一个人把他带大的，这个位置就是爹。
  */
-function damCall(): string {
-  return callByBond(['生母', '抚养', '生父'])
+function damCall(manner: Manner): string {
+  return callByBond(['生母', '抚养', '生父'], manner)
 }
 
 /**
@@ -120,13 +129,13 @@ function damCall(): string {
  * 不是名册上还活着的那几个。爹在外县修河堤的那两年，
  * 「爹和娘一起坐在灯下」不该成立。
  */
-function eldersCall(): string {
+function eldersCall(manner: Manner): string {
   const people = usePeopleStore()
   const names: string[] = []
   for (const bond of ['生父', '生母', '抚养'] as const) {
     for (const id of people.kinOf(bond)) {
       if (!isNearby(id)) continue
-      const calls = kinCall(bond) ?? people.known[id]?.calls
+      const calls = kinCall(bond, people.personOf(id)?.rank, manner) ?? people.known[id]?.calls
       if (calls && !names.includes(calls)) names.push(calls)
     }
   }
@@ -156,17 +165,23 @@ function putsAwayCall(): string {
   return useCharacterStore().living.chore?.putsAway ?? '把手里的东西放下'
 }
 
-/** 把一句话里的占位符换成这一世的实情。没有占位符的原样返回。 */
-export function fillString(text: string): string {
+/**
+ * 把一句话里的占位符换成这一世的实情。没有占位符的原样返回。
+ *
+ * `manner` 省掉就是家常。**默认值挑家常不挑礼上，是因为漏写不会报错**：
+ * 库里绝大多数话都是家里人之间说的，默认礼上的话，每一节都得显式写一行
+ * 才不穿帮，而漏写的那一节只会让一个八岁孩子在灶间管他爹叫王爷。
+ */
+export function fillString(text: string, manner: Manner = '家常'): string {
   if (!text.includes('{')) return text
 
   const character = useCharacterStore()
   const household = useHouseholdStore()
 
   return text.replace(TOKENS, (_, token: string) => {
-    if (token === 'elder') return elderCall()
-    if (token === 'dam') return damCall()
-    if (token === 'elders') return eldersCall()
+    if (token === 'elder') return elderCall(manner)
+    if (token === 'dam') return damCall(manner)
+    if (token === 'elders') return eldersCall(manner)
     if (token === 'chore') return choreCall()
     if (token === 'putsAway') return putsAwayCall()
     if (token === 'title') return titleNow()
@@ -180,13 +195,17 @@ export function fillString(text: string): string {
 }
 
 /** 把一段正文里的占位符换成这一世的实情。没有占位符的原样返回。 */
-export function fill(blocks: readonly NarrativeBlock[]): NarrativeBlock[] {
+export function fill(blocks: readonly NarrativeBlock[], manner: Manner = '家常'): NarrativeBlock[] {
   return blocks.map((block) => {
     if (block.kind === 'divider') return block
-    if (block.kind === 'heading') return { ...block, title: fillString(block.title) }
+    if (block.kind === 'heading') return { ...block, title: fillString(block.title, manner) }
     if (block.kind === 'dialogue' && block.speaker) {
-      return { ...block, speaker: fillString(block.speaker), text: fillString(block.text) }
+      return {
+        ...block,
+        speaker: fillString(block.speaker, manner),
+        text: fillString(block.text, manner),
+      }
     }
-    return { ...block, text: fillString(block.text) }
+    return { ...block, text: fillString(block.text, manner) }
   })
 }

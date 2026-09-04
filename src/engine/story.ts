@@ -7,6 +7,7 @@ import type {
   ChoiceOption,
   LifeEvent,
   LifeStage,
+  Manner,
   NarrativeBlock,
   Scene,
   SceneLibrary,
@@ -89,15 +90,19 @@ function costOf(choice: Choice): string | null {
  *
  * 选项上的字也要过占位符：它和正文一样是给玩家读的，
  * 漏了就会在按钮上印出 `{home}`。
+ *
+ * 场合也一样要跟着传：**按钮上那句话跟它上头的正文是同一个场合说的。**
+ * 宣旨那一节的正文里父亲是「王爷」，底下按钮写着「跟父王说」，
+ * 那是同一屏上两个称呼指着同一个人。
  */
-function toOptions(choices: readonly Choice[]): ChoiceOption[] {
+function toOptions(choices: readonly Choice[], manner?: Manner): ChoiceOption[] {
   const options: ChoiceOption[] = []
   for (const choice of choices) {
     const shown: Choice = {
       ...choice,
-      label: fillString(choice.label),
-      ...(choice.hint ? { hint: fillString(choice.hint) } : {}),
-      ...(choice.lockedHint ? { lockedHint: fillString(choice.lockedHint) } : {}),
+      label: fillString(choice.label, manner),
+      ...(choice.hint ? { hint: fillString(choice.hint, manner) } : {}),
+      ...(choice.lockedHint ? { lockedHint: fillString(choice.lockedHint, manner) } : {}),
     }
     if (meetsAll(choice.requires)) {
       options.push({ choice: shown, locked: false, cost: costOf(choice) })
@@ -148,12 +153,27 @@ export function useStory(library: SceneLibrary, plan: LifePlan): Story {
   }
 
   /**
+   * 卷轴此刻停在哪一节。
+   *
+   * 存档只记了 `sceneId` / `nodeId` 两个字符串，节点本身要现查。
+   * 两处要它：断档重建选项的时候，和玩家落笔的时候——
+   * **后者是为了场合**，回响那句话得跟它上头的正文同一个场合。
+   */
+  function nodeHere(): SceneNode | undefined {
+    const scene = narrative.sceneId ? sceneOf(narrative.sceneId) : undefined
+    return scene && narrative.nodeId ? scene.nodes[narrative.nodeId] : undefined
+  }
+
+  /**
    * 落纸之前的两道加工：换掉占位符，给未写时序的标题拓上「此刻」。
    * 时序必须在入卷时定格——卷轴往下翻十年，上面那行也该还是当年的日子。
+   *
+   * 场合跟时序同理，都是**入卷时定格**的东西：这一节是在宣旨的堂上说的，
+   * 那它落在卷轴上就永远是那个场合，不会因为后来搬了家而改口。
    */
-  function inscribe(blocks: readonly NarrativeBlock[]): NarrativeBlock[] {
+  function inscribe(blocks: readonly NarrativeBlock[], manner?: Manner): NarrativeBlock[] {
     const world = useWorldStore()
-    return fill(blocks).map((block) =>
+    return fill(blocks, manner).map((block) =>
       block.kind === 'heading' && !block.subtitle
         ? { ...block, subtitle: describeTime(world.time) }
         : block,
@@ -239,10 +259,10 @@ export function useStory(library: SceneLibrary, plan: LifePlan): Story {
 
       // 顺序要紧：先结算状态，正文里才能引用变化后的世界；回执随后落在正文末尾
       const receipts = applyEffects(node.onEnter)
-      narrative.append([...inscribe([...node.blocks, ...seenOf(node)]), ...receipts])
+      narrative.append([...inscribe([...node.blocks, ...seenOf(node)], node.manner), ...receipts])
       narrative.locate(current.sceneId, node.id)
 
-      const options = toOptions(node.choices ?? [])
+      const options = toOptions(node.choices ?? [], node.manner)
       if (options.some((option) => !option.locked)) {
         narrative.setOptions(options)
         return
@@ -275,14 +295,13 @@ export function useStory(library: SceneLibrary, plan: LifePlan): Story {
     if (narrative.ended || narrative.isAwaitingChoice) return
 
     // 卷轴有正文却无待选项：存档不完整，就地把选项重建出来，不重复追加正文
-    const scene = narrative.sceneId ? sceneOf(narrative.sceneId) : undefined
-    const node = scene && narrative.nodeId ? scene.nodes[narrative.nodeId] : undefined
+    const node = nodeHere()
     if (!node) {
       toNextChapter(MAX_EVENT_CHAIN)
       return
     }
 
-    const options = toOptions(node.choices ?? [])
+    const options = toOptions(node.choices ?? [], node.manner)
     if (options.some((option) => !option.locked)) narrative.setOptions(options)
     else toNextChapter(MAX_EVENT_CHAIN)
   }
@@ -298,11 +317,17 @@ export function useStory(library: SceneLibrary, plan: LifePlan): Story {
   }
 
   function choose(choice: Choice): void {
+    // 场合要在清空之前取：取的是玩家**刚读完的那一节**，
+    // 回响是对那一节说的话，不是对将要去的那一节说的
+    const manner = nodeHere()?.manner
     narrative.clearOptions()
     // 选择本身留在正文里，卷轴才连贯。
     // 回响要跟正文走同一道加工——否则选项上写着占位符，落纸时就露馅了
     const receipts = applyEffects(choice.effects)
-    narrative.append([...fill([{ kind: 'echo', text: choice.echo ?? choice.label }]), ...receipts])
+    narrative.append([
+      ...fill([{ kind: 'echo', text: choice.echo ?? choice.label }], manner),
+      ...receipts,
+    ])
 
     if (choice.next === null) {
       toNextChapter(0)

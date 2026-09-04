@@ -286,13 +286,13 @@ export const ORIGINS: readonly Origin[] = [
     attributes: { memory: 52, insight: 50, body: 24, will: 26, fortune: 54 },
     given: ['琮', '玹', '曜', '徽', '宜', '婉'],
     father: '当今天子。你一年见他的次数，数得过来。',
-    mother: '你的母妃。位分不高不低，在宫里说话轻。',
+    mother: '你的生母。位分不高不低，在宫里说话轻。',
     opening: [
       { kind: 'narration', text: '你生在天启皇城，{here}。' },
-      { kind: 'narration', text: '父亲是当今天子。你上头有七个兄姐，下头还会有更多。' },
+      { kind: 'narration', text: '{elder}是当今天子。你上头有七个兄姐，下头还会有更多。' },
       {
         kind: 'narration',
-        text: '你出生那日，钦天监报了个好卦。父亲赏了母妃两匹缎子，没有过来。',
+        text: '你出生那日，钦天监报了个好卦。{elder}赏了{dam}两匹缎子，没有过来。',
       },
     ],
   },

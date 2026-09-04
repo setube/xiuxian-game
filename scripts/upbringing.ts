@@ -141,19 +141,25 @@ const FACTS: readonly Fact[] = [
   /**
    * 硬写在正文里的宫廷称谓。
    *
-   * 这两条跟 `scripts/address.ts` 是**分工**，不是重复：
+   * 这一条跟 `scripts/address.ts` 是**分工**，而分工线不在词上，
+   * 在「这个词有没有正经的产出路径」上：
    *
-   * - 那一支管**插值出来**的称谓——`{dam}` 在宫里落成「娘娘」、
-   *   出了宫墙还是「娘娘」。静态扫描看不见落笔后的字，扫不了。
-   * - 这一支管**写死在正文里**的字。「母妃」「父皇」不经过任何一层解析，
-   *   谁读到这一节就看到这四个字，所以它们必须跟这一节的读者对得上。
+   * - **有的**，归那一支。「父王」「母妃」现在是爵位表（`RANK_CALLS`）
+   *   的产出——正文里写 `{elder}`，他爹身上挂着亲王，落笔才成那两个字，
+   *   削爵那天换一个查不到的爵位，它自己就变回「父亲」。
+   *   这种词一个字也不许硬写，**不论在哪一卷**：手写的那份绕过了爵位表，
+   *   削爵之后不会跟着变。那一支扫全库，比按读者集合量严得多。
+   * - **没有的**，留在这儿，按读者集合量。
    *
-   * 「母妃」现在正当地出现在皇室那段开场里（`origins.ts` 的
-   * 「父亲赏了母妃两匹缎子」）——那一节只有宫里长大的孩子读得到，
-   * 判据不该红。红的是**以后**：哪天有人把这句挪进一段所有人都读的正文，
-   * 或者写下一句「你去给母妃请安」放在削爵之后。
+   * 「父皇」正是没有的那种：宫里那位在爵位表里查不到（见 `content/address.ts`
+   * 那段注释），所以皇子开口是「爹爹」，**这个系统里没有任何一处会产出「父皇」**。
+   * 它只可能是有人手打上去的，于是它归静态扫描管。
+   *
+   * 从前这儿还有一条「母妃」，量的是「宫墙外没有这个词」——那个理由本身就是错的：
+   * 「母妃」是亲王正妃之子对生母的称呼，王府在宫墙外，而那正是它该出现的地方。
+   * 词随着爵位表一起搬走了，理由也跟着作废。
    */
-  { word: '母妃', livings: ['palace'], why: '「母妃」是宫里的位分称呼，宫墙外没有这个词' },
+
   /**
    * 「父皇大行」豁免，因为那不是他开口，是旨意的原话。
    *
@@ -640,6 +646,22 @@ function afterLiving(from: Set<string>, effects: readonly Effect[] | undefined):
 }
 
 /**
+ * 指名道姓地问一节：你把日子换成了哪一种。没换就是 undefined。
+ *
+ * 跟上面那个取的是同一件事，用处相反——`afterLiving` 拿它往下传播，
+ * 这一个拿它给对照组取那个**不许出现在上游的词**。
+ *
+ * 单开一个函数而不是在判据里手写「fallen」，是因为手写的那份不会跟着内容走：
+ * 哪天搬家那一节改成落别的日子，判据仍旧盯着 fallen，一直绿。
+ */
+function livingSetAt(sceneId: string, nodeId: string): string | undefined {
+  const onEnter = lifeScenes[sceneId]?.nodes[nodeId]?.onEnter
+  let becomes: string | undefined
+  for (const one of onEnter ?? []) if (one.type === 'living') becomes = one.living
+  return becomes
+}
+
+/**
  * 每一个节点，是过着哪几种日子的人读得到的。
  *
  * 逐节点算，不是逐卷算——这个分别是必须的：`child:memory` 那一卷的入口
@@ -984,14 +1006,16 @@ function ruler(): string[] {
    *
    * 底下四节各自挂着（或继承着）一处 living 效果，所以它们的读者
    * 该正好只剩一种。**要是这套东西根本不存在——也就是读者集合只会收窄、
-   * 不会替换——这四行会全部继承 `royal:fall:open` 那六种日子，当场红。**
+   * 不会替换——这四行会全部继承各自上游那一节的一大把日子，当场红。**
    */
   const readers = readersByNode()
   const switched: readonly { at: string; want: string; why: string }[] = [
     { at: 'royal:fall:edict', want: 'fallen', why: '这一节的 onEnter 就是门第塌了那一下' },
     { at: 'royal:fall:shut', want: 'fallen', why: '把门关上的那个，日子没有再变' },
     { at: 'royal:fall:outside', want: 'market', why: '开门出去的那个，两年后自己过日子' },
-    { at: 'royal:demote:open', want: 'fallen', why: '削藩搬出王府，跟削爵是同一种日子' },
+    // 搬过去那一节才是削藩这一卷换日子的地方。
+    // 它前头还有一节宣旨（`open`），那一节人还跪在王府里——见下面的对照组
+    { at: 'royal:demote:home', want: 'fallen', why: '削藩搬出王府，跟削爵是同一种日子' },
   ]
   for (const one of switched) {
     const got = readers.get(one.at)
@@ -1007,18 +1031,47 @@ function ruler(): string[] {
   /**
    * 对照组：变化**上游**那一节不许跟着变。
    *
-   * `royal:fall:open` 站在 `edict` 前面，它的读者仍旧只由户籍那句条件说了算。
-   * 这一条守的是「替换只往下游走」——传播要是写成了「这一卷一律替换」，
-   * 它会只剩 fallen，当场红。而没有它的话，上面那四行有一种作弊解法
-   * 能全绿：整卷无脑替换。
+   * 两卷各出一节，隔得一远一近：
+   *
+   *     royal:fall:open    → 三节之后才是 edict，那一夜旨意还没下
+   *     royal:demote:open  → 紧接着就是 home，中间只隔一条 next
+   *
+   * 后者是拆节拆出来的，也是这一对里更锋利的那一根：宣旨和搬家
+   * 本来就不同步——**旨意念完的那一刻人还跪在王府里**，
+   * 而传播要是顺着 `next` 往回漫一格，只有紧邻的这一对量得出来。
+   *
+   * 没有这一段的话，上面那四行有一种作弊解法能全绿：整卷无脑替换。
+   *
+   * 两个关键词都不写在这儿：下游换上的是哪种日子，问那一节的 `onEnter`；
+   * 上游该是哪种日子，问户籍表。手抄一份的话，内容改了判据不会红。
    */
-  const before = readers.get('royal:fall:open')
-  if (before === undefined) {
-    wrong.push('royal:fall:open 一个读者也算不出来')
-  } else if (!before.has('palace')) {
-    wrong.push('royal:fall:open 的读者里没有 palace——进宫门那一节，宫里的人反倒读不到')
-  } else if (before.size === 1) {
-    wrong.push('royal:fall:open 的读者只剩一种，说明 living 的变化倒着传到了上游')
+  const upstream: readonly { scene: string; node: string; then: string; trade: Trade }[] = [
+    { scene: 'royal:fall', node: 'open', then: 'edict', trade: '皇室' },
+    { scene: 'royal:demote', node: 'open', then: 'home', trade: '王府' },
+  ]
+  for (const one of upstream) {
+    const key = at(one.scene, one.node)
+    const becomes = livingSetAt(one.scene, one.then)
+    if (becomes === undefined) {
+      wrong.push(
+        `${at(one.scene, one.then)} 没有一处 living 效果，${key} 这一条对照组量不到任何东西`,
+      )
+      continue
+    }
+    const got = readers.get(key)
+    if (got === undefined) {
+      wrong.push(`${key} 一个读者也算不出来`)
+      continue
+    }
+    const born = livingOfTrade(one.trade).id
+    if (got.has(becomes)) {
+      wrong.push(
+        `${key} 的读者里混进了 ${becomes}——那是下游 ${one.then} 才换上的日子，变化倒着传到了上游`,
+      )
+    }
+    if (!got.has(born)) {
+      wrong.push(`${key} 的读者里没有 ${born}——事情还没发生，${one.trade}的人反倒读不到自家的卷`)
+    }
   }
 
   /**
@@ -1041,11 +1094,14 @@ function ruler(): string[] {
   console.log(`  半路上才有的日子：${MIDLIFE_IDS.join(' ') || '（一种也没有）'}`)
 
   console.log(
-    `  削爵那一卷各节的读者：${['royal:fall:open', ...switched.map((one) => one.at)]
-      .map(
-        (key) =>
-          `${key.split(':').pop()}=${[...(readers.get(key) ?? [])].sort().join('/') || '无'}`,
-      )
+    `  换过日子那几节的读者：${switched
+      .map((one) => `${one.at}=${[...(readers.get(one.at) ?? [])].sort().join('/') || '无'}`)
+      .join('  ')}`,
+  )
+  console.log(
+    `  上游那两节的读者：${upstream
+      .map((one) => at(one.scene, one.node))
+      .map((key) => `${key}=${[...(readers.get(key) ?? [])].sort().join('/') || '无'}`)
       .join('  ')}`,
   )
 

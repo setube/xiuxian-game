@@ -1,7 +1,7 @@
-import { registerFor, titleFor, type Register } from '@/content/address'
+import { rankCallFor, registerFor, titleFor, type Register } from '@/content/address'
 import { useCharacterStore } from '@/stores/character'
 import { useHouseholdStore } from '@/stores/household'
-import type { Bond } from '@/types/game'
+import type { Bond, Manner } from '@/types/game'
 
 /**
  * 他学的是哪一套话。
@@ -46,13 +46,33 @@ export function registerNow(): Register | undefined {
 /**
  * 家里这一种关系，他学着管人家叫什么。
  *
- * 返回 `undefined` 表示他学的那套话在这一格上跟寻常人家没有分别——
- * 调用方回落到 `Acquaintance.calls`，也就是境况表里那个字。
- * **不在这儿兜底**：兜底放在这里，「他没学过特别的叫法」
- * 和「他学的正好也是这个字」就分不开了。
+ * ## 两层，上面那层盖下面那层
+ *
+ * 1. **对方的爵位**（`rank`）+ **此刻在不在行礼**（`manner`）。
+ *    王府那位父亲挂着「亲王」，于是家常落成「父王」，礼上落成「王爷」。
+ * 2. 查不到就落到**他学的那套话**——王府和官宦一样是「父亲」。
+ *
+ * 顺序不能倒过来。倒过来的话教养永远赢，爵位那张表等于没写；
+ * 而这么排之后，削爵只要把 `rank` 换成一个查不到的值，
+ * **那声「父王」自己就退回「父亲」**，不需要谁去删它。
+ *
+ * ## 为什么爵位在上、教养在下
+ *
+ * 因为这两层塌的时机不一样。爵位是一道旨意就没的东西，
+ * 教养是四十天的路上没人能重新教一遍的东西。
+ * 摞成两层，才写得出「爵位没了，父子还在」那种别扭——
+ * 压成一张「皇族专用词表」的话，削爵之后要么全废要么全留。
+ *
+ * ## 返回 undefined 是有意义的答案
+ *
+ * 它表示这一格上他跟寻常人家没有分别——调用方回落到
+ * `Acquaintance.calls`，也就是境况表里那个字。**不在这儿兜底**：
+ * 兜底放在这里，「他没学过特别的叫法」和「他学的正好也是这个字」
+ * 就分不开了。
  */
-export function kinCall(bond: Bond): string | undefined {
-  return registerNow()?.kin[bond]
+export function kinCall(bond: Bond, rank?: string, manner: Manner = '家常'): string | undefined {
+  const byRank = rank === undefined ? undefined : rankCallFor(rank, bond, manner)
+  return byRank ?? registerNow()?.kin[bond]
 }
 
 /**
@@ -60,6 +80,16 @@ export function kinCall(bond: Bond): string | undefined {
  *
  * 跟上面那个函数朝相反的方向：那个读户籍（改不掉），
  * 这个读 `identity`（说变就变）。削爵那一天两者同时被检验。
+ *
+ * ## 这一层不接场合
+ *
+ * `kinCall` 分家常和礼上，这个不分——「殿下」「世子」「郡主」
+ * **本身就是身份称谓**，在灶间说和在殿上说是同一个词，
+ * 换个场合改的是说不说，不是说成什么。
+ * 「世子殿下」那种叠法里，「殿下」是敬语，不是场合标记。
+ *
+ * 接了场合反而会坏事：那就得给每个封号各写一遍家常版和礼上版，
+ * 而两版永远一模一样——一整排永远解析成同一个词的分支。
  */
 export function titleNow(): string {
   return titleFor(useCharacterStore().identity, useHouseholdStore().gender)

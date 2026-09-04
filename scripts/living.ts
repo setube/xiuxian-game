@@ -23,7 +23,7 @@
  *
  * 底下五条人生走的效果**全是从库里原样读出来的**——
  * `royal:fall#edict` 的 `onEnter`、`edict` 那两个选择的 `effects`、
- * `royal:demote#open` 的 `onEnter`，一个字也没有在这支脚本里重写。
+ * `royal:demote` 那两节的 `onEnter`，一个字也没有在这支脚本里重写。
  * 于是「那一行 `{ type: 'living', living: 'market' }` 被删掉了」
  * 这件事在这里会当场红，而不是让判据照着自己抄的那份继续绿。
  *
@@ -143,10 +143,24 @@ const PATHS: readonly Path[] = [
     ],
   },
   {
+    /**
+     * 削藩这一卷分了三节，而换日子的是第二节。
+     *
+     * 走两步不是为了好看：宣旨那一节人还跪在王府里，日子一格没动，
+     * 搬过去才是「屋子还在，营生没有」那种日子的开始。
+     * **只走 `open` 的话，这条人生停在换日子之前**——底下那条
+     * 「削爵和削藩过的是同一种日子」会以为日子跟着身份走了。
+     *
+     * 这两行是手写的，会跟着内容改。兜底的是末尾那条覆盖率：
+     * 全库有几处效果在换日子，这一支走到几处。上一回正是它先开的口。
+     */
     id: 'demote',
     label: '削藩：王府的孩子成了寓公之子',
     trade: '王府',
-    steps: [{ scene: 'royal:demote', node: 'open' }],
+    steps: [
+      { scene: 'royal:demote', node: 'open' },
+      { scene: 'royal:demote', node: 'home' },
+    ],
   },
   {
     /**

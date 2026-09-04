@@ -61,7 +61,12 @@ function liveADay(doings: readonly string[]): void {
   for (let i = 0; i < doings.length && i < 3; i += 1) {
     const beat = spend(slots[i]!, doings[i]!)
     if (!beat) continue
-    diary.jot(beatLines(beat).map(fillString), beat.tags)
+    // 不能直接 `.map(fillString)`：那个函数第二个参数是场合，
+    // 而 map 会把下标当场合塞进去。日录没有场合，一律家常
+    diary.jot(
+      beatLines(beat).map((line) => fillString(line)),
+      beat.tags,
+    )
   }
   diary.closeDay(world.time)
   world.advanceTime({ days: 1 })
@@ -95,7 +100,10 @@ console.log('\n=== ② 一个普通的下午，六年后重新有了意义 ===\n
   while (!beat || !beat.tags?.includes('山那边') || beat.tier !== '无事') {
     beat = spend('上午', 'hill')
   }
-  diary.jot(beatLines(beat).map(fillString), beat.tags)
+  diary.jot(
+    beatLines(beat).map((line) => fillString(line)),
+    beat.tags,
+  )
   const day = diary.closeDay(world.time)!
   console.log(`  【十岁那年】`)
   for (const line of day.lines) console.log(`      ${line}`)
@@ -138,7 +146,10 @@ console.log('\n=== ③ 当场就明白的不叫「多年以后」 ===\n')
   const { character, world, diary } = fresh(10)
   let beat = spend('上午', 'hill')
   while (!beat || !beat.tags?.includes('山那边')) beat = spend('上午', 'hill')
-  diary.jot(beatLines(beat).map(fillString), beat.tags)
+  diary.jot(
+    beatLines(beat).map((line) => fillString(line)),
+    beat.tags,
+  )
   diary.closeDay(world.time)
 
   // 当天就知道了修士

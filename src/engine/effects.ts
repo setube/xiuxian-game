@@ -275,6 +275,18 @@ function applyOne(
           effect.note,
         )
       }
+      /**
+       * 爵位改的是**别人怎么称呼他**，所以它不发回执。
+       *
+       * 削爵那一卷里写 `{ id: 'father', rank: '宗室' }`，屏上不该多出
+       * 一行「父亲的爵位变了」——那件事正文已经写透了。这一格真正的
+       * 出口是下一节的 `{elder}`：同一个记号，昨天落成「父王」，
+       * 今天落成「父亲」。**读者是从那两个字上读出来的，不是从回执上。**
+       *
+       * 人不在册上时 `amend` 是空操作，所以给一个没有母亲的境况发爵位
+       * 不会凭空生出人来——那正是要的：`family` 里造人只有 `born` 一条路。
+       */
+      if (effect.rank !== undefined) people.amend(effect.id, { rank: effect.rank })
       if (effect.alive === false) people.amend(effect.id, { fate: '殁' })
       return null
     }

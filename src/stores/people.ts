@@ -80,12 +80,17 @@ export const usePeopleStore = defineStore(
      * 知道姓名就叫姓名，不知道就用那个描述性的叫法——
      * 「渡口的青衫人」这种。这一行就是「世界事实 ≠ 玩家认知」的出口。
      *
-     * 不知道姓名时还要再问一层：**家里人怎么叫，得看他是在哪儿学会说话的。**
-     * 宫里长大的孩子管爹叫「爹爹」，读书人家叫「父亲」，
+     * 不知道姓名时还要再问一层：**家里人怎么叫，要看这人身上有没有爵位、
+     * 以及这孩子是在哪儿学会说话的。** 宫里长大的孩子管爹叫「爹爹」，
+     * 读书人家叫「父亲」，王府那位挂着亲王爵，于是叫「父王」，
      * 而境况表里写死的那个 `calls` 是「爹」——寻常人家那一套。
      * 这一问跟正文里 `{elder}` 走的是同一个函数（`engine/address.ts`），
      * **两边必须是同一个答案**：面板上写着「爹」而正文里叫「爹爹」，
      * 那是同一个人在同一屏上有两个名字。
+     *
+     * 场合这一维在这儿写死成家常，不接参数：**人际面板不是一个场合。**
+     * 它是玩家随时能翻开的一张册子，翻开它的时候没有人在行礼，
+     * 而册子上那个名字得是他平常叫惯的那个。
      */
     function callOf(id: string): string {
       const acquaintance = known.value[id]
@@ -95,7 +100,7 @@ export const usePeopleStore = defineStore(
         if (person) return `${person.surname}${person.given}`
       }
       for (const bond of bondsWith(id)) {
-        const learnt = kinCall(bond)
+        const learnt = kinCall(bond, roster.value[id]?.rank, '家常')
         if (learnt) return learnt
       }
       return acquaintance.calls

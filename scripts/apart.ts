@@ -151,10 +151,20 @@ const PATHS: readonly Path[] = [
     ],
   },
   {
+    /**
+     * 削藩分三节，搬家那一笔在第二节。
+     *
+     * 只走宣旨那一节的话，这条对照组会**什么也量不到**：家还在王府，
+     * 人当然一个没走散，「举家迁出，谁也没落下」于是恒真。
+     * 底下那条覆盖率正是为这种情形留的——它上一回先开的口。
+     */
     id: 'demote',
     label: '对照 · 削藩：全家一起迁出王府',
     trade: '王府',
-    steps: [{ scene: 'royal:demote', node: 'open' }],
+    steps: [
+      { scene: 'royal:demote', node: 'open' },
+      { scene: 'royal:demote', node: 'home' },
+    ],
   },
   {
     id: 'shut',

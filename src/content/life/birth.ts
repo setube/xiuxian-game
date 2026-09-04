@@ -1,5 +1,5 @@
 import { ORIGINS } from '@/content/origins'
-import type { LifeEvent, NarrativeBlock, Scene, SceneLibrary, Trade } from '@/types/game'
+import type { Effect, LifeEvent, NarrativeBlock, Scene, SceneLibrary, Trade } from '@/types/game'
 
 /**
  * 出生。
@@ -135,9 +135,49 @@ const TITLES: Partial<Record<Trade, { 男: string; 女: string }>> = {
   皇室: { 男: '皇子', 女: '公主' },
 }
 
+/**
+ * 家里人身上本来就有的爵位。
+ *
+ * 跟上面那张表方向相反：`TITLES` 是**别人怎么称呼这孩子**，
+ * 这一张是**这孩子怎么称呼别人**——他爹是亲王，他开口就是「父王」。
+ * 两张表都在这一卷里发，因为这两件事本来就是同一天定的。
+ *
+ * ## 为什么发在开场那一节
+ *
+ * 取名那一段（`NAMING`）里王府那一节写着「{elder}看了一眼那道文书」，
+ * 而封号那两节还在它后面。发晚一步，**这一卷里第一次提到父亲的那句话
+ * 就还是「父亲」**，下一卷才改口——一个人不会隔一卷才想起他爹是亲王。
+ *
+ * 发在开场而不是发在「留下」那一支，是因为爵位是**生下来就有的事实**，
+ * 跟这孩子被抱走还是留下无关。弃儿那一支读不到「父王」，
+ * 不是因为没发爵位，是因为那个人不在他身边（见 `engine/nearby.ts`）。
+ *
+ * ## 皇帝和妃也在这儿，尽管表里查不到他们
+ *
+ * `content/address.ts` 那张爵位称呼表里没有「皇帝」也没有「妃」，
+ * 于是宫里这两位落回教养层，仍旧是「爹爹」「娘娘」——宋代皇子日常
+ * 就是这么叫的，而 `royal:fall` 里那句「有一回你在巷口叫了一声{dam}，
+ * 卖菜的回头看了你一眼」「那两个字你从会说话起就这么叫」明写了两个字。
+ *
+ * **照样把爵位写上去，是为了让门禁有得可查。** 不写的话，
+ * 「查不到就落回教养」这条规则在宫里这一支根本没被走到过，
+ * 一个「见爵位就换词」的坏实现能安然通过。写上去，它当场破。
+ */
+const RANKS: Partial<Record<Trade, readonly Effect[]>> = {
+  王府: [
+    { type: 'family', id: 'father', rank: '亲王' },
+    { type: 'family', id: 'mother', rank: '王妃' },
+  ],
+  皇室: [
+    { type: 'family', id: 'father', rank: '皇帝' },
+    { type: 'family', id: 'mother', rank: '妃' },
+  ],
+}
+
 function birthScene(trade: Trade): Scene {
   const origin = ORIGINS.find((item) => item.trade === trade) ?? ORIGINS[0]!
   const title = TITLES[trade]
+  const ranks = RANKS[trade]
   return {
     id: birthSceneId(trade),
     title: '出生',
@@ -145,6 +185,10 @@ function birthScene(trade: Trade): Scene {
     nodes: {
       open: {
         id: 'open',
+        // 爵位在第一句话之前就落定。它是生下来就有的事实，
+        // 不因为这孩子被抱走还是留下而不同——取名那一段里
+        // 王府那一节已经有一句「{elder}看了一眼那道文书」在等着它
+        ...(ranks ? { onEnter: [...ranks] } : {}),
         blocks: [{ kind: 'heading', title: '生' }],
         // 生下来就没爹的孩子，读到的是另一段。
         // 不这么分流的话，弃儿的第一屏是「父亲抱着你走了二里地去取名」

@@ -400,35 +400,71 @@ export const royalScenes: SceneLibrary = {
    * 王府那一条的对应物，比皇室温和些——不死人，只是搬家。
    * 但对一个十几岁的孩子来说，结果是一样的：
    * 他从一个所有人都跪着的地方，搬到了一个没人认得他的地方。
+   *
+   * ## 这一卷分三节，是为了让同一个人被叫三个名字
+   *
+   * 三节里 `{elder}` 指的都是他爹，落出来的却是三个词：
+   *
+   * - `open` 标了 `manner: '礼上'`，爵位还在——**王爷**。
+   * - `home` 是家常，爵位还在——**父王**。同一天，隔一道门。
+   * - `after` 是家常，爵位换成了查不到的「宗室」——**父亲**。
+   *
+   * 前两节的分界是**礼**，不是地点：《礼部志稿》卷十六，亲王入朝，
+   * 在朝廷则君臣礼，至便殿则叙家人礼。后两节的分界才是那道旨意。
+   *
+   * 三节各自都不解释这件事，正文里一个字也没提「称呼变了」——
+   * 玩家是从那三个词上读出来的。这是这一层唯一说得出口的验收标准。
    */
   'royal:demote': {
     id: 'royal:demote',
     title: '削爵',
     entry: 'open',
     nodes: {
+      /**
+       * 宣旨。这一节是跪着听完的，所以标礼上。
+       *
+       * 搬家和爵位那几笔不在这儿落：旨意念完人还没走，
+       * 而「街坊都知道搬来了个从前的王爷」得等他真搬过去。
+       */
       open: {
         id: 'open',
+        manner: '礼上',
         onEnter: [
           { type: 'time', months: 4 },
           { type: 'household', standing: -48 },
-          { type: 'family', id: 'father', note: '削爵之后闭门不出。话比从前更少了。' },
           { type: 'identity', identity: '寓公之子' },
-          // 跟削爵那一卷同一种日子，**虽然身份不是同一个**：
-          // 那边叫庶人，这边叫寓公之子，而两家过的都是「屋子还在，营生没有」。
-          // 这一处并列正是 identity 与 living 分开的理由本身
-          { type: 'living', living: 'fallen' },
           { type: 'flag', key: 'the-fall', value: true },
           { type: 'flag', key: 'demoted', value: true },
-          // 「全家迁出王府」——正文明写的，所以这里是举家。
-          // 跟隔壁削爵那一卷的分别正在这里：那边只有母子二人走
-          { type: 'home', place: '{province} · {prefecture} · 城西旧宅', takes: '举家' },
           { type: 'chronicle', text: '父亲被削了爵。全家迁出王府。', tone: 'cinnabar' },
         ],
         blocks: [
           { kind: 'narration', text: '那一年京里来了两回人。第二回带的是旨意。' },
-          { kind: 'narration', text: '罪名有七条，念了很久。父亲一直跪着，没有辩。' },
+          { kind: 'narration', text: '罪名有七条，念了很久。{elder}一直跪着，没有辩。' },
           { kind: 'event', text: '爵削了。府邸收回。' },
           { kind: 'narration', text: '没有抄家，也没有下狱——旨意里说，念在宗亲，从宽。' },
+        ],
+        next: 'home',
+      },
+
+      /**
+       * 搬过去。爵位这时候还挂在他身上，于是这一节里他还是「父王」。
+       *
+       * 「你还是照旧叫他{elder}」那一句是有意写出来的：
+       * 旨意昨天就念完了，称呼今天还没变。**两件事本来就不同步**，
+       * 而下一节才是它真正塌下来的地方。
+       */
+      home: {
+        id: 'home',
+        onEnter: [
+          // 跟皇室那一卷同一种日子，**虽然身份不是同一个**：
+          // 那边叫庶人，这边叫寓公之子，而两家过的都是「屋子还在，营生没有」。
+          // 这一处并列正是 identity 与 living 分开的理由本身
+          { type: 'living', living: 'fallen' },
+          // 「全家迁出王府」——正文明写的，所以这里是举家。
+          // 跟隔壁那一卷的分别正在这里：那边只有母子二人走
+          { type: 'home', place: '{province} · {prefecture} · 城西旧宅', takes: '举家' },
+        ],
+        blocks: [
           { kind: 'divider', variant: 'dots' },
           { kind: 'narration', text: '搬家用了十几天。带走的东西比你想的少得多。' },
           {
@@ -437,6 +473,36 @@ export const royalScenes: SceneLibrary = {
           },
           { kind: 'narration', text: '街坊都知道搬来了个从前的王爷，头几个月总有人在门口张望。' },
           { kind: 'narration', text: '后来就没人看了。' },
+          {
+            kind: 'narration',
+            text: '你还是照旧叫他{elder}。院子小了，那两个字听着比从前响。',
+          },
+        ],
+        next: 'after',
+      },
+
+      /**
+       * 爵位这一格在这里换成「宗室」——一个爵位称呼表里查不到的值。
+       *
+       * 查不到就落回教养那一层，于是「父王」自己变成了「父亲」。
+       * **没有一处代码去删那个词**，也没有一句正文说「他不再是亲王了」。
+       * 跟 `content/address.ts` 那段注释是同一件事的两面：
+       * 削爵不需要清除语义，只需要换一个查不到的值。
+       */
+      after: {
+        id: 'after',
+        onEnter: [
+          { type: 'family', id: 'father', rank: '宗室' },
+          { type: 'family', id: 'father', note: '削爵之后闭门不出。话比从前更少了。' },
+        ],
+        blocks: [
+          { kind: 'divider', variant: 'dots' },
+          { kind: 'narration', text: '过了年，家里不再提「王府」两个字了。' },
+          {
+            kind: 'narration',
+            text: '你后来管他叫{elder}。改口那天没有人提起，也没有人问。',
+            tone: 'faint',
+          },
           {
             kind: 'narration',
             text: '{elder}把那身蟒袍收进了箱子。此后你再没见他拿出来过。',
