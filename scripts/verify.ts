@@ -89,11 +89,13 @@ import { readFileSync } from 'node:fs'
 
 import { createPinia, setActivePinia } from 'pinia'
 
-import { BEATS } from '../src/content/days'
+import { BEATS, DOINGS } from '../src/content/days'
+import { CIRCUMSTANCES } from '../src/content/circumstances'
 import { ERRANDS } from '../src/content/errands'
 import { HINDSIGHTS } from '../src/content/hindsight'
 import { INFORMANTS } from '../src/content/informants'
 import { DAMPERS, SPARKS } from '../src/content/leanings'
+import { LIVINGS, livingOfKeeper } from '../src/content/living'
 import { OPENINGS } from '../src/content/openings'
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { CHAPTERS } from '../src/content/life/chapters'
@@ -384,15 +386,22 @@ console.log('=== 孤儿节点验收 ===\n')
  * 所以这一道把剧本**要**的东西和世上**产**的东西对一遍。
  * 产出可能来自剧本（`item` / `flag` 效果），也可能来自引擎代码
  * （`wounded.ts` 的 grants、`book.ts` 的 carry），后者扫源码文本。
+ *
+ * 后来多了第四类：**日子**。它跟前三类不一样，
+ * 从前根本不需要来源——出身掷出来是什么就是什么。
+ * 直到 `character.livings` 让人生半路上能换日子，
+ * 「要一种没人给得出来的日子」才第一次成为可能。见 `NEEDS.living`。
  */
 console.log('=== 前置条件验收（要的东西有没有人给）===\n')
 {
   const neededItems = new Map<string, string[]>()
   const neededFlags = new Map<string, string[]>()
   const neededKnowledge = new Map<string, string[]>()
+  const neededLivings = new Map<string, string[]>()
   const madeItems = new Set<string>()
   const madeFlags = new Set<string>()
   const madeKnowledge = new Set<string>()
+  const madeLivings = new Set<string>()
 
   const note = (map: Map<string, string[]>, key: string, where: string): void => {
     const list = map.get(key) ?? []
@@ -418,6 +427,13 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
    *
    * 头一次登记就逼出了一格漏的：`knowledge`。剧本里 30 处在问
    * 「他知不知道这件事」，而这道门禁从来没查过那些 id 有没有人 learn。
+   *
+   * ## 取值函数自己也可以说「这一次不需要」
+   *
+   * 返回 `null` 跟表态成 `null` 不是一回事：前者是**逐条**判断。
+   * `living` 那一格逼出了它——`{ living: { hasChore: true } }` 问的是
+   * 「他手上有没有一件活」，不指名哪一种日子，自然不必有人给；
+   * 而 `{ living: { is: 'market' } }` 指了名，那就得有人给得出来。
    */
   const NEEDS = {
     item: (id) => [neededItems, id],
@@ -431,21 +447,29 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     region: null,
     trade: null,
     /**
-     * 「这家人过的是什么日子」不需要有人给。
+     * 「他过的是哪一种日子」**从前不需要有人给，现在需要了**。
      *
-     * 它是 `household.living` 算出来的：先看把你养大的那个人过什么日子，
-     * 没有就落回这家的营生。世上没有哪一处效果会「产出」一种日子——
-     * 换了抚养人，那个 computed 自己就变了。
+     * 从前这一格表态成 `null`，理由写着「它是 `household.living` 算出来的，
+     * 世上没有哪一处效果会产出一种日子」。那句话当时是真的，
+     * 而它在 `character.livings` 那一层落地的那一天变成了谎话：
+     * `royal:fall` 的削爵那一节挂着 `{ type: 'living', living: 'fallen' }`——
+     * **世上从此有了只能由效果给出来的日子。**
      *
-     * 但它有另一种坏法：`{ living: { is: 'farmm' } }` 拼错了没人管。
-     * 那一道在 `scripts/upbringing.ts`，对着 `ALL_LIVINGS` 查 id。
+     * `fallen` 和 `market` 谁也不是生下来就在过的：十一种出身给不出，
+     * 三种抚养人也给不出。它们只有一个来源，就是人生半路上那一处效果。
+     * 于是「写了个没人给的日子」成了一种新的坏法，跟 `illness-at-home`
+     * 那条永远点不着的火种同一个形状——**条件挂在那儿，一辈子不成立，
+     * 而没有任何东西会喊。**
+     *
+     * 只查指名道姓的那一种。`hasChore` 问的是有没有活干，
+     * 那是从日子里读出来的一个属性，不是一种日子。
      */
-    living: null,
+    living: (living) => (living.is === undefined ? null : [neededLivings, living.is]),
     gender: null,
     stage: null,
   } satisfies {
     [K in keyof Condition]-?:
-      ((value: NonNullable<Condition[K]>) => [Map<string, string[]>, string]) | null
+      ((value: NonNullable<Condition[K]>) => [Map<string, string[]>, string] | null) | null
   }
 
   const scanConditions = (conditions: readonly Condition[] | undefined, where: string): void => {
@@ -454,9 +478,12 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
         const value = condition[key]
         if (value === undefined) continue
         // 对应关系由上面那句 satisfies 钉死，遍历时 TS 关联不上两个 key，收口成一次 cast
-        const of = NEEDS[key] as ((value: unknown) => [Map<string, string[]>, string]) | null
+        const of = NEEDS[key] as ((value: unknown) => [Map<string, string[]>, string] | null) | null
         if (!of) continue
-        const [map, id] = of(value)
+        const asked = of(value)
+        // 登记了，但这一条问的东西不需要来源（`{ living: { hasChore: true } }` 那种）
+        if (!asked) continue
+        const [map, id] = asked
         note(map, id, where)
       }
     }
@@ -488,6 +515,15 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     flag: (effect) => [madeFlags, effect.key],
     roll: (effect) => [madeFlags, effect.key],
     knowledge: (effect) => [madeKnowledge, effect.id],
+    /**
+     * 半路上换了日子。**这一格是这张表里唯一「凭空造出一种日子」的地方**——
+     * 出身和抚养人给的那些不经过效果，它们由 `LIVINGS` 直接 seed 在下面。
+     *
+     * 所以这一行也是 `NEEDS.living` 那条判据的另一半：
+     * 剧本要 `market`，就得有某一处效果写着 `living: 'market'`。
+     * 少了这一行，那条判据会把每一种半路上的日子都判成孤儿。
+     */
+    living: (effect) => [madeLivings, effect.living],
     time: null,
     attribute: null,
     place: null,
@@ -606,6 +642,22 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
   for (const beat of BEATS) scanEffects(beat.effects)
 
   /**
+   * 一天里那些去处和落点**要**的东西，同样是前置条件。
+   *
+   * 上面那一行补的是产出，需求那一半漏了很久——而且漏得没有征兆：
+   * 一天里的条件全是 `age` / `flag` / `living` 这几格，
+   * 而 `age` 不需要来源，`flag` 那两处（`schooled`）恰好有人给。
+   * **它是碰巧对的，不是查过了对的。**
+   *
+   * 逼出这一行的是日子那一格：临时把「割了半晌草」那几段的
+   * `{ living: { is: 'farm' } }` 改成一种没人给的日子，门禁一声没吭——
+   * 不是判据不对，是它压根没扫到这儿。判据写完得先问一句
+   * 「这个机制根本不存在的话，它还会绿吗」，这一行就是那一问问出来的。
+   */
+  for (const doing of DOINGS) scanConditions(doing.requires, `一天 · 去处 ${doing.id}`)
+  for (const beat of BEATS) scanConditions(beat.requires, `一天 · ${beat.doing}:w${beat.weight}`)
+
+  /**
    * 认知还有两个出处，都在数据表里，剧本效果扫不到。
    *
    * - **问人问出来的**：`informants.ts` 每个答案的 `learns`。
@@ -626,6 +678,27 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
   for (const errand of ERRANDS) {
     for (const turnout of errand.turnouts) {
       if (turnout.takes) madeKnowledge.add(turnout.takes.id)
+    }
+  }
+
+  /**
+   * 生下来就在过的那些日子，不需要谁来给。
+   *
+   * 两个出处，都不经过效果：**十一种出身**各自摊到一种日子上，
+   * 和**三种收养境况**里抚养人自己的营生（讨饭的 / 寺中的老僧 /
+   * 逃难路上的人）。剩下的（眼下是 `fallen` 和 `market`）
+   * 只能由 `type: 'living'` 的效果给，那一半由 `MAKES` 扫出来。
+   *
+   * 抚养人那一半从 `CIRCUMSTANCES` 里算，不照着 `living.ts` 抄一份键名：
+   * 问的是**这个世界上真有这样一个抚养人**，而不是「那张表里写了几行」。
+   * 哪天某种收养境况被删了，这里跟着少一种，
+   * 于是「专给寺里孩子写的那一卷」会当场变成孤儿——那正是要报的。
+   */
+  for (const living of Object.values(LIVINGS)) madeLivings.add(living.id)
+  for (const one of CIRCUMSTANCES) {
+    for (const kin of one.kin) {
+      const keeper = livingOfKeeper(kin.trade ?? '')
+      if (keeper) madeLivings.add(keeper.id)
     }
   }
 
@@ -695,6 +768,15 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
      * 前者进 `madeKnowledge`，后者靠下面扫源码那一关兜住。
      */
     ['认知', neededKnowledge, madeKnowledge],
+    /**
+     * 日子有三个出处：出身、抚养人、半路上那一处效果。
+     * 前两个在上面 seed 进 `madeLivings`，第三个由 `MAKES.living` 扫。
+     *
+     * 底下那句扫源码的兜底对这一类无效——引擎里一个日子 id 也没有，
+     * 它认识的只有 `chore` 那一格有没有东西。这不要紧：
+     * 三个出处已经把「有人给」说全了，兜底本来就是给拼不出名字的那几类留的。
+     */
+    ['日子', neededLivings, madeLivings],
   ] as const) {
     for (const [key, wheres] of needed) {
       if (made.has(key)) continue
@@ -705,7 +787,7 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     }
   }
 
-  const total = neededItems.size + neededFlags.size + neededKnowledge.size
+  const total = neededItems.size + neededFlags.size + neededKnowledge.size + neededLivings.size
   if (orphanNeeds.length === 0) {
     console.log(`  ${total} 种前置条件，每一种都有出处。\n`)
   } else {

@@ -110,7 +110,11 @@ function eldersCall(): string {
 }
 
 /**
- * 这家的大人手上那件活。
+ * 手上那件活。
+ *
+ * 问的是 `character.living`——三级链解析完的那一格，不是 `household.living`。
+ * 这个分别在削爵那一卷之后才看得出来：迁出京城以后，
+ * 家里的营生还是「皇室」，而他手上那件活得由他现在过的日子说了算。
  *
  * 兜底那句「手里的东西」是给**写漏了 requires 的那一卷**准备的：
  * 宫里没有这样一件活（`chore` 是 null），正文本不该走到这儿。
@@ -118,12 +122,12 @@ function eldersCall(): string {
  * 而不是一个静默的 `undefined`——真正拦它的是 `scripts/upbringing.ts`。
  */
 function choreCall(): string {
-  return useHouseholdStore().living.chore?.holds ?? '手里的东西'
+  return useCharacterStore().living.chore?.holds ?? '手里的东西'
 }
 
 /** 收工时是怎么收的。同上，宫里没有这一格 */
 function putsAwayCall(): string {
-  return useHouseholdStore().living.chore?.putsAway ?? '把手里的东西放下'
+  return useCharacterStore().living.chore?.putsAway ?? '把手里的东西放下'
 }
 
 /** 把一句话里的占位符换成这一世的实情。没有占位符的原样返回。 */

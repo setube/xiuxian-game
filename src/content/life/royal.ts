@@ -227,6 +227,11 @@ export const royalScenes: SceneLibrary = {
           { type: 'family', id: 'father', alive: false, note: '大行皇帝。你没有见到最后一面。' },
           { type: 'family', id: 'mother', note: '随你迁出京城。头发白了一半。' },
           { type: 'identity', identity: '庶人' },
+          // 身份改了不等于日子改了：削了封号他仍然可能住在宫里。
+          // 这一行说的是另一件事——**他不再过宫里的日子了**。
+          // 少了它，条件上他到死都还在宫里：`{ living: { hasChore: true } }`
+          // 那个去处对他一直关着，`{chore}` 也还念着宫里那份空
+          { type: 'living', living: 'fallen' },
           { type: 'flag', key: 'the-fall', value: true },
           { type: 'flag', key: 'exiled', value: true },
           // 真的搬家，不只是人到了那里——否则收尾那一卷一句「你回到家」
@@ -270,6 +275,11 @@ export const royalScenes: SceneLibrary = {
               { type: 'attribute', key: 'body', delta: 4 },
               { type: 'attribute', key: 'will', delta: 4 },
               { type: 'flag', key: 'walked-out', value: true },
+              // 开门出去的那个，两年后手上有东西了——院里那口井从前有人替他打水。
+              // 这一格跟隔壁「把门关上」的分别不是文辞上的：
+              // `market` 有 chore，`fallen` 没有，于是「帮家里干活」那个去处
+              // 只对走出去的这个开
+              { type: 'living', living: 'market' },
               {
                 type: 'aspect',
                 key: 'body',
@@ -282,6 +292,10 @@ export const royalScenes: SceneLibrary = {
             id: 'inside',
             label: '把门关上',
             echo: '你把门关上了。',
+            // 这一支**故意没有** living 效果：把门关上的人日子没有变，
+            // 他接着过 `edict` 那一节定下的 `fallen`。
+            // 补一句 `living: 'fallen'` 不会出错（同一种日子不记第二笔），
+            // 但那样就把「什么也没发生」写成了一件事
             effects: [
               { type: 'time', months: 4 },
               { type: 'attribute', key: 'will', delta: 6 },
@@ -354,6 +368,10 @@ export const royalScenes: SceneLibrary = {
           { type: 'household', standing: -48 },
           { type: 'family', id: 'father', note: '削爵之后闭门不出。话比从前更少了。' },
           { type: 'identity', identity: '寓公之子' },
+          // 跟削爵那一卷同一种日子，**虽然身份不是同一个**：
+          // 那边叫庶人，这边叫寓公之子，而两家过的都是「屋子还在，营生没有」。
+          // 这一处并列正是 identity 与 living 分开的理由本身
+          { type: 'living', living: 'fallen' },
           { type: 'flag', key: 'the-fall', value: true },
           { type: 'flag', key: 'demoted', value: true },
           { type: 'home', place: '{province} · {prefecture} · 城西旧宅' },

@@ -85,15 +85,22 @@ const CHECKS = {
   trade: (trade, { household }) => household.trade === trade,
 
   /**
-   * 这家人过的是什么日子。
+   * 你过的是什么日子。
    *
-   * 读的是 `household.living`，那个 computed 已经把「先问抚养人、
-   * 再落回这家的营生」解析完了——**引擎不认识内容**，
-   * 这里只比一个 id 和一个有没有，`content/living.ts` 一个字也不 import。
+   * 读的是 `character.living`，那个 computed 已经把三级链解析完了——
+   * 先问你自己现在过什么日子，没有就问把你养大的人，再没有才落回
+   * 这个家的营生。**引擎不认识内容**，这里只比一个 id 和一个有没有，
+   * `content/living.ts` 一个字也不 import。
    * engine → content 是反向依赖，那道门不能开。
+   *
+   * 从前读的是 `household.living`，那时候这一格问的是「**这家**过什么日子」。
+   * 差别在削爵那一卷上现了形：父皇大行、封号除了、迁出京城、
+   * 住进城南小院、揭不开锅，而条件上他仍然过着宫里的日子，
+   * 于是「帮家里干活」那个去处（`{ living: { hasChore: true } }`）
+   * 对他一直是关着的——不是因为那家没有活，是因为引擎还以为他在宫里。
    */
-  living: (living, { household }) => {
-    const current = household.living
+  living: (living, { character }) => {
+    const current = character.living
     if (living.is !== undefined && current.id !== living.is) return false
     if (living.hasChore !== undefined && (current.chore !== null) !== living.hasChore) return false
     return true

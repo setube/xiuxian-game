@@ -22,6 +22,7 @@ import type {
 
 import { beBorn } from '@/content/birth'
 import { constitutionShift, rollConstitution } from '@/content/circumstances'
+import { livingById, type Living } from '@/content/living'
 
 import { originAttributes, useHouseholdStore } from './household'
 import { useWorldStore } from './world'
@@ -31,6 +32,26 @@ const ATTRIBUTE_MAX = 100
 
 const INITIAL_REALM: Realm = '凡人'
 const INITIAL_IDENTITY = '孩童'
+
+/**
+ * 你自己过过的一段日子。
+ *
+ * 跟 `people.ts` 的 `Relation` 同构，而且是刻意的同构：那边一条关系断了
+ * 不删、只置 `until`（「老乞丐养过你这件事，不因为他死了就没发生过」），
+ * 这边一段日子过完了也不删、只置 `until`——
+ * **当前的日子只能有一段，过去的日子一段也不能少。**
+ *
+ * 没有第四格「这是什么日子」：那句话已经在 `content/living.ts` 的
+ * `Living.summary` 里了，抄过来就是造第二个真相。
+ */
+export interface LivingSpan {
+  /** 哪一种日子。对得上 `content/living.ts` 里某一格的 `Living.id` */
+  id: string
+  /** 从哪一年起。世界纪年，跟 `Relation.since` 同一把尺 */
+  since: number
+  /** 还在过就是 null。**同时至多只有一条是 null** */
+  until: number | null
+}
 
 /**
  * 一个刚出生的人对自己的全部认识：没有。
@@ -163,6 +184,14 @@ export const useCharacterStore = defineStore(
      */
     const constitution = ref(rollConstitution())
     const identity = ref(INITIAL_IDENTITY)
+    /**
+     * 你自己过过的每一段日子，按先后排。
+     *
+     * **出生时是空的，而空是常态**——一个人绝大多数时候过的就是家里的日子，
+     * 那时候这个列表一条也没有，解析链自然落到下一级去。
+     * 只有人生中途真的换了一种活法，这里才会长出第一段。
+     */
+    const livings = ref<LivingSpan[]>([])
     const realm = ref<Realm>(INITIAL_REALM)
     const attributes = ref<Attributes>(withConstitution(rollAttributes(), constitution.value))
     const aspects = ref<Aspects>(blankAspects())
@@ -187,6 +216,44 @@ export const useCharacterStore = defineStore(
       Object.values(aspects.value).reduce((total, aspect) => total + aspect.claims.length, 0),
     )
 
+    /**
+     * 你现在过的是什么日子。
+     *
+     * ## 三级解析链的顶端
+     *
+     *     我自己现在过什么日子              ← 这里
+     *     ← 没有，问抚养我的人现在过什么日子   ┐ 这两级在
+     *     ← 再没有，问我出生于什么家庭        ┘ `household.living`
+     *
+     * 头一级住在这里而不在 `household`，理由是主语：
+     * **「十七岁被削爵迁出京城」的主语是我。**我搬出去了，
+     * 宫里那些人过的日子一点没变——那件事改变的是我，不是那个家。
+     * 而 `household.living` 的头一级问的已经是「把你养大的那个人」，
+     * 它本来就半只脚站在人这边，只是那个人不是你自己。
+     *
+     * ## 为什么落回，而不是出生时就写一条
+     *
+     * 出生就写一条的话，这个列表里立刻堆满「我过着农户的日子」这种
+     * 从别处抄来的事实，而它一旦被抄下来就不会再跟着家里变了——
+     * 姐姐死了、老乞丐没了，`household.living` 那个 computed 自己会变，
+     * 抄下来的那一条不会。所以这里空着才是对的：
+     * **没有自己的活法时，答案就该现问。**
+     *
+     * ## 依赖方向
+     *
+     * `character → household → people → world`，全单向，这一行不改变它。
+     * character 在 setup 开头就 `useHouseholdStore()` 取过 trade 和 home 了，
+     * 这里只是又读了它一格。
+     */
+    const living = computed<Living>(() => {
+      const mine = livings.value.find((span) => span.until === null)
+      if (mine) {
+        const found = livingById(mine.id)
+        if (found) return found
+      }
+      return household.living
+    })
+
     function adjustAttribute(key: AttributeKey, delta: number): void {
       const next = clamp(attributes.value[key] + delta, ATTRIBUTE_MIN, ATTRIBUTE_MAX)
       attributes.value = { ...attributes.value, [key]: next }
@@ -198,6 +265,38 @@ export const useCharacterStore = defineStore(
 
     function setIdentity(next: string): void {
       identity.value = next
+    }
+
+    /**
+     * 换一种日子过。
+     *
+     * 旧的那一段不删，只封口——`people.ts` 里 `unbind` 那句「不删，只封口，
+     * 它发生过」在这里是同一条纪律。真正要避开的坏法是
+     * `living.value = 'temple'`：那样三年前那个 `shop` 会从世界上消失，
+     * 而他在铺子里当过三年伙计这件事，不因为他后来去了寺里就没发生过。
+     *
+     * **只封口，不补记。**链下面那两级不复制到这个列表里来——
+     * 皇子在宫里长到十七岁这件事由 `household.living` 一直答着，
+     * 抄一份进来就是造第二个真相，而两个真相迟早会对不上。
+     * 这个列表只记「我自己」这一级，此前那一段由链自己回答。
+     *
+     * @param id `content/living.ts` 里某一格的 `Living.id`
+     */
+    function liveAs(id: string): void {
+      if (livingById(id) === undefined) {
+        // 不能静默落回：那会让一个已经迁出京城的人接着读宫里的正文，
+        // 而且看起来跟「这一卷本来就没写日子」一模一样
+        console.error(`剧本让人过一种不存在的日子：${id}`)
+        return
+      }
+      const mine = livings.value.find((span) => span.until === null)
+      // 同一种日子接着过，不记第二笔——否则一卷里连着两处效果会切出一段零长的日子
+      if (mine?.id === id) return
+      const year = world.time.year
+      livings.value = [
+        ...livings.value.map((span) => (span.until === null ? { ...span, until: year } : span)),
+        { id, since: year, until: null },
+      ]
     }
 
     /** 改写角色对自己某一面的看法。 */
@@ -420,6 +519,7 @@ export const useCharacterStore = defineStore(
       name.value = beBorn(household.trade, household.home).name
       constitution.value = rollConstitution()
       identity.value = INITIAL_IDENTITY
+      livings.value = []
       realm.value = INITIAL_REALM
       attributes.value = withConstitution(rollAttributes(), constitution.value)
       aspects.value = blankAspects()
@@ -432,6 +532,8 @@ export const useCharacterStore = defineStore(
       constitution,
       age,
       identity,
+      livings,
+      living,
       realm,
       attributes,
       aspects,
@@ -441,6 +543,7 @@ export const useCharacterStore = defineStore(
       adjustAttribute,
       setRealm,
       setIdentity,
+      liveAs,
       note,
       claim,
       knows,
@@ -452,13 +555,15 @@ export const useCharacterStore = defineStore(
     }
   },
   {
-    // age 与 claimCount 是派生值，存了反而会在恢复时盖掉 computed
+    // age、claimCount 与 living 是派生值，存了反而会在恢复时盖掉 computed。
+    // 存的是 livings——那份历史是真事实，谁也算不出来
     persist: {
       key: 'xiuxian:character',
       pick: [
         'name',
         'constitution',
         'identity',
+        'livings',
         'realm',
         'attributes',
         'aspects',

@@ -51,6 +51,17 @@ export interface Exit {
   to: string
   via: string
   requires?: readonly Condition[]
+  /**
+   * 走这条边的时候发生了什么。
+   *
+   * 又是后来补的一格，逼出它的是 living：**一条边不光有去处、有谁走得到，
+   * 还有走过去时这个人变成了什么样。**削爵那一卷分岔处，
+   * 「开门出去」那一支挂着 `{ type: 'living', living: 'market' }`，
+   * 边那头的读者已经不是走进这条边的那批人了。
+   *
+   * 只有 `choices` 填得出来——`branches` 和 `next` 类型上就没有效果。
+   */
+  effects?: readonly Effect[]
 }
 
 /** 一处条件。`tag` 缀在出错位置后面，好让人知道是节点的哪一格 */
@@ -90,7 +101,14 @@ const NODE_REFS = {
       (node.choices ?? []).flatMap((choice) =>
         choice.next === null
           ? []
-          : [{ to: choice.next, via: `choice:${choice.id}`, requires: choice.requires }],
+          : [
+              {
+                to: choice.next,
+                via: `choice:${choice.id}`,
+                requires: choice.requires,
+                effects: choice.effects,
+              },
+            ],
       ),
     conditions: (node) =>
       (node.choices ?? []).map((choice) => ({ requires: choice.requires ?? [] })),

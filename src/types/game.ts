@@ -822,6 +822,21 @@ export type Effect =
   | { type: 'home'; place: string }
   | { type: 'realm'; realm: Realm }
   | { type: 'identity'; identity: string }
+  /**
+   * 换一种日子过。
+   *
+   * 跟 `identity` 并排放着，而它们**不是一回事**，这个分别是被内容逼出来的：
+   * 削爵迁出京城的皇子 `identity` 是「庶人」，削藩搬家的王府世子是
+   * 「寓公之子」，可这两个人过的是同一种日子（`fallen`）。反过来，
+   * 同一场削爵之后开门走出去的和把门关上的，`identity` 都是「庶人」，
+   * 过的日子却不一样。
+   *
+   * **身份是别人怎么称呼你，日子是你早上起来面对什么。**
+   *
+   * 值是 `content/living.ts` 里某一格的 `Living.id`。写下来的那一段
+   * 不会被下一次覆盖，只会被封口——见 `character.liveAs`。
+   */
+  | { type: 'living'; living: string }
   /** 改写角色对自己某一面的看法 */
   | { type: 'aspect'; key: AspectKey; self: string | null }
   /** 别人对你的评说。只增不改，认知的错位就藏在这里 */

@@ -50,7 +50,7 @@ import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
-import type { Condition, SceneNode, Trade } from '../src/types/game'
+import type { Condition, Effect, SceneNode, Trade } from '../src/types/game'
 import { conditionsOf, exitsOf } from './refs'
 
 // ============================================================
@@ -84,8 +84,26 @@ interface Fact {
 /** 种地的人家 */
 const FARM = ['farm'] as const
 
-/** 有个院子、有间屋、日子过在一个固定地方的人家。讨饭的和逃难的没有 */
-const SETTLED = ['farm', 'hunt', 'craft', 'shop', 'clinic', 'office', 'palace', 'temple'] as const
+/**
+ * 有个院子、有间屋、日子过在一个固定地方的人家。讨饭的和逃难的没有。
+ *
+ * `fallen` 和 `market` 在里头：削爵迁出京城给安置的是「城南一处小院，
+ * 两进，有口井」，削藩搬进的是三进的旧宅。**门第塌了不等于露宿街头**——
+ * 那两种日子丢的是营生，不是屋子。所以门槛、米缸、喂鸡对他们成立，
+ * 而 `FARM` 那一组对他们不成立：城南小院没有地。
+ */
+const SETTLED = [
+  'farm',
+  'hunt',
+  'craft',
+  'shop',
+  'clinic',
+  'office',
+  'palace',
+  'temple',
+  'fallen',
+  'market',
+] as const
 
 const FACTS: readonly Fact[] = [
   // 种地。这一组是这次审计的主角——旧假设的全部内容都长在这几个词上
@@ -150,8 +168,52 @@ const TRADE_IDS: readonly string[] = [...new Set(TRADES.map((trade) => livingOfT
  *
  * 它们不属于任何一种户籍——**这正是 `trade` 和 `living` 分家的原因**：
  * 老乞丐捡去养大的孩子户籍还是农户，日子是讨饭的。
+ *
+ * 从境况表里算，不是「全部减去户籍那几种」。那个减法从前是对的，
+ * 因为那时候一种日子只有两个来源；`fallen` / `market` 出现之后它就错了——
+ * 门第塌了不是「被人捡去养大」，可减法会把它算进来，
+ * 于是「问一句谁把你养大的」会连带放行两种出生时不可能有的日子。
  */
-const KEEPER_IDS: readonly string[] = ALL_IDS.filter((id) => !TRADE_IDS.includes(id))
+const KEEPER_IDS: readonly string[] = [
+  ...new Set(
+    CIRCUMSTANCES.flatMap((one) => one.kin)
+      .map((kin) => livingOfKeeper(kin.trade ?? '')?.id)
+      .filter((id): id is string => id !== undefined),
+  ),
+]
+
+/** 生下来就在过的日子：出身给的那几种，加上抚养人带来的那几种 */
+const BORN_IDS: readonly string[] = [...new Set([...TRADE_IDS, ...KEEPER_IDS])]
+
+/**
+ * 半路上才有的日子。**出身条件一句也说不出它们。**
+ *
+ * 这一格是 living 变得可变之后才需要的：从前一个人过什么日子，
+ * 出生那天就定死了，`livingsUnder` 那套「顺着 requires 一路收窄」
+ * 因此是完备的。现在不完备了——十七岁削爵迁出京城的那个人，
+ * 户籍还是皇室，生父那条边也还在册上（虽然人没了），可他过的是 `fallen`。
+ *
+ * ## 那它们从哪儿进读者集合？
+ *
+ * **从图上走进来，不从条件里推出来。**`readersByNode` 漫开的时候，
+ * 走过一处 `living` 效果就把读者整个换掉（见 `afterLiving`），
+ * 于是削爵那一节往下的每一节，读者自然就是 `fallen` 和 `market`。
+ *
+ * 试过另一条路：凡是靠出身收窄的分支，都把这两种一并放行。
+ * 那条路当场喂出六处误报，`birth:农户:kept · 下了地` 是其中一条——
+ * **出生那一天，门第还没有塌。**条件收窄跟时间先后是两件事，
+ * 拿前者去表达后者，只会让每一句农活都变成穿帮。
+ *
+ * ## 剩下的缺口，明写在这儿
+ *
+ * 跨卷的时间先后算不出来：`royal-observatory` 的窗口是 9-14 岁，
+ * `royal-fall` 是 13-15 岁，两者可能颠倒过来，那时钦天监那一卷的读者
+ * 已经不是 `palace` 了。图上没有这条边，漫开走不过去。
+ * 眼下这个缺口量不出东西来（`palace` / `fallen` / `market` 在词典里
+ * 归在同一组 `SETTLED` 上，`FARM` 那组对三者都不成立），
+ * **所以它是记下来的债，不是现在要修的洞。**
+ */
+const MIDLIFE_IDS: readonly string[] = ALL_IDS.filter((id) => !BORN_IDS.includes(id))
 
 /**
  * 一种境况过得上的日子。
@@ -361,8 +423,11 @@ function sameDay(): string[] {
       wrong.push(`${fixture.label}：掷了六千回也没掷出这种人家，判据本身失效了`)
       continue
     }
-    const household = useHouseholdStore()
-    const living = household.living.id
+    // 问的是 `character.living`，不是 `household.living`——那才是条件和
+    // 正文实际读的那一格。这七种人家一条 `livings` 也没有，
+    // 所以这里同时也在量那条解析链的落回：顶上空着，答案得由下一级给出来
+    const character = useCharacterStore()
+    const living = character.living.id
     if (living !== fixture.living) {
       wrong.push(`${fixture.label}：该过 ${fixture.living} 的日子，实际解析成 ${living}`)
     }
@@ -519,6 +584,23 @@ function at(scene: string, node: string): string {
 }
 
 /**
+ * 一组效果把读者集合变成什么样。
+ *
+ * 绝大多数效果不动它，原样返回。碰上 `{ type: 'living' }` 就整个换掉——
+ * **不是收窄，是替换**：走过这一节的人，不管进来时过的是哪种日子，
+ * 出去时过的都是这一种。
+ *
+ * 一节里连着两处就以最后一处为准，跟 `applyEffects` 顺序执行是一回事。
+ * 进来的集合是空的（这一节没人走得到）就不给它凭空造出读者来。
+ */
+function afterLiving(from: Set<string>, effects: readonly Effect[] | undefined): Set<string> {
+  let becomes: string | undefined
+  for (const one of effects ?? []) if (one.type === 'living') becomes = one.living
+  if (becomes === undefined || from.size === 0) return from
+  return new Set([becomes])
+}
+
+/**
  * 每一个节点，是过着哪几种日子的人读得到的。
  *
  * 逐节点算，不是逐卷算——这个分别是必须的：`child:memory` 那一卷的入口
@@ -528,14 +610,35 @@ function at(scene: string, node: string): string {
  *
  * 走法是从每一卷的入口漫开，边上带着条件就在那里收窄一次，
  * 一直漫到不动为止。跨卷的边把范围一并带过去。
+ *
+ * ## 两张表，因为日子会在半路上变
+ *
+ * 从前只有一张，而那张表的算法**只会收窄**——它假定了「一个人过什么日子
+ * 出生那天就定死」。削爵那一卷之后这个假定不成立了：
+ *
+ *     进 edict 这一节的是 palace（进宫门的那批人）
+ *     可 edict 的 onEnter 挂着 living: 'fallen'
+ *     于是它自己的正文和它往下的每一条边，读者都已经是 fallen 了
+ *
+ * 只有一张表的话，`outside` / `shut` 会被算成「宫里的人读得到」，
+ * 于是那两节里写什么都拿宫里的尺子量——**而那是漏报也是误报**：
+ * 该查 fallen/market 的没查，不该查 palace 的查了。
+ *
+ * 所以分两张：
+ *
+ *     arriving  进这一节时是谁      漫开算法用它，单调增长才停得下来
+ *     reading   读这一节正文的是谁  = arriving 走完 onEnter 之后
+ *
+ * 往下传的是 `reading`，再叠上那条边自己的效果。
+ * 对账那一段要的也是 `reading`——问的是「这句话是谁读的」。
  */
 function readersByNode(): Map<string, Set<string>> {
-  const readers = new Map<string, Set<string>>()
+  const arriving = new Map<string, Set<string>>()
 
   const widen = (key: string, incoming: Set<string>): boolean => {
-    const already = readers.get(key)
+    const already = arriving.get(key)
     if (already === undefined) {
-      readers.set(key, new Set(incoming))
+      arriving.set(key, new Set(incoming))
       return incoming.size > 0
     }
     let moved = false
@@ -575,11 +678,13 @@ function readersByNode(): Map<string, Set<string>> {
     let moved = false
     for (const [sceneId, scene] of Object.entries(lifeScenes)) {
       for (const node of Object.values(scene.nodes)) {
-        const from = readers.get(at(sceneId, node.id))
-        if (from === undefined) continue
+        const came = arriving.get(at(sceneId, node.id))
+        if (came === undefined) continue
+        const from = afterLiving(came, node.onEnter)
         for (const exit of exitsOf(node)) {
           const narrowed = livingsUnder(exit.requires)
-          const carried = new Set([...from].filter((one) => narrowed.has(one)))
+          const passed = new Set([...from].filter((one) => narrowed.has(one)))
+          const carried = afterLiving(passed, exit.effects)
           if (carried.size === 0) continue
           if (exit.to.includes('#')) {
             const [target = '', node] = exit.to.split('#')
@@ -600,7 +705,17 @@ function readersByNode(): Map<string, Set<string>> {
     }
     if (!moved) break
   }
-  return readers
+
+  // 漫开定下来了，再把每一节的 onEnter 过一遍——**读正文的是变化之后的那批人**
+  const reading = new Map<string, Set<string>>()
+  for (const [sceneId, scene] of Object.entries(lifeScenes)) {
+    for (const node of Object.values(scene.nodes)) {
+      const came = arriving.get(at(sceneId, node.id))
+      if (came === undefined) continue
+      reading.set(at(sceneId, node.id), afterLiving(came, node.onEnter))
+    }
+  }
+  return reading
 }
 
 function wholeLibrary(): string[] {
@@ -766,10 +881,18 @@ function ruler(): string[] {
    * 收窄这件事本身也得有人量。
    *
    * `livingsUnder` 靠 `circumstances.ts` 的形状办事，而那份表是会改的。
-   * 底下这三条把它钉住：问一句生父就该挡住讨饭的，问一句抚养就不该挡住谁，
+   * 底下这四条把它钉住：问一句生父就该挡住讨饭的，问一句抚养就不该挡住谁，
    * 问一件长大以后才有的关系（弟妹）就该一个也不挡——
    * **最后一条最要紧**，收窄到零等于这一句永远没人读得到，
    * 于是它永远不会红。那是漏报，比误报难发现得多。
+   *
+   * 前四条的期望里**一个半路上的日子也没有**，那是有意的：
+   * 出身条件回答的是「他生下来过的是什么日子」。
+   * 门第塌了那件事不写在条件里，它写在图上——见 `MIDLIFE_IDS`。
+   *
+   * 而第三条（弟妹）放行的是全部十二种，**包括那两种**。
+   * 这一对差别正是这套判据的分量所在：
+   * 查得到就收窄到出身能给的那几种，查不到就一种也不挡。
    */
   const narrowings: readonly { what: string; when: Condition; want: readonly string[] }[] = [
     {
@@ -780,13 +903,20 @@ function ruler(): string[] {
     {
       what: '问一句「谁把你养大的」',
       when: { bond: { kind: '抚养', alive: true } },
-      want: ALL_IDS,
+      want: BORN_IDS,
     },
     { what: '问一句「你有妹妹吗」', when: { bond: { kind: '妹' } }, want: ALL_IDS },
     {
       what: '问一句「爹还在吗」',
       when: { family: { id: 'father', alive: true } },
       want: TRADE_IDS,
+    },
+    {
+      // 这一条是反过来量的：**只有 living 本身问得住 living**。
+      // 上面那些不管怎么问都够不着半路上那两种，这一条一句就指定了
+      what: '问一句「他现在过的是哪种日子」',
+      when: { living: { is: 'farm' } },
+      want: ['farm'],
     },
   ]
   for (const one of narrowings) {
@@ -806,6 +936,79 @@ function ruler(): string[] {
     wrong.push('境况表里一种捡来养的日子都没有，出身和生活这两层分不开')
   }
   console.log(`  捡来养的日子：${[...keeperKinds].sort().join(' ')}`)
+
+  /**
+   * 半路上换日子这件事，读者集合得跟着走。
+   *
+   * 这一条量的是 `readersByNode` 那两张表，而它量的方式是**指着实际的库
+   * 问几个具体位置**，不是造一份假数据喂给算法。
+   *
+   * 底下四节各自挂着（或继承着）一处 living 效果，所以它们的读者
+   * 该正好只剩一种。**要是这套东西根本不存在——也就是读者集合只会收窄、
+   * 不会替换——这四行会全部继承 `royal:fall:open` 那六种日子，当场红。**
+   */
+  const readers = readersByNode()
+  const switched: readonly { at: string; want: string; why: string }[] = [
+    { at: 'royal:fall:edict', want: 'fallen', why: '这一节的 onEnter 就是门第塌了那一下' },
+    { at: 'royal:fall:shut', want: 'fallen', why: '把门关上的那个，日子没有再变' },
+    { at: 'royal:fall:outside', want: 'market', why: '开门出去的那个，两年后自己过日子' },
+    { at: 'royal:demote:open', want: 'fallen', why: '削藩搬出王府，跟削爵是同一种日子' },
+  ]
+  for (const one of switched) {
+    const got = readers.get(one.at)
+    if (got === undefined) {
+      wrong.push(`${one.at} 一个读者也算不出来，这一节在门禁眼里根本不存在`)
+      continue
+    }
+    const shown = [...got].sort().join('/')
+    if (shown === one.want) continue
+    wrong.push(`${one.at} 该只剩 ${one.want} 读得到，实际算成 [${shown}]——${one.why}`)
+  }
+
+  /**
+   * 对照组：变化**上游**那一节不许跟着变。
+   *
+   * `royal:fall:open` 站在 `edict` 前面，它的读者仍旧只由户籍那句条件说了算。
+   * 这一条守的是「替换只往下游走」——传播要是写成了「这一卷一律替换」，
+   * 它会只剩 fallen，当场红。而没有它的话，上面那四行有一种作弊解法
+   * 能全绿：整卷无脑替换。
+   */
+  const before = readers.get('royal:fall:open')
+  if (before === undefined) {
+    wrong.push('royal:fall:open 一个读者也算不出来')
+  } else if (!before.has('palace')) {
+    wrong.push('royal:fall:open 的读者里没有 palace——进宫门那一节，宫里的人反倒读不到')
+  } else if (before.size === 1) {
+    wrong.push('royal:fall:open 的读者只剩一种，说明 living 的变化倒着传到了上游')
+  }
+
+  /**
+   * 半路上那几种日子，每一种都得真有正文是它读的。
+   *
+   * 这一条守的是另一头：上面那四行盯着「换过日子的人读到了什么」，
+   * 这一行盯着「有没有哪一种日子从头到尾没人读」。
+   * `content/living.ts` 里躺着一格谁也走不到的日子，跟躺着一个孤儿节点
+   * 是同一种债——**它看着像在工作。**
+   *
+   * 它也是上面那套传播的兜底判据：`afterLiving` 要是整个没生效，
+   * `fallen` 和 `market` 的读者数会一起归零，这里当场红。
+   */
+  const heard = new Set<string>()
+  for (const who of readers.values()) for (const one of who) heard.add(one)
+  for (const id of MIDLIFE_IDS) {
+    if (heard.has(id)) continue
+    wrong.push(`半路上那种日子 ${id} 在全库里一节正文也读不到，没有任何一处效果把人送进去`)
+  }
+  console.log(`  半路上才有的日子：${MIDLIFE_IDS.join(' ') || '（一种也没有）'}`)
+
+  console.log(
+    `  削爵那一卷各节的读者：${['royal:fall:open', ...switched.map((one) => one.at)]
+      .map(
+        (key) =>
+          `${key.split(':').pop()}=${[...(readers.get(key) ?? [])].sort().join('/') || '无'}`,
+      )
+      .join('  ')}`,
+  )
 
   return wrong
 }

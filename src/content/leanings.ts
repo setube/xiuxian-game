@@ -435,7 +435,7 @@ export const SPARKS: readonly Spark[] = [
      *
      * 改挂 `替家里干活`，正文里那件收工的活交给 `{putsAway}` 去问这家人：
      * 农户是把锄头扛起来，猎户是把弓挂回墙上，铺子里是把账合上。
-     * 一条火种，十种日子，各是各的收工。
+     * 一条火种，各家各的收工。
      */
     id: 'another-day-done',
     leaning: 'settle',

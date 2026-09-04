@@ -53,6 +53,9 @@ import { pickWeighted } from './random'
  *
  * 刻意不含 `id` 与 `key`：那些是引擎内部的标识，替换了会把旗标和条目对不上。
  * 也不含 `value`：`flag` 的值和 `roll` 的候选是掷给引擎看的，不是给人读的。
+ * 同样不含 `living`：它虽然是个字符串，却是 `content/living.ts` 里那一格的 id，
+ * 跟 `identity` 只差一个字段名，**分界线在于这个字给谁看**——
+ * 「庶人」是念给玩家听的，`fallen` 是拿去查表的。
  */
 const TEXT_FIELDS = [
   'place',
@@ -131,6 +134,18 @@ function applyOne(
     case 'identity':
       character.setIdentity(effect.identity)
       return record(`身份 · ${effect.identity}`)
+    /**
+     * 换了一种日子过。**不出回执**，跟隔壁的 `identity` 不一样。
+     *
+     * 身份是一个称谓——别人从今天起改口叫你庶人，那是一条明确的信息，
+     * 值得报一行。日子不是称谓，它得靠正文自己读出来：
+     * 「怎么问价，怎么挑水，怎么在下雨天走泥路不摔跤」。
+     * 在那底下再补一行「日子 · 自己过日子」，是把已经写好的东西
+     * 又用机器话说了一遍。
+     */
+    case 'living':
+      character.liveAs(effect.living)
+      return null
     case 'aspect':
       character.note(effect.key, effect.self)
       return null
@@ -850,6 +865,7 @@ const PHASE = {
   home: '事实',
   realm: '事实',
   identity: '事实',
+  living: '事实',
   aspect: '事实',
   claim: '事实',
   reveal: '事实',
