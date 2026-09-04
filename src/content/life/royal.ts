@@ -235,8 +235,13 @@ export const royalScenes: SceneLibrary = {
           { type: 'flag', key: 'the-fall', value: true },
           { type: 'flag', key: 'exiled', value: true },
           // 真的搬家，不只是人到了那里——否则收尾那一卷一句「你回到家」
-          // 会把他送回东宫
-          { type: 'home', place: '{province} · {prefecture} · 城南小院' },
+          // 会把他送回东宫。
+          //
+          // `takes` 只写母妃一个，因为旨意里只有你们两个名字。
+          // **兄长没被列到，不是遗漏，那正是这一格存在的理由**：
+          // 他即了位，留在宫里，仍然活着，你跟他那条边一条也没断——
+          // 只是从这天起你不会再天天见着他。
+          { type: 'home', place: '{province} · {prefecture} · 城南小院', takes: ['mother'] },
           {
             type: 'aspect',
             key: 'learning',
@@ -314,14 +319,40 @@ export const royalScenes: SceneLibrary = {
 
       outside: {
         id: 'outside',
+        /**
+         * 街口那个卖炊饼的。
+         *
+         * 这一处是「换了地方过日子，就会遇见新的人」在内容层的第一个落点，
+         * 而它要紧的地方在于**它什么也没有删**：宫里那些人一个没少，
+         * 母妃跟着搬来了，即位的兄长还在京城活着，你跟他们的边一条没断。
+         * 新生活只是在这张图上添了一个人。
+         *
+         * `who` 写全了才算把他记进世界——不写的话他只是人际面板上一行字，
+         * 不是一个站在街口的人，也就谈不上「在你身边」。
+         * `bond: '友'` 添的是新的一条边，`bind` 只往后添，
+         * 不覆盖任何旧的（见 `stores/people.ts`）。
+         */
+        onEnter: [
+          {
+            type: 'meet',
+            id: 'baker',
+            calls: '街口卖炊饼的',
+            who: { surname: '周', given: '大', gender: '男', age: 44, trade: '炊饼摊' },
+            bond: '友',
+            delta: 8,
+            note: '头一个不知道你从前是谁的人。他只当你是城南新搬来那家的孩子。',
+          },
+        ],
         blocks: [
           { kind: 'narration', text: '街上没有人认得你。' },
           { kind: 'narration', text: '你走过去，没有一个人矮下去一截。' },
           { kind: 'event', text: '这是你这辈子第一次一个人走在路上。' },
           { kind: 'narration', text: '卖炊饼的问你要几个。你答不上来，因为你不知道价钱。' },
+          { kind: 'narration', text: '他没笑你，掰了半个给你，说下回带钱来。' },
           { kind: 'divider', variant: 'dots' },
           { kind: 'narration', text: '此后两年，你学会了很多从前不用学的事。' },
           { kind: 'narration', text: '怎么问价，怎么挑水，怎么在下雨天走泥路不摔跤。' },
+          { kind: 'narration', text: '街口那个摊子你每天都过，后来他见了你会先开口。' },
           {
             kind: 'narration',
             text: '你从前读的那些书，一句也用不上。',
@@ -374,7 +405,9 @@ export const royalScenes: SceneLibrary = {
           { type: 'living', living: 'fallen' },
           { type: 'flag', key: 'the-fall', value: true },
           { type: 'flag', key: 'demoted', value: true },
-          { type: 'home', place: '{province} · {prefecture} · 城西旧宅' },
+          // 「全家迁出王府」——正文明写的，所以这里是举家。
+          // 跟隔壁削爵那一卷的分别正在这里：那边只有母子二人走
+          { type: 'home', place: '{province} · {prefecture} · 城西旧宅', takes: '举家' },
           { type: 'chronicle', text: '父亲被削了爵。全家迁出王府。', tone: 'cinnabar' },
         ],
         blocks: [

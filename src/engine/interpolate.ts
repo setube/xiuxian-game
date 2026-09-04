@@ -3,6 +3,8 @@ import { useHouseholdStore } from '@/stores/household'
 import { usePeopleStore } from '@/stores/people'
 import type { Bond, NarrativeBlock } from '@/types/game'
 
+import { isNearby } from './nearby'
+
 /**
  * 正文里的占位符。
  *
@@ -32,15 +34,22 @@ import type { Bond, NarrativeBlock } from '@/types/game'
 const TOKENS = /\{(name|home|province|prefecture|here|trade|elder|elders|dam|chore|putsAway)\}/g
 
 /**
- * 挑一个还在世的关系人，按给定的优先次序。
+ * 挑一个还在身边的关系人，按给定的优先次序。
  *
  * 这是 `{elder}` / `{dam}` 共用的那一步：**先问关系网，再落笔**。
+ *
+ * 问的是「在不在身边」而不是「还活不活着」，而这两问的分别是被削爵那一卷
+ * 逼出来的：迁出京城以后，即位的兄长仍然活着、那条边也仍然在，
+ * 可他不在这个院子里。只问死活的话，「{elder}把那身蟒袍收进箱子」
+ * 会由一个远在千里之外的人来做。
+ *
+ * 死了的自然也不在身边（见 `engine/nearby.ts`），所以这一改只收紧不放宽。
  */
 function callByBond(order: readonly Bond[]): string {
   const people = usePeopleStore()
   for (const bond of order) {
     for (const id of people.kinOf(bond)) {
-      if (people.isAlive(id)) return people.known[id]?.calls ?? '家里的大人'
+      if (isNearby(id)) return people.known[id]?.calls ?? '家里的大人'
     }
   }
   return '家里的大人'
@@ -93,13 +102,19 @@ function damCall(): string {
   return callByBond(['生母', '抚养', '生父'])
 }
 
-/** 「爹娘」这种合称。家里只剩一个人的时候，说「爹和娘」就是穿帮 */
+/**
+ * 「爹娘」这种合称。家里只剩一个人的时候，说「爹和娘」就是穿帮。
+ *
+ * 跟 `callByBond` 同一条线：数的是**此刻在这个家里的**那几个人，
+ * 不是名册上还活着的那几个。爹在外县修河堤的那两年，
+ * 「爹和娘一起坐在灯下」不该成立。
+ */
 function eldersCall(): string {
   const people = usePeopleStore()
   const names: string[] = []
   for (const bond of ['生父', '生母', '抚养'] as const) {
     for (const id of people.kinOf(bond)) {
-      if (!people.isAlive(id)) continue
+      if (!isNearby(id)) continue
       const calls = people.known[id]?.calls
       if (calls && !names.includes(calls)) names.push(calls)
     }

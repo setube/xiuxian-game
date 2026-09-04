@@ -1,7 +1,7 @@
 import { useCharacterStore } from '@/stores/character'
 import { useDiaryStore } from '@/stores/diary'
 import { useHouseholdStore } from '@/stores/household'
-import { usePeopleStore } from '@/stores/people'
+import { makePerson, usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
 import { observerById } from '@/content/observers'
 import { bearKin } from '@/content/birth'
@@ -123,11 +123,29 @@ function applyOne(
     case 'place':
       world.moveTo(effect.place)
       return null
-    case 'home':
-      // 搬了家，人自然也在新家。两个都要改，否则状态栏和「回家」会各说各的
+    case 'home': {
+      /**
+       * 搬了家，人自然也在新家。两个都要改，否则状态栏和「回家」会各说各的。
+       *
+       * `takes` 那一段回答的是另一个问题：**跟你一起搬的是谁。**
+       * 没被列到的人不动——他还活着，那条边也还在，
+       * 只是从此不在你天天照面的地方（见 `engine/nearby.ts`）。
+       * 这里一个人也不删，一条边也不断。
+       */
+      const from = household.home // 旧门牌先取下来，moveHome 会当场改掉它
       household.moveHome(effect.place)
       world.moveTo(effect.place)
+      const to = household.home
+      const followers =
+        effect.takes === '举家'
+          ? household.members.map((member) => member.person)
+          : (effect.takes ?? [])
+      for (const id of followers) {
+        // 只挪本来就跟你同住的那些。爹已经在外县做工，你搬家跟他没关系
+        if (people.personOf(id)?.place === from) people.amend(id, { place: to })
+      }
       return null
+    }
     case 'realm':
       character.setRealm(effect.realm)
       return record(`境界 · ${effect.realm}`, 'cinnabar')
@@ -254,9 +272,35 @@ function applyOne(
       return null
     }
     case 'meet': {
+      /**
+       * 换了地方过日子，会遇见新的人。
+       *
+       * `who` 那一段把他记进人口册，落在**你此刻的家所在的地方**——
+       * 于是他从这天起算「在你身边」。这是那条公式落地的地方：
+       * 世界里的人一直存在，是你的生活范围变了，能遇见的人才跟着变。
+       *
+       * 反过来的那一半在别处：新认识一个掌柜，不会有任何东西去动姐姐那条边。
+       * 「自动生成新人 + 自动删掉旧人」是两件事，这里只做前一件，
+       * 而且只在剧本明写了 `who` 的时候做。
+       */
+      if (effect.who !== undefined && people.personOf(effect.id) === undefined) {
+        people.enroll(
+          makePerson({
+            id: effect.id,
+            surname: effect.who.surname,
+            given: effect.who.given,
+            gender: effect.who.gender,
+            bornYear: world.time.year - effect.who.age,
+            trade: effect.who.trade,
+            place: household.home,
+          }),
+        )
+      }
       // 没写 calls 就是「已经认识的人」，只调好感，不改称呼
       const calls = effect.calls ?? people.known[effect.id]?.calls ?? '一个人'
       const isNew = people.meet(effect.id, calls, effect.delta ?? 0, effect.note)
+      // 关系图上添一条边。`bind` 只往后添，旧的边一条也不覆盖
+      if (effect.bond !== undefined) people.bind('me', effect.id, effect.bond)
       // 「知道他叫什么」是单独一件事，值得单独报一句
       const learned = effect.name ? people.learnName(effect.id) : false
       if (learned) return record(`原来他叫 · ${people.callOf(effect.id)}`, 'deep')

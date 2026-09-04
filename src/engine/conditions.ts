@@ -5,6 +5,7 @@ import { useWorldStore } from '@/stores/world'
 import type { Condition, RegionKey } from '@/types/game'
 
 import { stageOf } from './stages'
+import { isNearby } from './nearby'
 
 type WorldStore = ReturnType<typeof useWorldStore>
 type CharacterStore = ReturnType<typeof useCharacterStore>
@@ -66,13 +67,25 @@ const CHECKS = {
 
   family: (family, { household }) => household.isAlive(family.id) === family.alive,
 
+  /**
+   * 有没有这层关系，那个人还在不在，还在不在你身边。
+   *
+   * 三问是层层收紧的，不是三选一：先得有这条边，再问活死，再问远近。
+   * `alive` 与 `near` 都写成 `some(...) === 值` 而不是 `some(... === 值)`——
+   * 前者说的是「这层关系里**有没有**一个满足的人」，`false` 就是
+   * 「一个也没有」。全库唯一用 `alive: false` 的那一处（`wishes.ts`）
+   * 靠的正是这个语义：他要的是「爹娘都不在了」，不是「死了一个」。
+   */
   bond: (bond) => {
     // 这一格才需要人物库，用到时再取——别的条件不必为它初始化一个 store
     const people = usePeopleStore()
     const ids = people.kinOf(bond.kind)
     if (ids.length === 0) return false
-    if (bond.alive === undefined) return true
-    return ids.some((id) => people.isAlive(id)) === bond.alive
+    if (bond.alive !== undefined && ids.some((id) => people.isAlive(id)) !== bond.alive) {
+      return false
+    }
+    if (bond.near !== undefined && ids.some((id) => isNearby(id)) !== bond.near) return false
+    return true
   },
 
   region: (region, { world }) => {

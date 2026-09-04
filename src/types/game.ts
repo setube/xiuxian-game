@@ -761,12 +761,23 @@ export interface Condition {
   /** 某位家人是否在世 */
   family?: { id: string; alive: boolean }
   /**
-   * 有没有某一层关系，那个人还在不在。
+   * 有没有某一层关系，那个人还在不在，还在不在你身边。
    *
    * 剧本必须能问「你还有爹吗」——否则孤儿会读到自己死去的父亲下地干活。
    * 这一条是关系网做出来之后，剧本层必须跟上的守门人。
+   *
+   * ## `alive` 和 `near` 问的不是同一件事
+   *
+   * - `alive` 问**这层关系里还有没有活人**。
+   * - `near` 问**那个人还在不在你天天照面的地方**（见 `engine/nearby.ts`）。
+   *
+   * 削爵迁出京城之后，留在宫里的兄长仍然活着、那条边也仍然在——
+   * 可他不会再出现在你的日子里。只问 `alive` 的去处会把他留在
+   * 「今天找谁说话」的名单上，那是把「关系存在」当成了「天天见得着」。
+   *
+   * 两格都不写就只问「有没有这层关系」。写了两格是且的关系。
    */
-  bond?: { kind: Bond; alive?: boolean }
+  bond?: { kind: Bond; alive?: boolean; near?: boolean }
   /**
    * 这个府此刻的光景。
    *
@@ -818,8 +829,20 @@ export type Effect =
    * 跟 place 的区别：place 是「你此刻人在哪」，home 是「你家在哪」。
    * 抄家、削爵、逃荒之后，回家这个动作指向的地方就变了——
    * 只改 place 的话，收尾那一卷一句「你回到家」会把废太子送回东宫。
+   *
+   * ## `takes`：谁跟着你一起搬
+   *
+   * **不写它是有意义的默认，不是忘了写：没被列到的人留在原地。**
+   * 这一格存在的理由正是那条界线——搬家改变的是你能见到谁，
+   * 不是世界上还有谁。削爵迁出京城，母妃跟着走（旨意里有她的名字），
+   * 即位的兄长留在宫里：他还活着，那条边也还在，
+   * 只是从此不在你的日子里（见 `engine/nearby.ts`）。
+   *
+   * `'举家'` 是「家里人全跟着」的简写，削藩那种整家搬迁用它。
+   * 它同样只挪本来就跟你同住的人——爹已经在外县做工的，
+   * 你搬家跟他没关系，他仍旧在河堤上。
    */
-  | { type: 'home'; place: string }
+  | { type: 'home'; place: string; takes?: readonly string[] | '举家' }
   | { type: 'realm'; realm: Realm }
   | { type: 'identity'; identity: string }
   /**
@@ -928,8 +951,39 @@ export type Effect =
    *
    * 名字要另外由 `name: true` 才算知道，因为「认识一个人」和
    * 「知道他叫什么」本来就是两回事：你可以跟人打十年交道只知道他叫老周。
+   *
+   * ## `who`：这个人是新生活里才有的
+   *
+   * 换了地方过日子会遇见新的人。写了 `who` 就把他记进人口册，
+   * 落在你此刻的家所在的地方——**于是他从这天起算「在你身边」，
+   * 而原来那些人一个也没有被动过。**
+   *
+   * 它跟 `family.born` 一样是显式的，不是「查不到就造一个」：
+   * id 打错一个字母的时候，后者会凭空生出一个人来而没有东西吭声。
+   *
+   * ## `bond`：从此他是你的什么人
+   *
+   * 不写就只是认得——人际面板上有他，关系图上没有这条边。
+   * 写了就往关系图上**添**一条，旧的边一条也不动：
+   * 认识了新地方的掌柜，不等于姐姐不再是姐姐。
    */
-  | { type: 'meet'; id: string; calls?: string; delta?: number; note?: string; name?: boolean }
+  | {
+      type: 'meet'
+      id: string
+      calls?: string
+      delta?: number
+      note?: string
+      name?: boolean
+      who?: {
+        surname: string
+        given: string
+        gender: Gender
+        /** 他今年多大。人口册存的是生年，这里写岁数，由结算换算 */
+        age: number
+        trade: string
+      }
+      bond?: Bond
+    }
   /**
    * 玩家得知了某人过去的一件事。
    *
