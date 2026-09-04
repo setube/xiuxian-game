@@ -29,16 +29,17 @@ function within(value: number, range: { atLeast?: number; atMost?: number }): bo
 }
 
 /**
- * 十二格条件各自怎么验。
+ * 十三格条件各自怎么验。
  *
  * ## 为什么是一张表，而不是一串 if
  *
- * 从前这里是十二段独立的 `if (condition.xxx)`，读起来没问题，
- * **坏在加第十三格的那一天**：`Condition` 多一格 `technique?`，
+ * 从前这里是一段一格独立的 `if (condition.xxx)`，读起来没问题，
+ * **坏在加下一格的那一天**：`Condition` 多一格 `living?`，
  * 这里不写对应的那一段，TypeScript 一个字也不会说——
  * 而且失败的方式是最坏的那一种：没有任何 `if` 拦它，
- * **那一格条件被静默当成「通过」**。剧本写「要会引气诀才能进」，
- * 引擎读成「谁都能进」，玩家走进一段他不该走进的人生。
+ * **那一格条件被静默当成「通过」**。剧本写「这一段只有农家过得到」，
+ * 引擎读成「谁都过得到」，玩家走进一段他不该走进的人生——
+ * 而这一次那段人生是皇子在檐下看父亲修锄头。
  *
  * `Effect` 不会这样，它是可辨识联合，`switch` 尾巴上一句
  * `const unreachable: never = effect` 就能逼着人把新变体处理掉
@@ -82,6 +83,21 @@ const CHECKS = {
   },
 
   trade: (trade, { household }) => household.trade === trade,
+
+  /**
+   * 这家人过的是什么日子。
+   *
+   * 读的是 `household.living`，那个 computed 已经把「先问抚养人、
+   * 再落回这家的营生」解析完了——**引擎不认识内容**，
+   * 这里只比一个 id 和一个有没有，`content/living.ts` 一个字也不 import。
+   * engine → content 是反向依赖，那道门不能开。
+   */
+  living: (living, { household }) => {
+    const current = household.living
+    if (living.is !== undefined && current.id !== living.is) return false
+    if (living.hasChore !== undefined && (current.chore !== null) !== living.hasChore) return false
+    return true
+  },
 
   gender: (gender, { household }) => household.gender === gender,
 

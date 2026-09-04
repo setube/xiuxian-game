@@ -24,8 +24,12 @@ import type { Bond, NarrativeBlock } from '@/types/game'
  *
  * `{elder}` 与 `{elders}` 是另一类：它们问的不是家世，是**关系网**。
  * 详见下面两个函数——那是「不能假定每个人都有爹娘」在正文层的落点。
+ *
+ * `{chore}` 与 `{putsAway}` 是第三类，问的是**这家人过的是什么日子**。
+ * 它们补的正是下面那段警告里说的那个洞：`{elder}` 换得掉主语，
+ * 换不掉「一把锄头」。见 `content/living.ts`。
  */
-const TOKENS = /\{(name|home|province|prefecture|here|trade|elder|elders|dam)\}/g
+const TOKENS = /\{(name|home|province|prefecture|here|trade|elder|elders|dam|chore|putsAway)\}/g
 
 /**
  * 挑一个还在世的关系人，按给定的优先次序。
@@ -67,6 +71,12 @@ function callByBond(order: readonly Bond[]): string {
  *    然后正文里放心写「父亲」。
  *
  * 不要让 `{elder}` 变成祖传抽象。它是拆硬编码用的撬棍，不是地基。
+ *
+ * ✅ **上面那个洞后来补上了一半**，见 `{chore}` / `{putsAway}`：
+ * 「他在做什么」这一类由 `household.living` 回答，
+ * 而只有一件活可摆弄的人家才配用那两个记号——宫里的 `chore` 是 null，
+ * 于是那一整卷对皇室不成立，靠的是 `requires: [{ living: ... }]`，
+ * 不是换个物件接着演。第 2 条规矩因此有了机器守着的形式。
  */
 function elderCall(): string {
   return callByBond(['生父', '抚养', '生母'])
@@ -99,6 +109,23 @@ function eldersCall(): string {
   return names.slice(0, 2).join('和')
 }
 
+/**
+ * 这家的大人手上那件活。
+ *
+ * 兜底那句「手里的东西」是给**写漏了 requires 的那一卷**准备的：
+ * 宫里没有这样一件活（`chore` 是 null），正文本不该走到这儿。
+ * 兜底不是补救，是让穿帮变成一句读得出来的怪话，
+ * 而不是一个静默的 `undefined`——真正拦它的是 `scripts/upbringing.ts`。
+ */
+function choreCall(): string {
+  return useHouseholdStore().living.chore?.holds ?? '手里的东西'
+}
+
+/** 收工时是怎么收的。同上，宫里没有这一格 */
+function putsAwayCall(): string {
+  return useHouseholdStore().living.chore?.putsAway ?? '把手里的东西放下'
+}
+
 /** 把一句话里的占位符换成这一世的实情。没有占位符的原样返回。 */
 export function fillString(text: string): string {
   if (!text.includes('{')) return text
@@ -110,6 +137,8 @@ export function fillString(text: string): string {
     if (token === 'elder') return elderCall()
     if (token === 'dam') return damCall()
     if (token === 'elders') return eldersCall()
+    if (token === 'chore') return choreCall()
+    if (token === 'putsAway') return putsAwayCall()
     if (token === 'name') return character.name
     if (token === 'home') return household.home
     if (token === 'province') return household.province

@@ -27,8 +27,8 @@ export const kinScenes: SceneLibrary = {
         id: 'open',
         onEnter: [{ type: 'time', days: 2 }],
         blocks: [
-          { kind: 'narration', text: '连着下了三天雨，地里去不了。' },
-          { kind: 'narration', text: '父亲在檐下修一把锄头，你蹲在旁边看。' },
+          { kind: 'narration', text: '连着下了三天雨，哪儿也去不了。' },
+          { kind: 'narration', text: '父亲在檐下摆弄{chore}，你蹲在旁边看。' },
           { kind: 'narration', text: '他忽然说，这天气跟北边不一样。' },
           { kind: 'narration', text: '你问北边怎么不一样。他停了一下，像是有点后悔说了这句。' },
         ],
@@ -65,12 +65,12 @@ export const kinScenes: SceneLibrary = {
       told: {
         id: 'told',
         blocks: [
-          { kind: 'narration', text: '他放下锄头，想了很久。' },
+          { kind: 'narration', text: '他把手里的活放下了，想了很久。' },
           { kind: 'dialogue', speaker: '父亲', text: '十八岁那年，跟商队走过一趟。' },
           { kind: 'narration', text: '他说那边的雪能埋到腰，风刮起来像刀子。' },
           { kind: 'narration', text: '走了大半年，回来的时候人瘦得他娘都没认出来。' },
           { kind: 'event', text: '你从来不知道父亲去过那么远的地方。' },
-          { kind: 'narration', text: '他说完就不说了，接着修那把锄头。' },
+          { kind: 'narration', text: '他说完就不说了，低头接着做手里的事。' },
           {
             kind: 'narration',
             text: '你忽然发现，爹在当爹之前，也是个会到处乱跑的年轻人。',
@@ -83,7 +83,7 @@ export const kinScenes: SceneLibrary = {
         id: 'untold',
         blocks: [
           { kind: 'narration', text: '他也没有再提。' },
-          { kind: 'narration', text: '雨停了，他把锄头扛起来，出门去了。' },
+          { kind: 'narration', text: '雨停了，他{putsAway}，出门去了。' },
           { kind: 'narration', text: '这件事你后来一直没想起来问。', tone: 'faint' },
         ],
       },
@@ -308,10 +308,28 @@ export const kinScenes: SceneLibrary = {
 
 export const kinEvents: readonly LifeEvent[] = [
   {
-    // 话赶话说到那儿的事。撞不上就撞不上，那件事照样在他身上
+    /**
+     * 话赶话说到那儿的事。撞不上就撞不上，那件事照样在他身上。
+     *
+     * ## 为什么这里要多问一句「他手上有活吗」
+     *
+     * 从前这一卷的入口只问关系：有个活着的生父，就演。
+     * 于是皇子也会读到「父亲在檐下修一把锄头，你跟着蹲在旁边看」——
+     * **不是不符合出身，是世界事实自相矛盾。**
+     *
+     * 这一卷要成立，得同时有三件东西：一个活着的爹、一件他闲下来
+     * 摆弄得着的活、以及一个孩子能蹲在旁边看的檐下。
+     * 后两件由 `living.hasChore` 一并管住。宫里三件里缺两件——
+     * 皇子见父亲要先通传，而通传了多半也见不着。
+     *
+     * 宫里那一段该另外写，不该让这一卷换个物件接着演。
+     * 「父亲坐在廊下整理文书」读着不穿帮了，可它仍旧是农户剧本换词——
+     * 皇室出身改的不是锄头换文书，是礼法、监护、同龄人、
+     * 别人看你的眼神。那是另一册的事。
+     */
     id: 'dad-north',
     window: { from: 8, to: 16 },
-    requires: [{ bond: { kind: '生父', alive: true } }],
+    requires: [{ bond: { kind: '生父', alive: true } }, { living: { hasChore: true } }],
     scene: 'dad:north',
     weight: 7,
   },

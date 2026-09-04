@@ -430,6 +430,17 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     bond: null,
     region: null,
     trade: null,
+    /**
+     * 「这家人过的是什么日子」不需要有人给。
+     *
+     * 它是 `household.living` 算出来的：先看把你养大的那个人过什么日子，
+     * 没有就落回这家的营生。世上没有哪一处效果会「产出」一种日子——
+     * 换了抚养人，那个 computed 自己就变了。
+     *
+     * 但它有另一种坏法：`{ living: { is: 'farmm' } }` 拼错了没人管。
+     * 那一道在 `scripts/upbringing.ts`，对着 `ALL_LIVINGS` 查 id。
+     */
+    living: null,
     gender: null,
     stage: null,
   } satisfies {

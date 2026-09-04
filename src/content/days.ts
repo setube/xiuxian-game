@@ -16,9 +16,21 @@ import type { Beat, Doing } from '@/engine/daily'
 /** 今天可以去哪儿 */
 export const DOINGS: readonly Doing[] = [
   {
+    /**
+     * 「帮家里干活」这句话本身就有前提：**这家得有活。**
+     *
+     * 从前这一条对谁都开着，于是皇子也能选，选完抽到的是
+     * 「你跟着下了地，割了半晌草」——不是不合出身，是世界事实自相矛盾。
+     *
+     * 问的不是营生，是 `living.chore`：大人闲下来手上摆弄得着一件活的人家，
+     * 孩子就搭得上手。种地的、打猎的、开铺子的、当差的都算；
+     * 宫里不算——那不是「不用干活」，是宫里的孩子跟「干活」这件事
+     * 隔着一整套人事，那一段该另外写。
+     */
     id: 'work',
     label: '帮家里干活',
     slots: ['上午', '下午'],
+    requires: [{ living: { hasChore: true } }],
     echo: '你去帮家里干活。',
   },
   {
@@ -77,19 +89,35 @@ export const DOINGS: readonly Doing[] = [
 export const BEATS: readonly Beat[] = [
   // ============================================================
   // 帮家里干活
+  //
+  // 这一组分两层，分法就是这次「出身无假设」要立的规矩：
+  //
+  // - 标记 `替家里干活` 是**这件事**：谁家的孩子搭手都算。
+  // - 标记 `替家里下地` 是**这种日子**：只有种地的人家才有。
+  //
+  // 从前只有后一个标记，于是猎户、商户、当差人家的孩子干完活，
+  // 心念里回响的是「收工的时候你又回头看了一眼地里」——他家没有地。
+  // 现在下地那几条各自写明 `living.is === 'farm'`，
+  // 挂在 `替家里下地` 上的火种也就自动只落在种地的人家身上了。
+  //
+  // 写新的一条之前先问一句：**这句话里的东西，这家人有吗？**
+  // 有就写 `替家里干活`，只有某一种日子才有就再加一个专属标记，
+  // 并且把 requires 写上——不写 requires 的专属内容等于没分流。
   // ============================================================
   {
     doing: 'work',
-    tags: ['替家里下地'],
+    tags: ['替家里干活', '替家里下地'],
     tier: '无事',
     weight: 42,
+    requires: [{ living: { is: 'farm' } }],
     text: ['你跟着下了地。', '一上午割了半晌草，手心磨出个泡。', '没人夸你，也没人说什么。'],
   },
   {
     doing: 'work',
-    tags: ['替家里下地', '旱年'],
+    tags: ['替家里干活', '替家里下地', '旱年'],
     tier: '无事',
     weight: 30,
+    requires: [{ living: { is: 'farm' } }],
     when: { rain: { atMost: 34 } },
     // 同一块地，旱年和丰年不是一件事。玩家读的每一句无事，也是在读这一年的光景
     text: [
@@ -100,9 +128,10 @@ export const BEATS: readonly Beat[] = [
   },
   {
     doing: 'work',
-    tags: ['替家里下地'],
+    tags: ['替家里干活', '替家里下地'],
     tier: '无事',
     weight: 28,
+    requires: [{ living: { is: 'farm' } }],
     when: { harvest: { atLeast: 62 } },
     text: [
       '今年的活比往年多。',
@@ -112,14 +141,14 @@ export const BEATS: readonly Beat[] = [
   },
   {
     doing: 'work',
-    tags: ['替家里下地'],
+    tags: ['替家里干活'],
     tier: '无事',
     weight: 22,
     text: ['做的是些谁都能做的杂事。', '搬,抬,递。一上午过去了。'],
   },
   {
     doing: 'work',
-    tags: ['替家里下地'],
+    tags: ['替家里干活'],
     tier: '处境',
     weight: 18,
     text: ['今天出的力比往常多。', '晚上躺下的时候，腰是酸的。'],
@@ -127,7 +156,7 @@ export const BEATS: readonly Beat[] = [
   },
   {
     doing: 'work',
-    tags: ['替家里下地'],
+    tags: ['替家里干活'],
     tier: '处境',
     weight: 12,
     text: ['你手脚快，多做了一份。', '{elder}没说什么，可是晚饭时给你多盛了半勺。'],
@@ -138,7 +167,7 @@ export const BEATS: readonly Beat[] = [
   },
   {
     doing: 'work',
-    tags: ['替家里下地', '门口的生人'],
+    tags: ['替家里干活', '门口的生人'],
     tier: '无事',
     weight: 24,
     /**
@@ -155,9 +184,11 @@ export const BEATS: readonly Beat[] = [
   },
   {
     doing: 'work',
-    tags: ['替家里下地'],
+    tags: ['替家里干活', '替家里下地'],
     tier: '见闻',
     weight: 7,
+    // 田埂上蹲着说米价的是种地的人。铺子里、衙门里听见的是另一套话，那要另写
+    requires: [{ living: { is: 'farm' } }],
     when: { grain: { atLeast: 138 } },
     text: [
       '歇晌的时候，几个人蹲在田埂上说话。',
@@ -178,10 +209,11 @@ export const BEATS: readonly Beat[] = [
   },
   {
     doing: 'work',
-    tags: ['替家里下地'],
+    tags: ['替家里干活'],
     tier: '转折',
     weight: 9,
-    requires: [{ age: { atLeast: 12 } }],
+    // 「还想不想接着念」得先有在念的书。没进过学堂的孩子，这句问不出口
+    requires: [{ age: { atLeast: 12 } }, { flag: { key: 'schooled', equals: true } }],
     text: [
       '收工的时候{elder}叫住了你。',
       '他问你，明年还想不想接着念。',

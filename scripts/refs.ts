@@ -39,10 +39,18 @@
  */
 import type { Condition, Effect, SceneNode } from '../src/types/game'
 
-/** 一条出边。`via` 是断头路报告里那句「从哪儿出去的」 */
+/**
+ * 一条出边。`via` 是断头路报告里那句「从哪儿出去的」。
+ *
+ * `requires` 是后来补的：**一条边不光有去处，还有谁走得到。**
+ * `child:memory` 那一卷底下十个分流节点，各自锁着一种出身，
+ * 而「谁读得到 farm 那一节」这个问题，只有顺着边上的条件才答得出来。
+ * 出身门禁（`upbringing.ts`）问的就是它。
+ */
 export interface Exit {
   to: string
   via: string
+  requires?: readonly Condition[]
 }
 
 /** 一处条件。`tag` 缀在出错位置后面，好让人知道是节点的哪一格 */
@@ -80,14 +88,21 @@ const NODE_REFS = {
     // next 为 null 是「本卷终了」，不是断头路
     exits: (node) =>
       (node.choices ?? []).flatMap((choice) =>
-        choice.next === null ? [] : [{ to: choice.next, via: `choice:${choice.id}` }],
+        choice.next === null
+          ? []
+          : [{ to: choice.next, via: `choice:${choice.id}`, requires: choice.requires }],
       ),
     conditions: (node) =>
       (node.choices ?? []).map((choice) => ({ requires: choice.requires ?? [] })),
     effects: (node) => (node.choices ?? []).flatMap((choice) => choice.effects ?? []),
   },
   branches: {
-    exits: (node) => (node.branches ?? []).map((branch) => ({ to: branch.next, via: 'branches' })),
+    exits: (node) =>
+      (node.branches ?? []).map((branch) => ({
+        to: branch.next,
+        via: 'branches',
+        requires: branch.requires,
+      })),
     conditions: (node) => (node.branches ?? []).map((branch) => ({ requires: branch.requires })),
   },
   next: { exits: (node) => (node.next ? [{ to: node.next, via: 'next' }] : []) },

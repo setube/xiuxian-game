@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
+import { type Living, livingOfKeeper, livingOfTrade } from '@/content/living'
 import { ORIGINS, SURNAMES, type Origin } from '@/content/origins'
 import { PREFECTURES, type Prefecture } from '@/content/geography'
 import { pick, pickWeighted, randomBetween } from '@/engine/random'
@@ -108,14 +109,47 @@ export const useHouseholdStore = defineStore(
     })
 
     /**
+     * 这家人过的是什么日子。
+     *
+     * 剧本靠它写生活细节，而不是靠 `trade` 猜——「父亲在檐下修一把锄头」
+     * 这种句子从前默认所有人生都来自农户，皇子读到就成了世界事实自相矛盾。
+     *
+     * ## 解析有先后，而且这个先后是内容逼出来的
+     *
+     *     先看有没有把你养大的人，那个人过的是什么日子
+     *     ← 没有，才看这个家做什么营生
+     *
+     * 老乞丐捡去养大的孩子，`trade` 仍然是他生在的那一家（可能是农户），
+     * 可他过的是讨饭的日子——**户籍不是生活**。
+     * 反过来，姐姐把你拉扯大的，抚养人身上没有单独的营生，
+     * 于是自然落回这个家的营生，而那正是对的：家还是那个家。
+     *
+     * 这跟 `interpolate.ts` 的 `callByBond(['生父','抚养','生母'])`
+     * 是同一条纪律：**先问关系网，再落笔。**
+     */
+    const living = computed<Living>(() => {
+      const people = usePeopleStore()
+      for (const id of people.guardians) {
+        if (!people.isAlive(id)) continue
+        const keeper = livingOfKeeper(people.personOf(id)?.trade ?? '')
+        if (keeper) return keeper
+      }
+      return livingOfTrade(trade.value)
+    })
+
+    /**
      * 家中光景。人物面板只显示这一句——
      * 一个孩子对家境的全部认识，就是饭桌上有没有肉、冬天有没有新衣。
+     *
+     * 这一句对**所有出身**都成立，所以一个营生词也不能出现。
+     * 从前那一档写的是「农忙时全家都得下地」，而它挂在人物面板上，
+     * 十一种出身一律可见——被贬出宫的皇子照样读到自己要下地。
      */
     const outlook = computed(() => {
       if (debt.value > 0) return '欠着债。这两年家里没添过新东西。'
       if (standing.value >= 62) return '家里不缺什么。'
       if (standing.value >= 42) return '不宽裕，但过得去。'
-      if (standing.value >= 26) return '紧巴。农忙时全家都得下地。'
+      if (standing.value >= 26) return '紧巴。家里没有闲人。'
       return '揭不开锅。'
     })
 
@@ -177,6 +211,7 @@ export const useHouseholdStore = defineStore(
       members,
       canSchool,
       livingParents,
+      living,
       outlook,
       shiftStanding,
       shiftDebt,

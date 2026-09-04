@@ -776,6 +776,29 @@ export interface Condition {
    */
   region?: Partial<Record<RegionKey, { atLeast?: number; atMost?: number }>>
   trade?: Trade
+  /**
+   * 这家人过的是什么日子。见 `content/living.ts`。
+   *
+   * 跟 `trade` 的区别是根本性的，而且这个区别是被穿帮逼出来的：
+   * `trade` 是户籍——你生在哪一家；`living` 是生活——你实际过的日子。
+   * 老乞丐捡去养大的孩子，`trade` 还是农户，`living` 是讨饭的。
+   *
+   * **写生活细节的正文一律问这一条，不问 `trade`。**
+   * 「父亲在檐下修一把锄头」从前不问任何条件，于是皇子也读得到，
+   * 那不是文案写错，是内容层把 `trade` 当成了默认真相。
+   *
+   * 两格各有一份真实内容在用，不是先摆好的阶梯：
+   *
+   * - `is` 精确到一种日子。`days.ts` 那几条下地割草的用它——
+   *   「割了半晌草」这件事只有种地的人家有。
+   * - `hasChore` 问的是「大人闲下来有没有一件摆弄得着的活」。
+   *   `kin.ts` 的「北边」那一卷用它：那一卷要的不是农户，
+   *   是一个檐下、一件活、一个能蹲在旁边看的孩子。宫里三样都没有。
+   *
+   * 用 `hasChore` 而不是把六种日子列成一串「或」，是因为列出来的那一串
+   * 加一种出身就得回来改，而且没有任何机器会提醒——那正是这次要拆掉的东西。
+   */
+  living?: { is?: string; hasChore?: boolean }
   gender?: Gender
   stage?: LifeStage
 }
