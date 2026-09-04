@@ -131,10 +131,27 @@ function applyOne(
        * 没被列到的人不动——他还活着，那条边也还在，
        * 只是从此不在你天天照面的地方（见 `engine/nearby.ts`）。
        * 这里一个人也不删，一条边也不断。
+       *
+       * `joins` 是反过来的那一趟：**回到那个人还在的地方去。**
+       * 老家的村名是出生那刻掷出来的，剧本写不出它，可它一直记在
+       * 没跟你走的那些人身上——他还在那个院子里，那就是老家。
+       *
+       * 收 `Bond` 不收 id：养大你的那个人在不同人生里不是同一个人，
+       * 写死 `'mother'` 会让由长姐拉扯大的孩子回到一处空地址
+       * （同 `interpolate.ts` 的 `callByBond`）。那层关系一个活人也没有了
+       * 就落回 `place`，让「回来发现没人了」由内容自己写。
        */
       const from = household.home // 旧门牌先取下来，moveHome 会当场改掉它
-      household.moveHome(effect.place)
-      world.moveTo(effect.place)
+      const rejoined =
+        effect.joins === undefined
+          ? undefined
+          : people
+              .kinOf(effect.joins)
+              .map((id) => people.personOf(id))
+              .find((person) => person?.fate === '在')
+      const target = rejoined?.place ?? effect.place
+      household.moveHome(target)
+      world.moveTo(target)
       const to = household.home
       const followers =
         effect.takes === '举家'

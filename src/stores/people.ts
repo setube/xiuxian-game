@@ -217,6 +217,25 @@ export const usePeopleStore = defineStore(
       return relations.value.filter((r) => r.from === 'me' && r.to === id).map((r) => r.bond)
     }
 
+    /**
+     * 这条边牵了多少年。
+     *
+     * **「认识了很久」是一个世界事实，不是一个好感度。**
+     * 它从 `since` 减出来，跟年龄同一个道理——存一格「相识年数」
+     * 就得年年记着去加，漏一年就再也对不上了。
+     *
+     * 这一格存在的理由是久别重逢：一个认了你十六年的人再见到你，
+     * 那声招呼跟客栈伙计的「客官住店」不是一回事，
+     * 而这个分别不该由 `affinity` 来管——好感是会变的，
+     * 「她认识你十六年了」这件事不会因为三年没见就变少。
+     */
+    function boundFor(to: string, bond: Bond): number {
+      const edge = relations.value.find(
+        (r) => r.from === 'me' && r.to === to && r.bond === bond && r.until === null,
+      )
+      return edge ? Math.max(0, world.time.year - edge.since) : 0
+    }
+
     /** 谁把你养大的。可能是爹娘，可能是姐姐，可能是个老乞丐 */
     const guardians = computed(() => kinOf('抚养'))
 
@@ -283,6 +302,7 @@ export const usePeopleStore = defineStore(
       unbind,
       kinOf,
       bondsWith,
+      boundFor,
       isAlive,
       live,
       reset,

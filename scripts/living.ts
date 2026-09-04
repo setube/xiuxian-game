@@ -149,6 +149,27 @@ const PATHS: readonly Path[] = [
     steps: [{ scene: 'royal:demote', node: 'open' }],
   },
   {
+    /**
+     * 自己走出去挣饭吃。
+     *
+     * 这一条跟上面那三条不是同一种事：削爵、削藩都是**家道变了，
+     * 日子跟着变**——人是被动掉进另一种日子里的，而且掉的时候
+     * 全家一起掉。这一条是他自己走出去的：家还是那个家，
+     * 家里的营生一格没动，只是他从此不靠它吃饭了。
+     *
+     * 所以这一条同时也在验第五节那句「日子不是家里那格的别名」：
+     * 他过 `market`，`householdLivingId` 仍旧解析成 `farm`。
+     * 上面那几条验不到这一层——它们搬家的时候把全家都搬走了。
+     *
+     * 「走了三年之后那些人还算不算你的人」是隔壁 `kept.ts` 的事，
+     * 这里只问一件：**日子换没换。**
+     */
+    id: 'shopwork',
+    label: '农户的孩子自己去镇上做工',
+    trade: '农户',
+    steps: [{ scene: 'reunion:apprentice', node: 'open', choice: 'go' }],
+  },
+  {
     id: 'farm',
     label: '对照：农户的孩子，一辈子没换过日子',
     trade: '农户',
@@ -593,8 +614,39 @@ function twoAxes(): string[] {
     }
   }
 
+  /**
+   * 还有第三个维度：**他过的日子，跟家里那格的营生。**
+   *
+   * 第五节那条尺子自检也在验这件事，可它拿的是削爵那一支——那一支家里
+   * 解析成 `palace`，是因为那个效果只改了他自己那一格，`household` 没动。
+   * 那**证得出两格分得开，证不出家里那格是对的**：削爵之后一家人搬出京城，
+   * 家里还过着宫里的日子，这话本身就站不住。
+   *
+   * 他自己走出去做工的那一支能证到那一层，因为它有对照组：
+   * 没走出去的那个农户孩子过 `farm`，走出去的这个家里也仍是 `farm`——
+   * **两下一对，家里那格是真的一格没动，不是残留，也不是巧合。**
+   */
+  const shop = of('shopwork')
+  const stayed = of('farm')
+  if (shop) {
+    if (shop.livingId === shop.householdLivingId) {
+      wrong.push(
+        `他去镇上做工，家里那格跟着变成了 ${shop.householdLivingId}——` +
+          '出去做工没让家里改行，这两格该分得开',
+      )
+    }
+    if (stayed && shop.householdLivingId !== stayed.livingId) {
+      wrong.push(
+        `没走出去的那个过 ${stayed.livingId}，走出去那个家里却解析成 ` +
+          `${shop.householdLivingId}——同样一户农家，家里的营生不该因为孩子出门就变了`,
+      )
+    }
+  }
+
   for (const one of walked.values()) {
-    console.log(`  【${one.label}】身份 ${one.identity}　日子 ${one.livingId}`)
+    console.log(
+      `  【${one.label}】身份 ${one.identity}　日子 ${one.livingId}　家里 ${one.householdLivingId}`,
+    )
   }
   return wrong
 }

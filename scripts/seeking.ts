@@ -343,17 +343,22 @@ console.log(`\n=== 六、一个玩 ${A_PLAYER_PLAYS} 世的人看得到什么 ==
  * 第一次跑，`seek:crossed` 和 `seek:door` 两卷九个节点整整齐齐
  * 一个人也没走到——而 seeking 是刚加的一册。看着像新内容接错了线。
  *
- * 查下来不是。链条完好，只是**每一环都在乘**（量级，不是准数）：
+ * 查下来不是。链条完好，只是**每一环都在乘**。某一批两千世实测：
  *
- *     心里生出「想弄明白」这个念头　　　　　　 4~5%
+ *     心里生出「想弄明白」这个念头　　　　　　 2.6%
  *     还得先听说过世上有修士　　　　　　　　　 37%
- *     两样都占上　　　　　　　　　　　　　　　 3~4%
- *     那几年的年表抽中了问人那一卷　　　　　　 3%
- *     真问着了东西（多半什么也问不着）　　　　 2%
- *     攒到两条不相干的消息指向同一处　　　　　千分之二到五
+ *     两样都占上　　　　　　　　　　　　　　　 1.6%
+ *     那几年的年表抽中了问人那一卷　　　　　　 2.8%
+ *     真问着了东西（多半什么也问不着）　　　　 2.2%
+ *     攒到两条不相干的消息指向同一处　　　　　 0.2%
  *
- * 最后那一格连跑两批是 0.2% 和 0.5%——**它自己就晃一倍**，
- * 所以上面这张表读的是形状，不是数。而三百世乘出来是一个人上下，
+ * **这几个数每批都在晃，写在这儿是给人读形状的，不是准数。**
+ * 最后那一格连跑几批是 0.2% 上下，而它自己就能晃一倍。
+ * 判据千万别照着这张表里的某个数去定——下面 `LIVES` 那一段
+ * 记着一次现成的教训：照着一个没人复核的数定判据，数漂走了，
+ * 门禁就开始无故红灯，而内容一个字也没坏。
+ *
+ * 三百世乘出来是一个人上下，
  * **一个期望值在一附近的格子印出零来不是内容坏了，是三百世不够。**
  * 这一节跑两千世，所以它有资格替那两卷作证。
  *
@@ -370,11 +375,24 @@ console.log('\n=== 七、可观测路径：真人生里走得到吗 ===\n')
   /**
    * 世数按最稀那一格定，跟第五节是同一条规矩。
    *
-   * 门禁认的是「走进那一卷」，实测千分之三点七——两千世里七回上下，
-   * 掷出零的概率不到千分之一。三千世更稳，可它要跑四分三刻钟，
-   * 而这一支是要跟另外二十三支一起跑的。**两千世买到的是同一句结论。**
+   * 头一版这里写着「实测千分之三点七——两千世里七回上下，掷出零的概率
+   * 不到千分之一」。那个数后来掉下去了：连跑五批是 0、2、3、1、3 回，
+   * **千分之一上下，两千世的期望只剩两回**。判据却一直是「零回就红」，
+   * 于是它每七八次跑就无故红一次，而内容一个字也没坏——
+   * 这正是下面 `enteredDoor` 那段明写着不判红的理由，
+   * 只是这一格的期望是后来才掉下去的，判据没跟着复核。
+   *
+   * 掉下去不是哪一章挤的：摘掉最近新写的那一章再跑三批是 3、1、3 回，
+   * 跟带着它跑的 0、2 回是同一个量级。**注释里那个「七回」从写下那天起
+   * 就没人再复核过**，而它是这道判据成不成立的全部依据。
+   *
+   * 修法见 `RETRY`：零回时才追加一批，不把世数一口气抬上去——
+   * 这一支是要跟另外三十七支一起跑的，平常那八成七的跑法不该跟着变慢。
    */
   const LIVES = 2000
+
+  /** 一批没撞上时追加多少世。累计六千世，期望两回的话掷出全零是四百分之一的事 */
+  const RETRY = 4000
 
   const funnel = {
     心里生出想弄明白: 0,
@@ -390,7 +408,18 @@ console.log('\n=== 七、可观测路径：真人生里走得到吗 ===\n')
   /** 「两条对上了」是在几岁对上的。窗口是十三到十六，所以这个分布要人看着 */
   const ages = new Map<number, number>()
 
-  for (let i = 0; i < LIVES; i += 1) {
+  /**
+   * 走一条完整人生，返回这一世有没有走进「两条对上了」那一卷。
+   *
+   * `count` 决定这一世算不算进上面那个漏斗。**追加的那几批不算**——
+   * 漏斗报的是比例，混进批次不同的世数，比例就跟分母对不上了，
+   * 而那个比例正是这一节要给人看的东西。
+   *
+   * 名字要跟第五节那个 `oneLife` 岔开：两个都在走一条人生，可走法是两回事——
+   * 那一个手里替他掷「他问了几年」，这一个把年表整个跑一遍。
+   * 同名的话块作用域会把外面那个遮住，而遮住的样子跟一切正常一模一样。
+   */
+  const liveThrough = (count: boolean): boolean => {
     setActivePinia(createPinia())
     const narrative = useNarrativeStore()
     const world = useWorldStore()
@@ -398,6 +427,8 @@ console.log('\n=== 七、可观测路径：真人生里走得到吗 ===\n')
 
     let asked = 0
     let crossedAt = -1
+    let hitCrossed = 0
+    let hitDoor = 0
     /**
      * 顺着他真正走过的路记一笔。
      *
@@ -408,8 +439,8 @@ console.log('\n=== 七、可观测路径：真人生里走得到吗 ===\n')
     const locate = narrative.locate
     narrative.locate = (sceneId: string, nodeId: string): void => {
       if (sceneId === 'seek:asking' && nodeId === 'open') asked += 1
-      if (sceneId === 'seek:crossed' && nodeId === 'open') enteredCrossed += 1
-      if (sceneId === 'seek:door' && nodeId === 'open') enteredDoor += 1
+      if (sceneId === 'seek:crossed' && nodeId === 'open') hitCrossed += 1
+      if (sceneId === 'seek:door' && nodeId === 'open') hitDoor += 1
       locate(sceneId, nodeId)
       // 落笔之后再看：那一句 ask-around 的效果就是在这一步生效的
       if (crossedAt < 0 && world.hasFlag('leads-crossed')) crossedAt = character.age
@@ -430,18 +461,25 @@ console.log('\n=== 七、可观测路径：真人生里走得到吗 ===\n')
       turns += 1
     }
 
-    const knows = character.knowledge.some((one) => one.id === 'cultivators-exist')
-    const wants = world.hasFlag('leaning:know')
-    if (wants) funnel.心里生出想弄明白 += 1
-    if (knows) funnel.听说过世上有修士 += 1
-    if (knows && wants) funnel.两样都占上 += 1
-    if (asked > 0) funnel.抽中了问人那一卷 += 1
-    if (leadsHeard().length > 0) funnel.真问着了东西 += 1
-    if (world.hasFlag('leads-crossed')) {
-      funnel.两条对上了 += 1
-      ages.set(crossedAt, (ages.get(crossedAt) ?? 0) + 1)
+    if (count) {
+      enteredCrossed += hitCrossed
+      enteredDoor += hitDoor
+      const knows = character.knowledge.some((one) => one.id === 'cultivators-exist')
+      const wants = world.hasFlag('leaning:know')
+      if (wants) funnel.心里生出想弄明白 += 1
+      if (knows) funnel.听说过世上有修士 += 1
+      if (knows && wants) funnel.两样都占上 += 1
+      if (asked > 0) funnel.抽中了问人那一卷 += 1
+      if (leadsHeard().length > 0) funnel.真问着了东西 += 1
+      if (world.hasFlag('leads-crossed')) {
+        funnel.两条对上了 += 1
+        ages.set(crossedAt, (ages.get(crossedAt) ?? 0) + 1)
+      }
     }
+    return hitCrossed > 0
   }
+
+  for (let i = 0; i < LIVES; i += 1) liveThrough(true)
 
   console.log(`  ${LIVES} 世完整人生。每一环都在乘：\n`)
   for (const [label, n] of Object.entries(funnel)) {
@@ -464,8 +502,30 @@ console.log('\n=== 七、可观测路径：真人生里走得到吗 ===\n')
   console.log('  **那不是内容坏了，是三百世不够。** 这一节替它作证。')
 
   if (enteredCrossed === 0) {
-    console.log(`\n  ✗ ${LIVES} 世里没有一个人走进那一卷——这条路是断的，不是稀的。`)
-    failed += 1
+    /**
+     * 一批没撞上，先别急着说路断了。
+     *
+     * 追加一批，撞上一回就够了——**这一节要证的是路通着，不是路有多宽**。
+     * 累计六千世还是零回，那才是内容问题：期望若真是两回，
+     * 六千世掷出全零是四百分之一的事。
+     *
+     * 判据一格没松：路真断了，追加多少世也撞不上，照红。松掉的只是抽样。
+     */
+    let extra = 0
+    let hit = false
+    while (extra < RETRY && !hit) {
+      hit = liveThrough(false)
+      extra += 1
+    }
+    if (hit) {
+      console.log(
+        `\n  这一批 ${LIVES} 世没人走进那一卷，追加第 ${extra} 世上撞见一回——` +
+          '路是通的，只是比这个批次量还稀。',
+      )
+    } else {
+      console.log(`\n  ✗ ${LIVES + RETRY} 世里没有一个人走进那一卷——这条路是断的，不是稀的。`)
+      failed += 1
+    }
   }
   /**
    * 门前那一卷只印，不判红。

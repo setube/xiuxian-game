@@ -11,6 +11,7 @@ import { inquiryEvents, inquiryScenes } from './inquiry'
 import { kinEvents, kinScenes } from './kin'
 import { leavingEvents, leavingScenes } from './leaving'
 import { meetingEvents, meetingScenes } from './meeting'
+import { reunionEvents, reunionScenes } from './reunion'
 import { rivermanEvents, rivermanScenes } from './riverman'
 import { routineScenes } from './routine'
 import { royalEvents, royalScenes } from './royal'
@@ -32,8 +33,8 @@ import { youthEvents, youthScenes } from './youth'
  *
  * ## 拓扑长这样
  *
- * 六十一卷，跨章的边只有一条：`day` → `encounters`。
- * 其余十六章彼此不连，各自靠年表被叫出来，演完就回年表。
+ * 六十四卷，跨章的边只有一条：`day` → `encounters`。
+ * 其余十七章彼此不连，各自靠年表被叫出来，演完就回年表。
  *
  * 这个形状是有意的：**每一章是一段可以独立读的人生片段**，
  * 而不是一棵必须从头走到尾的剧情树。链条是靠 flag 攒出来的
@@ -239,6 +240,30 @@ export const CHAPTERS: readonly Chapter[] = [
       '念头改的是他怎么读这个机会，不是机会出不出现',
     ],
     marks: ['reading', 'meet'],
+  },
+
+  /**
+   * 走了三年，又回来。
+   *
+   * 这一章挂在 `leaving` 后头不是因为题材像，是因为它接的是同一件事的下半截：
+   * 那一章问「走不走」，这一章问**走了之后，那些人还算不算你的人**。
+   *
+   * 后两卷是同一件事的两种样子（养大你的人还在 / 不在了），
+   * 靠 `bond.alive` 分岔，不在卷里写 if。
+   */
+  {
+    id: 'reunion',
+    scenes: reunionScenes,
+    events: reunionEvents,
+    called: ['年表'],
+    to: [],
+    age: [12, 17],
+    purpose: [
+      '离开不结束任何关系——三年不见，那条边一格没动',
+      '重逢跟见陌生人不是一回事，而分别来自「他认了你十几年」，不来自好感度',
+      '同样走三年同样回来，人还在和人不在了是两段文字，那句「瘦了」才有出处',
+    ],
+    marks: ['home', 'living', 'meet'],
   },
 
   /** 病 */

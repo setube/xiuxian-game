@@ -52,8 +52,11 @@
  *
  * 第六节是这支脚本的另一半：四种坏实现摆出来喂给同一把尺子，
  * 全被拒绝了，前五节的绿才作数。末尾报覆盖率——
- * 全库几处在搬家、几处在领新人进门，这一支走到了几处。
+ * 全库几处在搬家、几处在领新人进门，这一支走到了几处，
+ * 又有几处明写着移交给了别的门禁（见 `HANDED_OVER`）。
  */
+import { readFileSync } from 'node:fs'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { BEATS, DOINGS } from '../src/content/days'
@@ -734,6 +737,52 @@ function movingSites(): Map<string, string[]> {
   return found
 }
 
+/**
+ * 这几处不在这一支里走，另有专支守着。
+ *
+ * **移交不是豁免。** 在一张覆盖率表上，「没人量过」和「另有人量过」
+ * 长得一模一样，而它们完全是两回事——所以要么写在这里，
+ * 要么就在这一支里再走一遍。写在心里的那种不算。
+ *
+ * `reunion` 那一章问的是**分开之后关系会不会自己烂掉**，
+ * 这一支根本不问那件事；那一支把那一章每一处 `home` 都走了一遍，
+ * 而且量得比这里细（好感动没动、称呼改没改、那条边牵了多少年）。
+ * 同一处路让两支各走一遍是浪费，可这笔账得记在明处。
+ *
+ * 这张表有牙，`handoverHolds` 核两件事：门牌号在库里真的还在
+ * （卷改了名、节点删了，当场红），接手那一支的源码里真的提到这一卷
+ * （它哪天不走了，这里也红）。它不会腐烂成一袋死字符串。
+ */
+const HANDED_OVER: Readonly<Record<string, string>> = {
+  'reunion:apprentice#open:go': 'kept.ts',
+  'reunion:homecoming#open': 'kept.ts',
+  'reunion:homecoming#open:back-to-town': 'kept.ts',
+  'reunion:emptied#open': 'kept.ts',
+  'reunion:emptied#open:back-to-town': 'kept.ts',
+}
+
+function handoverHolds(sites: Map<string, string[]>): string[] {
+  const wrong: string[] = []
+  for (const [where, who] of Object.entries(HANDED_OVER)) {
+    if (!sites.has(where)) {
+      wrong.push(`移交表上写着 ${where}，库里却找不到了——卷改了名，还是那个节点删了？`)
+      continue
+    }
+    let source = ''
+    try {
+      source = readFileSync(new URL(who, import.meta.url), 'utf8')
+    } catch {
+      wrong.push(`${where} 移交给了 scripts/${who}，可那支脚本不在了——这一处现在没人量`)
+      continue
+    }
+    const scene = where.split('#')[0] ?? ''
+    if (!source.includes(scene)) {
+      wrong.push(`scripts/${who} 里一个字也没提 ${scene}——移交表说它在守，它没有`)
+    }
+  }
+  return wrong
+}
+
 function ruler(): string[] {
   const wrong: string[] = []
   const edict = of('edict')
@@ -823,18 +872,24 @@ function ruler(): string[] {
   const walkedSites = new Set<string>()
   for (const one of walked.values()) for (const where of one.where) walkedSites.add(where)
   const counted = [...sites.keys()].filter((where) => !where.endsWith(' · 登记表'))
-  const missed = counted.filter((where) => !walkedSites.has(where))
+  const handed = counted.filter((where) => HANDED_OVER[where] !== undefined)
+  const missed = counted.filter(
+    (where) => !walkedSites.has(where) && HANDED_OVER[where] === undefined,
+  )
   console.log(
-    `  覆盖率：全库 ${counted.length} 处在搬家或领新人进门，这一支走到 ${counted.length - missed.length} 处`,
+    `  覆盖率：全库 ${counted.length} 处在搬家或领新人进门，` +
+      `这一支走到 ${counted.length - missed.length - handed.length} 处，` +
+      `另有 ${handed.length} 处移交给别的门禁`,
   )
   for (const where of counted) {
-    console.log(
-      `    ${walkedSites.has(where) ? '走过' : '没走'} · ${where}　${sites.get(where)?.join('，')}`,
-    )
+    const to = HANDED_OVER[where]
+    const mark = walkedSites.has(where) ? '走过' : to !== undefined ? `移交 ${to}` : '没走'
+    console.log(`    ${mark} · ${where}　${sites.get(where)?.join('，')}`)
   }
   for (const where of missed) {
     wrong.push(`${where} 会改变谁在你身边，可这一支一次也没走到那儿——那条路没人量过`)
   }
+  wrong.push(...handoverHolds(sites))
 
   return wrong
 }

@@ -68,13 +68,17 @@ const CHECKS = {
   family: (family, { household }) => household.isAlive(family.id) === family.alive,
 
   /**
-   * 有没有这层关系，那个人还在不在，还在不在你身边。
+   * 有没有这层关系，那个人还在不在，还在不在你身边，这条边牵了多久。
    *
-   * 三问是层层收紧的，不是三选一：先得有这条边，再问活死，再问远近。
+   * 四问是层层收紧的，不是四选一：先得有这条边，再问活死，再问远近。
    * `alive` 与 `near` 都写成 `some(...) === 值` 而不是 `some(... === 值)`——
    * 前者说的是「这层关系里**有没有**一个满足的人」，`false` 就是
    * 「一个也没有」。全库唯一用 `alive: false` 的那一处（`wishes.ts`）
    * 靠的正是这个语义：他要的是「爹娘都不在了」，不是「死了一个」。
+   *
+   * `years` 是第四问，问的是**时间**而不是状态：这层关系里有没有一条边
+   * 已经牵够了那么多年。它读 `Relation.since`，跟好感度没有关系——
+   * 一个认了你十六年的人不会因为三年没见就只认识你三年。
    */
   bond: (bond) => {
     // 这一格才需要人物库，用到时再取——别的条件不必为它初始化一个 store
@@ -85,6 +89,10 @@ const CHECKS = {
       return false
     }
     if (bond.near !== undefined && ids.some((id) => isNearby(id)) !== bond.near) return false
+    const years = bond.years
+    if (years !== undefined && !ids.some((id) => people.boundFor(id, bond.kind) >= years.atLeast)) {
+      return false
+    }
     return true
   },
 
