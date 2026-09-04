@@ -3,6 +3,7 @@ import { useHouseholdStore } from '@/stores/household'
 import { usePeopleStore } from '@/stores/people'
 import type { Bond, NarrativeBlock } from '@/types/game'
 
+import { kinCall, titleNow } from './address'
 import { isNearby } from './nearby'
 
 /**
@@ -30,8 +31,13 @@ import { isNearby } from './nearby'
  * `{chore}` 与 `{putsAway}` 是第三类，问的是**这家人过的是什么日子**。
  * 它们补的正是下面那段警告里说的那个洞：`{elder}` 换得掉主语，
  * 换不掉「一把锄头」。见 `content/living.ts`。
+ *
+ * `{title}` 是第四类，也是唯一一个**方向反过来**的：上面那些问的都是
+ * 他怎么称呼世界，这一个问的是**世界怎么称呼他**。两个方向的来源
+ * 不一样，所以会脱节——见 `engine/address.ts`。
  */
-const TOKENS = /\{(name|home|province|prefecture|here|trade|elder|elders|dam|chore|putsAway)\}/g
+const TOKENS =
+  /\{(name|home|province|prefecture|here|trade|elder|elders|dam|chore|putsAway|title)\}/g
 
 /**
  * 挑一个还在身边的关系人，按给定的优先次序。
@@ -44,12 +50,17 @@ const TOKENS = /\{(name|home|province|prefecture|here|trade|elder|elders|dam|cho
  * 会由一个远在千里之外的人来做。
  *
  * 死了的自然也不在身边（见 `engine/nearby.ts`），所以这一改只收紧不放宽。
+ *
+ * 找着人之后还有一步：**管他叫什么，得看这个人是在哪儿学会说话的。**
+ * `kinCall` 答得上来就用那个字（宫里长大的孩子管爹叫「爹爹」），
+ * 答不上来才落回 `calls`——境况表里那个「爹」。回落不是兜底失败，
+ * 那就是寻常人家那一套本身，十来种营生的人家在这一格上没有分别。
  */
 function callByBond(order: readonly Bond[]): string {
   const people = usePeopleStore()
   for (const bond of order) {
     for (const id of people.kinOf(bond)) {
-      if (isNearby(id)) return people.known[id]?.calls ?? '家里的大人'
+      if (isNearby(id)) return kinCall(bond) ?? people.known[id]?.calls ?? '家里的大人'
     }
   }
   return '家里的大人'
@@ -115,7 +126,7 @@ function eldersCall(): string {
   for (const bond of ['生父', '生母', '抚养'] as const) {
     for (const id of people.kinOf(bond)) {
       if (!isNearby(id)) continue
-      const calls = people.known[id]?.calls
+      const calls = kinCall(bond) ?? people.known[id]?.calls
       if (calls && !names.includes(calls)) names.push(calls)
     }
   }
@@ -158,6 +169,7 @@ export function fillString(text: string): string {
     if (token === 'elders') return eldersCall()
     if (token === 'chore') return choreCall()
     if (token === 'putsAway') return putsAwayCall()
+    if (token === 'title') return titleNow()
     if (token === 'name') return character.name
     if (token === 'home') return household.home
     if (token === 'province') return household.province

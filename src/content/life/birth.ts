@@ -80,14 +80,14 @@ const NAMING: Record<Trade, readonly NarrativeBlock[]> = {
     { kind: 'narration', text: '取名这件事，家里一个人也做不了主。' },
     { kind: 'narration', text: '宗正寺按族谱排了字辈，报上去，等了一个月才批下来。' },
     { kind: 'narration', text: '{name}。' },
-    { kind: 'narration', text: '父亲看了一眼那道文书，说了句「就这样吧」。' },
+    { kind: 'narration', text: '{elder}看了一眼那道文书，说了句「就这样吧」。' },
     { kind: 'narration', text: '名字入了玉牒。那一页纸你这辈子都不会看见。' },
   ],
   皇室: [
-    { kind: 'narration', text: '你的名字是父亲圈的。' },
+    { kind: 'narration', text: '你的名字是{elder}圈的。' },
     { kind: 'narration', text: '宗正寺拟了八个，钦天监核过生辰，一并呈了上去。' },
     { kind: 'narration', text: '御笔在其中一个上画了个圈：{name}。' },
-    { kind: 'narration', text: '母妃后来跟你说，那天她跪着听完了整道旨。' },
+    { kind: 'narration', text: '{dam}后来跟你说，那天她跪着听完了整道旨。' },
     { kind: 'narration', text: '这个名字从一开始就写在纸上，写在很多张纸上。' },
   ],
 }

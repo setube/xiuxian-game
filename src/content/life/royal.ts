@@ -94,7 +94,7 @@ export const royalScenes: SceneLibrary = {
           { kind: 'divider', variant: 'dots' },
           { kind: 'narration', text: '一个穿青袍的老者从后面出来，看见了你。' },
           { kind: 'narration', text: '他没有行礼，也没有惊慌。他只是看着你。' },
-          { kind: 'dialogue', text: '这里没有殿下要的东西。' },
+          { kind: 'dialogue', text: '这里没有{title}要的东西。' },
           { kind: 'narration', text: '你被送了出来。第二天那块牌子就挂回去了。' },
           {
             kind: 'narration',
@@ -166,7 +166,7 @@ export const royalScenes: SceneLibrary = {
         onEnter: [{ type: 'time', months: 2 }],
         blocks: [
           { kind: 'narration', text: '那阵子宫里很静。' },
-          { kind: 'narration', text: '父亲病了两个月，母妃去侍疾，回来一句话也不说。' },
+          { kind: 'narration', text: '{elder}病了两个月，{dam}去侍疾，回来一句话也不说。' },
           { kind: 'narration', text: '十月里的一夜，外头忽然乱起来。' },
           { kind: 'narration', text: '有人在跑，有人在喊，宫门那边一直响到天亮。' },
           { kind: 'event', text: '天亮的时候，换了一批人守在你门口。', tone: 'cinnabar' },
@@ -203,7 +203,7 @@ export const royalScenes: SceneLibrary = {
           { kind: 'narration', text: '守门的没有拦你，只是跟着你走。' },
           { kind: 'narration', text: '廊下有血，已经在冲洗了。' },
           { kind: 'narration', text: '你往前殿走了几步，就被人客客气气地请了回去。' },
-          { kind: 'dialogue', text: '殿下，外头风大。' },
+          { kind: 'dialogue', text: '{title}，外头风大。' },
           { kind: 'narration', text: '那人说话时是笑着的，手却按在你肩上。' },
         ],
         next: 'edict',
@@ -214,7 +214,7 @@ export const royalScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '早膳照常送来了，还热着。' },
           { kind: 'narration', text: '伺候的人换了三个，一个熟脸也没有。' },
-          { kind: 'narration', text: '你问母妃在哪里。没有人回答你。' },
+          { kind: 'narration', text: '你问{dam}在哪里。没有人回答你。' },
         ],
         next: 'edict',
       },
@@ -256,12 +256,12 @@ export const royalScenes: SceneLibrary = {
           { kind: 'event', text: '父皇大行。你的一位兄长即了位。', tone: 'cinnabar' },
           {
             kind: 'narration',
-            text: '你和母妃的名字都在旨意里，后面跟着「迁{province}安置」几个字。',
+            text: '你和{dam}的名字都在旨意里，后面跟着「迁{province}安置」几个字。',
           },
           { kind: 'narration', text: '封号除了。' },
           { kind: 'divider', variant: 'dots' },
           { kind: 'narration', text: '走的那天下着雪。车队出城时，没有人来送。' },
-          { kind: 'narration', text: '路上走了四十天。母妃一路都很安静。' },
+          { kind: 'narration', text: '路上走了四十天。{dam}一路都很安静。' },
           {
             kind: 'narration',
             text: '到{prefecture}的时候是开春。给你们安置的是城南一处小院，两进，有口井。',
@@ -352,6 +352,20 @@ export const royalScenes: SceneLibrary = {
           { kind: 'divider', variant: 'dots' },
           { kind: 'narration', text: '此后两年，你学会了很多从前不用学的事。' },
           { kind: 'narration', text: '怎么问价，怎么挑水，怎么在下雨天走泥路不摔跤。' },
+          /**
+           * 这两句是「称谓语境」那一层唯一一处让读者直接看见的地方。
+           *
+           * `{dam}` 在这儿落成「娘娘」——宫里长大的孩子就是这么叫娘的
+           * （不是戏台上那套「母后」）。而他现在住在城南的巷子里，
+           * 身上的封号三天前就除了。**别人怎么称呼他，那天就改了；
+           * 他怎么称呼别人，改不掉。** 两个方向的来源本来就不一样：
+           * 一个跟着身份走，一个跟着教养走，见 `engine/address.ts`。
+           *
+           * 上一句「你学会了很多从前不用学的事」说的是他学得会的那些。
+           * 这一句说的是学不会的——**口音是最后一件跟着人走的东西。**
+           */
+          { kind: 'narration', text: '有一回你在巷口叫了一声{dam}，卖菜的回头看了你一眼。' },
+          { kind: 'narration', text: '那两个字你从会说话起就这么叫，改不过来。' },
           { kind: 'narration', text: '街口那个摊子你每天都过，后来他见了你会先开口。' },
           {
             kind: 'narration',
@@ -369,7 +383,7 @@ export const royalScenes: SceneLibrary = {
           { kind: 'divider', variant: 'dots' },
           { kind: 'narration', text: '此后两年，你很少出那道门。' },
           { kind: 'narration', text: '带出来的书不多，你翻来覆去读了很多遍。' },
-          { kind: 'narration', text: '母妃有时坐在廊下看你，什么也不说。' },
+          { kind: 'narration', text: '{dam}有时坐在廊下看你，什么也不说。' },
           {
             kind: 'narration',
             text: '你有时候会想，那些人现在在做什么。想完了也就算了。',
