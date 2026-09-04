@@ -1,6 +1,6 @@
 /* eslint-disable no-console -- 这是一支门禁脚本，标准输出就是它的产物；它不进构建 */
 /**
- * 内容门禁：七道。
+ * 内容门禁：八道。
  *
  * ## 为什么它是门禁而不是走查
  *
@@ -70,6 +70,18 @@
  * 只剩它能回答。`marks` 是那句话在数据里的影子，
  * **能验的那一半替不能验的那一半站着岗**。
  *
+ * ## 第八道守的是最后一层：这些字要给人读
+ *
+ * 前七道全在问「内容是不是自洽的」，而自洽的内容照样能穿帮：
+ * `family` 那条效果把内部 id 当称呼传了出去，于是人际面板上
+ * 写着 `sibling`。跳转对、条件全、卷有入边、目录也对得上——
+ * **那一世从头到尾没有任何东西报错**。
+ *
+ * 内部标识和玩家读到的字是同一份 `string`，类型系统分不出来。
+ * 能分出来的只有一句话：**这个世界里玩家读得到的东西，没有一个字母是该有的**。
+ *
+ * 它跟第五道搭同一趟车——那三百世跑完，人还在，顺手扫一眼人际面板就够了。
+ *
  * 跑法：npx vite-node scripts/verify.ts
  * 失败会以非零码退出，可以直接挂进 CI。
  */
@@ -104,6 +116,7 @@ const ENGINE_FILES = [
   'seeking.ts',
   'errand.ts',
   'meeting.ts',
+  'tutelage.ts',
 ] as const
 
 /**
@@ -499,6 +512,20 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
      */
     meeting: null,
     /**
+     * 这三格产出的东西都拼不出静态名字。
+     *
+     * `tutelage` 落的是 `footing:{谁}`，`teaching` 落 `rite:{哪一样}`
+     * 加一条认知，`practice` 落 `rite:{哪一样}:tries`——
+     * 前两个的参数里倒是有 `who` 和 `rite`，可拼出来仍旧是把
+     * `tutelage.ts` 里那几行模板在门禁里抄第二遍，**抄的那一份不会红**。
+     *
+     * 所以照 `meeting` 的老规矩表态成 `null`，产出交给下面扫源码那一关，
+     * `tutelage.ts` 因此列进 `ENGINE_FILES`。
+     */
+    tutelage: null,
+    teaching: null,
+    practice: null,
+    /**
      * 寻访这一趟到底落下什么，**效果参数里读不出来**——那儿只有一个 id。
      *
      * 真正的产出散在两处：落点表里写着的（`takes` 是认知，`points`
@@ -633,8 +660,12 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
    *
    * 这是这道门禁唯一一处放宽：**它换来的是不用把每个念头 id
    * 都在扫描里再写一遍**，而那份重复迟早会跟真实的 id 对不上。
+   *
+   * `footing:` 和 `rite:` 是师承那一层加进来的，形状一样：
+   * `tutelage.ts` 里只有 `footing:${cultivatorId}` 和 `rite:${riteId}`
+   * 两个模板，具体是哪个修士、哪一样东西要到运行时才知道。
    */
-  const PREFIXES = ['leaning:', 'spark:', 'branched:', 'event:', 'lead:']
+  const PREFIXES = ['leaning:', 'spark:', 'branched:', 'event:', 'lead:', 'footing:', 'rite:']
 
   const orphanNeeds: string[] = []
   for (const [kind, needed, made] of [
@@ -697,6 +728,36 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
  * 所以这一道只做两件事：把没人走到的名单**印出来**，
  * 以及守住这份名单别越来越长。上限是量出来的，不是拍的。
  */
+/**
+ * 第八道要用的两份采样，跟第五道搭同一趟车。
+ *
+ * 三百世跑一趟要十几秒。第八道要的东西——每一世结束时人际面板上
+ * 那些字——正好是第五道跑完就能顺手扫一眼的，没有理由再跑三百世。
+ * 声明写在这儿而不是第八道那一节里，是因为**填它的地方在第五道**，
+ * 而 JS 的块作用域不会让第八道看见第五道块里的变量。
+ */
+/** 玩家读得到、却混进了英文字母的那些字。文本 → 头一回在哪儿见到 */
+const romanLeaks = new Map<string, string>()
+/** 三百世里有多少世家里真的添过丁。为零就说明这一道在空转 */
+let livesWithNewKin = 0
+
+/**
+ * 这段字里混着英文字母吗。
+ *
+ * 尺子就这么短，因为**这个世界里玩家读得到的东西没有一个字母是该有的**：
+ * 称呼是中文，关系是中文，营生是中文，门牌是中文加间隔号。
+ * 一旦冒出 `a`–`z`，那就只能是内部标识漏了出来。
+ *
+ * 不查数字：年龄、年份本来就写成阿拉伯数字。
+ */
+const hasRoman = (text: string): boolean => /[A-Za-z]/.test(text)
+
+/** 记一笔。同一段字只记头一回见到的地方，不然三百世能刷出几千行 */
+const note = (where: string, text: string | undefined): void => {
+  if (text === undefined || !hasRoman(text)) return
+  if (!romanLeaks.has(text)) romanLeaks.set(text, where)
+}
+
 console.log('=== 可观测路径验收（人生里真走得到吗）===\n')
 {
   /**
@@ -725,9 +786,20 @@ console.log('=== 可观测路径验收（人生里真走得到吗）===\n')
    * 现在那件事归第三道：一卷有没有入边是纯静态的，一个随机数也不用掷。
    *
    * 这一格只剩一个用处：**防灾难性回归**——一次改动把大片内容切下线。
-   * 所以 40 = 均值 + 三个标准差，量出来的，不是拍的。
+   * 所以它一直是「均值 + 三个标准差」，量出来的，不是拍的。
+   *
+   * ## 第二次换，是因为内容真的变多了
+   *
+   * 师承那一章进来之后（`tutor:` 五卷、`meet:` 那几卷），再跑十批：
+   *
+   *     45　44　40　45　44　44　54　41　39　46
+   *     均值 44.2　标准差 3.9
+   *
+   * 新内容天生就比老内容稀——`tutor:words` 要先叩到「教一点」才走得到，
+   * 那本来就是少数人生。**上限跟着内容量走是对的，跟着一次红去调是不对的**：
+   * 这十批是在改动落地之后重新量的，不是拿 41 那一批倒推出来的。
    */
-  const UNVISITED_CEILING = 40
+  const UNVISITED_CEILING = 56
 
   const visits = new Map<string, number>()
   for (let index = 0; index < RUNS; index += 1) {
@@ -764,6 +836,17 @@ console.log('=== 可观测路径验收（人生里真走得到吗）===\n')
       story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
       turns += 1
     }
+
+    // 这一世走完了，趁人还在，把人际面板上那些字扫一遍（第八道用）
+    const people = usePeopleStore()
+    if (people.personOf('sibling') !== undefined) livesWithNewKin += 1
+    for (const id of Object.keys(people.known)) {
+      const person = people.personOf(id)
+      note(`${id} 的称呼`, people.callOf(id))
+      note(`${id} 的身份`, person?.trade)
+      note(`${id} 那一句`, people.known[id]?.note)
+      for (const bond of people.bondsWith(id)) note(`${id} 的关系`, bond)
+    }
   }
 
   const unvisited: string[] = []
@@ -789,6 +872,7 @@ console.log('=== 可观测路径验收（人生里真走得到吗）===\n')
         '\n  读法是去可达性那一层查它：把状态直接构造进去，看那条路通不通。' +
         '\n\n    scripts/attention.ts 头两节　　那天他有没有把注意力放在那儿' +
         '\n    scripts/seeking.ts 第七节　　　 seek:crossed / seek:door 两卷（两千世走进去七回上下）' +
+        '\n    scripts/tutelage.ts 第三、五节　tutor: 那几卷（得先叩到「带一段」「教一点」）' +
         '\n',
     )
   }
@@ -1186,6 +1270,98 @@ console.log('=== 章节拓扑验收（目录跟内容对得上吗）===\n')
       '\n  目录是手写的，内容是长出来的，两者分岔就说明有一次改动只落了一半。' +
         '\n  要么把改动补齐，要么去 chapters.ts 把新的意图写下来——' +
         '\n  写下来这件事本身就是这一道要的东西。\n',
+    )
+    process.exitCode = 1
+  }
+}
+
+// ============================================================
+// 第八道：玩家读到的字里不许有英文
+// ============================================================
+/**
+ * 第八道：内部标识不许漏到脸上。
+ *
+ * ## 它是为一个真出过的错写的
+ *
+ * `family` 那条效果从前写的是 `people.meet(effect.id, effect.id, ...)`——
+ * **把内部 id 当成了玩家嘴里的称呼**。爹娘没露馅，因为出生那一刻
+ * 就已经 `meet` 过，`meet()` 对已认识的人不改称呼；家里添的那个孩子露了：
+ * 人际面板上明晃晃写着 `sibling`。
+ *
+ * 类型系统对此一无所知——`id` 是 string，`calls` 也是 string。
+ * 走查也抓不到：所有跳转都对，所有前置条件都有人给，那一世从头到尾没有报错。
+ * 玩家是唯一会发现这件事的人。
+ *
+ * ## 尺子短，是因为这个世界不该有字母
+ *
+ * 称呼、关系、营生、附注——玩家在人际面板上读到的全部四样，
+ * 没有一样该出现 `a`–`z`。于是判据可以短到一行正则，
+ * 而**短不等于弱**：`Bond` 里那个 `'friend'` 也是这一道抓的同一类东西。
+ *
+ * ## 三件事一起说，缺一件这一道就不算数
+ *
+ *     尺子自己判得出对错　　手工喂它五段字，该红的红、该绿的绿
+ *     这三百世真走到过添丁　一次都没走到，那扫得再干净也只是没扫到东西
+ *     扫出来的名单是空的　　前两件成立，这一件才是个结论
+ */
+console.log('=== 称呼验收（玩家读到的字里有英文吗）===\n')
+{
+  /**
+   * 尺子自检。
+   *
+   * 判据写完先问一句：**如果这个毛病根本没被修好，它会红吗？**
+   * 光看三百世扫出来是空的证明不了什么——正则写错一个字，
+   * 它同样是空的，而且看上去还挺勤快。所以先拿手工构造的字喂它一遍。
+   */
+  const rulerCases: readonly { text: string; leaks: boolean; why: string }[] = [
+    { text: 'sibling', leaks: true, why: '内部 id 当称呼——这一道就是为它写的' },
+    { text: 'friend', leaks: true, why: '关系名写成英文' },
+    { text: '沈家的Xiao弟', leaks: true, why: '夹在中文里的英文，一样得抓出来' },
+    { text: '弟弟', leaks: false, why: '正常的中文称呼' },
+    { text: '云州 · 临江府 · 柳溪村', leaks: false, why: '门牌里有间隔号和空格，那不是字母' },
+    { text: '十七岁。药铺', leaks: false, why: '阿拉伯数字是该有的，不查' },
+  ]
+  const misjudged = rulerCases.filter((one) => hasRoman(one.text) !== one.leaks)
+
+  const claims: readonly { holds: boolean; text: string }[] = [
+    {
+      holds: misjudged.length === 0,
+      text: `尺子自己判得出对错——${rulerCases.length} 段手工构造的字，该红的红，该绿的绿`,
+    },
+    {
+      holds: livesWithNewKin > 0,
+      text:
+        `这三百世里有 ${livesWithNewKin} 世家里添过丁——` +
+        '「添丁」正是当初露馅的那条路，它得真被走到过',
+    },
+    {
+      holds: romanLeaks.size === 0,
+      text: '三百世的人际面板上，称呼、关系、营生、附注里一个英文字母也没有',
+    },
+  ]
+
+  const broken = claims.filter((claim) => !claim.holds)
+  if (broken.length === 0) {
+    console.log('  三项都在：\n')
+    for (const claim of claims) console.log(`    · ${claim.text}`)
+    console.log('')
+  } else {
+    console.log(`  ✗ ${broken.length} 项不成立：\n`)
+    for (const claim of broken) console.log(`    ${claim.text}`)
+    if (misjudged.length > 0) {
+      console.log('\n    尺子判错的：')
+      for (const one of misjudged) {
+        console.log(`      「${one.text}」——${one.why}，可尺子说${one.leaks ? '没漏' : '漏了'}`)
+      }
+    }
+    if (romanLeaks.size > 0) {
+      console.log('\n    漏出来的字：')
+      for (const [text, where] of romanLeaks) console.log(`      「${text}」　${where}`)
+    }
+    console.log(
+      '\n  内部标识跟玩家读到的字是同一份 string，类型系统分不出来，走查也不会报错——' +
+        '\n  玩家是唯一会发现这件事的人。要么把落到认知层那一步补上称呼，' +
+        '\n  要么这个值本来就不该上界面。\n',
     )
     process.exitCode = 1
   }

@@ -283,6 +283,9 @@ export const childhoodScenes: SceneLibrary = {
           {
             type: 'family',
             id: 'sibling',
+            // 这个孩子是今年生出来的，出生那张网里没有他——
+            // 不写这一格，人口册上就是空的，人际面板只好显示内部 id
+            born: true,
             alive: true,
             note: '比你小几岁。整日跟在你后面。',
           },

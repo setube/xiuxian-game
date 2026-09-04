@@ -8,7 +8,7 @@ import {
 import { pick, randomBetween } from '@/engine/random'
 import { makePerson, rollTemper, usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
-import type { Chapter, Gender, Trade } from '@/types/game'
+import type { Bond, Chapter, Gender, Trade } from '@/types/game'
 
 /**
  * 出生。
@@ -194,4 +194,70 @@ export function beBorn(trade: Trade, home: string): Birth {
     name: `${finalSurname}${pick(origin.given) ?? '生'}`,
     circumstance,
   }
+}
+
+/**
+ * 这一家姓什么。
+ *
+ * 跟出生那一刻定姓的规矩是同一条：有生父就随生父，没有就随收留你的人。
+ * 抄一遍是因为那一段算完就丢了——`beBorn` 只把姓拼进玩家的名字里返回，
+ * 没有留在任何地方。**规矩相同，所以两处得一起改**，
+ * 而不是让这里去猜玩家名字的头一个字。
+ */
+function houseSurname(people: ReturnType<typeof usePeopleStore>): string {
+  const father = people.personOf('father')
+  if (father) return father.surname
+  for (const relation of people.relations) {
+    if (relation.from !== 'me') continue
+    const person = people.personOf(relation.to)
+    if (person) return person.surname
+  }
+  return pick(SURNAMES) ?? '沈'
+}
+
+/**
+ * 家里添了一个人。
+ *
+ * `beBorn` 造的是出生那一刻就在的那张网。这一支管的是之后添的——
+ * 弟弟妹妹是一年一年生出来的，不是一出生就摆在那儿。
+ *
+ * ## 为什么非得真的造一个人
+ *
+ * 从前 `family` 那条效果只往认知层写一句话，人口册上根本没有这个人。
+ * 三样东西于是一起坏，而且坏得很安静：
+ *
+ *     人际面板上显示的是 `sibling`　　　　　`callOf` 拿不到称呼，只好回退到内部 id
+ *     「比你小几岁」那句话永远不显示　　　`noteFor` 先查 `personOf`，查不到就返回空串
+ *     家里多了一张嘴，`members` 数不出来　没有关系边，`household` 读不到他
+ *
+ * 说了「家人也是人」，就得真的把他放进册子里。他有姓有名有生年，
+ * 时序一推进他跟着长大，也跟着有可能没了——跟这世上别的人一样。
+ *
+ * @returns 玩家怎么称呼他，以及他是你的什么人
+ */
+export function bearKin(id: string, trade: Trade, home: string): { calls: string; bond: Bond } {
+  const people = usePeopleStore()
+  const gender: Gender = Math.random() < 0.5 ? '男' : '女'
+  const bond: Bond = gender === '女' ? '妹' : '弟'
+
+  people.enroll(
+    makePerson({
+      id,
+      // 弟妹是血亲，跟这一家同姓
+      surname: houseSurname(people),
+      given: gender === '女' ? (pick(FEMALE_GIVEN) ?? '菱儿') : (pick(MALE_GIVEN[trade]) ?? '长根'),
+      gender,
+      // 今年生的。他的年纪从此自己算，不必有谁去维护
+      bornYear: useWorldStore().time.year,
+      trade: '还没成人',
+      temper: rollTemper(),
+      health: randomBetween(40, 85),
+      place: home,
+      // 刚落地的孩子没有往事
+      history: [],
+    }),
+  )
+  people.bind('me', id, bond)
+
+  return { calls: gender === '女' ? '妹妹' : '弟弟', bond }
 }

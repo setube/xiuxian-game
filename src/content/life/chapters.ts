@@ -17,6 +17,7 @@ import { royalEvents, royalScenes } from './royal'
 import { schoolingEvents, schoolingScenes } from './schooling'
 import { seekingEvents, seekingScenes } from './seeking'
 import { tradeEvents, tradeScenes } from './trades'
+import { tutelageEvents, tutelageScenes } from './tutelage'
 import { youthEvents, youthScenes } from './youth'
 
 /**
@@ -291,6 +292,32 @@ export const CHAPTERS: readonly Chapter[] = [
       '走到这一步不发任何东西——他只是第一次站在一个自己完全不了解的世界跟前',
     ],
     marks: ['meeting'],
+  },
+
+  /**
+   * 师承。他为什么愿意教你。
+   *
+   * 接在 `meeting` 后头，可**入口不要求见过任何修士**——
+   * 这一册要说的话就是那个真会教他的人根本不像他要找的那种人，
+   * 他是自己撞进药庐里去的。所以 `meeting` 的 `to` 里没有这一章。
+   *
+   * 四个事件各钉一格 `footing`，关系断了条件自然落空，
+   * 于是「不去了」不需要任何额外的开关。
+   */
+  {
+    id: 'tutelage',
+    scenes: tutelageScenes,
+    events: tutelageEvents,
+    called: ['年表'],
+    to: [],
+    age: [12, 16],
+    purpose: [
+      '「能不能修仙」和「有没有人愿意教你」是两件事——四种人生同时成立，而玩家分不出自己是哪一种',
+      '他挑人那把尺子量的是肯不肯守着，跟修行没有关系；他量得很准，是他把数连错了结论',
+      '师承是一格一格长出来的：不理会→搭话→使唤→带一段→教一点，一次最多挪一格',
+      '走到最后拿到的是五句话——听见、背下、明白、转得动是四件事，而他不知道自己卡在哪一件',
+    ],
+    marks: ['tutelage', 'teaching', 'practice'],
   },
 
   /**

@@ -87,7 +87,7 @@ export const useHouseholdStore = defineStore(
       const list: FamilyMember[] = []
       for (const relation of people.relations) {
         if (relation.from !== 'me' || relation.until !== null) continue
-        if (relation.bond === 'friend' || relation.bond === '仇') continue
+        if (relation.bond === '友' || relation.bond === '仇') continue
         if (seen.has(relation.to)) continue
         seen.add(relation.to)
         list.push({

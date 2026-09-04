@@ -53,6 +53,24 @@ const APTITUDE: Lens = {
   aspect: 'root',
 }
 
+/**
+ * 肯不肯守着。
+ *
+ * 这把尺子要紧在**它量的东西跟修行没有关系**。
+ * 心志七成、身子三成——一个能天天卯时起来劈半个时辰柴的孩子，
+ * 在这把尺子上是高分，而他的 `root` 可能薄得可怜。
+ *
+ * 药庐那位一辈子用这一把。他量得很准，可他把量到的数
+ * 连到了一个错的结论上——「肯守着的人学得会」。
+ * 呼吸法转不转得动看的是 `root` 和 `spirit`，跟肯不肯守着毫无关系。
+ * **他不是看错了数，他是把数和结论连错了。**
+ */
+const PERSEVERANCE: Lens = {
+  id: 'perseverance',
+  weights: { will: 7, body: 3 },
+  aspect: 'body',
+}
+
 // ============================================================
 // 看人的人
 // ============================================================
@@ -261,7 +279,49 @@ export const ELDER: Observer = {
   ],
 }
 
-const ALL: readonly Observer[] = [TEACHER, PHYSICIAN, FIGHTER, ADEPT, MASTER, ELDER]
+/**
+ * 药庐那位。
+ *
+ * 他量得很准——88 的判断力，全作第三高，仅次于长老。
+ * 可他量的是「肯不肯守着」，不是「能不能修行」。
+ *
+ * 他这辈子挑过很多人，挑得都对：他说能守住的，后来确实都守住了。
+ * 所以他很信自己那把尺子。他不知道的是，
+ * **他信的从来不是那把尺子，是他给那把尺子接上的那句结论。**
+ *
+ * 他身上还有一处跟别人不同：他不问「资质」这两个字。
+ * 他甚至不觉得那是个正经问题。
+ */
+export const HERBALIST: Observer = {
+  id: 'herbalist',
+  name: '药庐里那位',
+  readings: [
+    {
+      lens: PERSEVERANCE,
+      acuity: 88,
+      calls: '性子',
+      phrasing: [
+        { atLeast: 78, says: '沉得住。' },
+        { atLeast: 58, says: '还坐得住。' },
+        { atLeast: 38, says: '毛躁了些。' },
+        { atLeast: 0, says: '一刻也待不下。' },
+      ],
+      doubt: '他打量你的时候没有问你的名字，也没问你识不识字。',
+    },
+    {
+      lens: PHYSIQUE,
+      acuity: 71,
+      calls: '手脚',
+      phrasing: [
+        { atLeast: 70, says: '有力气。' },
+        { atLeast: 45, says: '够用。' },
+        { atLeast: 0, says: '拎不动药篓。' },
+      ],
+    },
+  ],
+}
+
+const ALL: readonly Observer[] = [TEACHER, PHYSICIAN, FIGHTER, ADEPT, MASTER, ELDER, HERBALIST]
 
 /** 按 id 取一个看人的人。剧本里写 `{ type: 'observe', observer: 'teacher' }` */
 export function observerById(id: string): Observer | undefined {

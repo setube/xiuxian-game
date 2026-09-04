@@ -4,6 +4,7 @@ import { useHouseholdStore } from '@/stores/household'
 import { usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
 import { observerById } from '@/content/observers'
+import { bearKin } from '@/content/birth'
 import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 
 import { beatLines, spend } from './daily'
@@ -29,6 +30,7 @@ import { currentView, merchantLore, talk, viewWords, willingToday } from './hear
 import { fillString } from './interpolate'
 import { ask } from './inquire'
 import { encounterCultivator } from './meeting'
+import { practise, teach, weighUp } from './tutelage'
 import {
   glance,
   recordEncounter,
@@ -202,9 +204,28 @@ function applyOne(
       if (effect.debt !== undefined) household.shiftDebt(effect.debt)
       return null
     case 'family': {
-      // 家人也是人。这里只是个方便写法，实际落到人口册上
+      /**
+       * 家人也是人——这句话从前只是个说法，人口册上其实没有他。
+       *
+       * 那一行写的是 `people.meet(effect.id, effect.id, 0, effect.note)`：
+       * **把内部 id 当成了玩家嘴里的称呼**。爹娘没露馅，是因为出生那一刻
+       * 就已经 `meet` 过，而 `meet()` 对已认识的人不改称呼；
+       * 头一次出现的人就露了——人际面板上明晃晃写着 `sibling`。
+       *
+       * 现在分两条路：`born` 的先生出一个真人来，其余的照旧只是改动静。
+       */
+      if (effect.born === true && people.personOf(effect.id) === undefined) {
+        const kin = bearKin(effect.id, household.trade, household.home)
+        people.meet(effect.id, effect.calls ?? kin.calls, 0, effect.note)
+      } else if (effect.note !== undefined || effect.calls !== undefined) {
+        people.meet(
+          effect.id,
+          effect.calls ?? people.known[effect.id]?.calls ?? '家里人',
+          0,
+          effect.note,
+        )
+      }
       if (effect.alive === false) people.amend(effect.id, { fate: '殁' })
-      if (effect.note !== undefined) people.meet(effect.id, effect.id, 0, effect.note)
       return null
     }
     case 'person': {
@@ -685,6 +706,33 @@ function applyOne(
        */
       return encounterCultivator(effect.who)?.blocks ?? []
     }
+    case 'tutelage': {
+      /**
+       * 他又把你掂量了一回，决定肯跟你到哪一步。
+       *
+       * **不出回执。** 这一层最要紧的一句话是玩家不知道自己现在站在哪一格——
+       * 弹一枚〔与药庐那位：使唤〕出来，师承就又变回了一根进度条，
+       * 而这一整章要说的正是它不是一根进度条。
+       *
+       * 挪不动的时候连正文都没有：那一天他去了，那个人没理他，
+       * 他回来了。**这也是一种结果**，而且是最常见的那种。
+       */
+      return weighUp(effect.who)?.blocks ?? []
+    }
+    case 'teaching': {
+      /**
+       * 他念了那几句。
+       *
+       * 落进认知层的是**那段话本身**，`interpretation` 写死 `未理解`——
+       * 他听见了，他不懂。走到这一步他没有「获得功法」，
+       * 他只是听了五句话，而其中有一句他这辈子也没想明白。
+       */
+      return teach(effect.who, effect.rite)?.blocks ?? []
+    }
+    case 'practice': {
+      // 一次最多过一关。最常见的结果是什么也没发生，而那不是缺内容
+      return practise(effect.rite)?.blocks ?? []
+    }
     case 'reading': {
       /**
        * 他读到一个机会。
@@ -821,6 +869,9 @@ const PHASE = {
   knock: '事实',
   follow: '事实',
   meeting: '事实',
+  tutelage: '事实',
+  teaching: '事实',
+  practice: '事实',
   glance: '事实',
   encounter: '事实',
   appraise: '事实',
