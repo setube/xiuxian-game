@@ -730,7 +730,15 @@ function applyOne(
       return teach(effect.who, effect.rite)?.blocks ?? []
     }
     case 'practice': {
-      // 一次最多过一关。最常见的结果是什么也没发生，而那不是缺内容
+      /**
+       * 他自己坐了一回。
+       *
+       * 一回打坐同时走两条轴，各最多挪一步。最常见的结果是什么也没发生，
+       * 而那不是缺内容。
+       *
+       * **不出回执，跟 `tutelage` 同一个道理**：弹一枚〔守一：走岔了〕出来，
+       * 这一整章就白写了——它要说的正是这个人分不出自己走的是哪条路。
+       */
       return practise(effect.rite)?.blocks ?? []
     }
     case 'reading': {

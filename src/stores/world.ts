@@ -32,7 +32,14 @@ function birthTime(): GameTime {
   }
 }
 
-function toAbsoluteDays(time: GameTime): number {
+/**
+ * 把一个日子换成「从头数起第几天」。
+ *
+ * 放出来是给 `engine/tutelage.ts` 用的：有些事不看你练了多少回，
+ * 只看从那一天到今天过去了多少日子。**两件事不能用同一个数表示**，
+ * 所以那边不能拿 `tries` 凑合，得真的会算日子。
+ */
+export function toAbsoluteDays(time: GameTime): number {
   return (time.year - 1) * DAYS_PER_YEAR + (time.month - 1) * DAYS_PER_MONTH + (time.day - 1)
 }
 

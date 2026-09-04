@@ -26,10 +26,15 @@
  *     二　两件事　　　资质高低跟「有没有人教」无关。**这一道最容易写成空判据**
  *     三　一次一格　　哪怕第一眼就量到满分，头一回也只到「搭话」
  *     四　硬顶　　　　卡住秦守拙的是他自己的事，不是你不够好
- *     五　四层　　　　听过 ≠ 记住 ≠ 明白 ≠ 转得动，四层都有人停在那儿
- *     六　补不了　　　转得动那一关，练一回和练五十回一模一样
+ *     五　几层　　　　听过 ≠ 记住 ≠ 明白 ≠ 身上有反应，每一层都有人停在那儿
+ *     六　补不了　　　碰着那个地方那一关，练一回和练五十回一模一样
  *     七　看不见　　　「明白」那一关的成败，玩家读到的是同一段话
  *     八　什么也没多　走到最后属性一格没动，也没有谁变成谁的师父
+ *
+ * ## 这一支不验「走岔」
+ *
+ * 教法对不对得上、走没走岔，是下一章的事，单验在 `scripts/mastery.ts`。
+ * 这一支只把它钉住不让它进来搅局——见 `fresh()` 里那一行。
  *
  * ## 判据本身也会说谎，所以每一道都带对照组
  *
@@ -49,9 +54,10 @@ import {
   THE_ONE_ON_THE_PATH,
   type Cultivator,
 } from '../src/content/cultivators'
-import { GRASPS, QUIET_BREATH, type Grasp } from '../src/content/rites'
-import { footingWith, graspOf, practise, teach, weighUp } from '../src/engine/tutelage'
+import { GRASPS, QUIET_BREATH, type Grasp, type Hold } from '../src/content/rites'
+import { footingWith, graspOf, holdOf, practise, teach, weighUp } from '../src/engine/tutelage'
 import { useCharacterStore } from '../src/stores/character'
+import { useHouseholdStore } from '../src/stores/household'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 import { FOOTINGS, type Attributes, type Footing } from '../src/types/game'
@@ -86,8 +92,8 @@ const GIFTED_RESTLESS: Attributes = {
 /**
  * 资质平平，可他坐得住。
  *
- * root 41 / spirit 38 —— `turning` 那一关要 55，`by` 是 root 六成神魂四成，
- * 合起来 39.8。**他这辈子转不动，而这跟他有多用功一点关系也没有。**
+ * root 41 / spirit 38 —— `finding`（碰得着）那一关要 55，`by` 是 root 六成神魂四成，
+ * 合起来 39.8。**他这辈子碰不着那个地方，而这跟他有多用功一点关系也没有。**
  *
  * 而 will 94 / body 86 让药庐那位量到八十几：他看得很准，
  * 这孩子确实沉得住气。他只是把「沉得住」连到了「学得会」上。
@@ -138,12 +144,12 @@ const GIFTED_SEEN: Attributes = {
 /**
  * 又坐得住，根骨也够。第二象限里真的学成了的那一种。
  *
- * 有它才知道「转不动」不是所有人的结局——**没有这一份对照，
- * 「转得动」那一关就可能是一道谁也过不去的死门，而判据分不出来。**
+ * 有它才知道「碰不着」不是所有人的结局——**没有这一份对照，
+ * 「碰得着」那一关就可能是一道谁也过不去的死门，而判据分不出来。**
  */
 const PLAIN_STEADY_ROOTED: Attributes = { ...PLAIN_STEADY, root: 72, spirit: 66 }
 
-/** 记性极差的孩子。四层里「停在听过」那一层要用它 */
+/** 记性极差的孩子。脑子里那条轴上「停在听过」那一格要用它 */
 const FORGETFUL: Attributes = { ...PLAIN_STEADY, memory: 12, insight: 20 }
 
 /**
@@ -164,10 +170,21 @@ const SLOW: Attributes = { ...PLAIN_STEADY, memory: 26, insight: 20 }
  *
  * **先 `useCharacterStore()` 再动别的**：创建那一刻等于出生，
  * 它把 `bornYear` 钉在当时的 `time.year` 上。顺序反了，人就凭空老了几岁。
+ *
+ * ## 那一行 `trade` 是有意钉死的
+ *
+ * 出身本来是随机掷的，而它此刻决定 `handsKnow()`——也就决定这个人
+ * 会不会被陶仲的教法送岔。不钉死的话，同一份属性跑两回可以落在两条路上，
+ * 底下每一道判据都要跟着抖。
+ *
+ * 钉成「药铺」是钉在**不走岔**那一侧：这一支验的是上一章那八件事，
+ * 走岔进来只会把它们搅浑。走岔单验在 `scripts/mastery.ts`，
+ * 那一支反过来把出身当成主要的区分力用。
  */
 function fresh(attributes: Attributes): void {
   setActivePinia(createPinia())
   useCharacterStore().attributes = { ...attributes }
+  useHouseholdStore().trade = '药铺'
 }
 
 /**
@@ -182,27 +199,42 @@ function knockUntil(cultivatorId: string, times: number = KNOCKS): Footing {
   return footingWith(cultivatorId)
 }
 
+/**
+ * 走到底之后他站在哪儿。
+ *
+ * 两条轴各报各的，**不许合成一个数**——脑子里到了哪一层和身上到了哪一步
+ * 之间没有换算关系，合起来就等于又把它们当成一条阶梯了。
+ */
+interface Ending {
+  grasp: Grasp | null
+  hold: Hold
+}
+
 /** 走到底：叩门到他肯教，教了，再自己练到练不动为止 */
-function goAllTheWay(attributes: Attributes, times: number = KNOCKS): Grasp | null {
+function goAllTheWay(attributes: Attributes, times: number = KNOCKS): Ending {
   fresh(attributes)
   knockUntil(THE_ONE_AT_THE_HERB_SHED.id, times)
   teach(THE_ONE_AT_THE_HERB_SHED.id, QUIET_BREATH.id)
-  // 四层最多三关，多练几回是给 helps 那两关留出磨的余地
+  // 认知那条轴最多两关，多练几回是给 helps 那两关留出磨的余地
   for (let i = 0; i < 20; i += 1) practise(QUIET_BREATH.id)
-  return graspOf(QUIET_BREATH.id)
+  return { grasp: graspOf(QUIET_BREATH.id), hold: holdOf(QUIET_BREATH.id) }
 }
 
 /**
- * 临时改一格，跑完还回去。
+ * 临时改一格，跑完还回去，把跑出来的结果带出来。
  *
  * 尺子自检要的就是这个：**把机制存心改坏，判据必须当场红。**
  * 不还回去的话，后面那几道验的就不是真正的内容了。
+ *
+ * 结果由这个函数往外送，而不是让调用处先声明一个变量再在回调里赋值——
+ * 那样写 TypeScript 会把那个变量窄化成初值的字面量类型，
+ * 后面拿它去比对就成了「这两个类型没有重叠」的死比较。
  */
-function borrow<T, K extends keyof T>(target: T, key: K, value: T[K], run: () => void): void {
+function borrow<T, K extends keyof T, R>(target: T, key: K, value: T[K], run: () => R): R {
   const kept = target[key]
   target[key] = value
   try {
-    run()
+    return run()
   } finally {
     target[key] = kept
   }
@@ -258,11 +290,10 @@ console.log('\n=== 尺子自检（存心改坏的必须红）===\n')
  */
 {
   const before = taughtRate(THE_ONE_AT_THE_TEMPLE, GIFTED_SEEN)
-  let after = 0
-  borrow(THE_ONE_AT_THE_TEMPLE.stance, 'ceiling', '教一点' as Footing, () => {
-    // 顶抬起来了，可 steps 里没有那两格台词——挪得动就够了，这里不看正文
-    after = taughtRate(THE_ONE_AT_THE_TEMPLE, GIFTED_SEEN)
-  })
+  // 顶抬起来了，可 steps 里没有那两格台词——挪得动就够了，这里不看正文
+  const after = borrow(THE_ONE_AT_THE_TEMPLE.stance, 'ceiling', '教一点' as Footing, () =>
+    taughtRate(THE_ONE_AT_THE_TEMPLE, GIFTED_SEEN),
+  )
   console.log(`  观里那位　原样 ${before}/${RUNS} 教　把顶抬到「教一点」之后 ${after}/${RUNS} 教`)
   judge(before === 0, '原样：他一世也没教（这是第四道要的结论）')
   judge(after > RUNS * 0.5, '抬了顶就教了——卡住他的确实是那道顶，不是分数')
@@ -271,19 +302,18 @@ console.log('\n=== 尺子自检（存心改坏的必须红）===\n')
 /**
  * 第二把：`helps: 0` 真的是「练多少回都一样」吗。
  *
- * 「转得动那一关练不出来」，在一个门槛高到谁也过不去的实现下同样成立。
- * 所以把 `helps` 临时改成 9——**同一个孩子必须练几回就过**。
- * 改了还过不去，说明挡住他的是门槛不是 `helps`，第六道就白写了。
+ * 「碰不着那个地方」，在一个门槛高到谁也过不去的实现下同样成立。
+ * 所以把 `finding.helps` 临时改成 9——**同一个孩子必须练几回就碰着**。
+ * 改了还碰不着，说明挡住他的是门槛不是 `helps`，第六道就白写了。
  */
 {
   const before = goAllTheWay(PLAIN_STEADY)
-  let after: Grasp | null = null
-  borrow(QUIET_BREATH.turning, 'helps', 9, () => {
-    after = goAllTheWay(PLAIN_STEADY)
-  })
-  console.log(`  资质平平那个　原样练到「${before}」　把 helps 改成 9 之后练到「${after}」`)
-  judge(before === '明白', '原样：他停在「明白」，一辈子转不动')
-  judge(after === '转得动', 'helps 一给就转得动了——挡住他的确实是那个 0')
+  const after = borrow(QUIET_BREATH.finding, 'helps', 9, () => goAllTheWay(PLAIN_STEADY).hold)
+  console.log(
+    `  资质平平那个　原样身上停在「${before.hold}」　把 helps 改成 9 之后停在「${after}」`,
+  )
+  judge(before.hold === '照着做', '原样：他照着做了一辈子，身上什么也没有')
+  judge(after === '摸着了', 'helps 一给就碰着了——挡住他的确实是那个 0')
 }
 
 // ────────────────────────────────────────────────────────────
@@ -338,10 +368,13 @@ console.log('\n=== 一　四种人生同时成立 ===\n')
   console.log('\n  四　资质普通，他看错了，收下了，后来才发现不合适\n')
   const stuck = goAllTheWay(PLAIN_STEADY)
   const made = goAllTheWay(PLAIN_STEADY_ROOTED)
-  console.log(`    他教的那个（root 41）：练到「${stuck}」`)
-  console.log(`    换一个根骨够的（root 72）：练到「${made}」`)
-  judge(stuck === '明白', '他收下的那个孩子，背下来了、也自以为懂了，就是转不动')
-  judge(made === '转得动', '根骨够的能转得动（对照组：那一关不是谁也过不去的死门）')
+  console.log(`    他教的那个（root 41）：想到「${stuck.grasp}」，身上停在「${stuck.hold}」`)
+  console.log(`    换一个根骨够的（root 72）：想到「${made.grasp}」，身上停在「${made.hold}」`)
+  judge(
+    stuck.grasp === '明白' && stuck.hold === '照着做',
+    '他收下的那个孩子，背下来了、也自以为懂了，做得一点不差，就是身上什么也没有',
+  )
+  judge(made.hold === '摸着了', '根骨够的碰得着（对照组：那一关不是谁也过不去的死门）')
   console.log('\n    他挑人挑得对——那孩子确实沉得住气。')
   console.log('    他错在把「沉得住」连到了「学得会」上，而这两件事量的不是同一样东西。')
 }
@@ -493,44 +526,71 @@ console.log('\n=== 四　那道顶是他自己的事 ===\n')
 }
 
 // ────────────────────────────────────────────────────────────
-console.log('\n=== 五　听过 ≠ 记住 ≠ 明白 ≠ 转得动 ===\n')
-console.log('  四份数据，各卡在一层。四层都得有人停在那儿——')
-console.log('  少一层，这四关就是同一关换了三个名字。\n')
+console.log('\n=== 五　听过 ≠ 记住 ≠ 明白 ≠ 身上有反应 ===\n')
+console.log('  四份数据，各卡在一处。每一处都得有人停在那儿——')
+console.log('  少一处，这几关就是同一关换了几个名字。\n')
 
 {
-  const cases: readonly [string, Attributes, Grasp][] = [
-    ['记性极差', FORGETFUL, '听过'],
-    ['背得下来，想不通', { ...PLAIN_STEADY, memory: 88, insight: 14 }, '记住'],
-    ['都懂，就是转不动', { ...PLAIN_STEADY, memory: 88, insight: 90 }, '明白'],
-    ['转得动', PLAIN_STEADY_ROOTED, '转得动'],
+  const cases: readonly [string, Attributes, Grasp, Hold][] = [
+    ['记性极差', FORGETFUL, '听过', '照着做'],
+    ['背得下来，想不通', { ...PLAIN_STEADY, memory: 88, insight: 14 }, '记住', '照着做'],
+    ['都懂，就是碰不着', { ...PLAIN_STEADY, memory: 88, insight: 90 }, '明白', '照着做'],
+    ['碰着了', PLAIN_STEADY_ROOTED, '明白', '摸着了'],
   ]
   const stops = new Set<Grasp>()
-  for (const [label, attributes, expected] of cases) {
+  const rests = new Set<Hold>()
+  for (const [label, attributes, expectedGrasp, expectedHold] of cases) {
     const got = goAllTheWay(attributes)
-    if (got) stops.add(got)
-    console.log(`  ${label.padEnd(12)}练到头停在「${got}」`)
-    judge(got === expected, `　　该停在「${expected}」`)
+    if (got.grasp) stops.add(got.grasp)
+    rests.add(got.hold)
+    console.log(`  ${label.padEnd(16)}想到「${got.grasp}」，身上「${got.hold}」`)
+    judge(
+      got.grasp === expectedGrasp && got.hold === expectedHold,
+      `　　该是「${expectedGrasp}」/「${expectedHold}」`,
+    )
   }
   console.log()
-  judge(stops.size === GRASPS.length, `四层都有人停在那儿：${[...stops].join('、')}`)
+  judge(stops.size === GRASPS.length, `脑子里三层都有人停在那儿：${[...stops].join('、')}`)
+  /**
+   * 第三、第四份数据是这一节的要害。
+   *
+   * 两个人都想到了「明白」——**同一层，身上却不是一回事**。
+   * 少了这一对，「明白」和「碰着了」还可以解释成一条阶梯上的两级；
+   * 有了它，那条阶梯就断在这儿：想通了不会让你碰着，碰着了也不必想通。
+   */
+  judge(rests.size > 1, `而同样想到了「明白」的人，身上分成了几路：${[...rests].join('、')}`)
 
   /**
-   * 三关看的不是同一样东西——静态查一遍。
+   * 几关看的不是同一样东西——静态查一遍。
    *
-   * 三个 `by` 若共用同一批属性，上面那四行仍然可能全绿
-   * （门槛不同也能把人分开），**而那就不是四件事，是一件事的四道刻度**。
+   * 几个 `by` 若共用同一批属性，上面那四行仍然可能全绿
+   * （门槛不同也能把人分开），**而那就不是几件事，是一件事的几道刻度**。
    */
   const keysOf = (gate: { by: Record<string, number | undefined> }): string[] =>
     Object.keys(gate.by)
   const remembering = keysOf(QUIET_BREATH.remembering)
   const grasping = keysOf(QUIET_BREATH.grasping)
-  const turning = keysOf(QUIET_BREATH.turning)
+  const finding = keysOf(QUIET_BREATH.finding)
+  const steadying = keysOf(QUIET_BREATH.steadying)
   console.log(`  背下来看：${remembering.join('、')}`)
   console.log(`  想明白看：${grasping.join('、')}`)
-  console.log(`  转得动看：${turning.join('、')}\n`)
+  console.log(`  碰得着看：${finding.join('、')}`)
+  console.log(`  稳得住看：${steadying.join('、')}\n`)
+  const inTheHead = [...remembering, ...grasping]
   judge(
-    turning.every((key) => !remembering.includes(key) && !grasping.includes(key)),
-    '转得动那一关看的东西，跟前两关一样也不沾',
+    [...finding, ...steadying].every((key) => !inTheHead.includes(key)),
+    '身上那条轴看的东西，跟脑子里那条一样也不沾',
+  )
+  /**
+   * 身上那两关彼此也不许重。
+   *
+   * 「碰得着」看资质，「稳得住」看身子骨和心志。合成同一批属性的话，
+   * **「碰着了却稳不住」这种人生就跑不出来了**——碰得着的人必然稳得住，
+   * 那两格就又成了一格。
+   */
+  judge(
+    finding.every((key) => !steadying.includes(key)),
+    '碰得着和稳得住看的也不是同一样东西',
   )
 }
 
@@ -538,20 +598,20 @@ console.log('  少一层，这四关就是同一关换了三个名字。\n')
 console.log('\n=== 六　有些事努力管用，有些事努力不管用 ===\n')
 
 {
-  /** 练 `times` 回，最后到哪一层 */
-  const after = (attributes: Attributes, times: number): Grasp | null => {
+  /** 练 `times` 回，最后落在哪儿 */
+  const after = (attributes: Attributes, times: number): Ending => {
     fresh(attributes)
     knockUntil(THE_ONE_AT_THE_HERB_SHED.id)
     teach(THE_ONE_AT_THE_HERB_SHED.id, QUIET_BREATH.id)
     for (let i = 0; i < times; i += 1) practise(QUIET_BREATH.id)
-    return graspOf(QUIET_BREATH.id)
+    return { grasp: graspOf(QUIET_BREATH.id), hold: holdOf(QUIET_BREATH.id) }
   }
 
   const rootless = { ...PLAIN_STEADY, memory: 88, insight: 90 }
   const once = after(rootless, 3)
   const forever = after(rootless, 80)
-  console.log(`  根骨不够的那个：练 3 回到「${once}」，练 80 回到「${forever}」`)
-  judge(once === forever, '练一辈子跟练三回，落在同一层')
+  console.log(`  根骨不够的那个：练 3 回身上在「${once.hold}」，练 80 回在「${forever.hold}」`)
+  judge(once.hold === forever.hold, '练一辈子跟练三回，身上落在同一处')
 
   /**
    * 对照组：背书那一关，练得多真的能过。
@@ -564,13 +624,16 @@ console.log('\n=== 六　有些事努力管用，有些事努力不管用 ===\n'
    */
   const slowOnce = after(SLOW, 1)
   const slowLater = after(SLOW, 40)
-  console.log(`  记性差的那个：练 1 回到「${slowOnce}」，练 40 回到「${slowLater}」`)
+  console.log(
+    `  记性差的那个：练 1 回想到「${slowOnce.grasp}」，练 40 回想到「${slowLater.grasp}」`,
+  )
   judge(
-    GRASPS.indexOf(slowLater ?? '听过') > GRASPS.indexOf(slowOnce ?? '听过'),
+    GRASPS.indexOf(slowLater.grasp ?? '听过') > GRASPS.indexOf(slowOnce.grasp ?? '听过'),
     '而背书那一关，笨办法真的磨得过去（对照组：判据不是空的）',
   )
   console.log()
-  console.log(`  转得动那一关 helps=${QUIET_BREATH.turning.helps}，`)
+  console.log(`  碰得着那一关 helps=${QUIET_BREATH.finding.helps}，`)
+  console.log(`  稳得住那一关 helps=${QUIET_BREATH.steadying.helps}，`)
   console.log(`  背下来那一关 helps=${QUIET_BREATH.remembering.helps}，`)
   console.log(`  想明白那一关 helps=${QUIET_BREATH.grasping.helps}。`)
   console.log('  而这个人分不出自己碰上的是哪一种——他只知道自己又练了一夜。')
@@ -589,12 +652,18 @@ console.log('\n=== 七　中间那一层，玩家看不见 ===\n')
    *
    * 一份「所有关口正文都相同」的坏数据能让上一行绿，
    * **而那是内容没写完，不是设计**。
+   *
+   * 「记住」是脑子里那条轴上的，「摸着了」是身上那条轴上的——
+   * 两条轴各取一格，免得这个对照只在其中一条轴上站得住。
    */
-  for (const grasp of ['记住', '转得动'] as const) {
-    const other = QUIET_BREATH.sights[grasp]
+  const others = [
+    ['记住', QUIET_BREATH.sights['记住']],
+    ['摸着了', QUIET_BREATH.holds['摸着了']],
+  ] as const
+  for (const [name, other] of others) {
     judge(
       JSON.stringify(other.passed) !== JSON.stringify(other.failed),
-      `「${grasp}」这一关，过没过是看得出来的（对照组）`,
+      `「${name}」这一格，到没到是看得出来的（对照组）`,
     )
   }
 
@@ -638,6 +707,10 @@ console.log('\n=== 八　走到最后，什么也没多 ===\n')
 
   knockUntil(THE_ONE_AT_THE_HERB_SHED.id)
   teach(THE_ONE_AT_THE_HERB_SHED.id, QUIET_BREATH.id)
+  // 教完那一刻先取一次。往后他会把那五句想通，那一格就跟着改了
+  const justTaught = character.knowledge.find(
+    (one) => one.id === `rite:${QUIET_BREATH.id}`,
+  )?.interpretation
   for (let i = 0; i < 20; i += 1) practise(QUIET_BREATH.id)
 
   const attrSame = (Object.keys(before) as (keyof Attributes)[]).every(
@@ -672,7 +745,20 @@ console.log('\n=== 八　走到最后，什么也没多 ===\n')
   const learned = character.knowledge.find((one) => one.id === `rite:${QUIET_BREATH.id}`)
   judge(learned !== undefined, '他拿到的是一条见闻，不是一件功法')
   judge(learned?.contact === '亲历', `接触档是「${learned?.contact}」——有人当面对他说的`)
-  judge(learned?.interpretation === '未理解', `理解档是「${learned?.interpretation}」`)
+
+  /**
+   * 理解档这一格是会动的，所以得分两次问。
+   *
+   * `teach()` 落下去写的是 `未理解`——**他听见了，他不懂**，这两件事同时成立。
+   * 而这个孩子（悟性 61）练着练着就把那五句想通了，那一格随之改成 `确信`。
+   *
+   * 只问最后那一次的话，这一行会红得莫名其妙；只问头一次的话，
+   * 「他想通了」这件事就没落在任何看得见的地方。**两次都问，才是这一格的全貌。**
+   * 走岔了的人过不了「明白」那一关，于是他那条见闻上一辈子写着 `未理解`——
+   * 那一头由 `scripts/mastery.ts` 第七道守着。
+   */
+  judge(justTaught === '未理解', `他听见那一刻，理解档是「${justTaught}」`)
+  judge(learned?.interpretation === '确信', `想通之后才改口，如今是「${learned?.interpretation}」`)
 
   /**
    * 最不该漏出去的那样东西：他到底过没过。
