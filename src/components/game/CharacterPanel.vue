@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { ASPECTS } from '@/engine/aspects'
 import { describeAge, describeStamp } from '@/engine/describe'
 import { selfSense } from '@/engine/leanings'
+import { noteOf } from '@/engine/note'
 import { useCharacterStore } from '@/stores/character'
 import { useLeaningStore } from '@/stores/leanings'
 import { useHouseholdStore } from '@/stores/household'
@@ -35,15 +36,20 @@ const world = useWorldStore()
  * 写的是玩家知道的，不是世界知道的：知道名字就写名字，
  * 不知道就只写「爹」。一个人的名字是要有人告诉你才知道的——
  * 小孩子未必问过爹叫什么。
+ *
+ * 拼那一句话的活儿在 `engine/note.ts`，跟人际面板同一支。
  */
 function kinLine(id: string): string {
   const person = people.personOf(id)
-  if (!person) return ''
-  if (person.fate === '殁') return '不在了。'
-  if (person.fate === '杳') return '没有消息。'
   const acquaintance = people.known[id]
-  const called = acquaintance?.knowsName ? `${person.surname}${person.given}，` : ''
-  return `${called}${people.ageOf(id)}岁。${person.doing}`
+  return noteOf({
+    person,
+    age: people.ageOf(id),
+    name: acquaintance?.knowsName && person ? `${person.surname}${person.given}` : undefined,
+    vanished: '没有消息。',
+    // 这一栏本来就只列自家人，所以落回家里的营生在这儿是无条件的
+    fallback: household.livelihood,
+  })
 }
 
 const leaning = useLeaningStore()

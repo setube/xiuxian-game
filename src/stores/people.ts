@@ -342,7 +342,7 @@ export function makePerson(input: {
   given: string
   gender: Gender
   bornYear: number
-  doing: string
+  doing?: string
   temper?: Temper
   health?: number
   place: string

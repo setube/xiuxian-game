@@ -163,8 +163,10 @@ export function beBorn(id: OriginId, home: string): Birth {
         bornYear: bornYear - gap,
         // 他做什么营生。收养他的人自带一句（讨饭的、寺中的老僧），
         // 血亲长辈填这家人的**业**——是「务农」不是「农户」，
-        // 因为这一格问的是他在做什么，不是官府认定他家是什么户
-        doing: kin.doing ?? (gap > 15 ? origin.livelihood : '还没成人'),
+        // 因为这一格问的是他在做什么，不是官府认定他家是什么户。
+        // 兄姐弟妹这一格**空着**：小孩子说不上营生，而「还没成人」
+        // 是年龄的另一种说法，它旁边就写着岁数（见 `types/game.ts`）
+        doing: kin.doing ?? (gap > 15 ? origin.livelihood : undefined),
         temper: rollTemper(),
         health: randomBetween(40, 85),
         place: home,
@@ -265,7 +267,9 @@ export function bearKin(id: string, origin: OriginId, home: string): { calls: st
       gender,
       // 今年生的。他的年纪从此自己算，不必有谁去维护
       bornYear: useWorldStore().time.year,
-      doing: '还没成人',
+      // 营生这一格空着。刚落地的孩子说不上做什么，
+      // 而「还没成人」是年龄的另一种说法——年龄自己会算，不必在这儿再说一遍
+      doing: undefined,
       temper: rollTemper(),
       health: randomBetween(40, 85),
       place: home,

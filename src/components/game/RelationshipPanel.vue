@@ -3,6 +3,8 @@ import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
 
 import { usePeopleStore } from '@/stores/people'
+import { useHouseholdStore } from '@/stores/household'
+import { HOUSEHOLD_BONDS, noteOf } from '@/engine/note'
 import type { Bond } from '@/types/game'
 
 /**
@@ -17,6 +19,7 @@ import type { Bond } from '@/types/game'
  * **玩家自己也只是 people 图里的一个节点。**
  */
 const people = usePeopleStore()
+const household = useHouseholdStore()
 const { known } = storeToRefs(people)
 
 interface Entry {
@@ -44,17 +47,22 @@ const entries = computed<Entry[]>(() =>
 /**
  * 他现在怎么样了。
  *
- * 先说下落——人不在了、没消息了，这比什么都要紧；
- * 再说玩家自己记下的印象；最后才是他在做什么。
+ * 拼那一句话的活儿在 `engine/note.ts`——它从前写在这儿，
+ * 于是「面板上最终那一行字」是全套走查唯一够不着的东西，
+ * 「爹 43岁。undefined」就是从这个缝里漏出去的。
  */
 function noteFor(id: string): string {
-  const person = people.personOf(id)
-  if (!person) return ''
-  if (person.fate === '殁') return '不在了。'
-  if (person.fate === '杳') return '再没有消息。'
-  const remembered = known.value[id]?.note
-  if (remembered) return remembered
-  return `${people.ageOf(id)}岁。${person.doing}`
+  const bonds = people.bondsWith(id)
+  return noteOf({
+    person: people.personOf(id),
+    remembered: known.value[id]?.note,
+    age: people.ageOf(id),
+    vanished: '再没有消息。',
+    // 只有同一个家里过活的人才落回家业。先生、商旅、掌柜不做你家的营生
+    fallback: bonds.some((bond) => HOUSEHOLD_BONDS.includes(bond))
+      ? household.livelihood
+      : undefined,
+  })
 }
 </script>
 
