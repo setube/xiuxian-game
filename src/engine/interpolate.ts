@@ -25,6 +25,13 @@ import { isNearby } from './nearby'
  * 生在京城的皇室，`{province}` 与 `{prefecture}` 指的是他日后被贬去的府。
  * 在旨意下来之前，那两个字不该出现在他的正文里。
  *
+ * `{livelihood}` 是**这一家靠什么过活**（务农、经商、走镖），
+ * 上一版这个记号叫 `{trade}`，换出来的是那个混装的行当词——
+ * 于是「你家在临江府 · 柳溪村，客栈。」这种句子读着别扭，
+ * 因为「客栈」是那家的铺面，不是那家在做什么。
+ * 出身另外四格没有各自的记号，理由是**它们没有一句正文要念出口**：
+ * 籍是官府册子上的事，家世是别人怎么看你，都不该由旁白报出来。
+ *
  * `{elder}` 与 `{elders}` 是另一类：它们问的不是家世，是**关系网**。
  * 详见下面两个函数——那是「不能假定每个人都有爹娘」在正文层的落点。
  *
@@ -42,7 +49,7 @@ import { isNearby } from './nearby'
  * 而「此刻在不在行礼」根本不是一种状态，它是一句话的属性。
  */
 const TOKENS =
-  /\{(name|home|province|prefecture|here|trade|elder|elders|dam|chore|putsAway|title)\}/g
+  /\{(name|home|province|prefecture|here|livelihood|elder|elders|dam|chore|putsAway|title)\}/g
 
 /**
  * 挑一个还在身边的关系人，按给定的优先次序。
@@ -190,7 +197,7 @@ export function fillString(text: string, manner: Manner = '家常'): string {
     if (token === 'province') return household.province
     if (token === 'prefecture') return household.prefecture
     if (token === 'here') return household.locale
-    return household.trade
+    return household.livelihood
   })
 }
 

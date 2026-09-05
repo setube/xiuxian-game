@@ -21,6 +21,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
+import { originById } from '../src/content/origins'
 import { WORLD_EVENTS } from '../src/content/world-events'
 import { useStory } from '../src/engine/story'
 import { newRegion, tickRegion } from '../src/engine/worldclock'
@@ -28,6 +29,7 @@ import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useNarrativeStore } from '../src/stores/narrative'
 import { useWorldStore } from '../src/stores/world'
+import type { OriginId } from '../src/types/game'
 
 // —— 一、单独让一个府跑一百年，看世界自己会不会出事 ——
 console.log('\n=== 让一个府自己跑一百年 ===\n')
@@ -65,10 +67,21 @@ console.log('\n=== 让一个府自己跑一百年 ===\n')
 const RUNS = 300
 
 interface Life {
-  trade: string
+  origin: OriginId
   standing: number
   branch: string
   outcome: string
+}
+
+/**
+ * 这一行出身在这张表上怎么称呼。
+ *
+ * 主键在前，因为 `manor` 和 `court` 五格一字不差，只有主键分得开；
+ * 后面那个词现取出身表的产或业，**不在这儿另抄一份对照表**。
+ */
+function nameOf(id: OriginId): string {
+  const row = originById(id)
+  return `${id.padEnd(7)}${row.business ?? row.livelihood}`
 }
 
 const hit: Life[] = []
@@ -116,7 +129,7 @@ for (let i = 0; i < RUNS; i += 1) {
   else if (branch === '有得选') outcome = '送去做工'
 
   hit.push({
-    trade: household.trade,
+    origin: household.origin,
     standing: household.standing,
     branch,
     outcome,
@@ -137,11 +150,12 @@ console.log(`  一辈子撞上过米贵的：${hit.length}（${pct(hit.length)}�
 console.log(`\n=== 验收：同一场旱灾，长出了几种人生 ===\n`)
 const byBranch: Record<string, number> = {}
 const byOutcome: Record<string, number> = {}
-const byTrade: Record<string, Record<string, number>> = {}
+const byOrigin: Record<string, Record<string, number>> = {}
 for (const life of hit) {
   byBranch[life.branch] = (byBranch[life.branch] ?? 0) + 1
   if (life.outcome) byOutcome[life.outcome] = (byOutcome[life.outcome] ?? 0) + 1
-  ;(byTrade[life.trade] ??= {})[life.branch] = (byTrade[life.trade]?.[life.branch] ?? 0) + 1
+  const key = nameOf(life.origin)
+  ;(byOrigin[key] ??= {})[life.branch] = (byOrigin[key]?.[life.branch] ?? 0) + 1
 }
 
 console.log('  同一个「米价涨了」，落在不同的家里：')
@@ -157,7 +171,7 @@ if (Object.keys(byOutcome).length > 0) {
 }
 
 console.log('\n  按出身看（同一场旱灾，不同人家）：')
-for (const [trade, branches] of Object.entries(byTrade).sort(
+for (const [who, branches] of Object.entries(byOrigin).sort(
   (a, b) =>
     Object.values(b[1]).reduce((s, n) => s + n, 0) - Object.values(a[1]).reduce((s, n) => s + n, 0),
 )) {
@@ -165,7 +179,7 @@ for (const [trade, branches] of Object.entries(byTrade).sort(
     .sort((a, b) => b[1] - a[1])
     .map(([branch, n]) => `${branch} ${n}`)
     .join('　')
-  console.log(`    ${trade}  ${parts}`)
+  console.log(`    ${who}  ${parts}`)
 }
 
 const shapes = Object.keys(byBranch).length

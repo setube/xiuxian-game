@@ -250,9 +250,9 @@ export const dearthScenes: SceneLibrary = {
         ],
         blocks: [],
         branches: [
-          { requires: [{ trade: '镖局' }], next: 'escort' },
-          { requires: [{ trade: '客栈' }], next: 'inn' },
-          { requires: [{ trade: '商户' }], next: 'shop' },
+          { requires: [{ business: '镖局' }], next: 'escort' },
+          { requires: [{ business: '客栈' }], next: 'inn' },
+          { requires: [{ business: '布庄' }], next: 'shop' },
         ],
         next: 'village',
       },

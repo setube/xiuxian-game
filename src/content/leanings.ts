@@ -193,7 +193,7 @@ export const SPARKS: readonly Spark[] = [
     id: 'born-to-herbs',
     leaning: 'heal',
     weight: 4,
-    requires: [{ trade: '药铺' }],
+    requires: [{ business: '药铺' }],
     once: true,
     text: '你八岁就认得三十味药。别人家的孩子认不得。',
   },

@@ -1,13 +1,23 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import { type Living, livingOfKeeper, livingOfTrade } from '@/content/living'
-import { ORIGINS, SURNAMES, type Origin } from '@/content/origins'
+import { type Living, livingOfKeeper, livingOfOrigin } from '@/content/living'
+import { ORIGINS, SURNAMES, originById, type Origin } from '@/content/origins'
 import { PREFECTURES, type Prefecture } from '@/content/geography'
 import { pick, pickWeighted, randomBetween } from '@/engine/random'
 
 import { usePeopleStore } from './people'
-import type { Attributes, FamilyMember, Gender, NarrativeBlock, Trade } from '@/types/game'
+import type {
+  Attributes,
+  Business,
+  Census,
+  FamilyMember,
+  Gender,
+  Livelihood,
+  NarrativeBlock,
+  OriginId,
+  Station,
+} from '@/types/game'
 
 const STANDING_MIN = 0
 const STANDING_MAX = 100
@@ -50,10 +60,37 @@ function rollPrefecture(): Prefecture {
 export const useHouseholdStore = defineStore(
   'household',
   () => {
-    const origin = rollOrigin()
+    const rolled = rollOrigin()
     const seat = rollPrefecture()
 
-    const trade = ref<Trade>(origin.trade)
+    /**
+     * 出身那五格。**掷出来的是一整行，存下来的是五个各自会变的格子。**
+     *
+     * 分开存不是为了整齐，是因为它们变的时机差得很远。可「时机不同」
+     * 这句话得有出处，所以照眼下真跑出来的样子说：
+     *
+     *     station     旨意那两处写它（除封、削爵）——五格里唯一有写手的
+     *     census      没有任何一处写它，也没有任何一条 requires 读它
+     *     livelihood  没有写手。读它的是攀谈、书摊、正文里的 {livelihood}
+     *     business    没有写手。读它的是药铺那几卷和师承那一处
+     *     origin      掷定就不动，本来也不该有写手
+     *
+     * 削爵那天这一对值劈开：`station` 落到「寻常」，`census` 仍是「宗室」。
+     * **那一刻是这五格分开存的全部现有证据**——上一版共用一个 `trade`，
+     * 那天只能整格换掉，于是「门第没了，玉牒上的名字还在」写不出来。
+     *
+     * 「铺子盘出去 `business` 变 null」「改行去码头扛活 `livelihood` 变」
+     * 这两件事眼下都还没有内容写，格子先空着等第一个使用者，
+     * 不预先造一条效果去填它。
+     *
+     * `origin` 是掷定就不动的那一格：它记的是「这一世从哪一行掷出来的」，
+     * 不是「现在过成什么样」。教养、开场正文、起名用字都从它查。
+     */
+    const origin = ref<OriginId>(rolled.id)
+    const census = ref<Census>(rolled.census)
+    const livelihood = ref<Livelihood>(rolled.livelihood)
+    const business = ref<Business | null>(rolled.business)
+    const station = ref<Station>(rolled.station)
     const gender = ref<Gender>(rollGender())
     /**
      * 州与府。皇室虽然生在京城，这两个仍然照掷——
@@ -62,9 +99,9 @@ export const useHouseholdStore = defineStore(
     const province = ref(seat.province)
     const prefecture = ref(seat.name)
     /** 街巷村名这一级 */
-    const locale = ref(pick(origin.locales) ?? origin.locales[0]!)
+    const locale = ref(pick(rolled.locales) ?? rolled.locales[0]!)
     /** 家不在州府而在京城的（只有皇室），这里存「天启 · 皇城」 */
-    const capital = ref<string | null>(origin.capital ?? null)
+    const capital = ref<string | null>(rolled.capital ?? null)
 
     /** 完整门牌。三段拼出来，不再各处写死「云州 · 临江府」 */
     const home = computed(() =>
@@ -73,7 +110,7 @@ export const useHouseholdStore = defineStore(
         : `${province.value} · ${prefecture.value} · ${locale.value}`,
     )
 
-    const standing = ref(randomBetween(origin.standing.from, origin.standing.to))
+    const standing = ref(randomBetween(rolled.standing.from, rolled.standing.to))
     const debt = ref(0)
     /**
      * 家里还有谁。
@@ -111,18 +148,18 @@ export const useHouseholdStore = defineStore(
     /**
      * 这家人过的是什么日子。
      *
-     * 剧本靠它写生活细节，而不是靠 `trade` 猜——「父亲在檐下修一把锄头」
+     * 剧本靠它写生活细节，而不是靠出身猜——「父亲在檐下修一把锄头」
      * 这种句子从前默认所有人生都来自农户，皇子读到就成了世界事实自相矛盾。
      *
      * ## 解析有先后，而且这个先后是内容逼出来的
      *
      *     先看有没有把你养大的人，那个人过的是什么日子
-     *     ← 没有，才看这个家做什么营生
+     *     ← 没有，才看这家人过的是什么日子
      *
-     * 老乞丐捡去养大的孩子，`trade` 仍然是他生在的那一家（可能是农户），
+     * 老乞丐捡去养大的孩子，籍和业仍然是他生在的那一家的（可能是农户），
      * 可他过的是讨饭的日子——**户籍不是生活**。
      * 反过来，姐姐把你拉扯大的，抚养人身上没有单独的营生，
-     * 于是自然落回这个家的营生，而那正是对的：家还是那个家。
+     * 于是自然落回这个家，而那正是对的：家还是那个家。
      *
      * 这跟 `interpolate.ts` 的 `callByBond(['生父','抚养','生母'])`
      * 是同一条纪律：**先问关系网，再落笔。**
@@ -131,10 +168,10 @@ export const useHouseholdStore = defineStore(
       const people = usePeopleStore()
       for (const id of people.guardians) {
         if (!people.isAlive(id)) continue
-        const keeper = livingOfKeeper(people.personOf(id)?.trade ?? '')
+        const keeper = livingOfKeeper(people.personOf(id)?.doing ?? '')
         if (keeper) return keeper
       }
-      return livingOfTrade(trade.value)
+      return livingOfOrigin(origin.value)
     })
 
     /**
@@ -188,7 +225,11 @@ export const useHouseholdStore = defineStore(
     function reset(): void {
       const next = rollOrigin()
       const nextSeat = rollPrefecture()
-      trade.value = next.trade
+      origin.value = next.id
+      census.value = next.census
+      livelihood.value = next.livelihood
+      business.value = next.business
+      station.value = next.station
       gender.value = rollGender()
       province.value = nextSeat.province
       prefecture.value = nextSeat.name
@@ -199,7 +240,11 @@ export const useHouseholdStore = defineStore(
     }
 
     return {
-      trade,
+      origin,
+      census,
+      livelihood,
+      business,
+      station,
       gender,
       province,
       prefecture,
@@ -224,15 +269,27 @@ export const useHouseholdStore = defineStore(
     // home 是派生值，存了会在恢复时盖掉 computed。存的是拼它的那三段
     persist: {
       key: 'xiuxian:household',
-      pick: ['trade', 'gender', 'province', 'prefecture', 'locale', 'capital', 'standing', 'debt'],
+      pick: [
+        'origin',
+        'census',
+        'livelihood',
+        'business',
+        'station',
+        'gender',
+        'province',
+        'prefecture',
+        'locale',
+        'capital',
+        'standing',
+        'debt',
+      ],
     },
   },
 )
 
 /** 按出身取名。识字人家才用雅字，名字本身就是家世。 */
-export function rollName(trade: Trade): string {
-  const origin = ORIGINS.find((item) => item.trade === trade) ?? ORIGINS[0]!
-  return `${pick(SURNAMES) ?? '沈'}${pick(origin.given) ?? '生'}`
+export function rollName(id: OriginId): string {
+  return `${pick(SURNAMES) ?? '沈'}${pick(originById(id).given) ?? '生'}`
 }
 
 /**
@@ -241,13 +298,11 @@ export function rollName(trade: Trade): string {
  * 不含 root 与 spirit——修行资质与神魂在出生那一刻单独掷，
  * 出身管不着。那是全作唯一一处王府的孩子和农户的孩子完全平等的地方。
  */
-export function originAttributes(trade: Trade): Omit<Attributes, 'root' | 'spirit'> {
-  const origin = ORIGINS.find((item) => item.trade === trade) ?? ORIGINS[0]!
-  return { ...origin.attributes }
+export function originAttributes(id: OriginId): Omit<Attributes, 'root' | 'spirit'> {
+  return { ...originById(id).attributes }
 }
 
 /** 取某一出身的开场正文 */
-export function originOpening(trade: Trade): readonly NarrativeBlock[] {
-  const origin = ORIGINS.find((item) => item.trade === trade) ?? ORIGINS[0]!
-  return origin.opening
+export function originOpening(id: OriginId): readonly NarrativeBlock[] {
+  return originById(id).opening
 }

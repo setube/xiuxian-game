@@ -37,13 +37,15 @@ import { useDiaryStore } from '../src/stores/diary'
 import { useHouseholdStore } from '../src/stores/household'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
-import type { Trade } from '../src/types/game'
+import type { OriginId } from '../src/types/game'
+
+import { beOf } from './origin'
 
 /** 建 store 会把世界时钟推到出生那年，所以府况一律最后设 */
-function fresh(age = 12, trade: Trade = '农户') {
+function fresh(age = 12, origin: OriginId = 'farm') {
   setActivePinia(createPinia())
+  beOf(origin)
   const household = useHouseholdStore()
-  household.trade = trade
   const world = useWorldStore()
   const character = useCharacterStore()
   usePeopleStore()

@@ -412,7 +412,7 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
   /**
    * 一格条件要不要「有人给」，要的话给的是哪一种东西。
    *
-   * `null` 是明确的「这一格不需要来源」——年龄、性别、行当、家境
+   * `null` 是明确的「这一格不需要来源」——年龄、性别、出身、家境
    * 都是人物固有的，世上没有哪一处「产出」它们。
    *
    * ## 为什么登记，而不是像从前那样写两行 if
@@ -445,7 +445,25 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     family: null,
     bond: null,
     region: null,
-    trade: null,
+    /**
+     * 出身那五格。**从前是一格 `trade`，现在是五格，五格都得各自表态。**
+     *
+     * 五个 `null` 看着像是把一行拆成了五行废话，其实这正是拆分在门禁侧
+     * 留下的痕迹：`satisfies` 那句话逼着每一格单独回答「要不要有人给」，
+     * 于是**哪一天某一格开始需要来源，漏的就是那一格**，不会被另外四格
+     * 一起藏在一个笼统的 `trade: null` 底下。
+     *
+     * 眼下五格答的都是「不需要」，而这句话的出处在 `Effect` 那个联合类型里：
+     * 没有任何一种效果写得出籍、业、产、家世。削爵那一节改的是
+     * `identity` / `living` / `home` 三样——**玉牒上的名字不是旨意随手划掉的**。
+     * 真到了要写「一道旨意改籍」那天，改的是这里的 `census` 那一行，
+     * 而那时旁边四行会明明白白地提醒改的人：另外四格没跟着变，是不是漏了。
+     */
+    origin: null,
+    census: null,
+    livelihood: null,
+    business: null,
+    station: null,
     /**
      * 「他过的是哪一种日子」**从前不需要有人给，现在需要了**。
      *
@@ -697,7 +715,7 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
   for (const living of Object.values(LIVINGS)) madeLivings.add(living.id)
   for (const one of CIRCUMSTANCES) {
     for (const kin of one.kin) {
-      const keeper = livingOfKeeper(kin.trade ?? '')
+      const keeper = livingOfKeeper(kin.doing ?? '')
       if (keeper) madeLivings.add(keeper.id)
     }
   }
@@ -963,7 +981,7 @@ console.log('=== 可观测路径验收（人生里真走得到吗）===\n')
     for (const id of Object.keys(people.known)) {
       const person = people.personOf(id)
       note(`${id} 的称呼`, people.callOf(id))
-      note(`${id} 的身份`, person?.trade)
+      note(`${id} 在做什么`, person?.doing)
       note(`${id} 那一句`, people.known[id]?.note)
       for (const bond of people.bondsWith(id)) note(`${id} 的关系`, bond)
     }

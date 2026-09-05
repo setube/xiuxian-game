@@ -7,7 +7,7 @@
  * ## 这一道守的是什么
  *
  * 这一层落地之前，四种出身的孩子管爹一律叫「爹」——`calls` 是境况表里
- * 写死的一个字符串，而境况跟户籍是正交的：境况只管关系网长什么样，
+ * 写死的一个字符串，而境况跟出身是正交的：境况只管关系网长什么样，
  * 管不着这家是种地的还是坐龙椅的。于是童年那一卷会读到这么一句
  * （这是当时实测跑出来的，不是设想）：
  *
@@ -78,7 +78,9 @@ import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
-import type { Bond, Effect, Gender, Manner, SceneNode, Trade } from '../src/types/game'
+import type { Bond, Effect, Gender, Manner, OriginId, SceneNode } from '../src/types/game'
+
+import { beOf } from './origin'
 
 /** 风调雨顺。这一道不查年景，把它按住免得饥荒插进来搅局 */
 const CALM = { rain: 55, harvest: 58, grain: 112, order: 66, plague: 0 }
@@ -148,7 +150,7 @@ function resolve(step: Step): Site | string {
 interface Path {
   id: string
   label: string
-  trade: Trade
+  origin: OriginId
   gender: Gender
   steps: readonly Step[]
 }
@@ -169,7 +171,7 @@ const PATHS: readonly Path[] = [
   {
     id: 'prince',
     label: '皇子：宫墙还没塌',
-    trade: '皇室',
+    origin: 'court',
     gender: '男',
     steps: [
       { scene: 'child:memory', node: 'court' },
@@ -179,7 +181,7 @@ const PATHS: readonly Path[] = [
   {
     id: 'princess',
     label: '公主：宫墙还没塌',
-    trade: '皇室',
+    origin: 'court',
     gender: '女',
     steps: [{ scene: 'child:memory', node: 'court' }],
   },
@@ -192,7 +194,7 @@ const PATHS: readonly Path[] = [
      */
     id: 'fallen',
     label: '削爵迁出，开门走到街上',
-    trade: '皇室',
+    origin: 'court',
     gender: '男',
     steps: [
       { scene: 'royal:fall', node: 'open' },
@@ -205,14 +207,14 @@ const PATHS: readonly Path[] = [
   {
     id: 'heir',
     label: '世子：王府',
-    trade: '王府',
+    origin: 'manor',
     gender: '男',
     steps: [{ scene: 'child:memory', node: 'palace' }],
   },
   {
     id: 'lady',
     label: '郡主：王府',
-    trade: '王府',
+    origin: 'manor',
     gender: '女',
     steps: [],
   },
@@ -229,7 +231,7 @@ const PATHS: readonly Path[] = [
      */
     id: 'demoted',
     label: '削藩：宣旨、搬家、改口，同一个人三个称呼',
-    trade: '王府',
+    origin: 'manor',
     gender: '男',
     steps: [
       { scene: 'royal:demote', node: 'open' },
@@ -240,14 +242,14 @@ const PATHS: readonly Path[] = [
   {
     id: 'office',
     label: '官宦人家的孩子：跟王府学的是同一套话',
-    trade: '官宦',
+    origin: 'office',
     gender: '男',
     steps: [{ scene: 'child:memory', node: 'yamen' }],
   },
   {
     id: 'farm',
     label: '对照：农户的孩子，一个字也不该变',
-    trade: '农户',
+    origin: 'farm',
     gender: '男',
     steps: [{ scene: 'child:memory', node: 'farm' }],
   },
@@ -304,7 +306,7 @@ interface FormalText {
 interface Walked {
   id: string
   label: string
-  trade: Trade
+  origin: OriginId
   gender: Gender
   /** 他学的那套话叫什么。`undefined` = 跟寻常人家没有分别 */
   register: string | undefined
@@ -374,11 +376,11 @@ const KIN_BONDS: readonly Bond[] = [
  * 性别按人生指定，不听天由命：四种封号里有两种是女孩的，
  * 掷出来的话覆盖率每跑一次都不一样。
  */
-function born(trade: Trade, gender: Gender): boolean {
+function born(id: OriginId, gender: Gender): boolean {
   for (let tries = 0; tries < 6000; tries += 1) {
     setActivePinia(createPinia())
     const household = useHouseholdStore()
-    household.trade = trade
+    beOf(id)
     household.gender = gender
     const world = useWorldStore()
     useCharacterStore()
@@ -388,7 +390,7 @@ function born(trade: Trade, gender: Gender): boolean {
 
     const adopted = people.guardians
       .filter((id) => people.isAlive(id))
-      .some((id) => livingOfKeeper(people.personOf(id)?.trade ?? '') !== undefined)
+      .some((id) => livingOfKeeper(people.personOf(id)?.doing ?? '') !== undefined)
     if (adopted) continue
     if (!people.kinOf('生父').some(isNearby)) continue
     if (!people.kinOf('生母').some(isNearby)) continue
@@ -415,7 +417,7 @@ function born(trade: Trade, gender: Gender): boolean {
  * 它得跟「走了几步」分开，否则加一节开场就把那条判据搅了。
  */
 function birthSteps(path: Path): { steps: Step[]; titled: boolean } {
-  const scene = birthSceneId(path.trade)
+  const scene = birthSceneId(path.origin)
   const nodes = lifeScenes[scene]?.nodes
   const node = path.gender === '女' ? 'titled-female' : 'titled-male'
   const titled = nodes?.[node] !== undefined
@@ -425,7 +427,7 @@ function birthSteps(path: Path): { steps: Step[]; titled: boolean } {
 }
 
 function walk(path: Path): Walked | string {
-  if (!born(path.trade, path.gender)) {
+  if (!born(path.origin, path.gender)) {
     return '掷了六千回也没掷出一个爹娘俱在、又没被人捡去养的孩子，判据本身失效了'
   }
   const character = useCharacterStore()
@@ -518,9 +520,9 @@ function walk(path: Path): Walked | string {
   return {
     id: path.id,
     label: path.label,
-    trade: path.trade,
+    origin: path.origin,
     gender: path.gender,
-    register: registerFor(path.trade)?.id,
+    register: registerFor(path.origin)?.id,
     kin: Object.fromEntries(
       KIN_BONDS.map((bond) => [bond, kinCall(bond)]).filter(([, word]) => word !== undefined),
     ),
@@ -561,8 +563,8 @@ function markAt(one: Walked, where: string): Mark | undefined {
  * 这一处，他管爹**该**叫什么——从两张内容表推出来的，一个字没手写。
  *
  * 规则跟 `engine/address.ts` 里的 `kinCall` 是同一条：爵位那张表先查，
- * 查不到落回教养那一层。但两边走的是不同的路——那边从 store 里拿户籍和爵位，
- * 这边拿的是这条人生**指定**的户籍和记号上存的爵位。
+ * 查不到落回教养那一层。但两边走的是不同的路——那边从 store 里拿出身和爵位，
+ * 这边拿的是这条人生**指定**的出身和记号上存的爵位。
  * 于是解析链哪一环读错了格子（读成他此刻过的日子、读错了场合、
  * 见爵位就换词不查表），这个期望值都还是对的，而它落出来的那个字不对。
  *
@@ -571,7 +573,7 @@ function markAt(one: Walked, where: string): Mark | undefined {
 function wantElder(one: Walked, at: Mark): string | undefined {
   const byRank =
     at.fatherRank === undefined ? undefined : rankCallFor(at.fatherRank, '生父', at.manner)
-  return byRank ?? registerFor(one.trade)?.kin.生父
+  return byRank ?? registerFor(one.origin)?.kin.生父
 }
 
 // ============================================================
@@ -582,7 +584,7 @@ function wantElder(one: Walked, at: Mark): string | undefined {
  * 每一格都得对得上那张表，一格也不许兜底。
  *
  * 这不是恒等式：两边确实都从 `REGISTERS` 读，可**左边那个是解析链
- * 一路走下来的结果**——`registerNow()` 读错了户籍，或者读的是他此刻
+ * 一路走下来的结果**——`registerNow()` 读错了出身那一格，或者读的是他此刻
  * 过的日子，左边就落到另一套话上，或者干脆是空的。
  * 削爵那条人生把这件事顶到明面上：它此刻过的是 `market` 的日子。
  */
@@ -590,7 +592,7 @@ function learntTalk(): string[] {
   const wrong: string[] = [...broken]
 
   for (const one of walked.values()) {
-    const register = registerFor(one.trade)
+    const register = registerFor(one.origin)
     if (register === undefined) {
       for (const [bond, word] of Object.entries(one.kin)) {
         wrong.push(`${one.label}：寻常人家不该有专门的一套话，${bond} 却学成了「${word}」`)
@@ -832,7 +834,7 @@ function twoWays(): string[] {
  */
 const HARDCODED: readonly string[] = [
   ...new Set([
-    ...[registerFor('皇室')?.kin.生父, registerFor('皇室')?.kin.生母].filter(
+    ...[registerFor('court')?.kin.生父, registerFor('court')?.kin.生母].filter(
       (word): word is string => word !== undefined,
     ),
     ...RANK_CALLS.filter((one) => one.manner === '家常').map((one) => one.word),
@@ -842,7 +844,7 @@ const HARDCODED: readonly string[] = [
 function inText(): string[] {
   const wrong: string[] = []
 
-  const palace = registerFor('皇室')
+  const palace = registerFor('court')
   if (!palace) return ['库里没有宫里那套话，这一节量不了']
   const damWord = palace.kin.生母
   if (damWord === undefined) return ['宫里那套话里没写管娘叫什么，这一节量不了']
@@ -1087,10 +1089,10 @@ function ruler(): string[] {
 
   // —— 坏实现一：语言环境接到他现在过的日子上 ——
   if (after) {
-    const bad = registerFor(after.livingId as Trade)
+    const bad = registerFor(after.livingId as OriginId)
     if (bad?.id === fallen?.register) {
       wrong.push(
-        `拿他此刻过的日子（${after.livingId}）去查那套话，查出来跟户籍查的是同一套——` +
+        `拿他此刻过的日子（${after.livingId}）去查那套话，查出来跟出身查的是同一套——` +
           '这一世分辨不出解析链读的是哪一格，第三节的结论失效',
       )
     } else {
@@ -1228,17 +1230,14 @@ function ruler(): string[] {
     if (!walkedSites.has(where)) wrong.push(`${where} 的正文里有 {title}，这一支一次也没走到那儿`)
   }
 
-  // —— 户籍那一头也得数：几种人家有专门的一套话，走到几种 ——
-  const special = ORIGINS.map((one) => one.trade).filter(
-    (trade) => registerFor(trade) !== undefined,
-  )
-  const walkedTrades = new Set([...walked.values()].map((one) => one.trade))
+  // —— 出身那一头也得数：几行出身有专门的一套话，走到几行 ——
+  const special = ORIGINS.map((one) => one.id).filter((id) => registerFor(id) !== undefined)
+  const walkedOrigins = new Set([...walked.values()].map((one) => one.origin))
   console.log(
-    `  覆盖率：全库 ${special.length} 种人家有专门的一套话，这一支走到 ${special.filter((t) => walkedTrades.has(t)).length} 种`,
+    `  覆盖率：全库 ${special.length} 种人家有专门的一套话，这一支走到 ${special.filter((id) => walkedOrigins.has(id)).length} 种`,
   )
-  for (const trade of special) {
-    if (!walkedTrades.has(trade))
-      wrong.push(`${trade} 有专门的一套话，可这一支没有一条人生生在那种人家`)
+  for (const id of special) {
+    if (!walkedOrigins.has(id)) wrong.push(`${id} 有专门的一套话，可这一支没有一条人生生在那种人家`)
   }
 
   // —— 覆盖率：爵位那张表一共几格，这一支查中几格 ——

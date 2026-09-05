@@ -6,7 +6,7 @@ import type { Bond, Manner } from '@/types/game'
 /**
  * 他学的是哪一套话。
  *
- * ## 读的是户籍，不是他现在过的日子
+ * ## 读的是他生在哪一行，不是他现在过的日子
  *
  * 这一行是整层里最要紧的一个选择，因为「话改不掉」这条性质
  * 全押在它上面。三个候选，两个是错的：
@@ -17,9 +17,14 @@ import type { Bond, Manner } from '@/types/game'
  * - `character.livings[0]` 更不行。`liveAs` 只在**换**日子那一刻记一笔，
  *   出生那一段根本不在数组里；于是第一条恰恰是他**离开**那地方之后的
  *   那一段。拿它当「他在哪长大」，答案永远是「他后来搬去的地方」。
- * - `household.trade` 是户籍。削爵之后它一格没动（见 `content/living.ts`：
- *   「家里的户籍还是皇室，抚养他的人也还是母妃，可他过的已经不是宫里的日子」）。
+ * - `household.origin` 是他生在哪一行。它掷定就不再动（见 `content/living.ts`：
+ *   「家里的籍还是宗室，抚养他的人也还是母妃，可他过的已经不是宫里的日子」）。
  *   **那正是他长大的那个家。**
+ *
+ * 顺带说一句为什么不是家世那一格（`station`）：削爵那天它从「宗室」
+ * 掉到「寻常」，而一个人的口音不会跟着一道旨意改掉。
+ * 何况教养分得比家世细——宫里学的是「爹爹」，王府学的是「父亲」，
+ * 两家的 `station` 却是同一个值。
  *
  * `scripts/address.ts` 第五节把第一个候选当坏实现喂给同一把尺子：
  * 接上去削爵那一条就会落回寻常人家那套话，判据必须当场红。
@@ -36,11 +41,11 @@ import type { Bond, Manner } from '@/types/game'
  * 就是一个谁也没走进去过的状态机。
  *
  * 什么时候该做：写出第一卷「他被抱进另一种人家」的内容时。
- * 到那时这个函数要改成读一段带年份的教养史，而不是读一格户籍——
+ * 到那时这个函数要改成读一段带年份的教养史，而不是读一格出身——
  * 而它今天读的这一格，正是那段教养史退化到只有一段时的样子。
  */
 export function registerNow(): Register | undefined {
-  return registerFor(useHouseholdStore().trade)
+  return registerFor(useHouseholdStore().origin)
 }
 
 /**

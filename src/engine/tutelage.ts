@@ -495,8 +495,8 @@ function goesAstray(rite: Rite, grasp: Grasp): boolean {
  * 反倒去领一份好处。这一条留着不做，见 `scripts/mastery.ts` 结尾。
  */
 function handsKnow(): boolean {
-  const trade = useHouseholdStore().trade
-  if (trade === '药铺' || trade === '猎户') return true
+  const household = useHouseholdStore()
+  if (household.business === '药铺' || household.livelihood === '打猎') return true
   return useCharacterStore().knows('herb-lore')
 }
 

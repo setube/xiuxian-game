@@ -122,15 +122,17 @@ const DRAWS: readonly Draw[] = [
     id: '常年在山里走',
     says: null,
     delta: 10,
-    holds: () => useHouseholdStore().trade === '猎户',
+    holds: () => useHouseholdStore().livelihood === '打猎',
   },
   {
     id: '认得草木',
     says: null,
     delta: 5,
     holds: () => {
-      const trade = useHouseholdStore().trade
-      return trade === '药铺' || trade === '农户'
+      // 一格问产、一格问业：认得草木的是**开药铺的**和**种地的**，
+      // 而这两件事本来就不在同一格里
+      const household = useHouseholdStore()
+      return household.business === '药铺' || household.livelihood === '务农'
     },
   },
   {

@@ -184,7 +184,7 @@ export const youthScenes: SceneLibrary = {
             label: '哪也不去，把家里的地种好',
             // 得先有地。城里破落下来的人家没有田可回，
             // 这一条对他们整条隐去——他只剩下学手艺和当伙计两条路
-            requires: [{ trade: '农户' }],
+            requires: [{ livelihood: '务农' }],
             echo: '你把自家的活计接了过来。',
             effects: [
               { type: 'time', years: 2 },

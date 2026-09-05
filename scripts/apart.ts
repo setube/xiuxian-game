@@ -62,7 +62,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { BEATS, DOINGS } from '../src/content/days'
 import { lifeScenes } from '../src/content/life'
 import { livingOfKeeper } from '../src/content/living'
-import { ORIGINS } from '../src/content/origins'
+import { originById } from '../src/content/origins'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
 import { fillString } from '../src/engine/interpolate'
@@ -71,7 +71,8 @@ import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
-import type { Bond, Effect, Relation, Trade } from '../src/types/game'
+import type { Bond, Effect, OriginId, Relation } from '../src/types/game'
+import { beOf } from './origin'
 import { effectsOf } from './refs'
 
 /** 风调雨顺。这一道不查年景，把它按住免得饥荒插进来搅局 */
@@ -119,7 +120,7 @@ function resolve(step: Step): Site | string {
 interface Path {
   id: string
   label: string
-  trade: Trade
+  origin: OriginId
   steps: readonly Step[]
 }
 
@@ -143,7 +144,7 @@ const PATHS: readonly Path[] = [
   {
     id: 'edict',
     label: '削爵迁出京城：只有母妃跟着走',
-    trade: '皇室',
+    origin: 'court',
     steps: [
       { scene: 'royal:fall', node: 'edict' },
       { scene: 'royal:fall', node: 'edict', choice: 'street' },
@@ -160,7 +161,7 @@ const PATHS: readonly Path[] = [
      */
     id: 'demote',
     label: '对照 · 削藩：全家一起迁出王府',
-    trade: '王府',
+    origin: 'manor',
     steps: [
       { scene: 'royal:demote', node: 'open' },
       { scene: 'royal:demote', node: 'home' },
@@ -169,7 +170,7 @@ const PATHS: readonly Path[] = [
   {
     id: 'shut',
     label: '对照 · 同样搬了家，可他把门关上了',
-    trade: '皇室',
+    origin: 'court',
     steps: [
       { scene: 'royal:fall', node: 'edict' },
       { scene: 'royal:fall', node: 'edict', choice: 'inside' },
@@ -178,7 +179,7 @@ const PATHS: readonly Path[] = [
   {
     id: 'stay',
     label: '对照 · 墙没塌：一直住在宫里',
-    trade: '皇室',
+    origin: 'court',
     steps: [],
   },
 ]
@@ -280,26 +281,26 @@ function snap(where: string, siblingBond: Bond | null): Snap {
  * - **有一个活着的手足**：第三条真正的挑战对象。没有他，
  *   第三条会被父亲的死免费喂绿。
  */
-function born(trade: Trade): boolean {
+function born(id: OriginId): boolean {
   for (let tries = 0; tries < 20000; tries += 1) {
     setActivePinia(createPinia())
     const household = useHouseholdStore()
-    household.trade = trade
+    beOf(id)
     /**
-     * 出身不止是一个 trade：**皇室的家在皇城，不在州府底下那个村子里。**
-     * 只改 trade 会造出一个「住在杏花坞的皇子」——那种状态系统自己
+     * 出身不止是那五格：**宫里那一家的家在皇城，不在州府底下那个村子里。**
+     * `beOf` 只摆籍业产家世和主键，门牌是它有意不碰的（各支门禁自己要挑
+     * 「京城那一档」和「揭不开锅那一档」）。这里补上门牌那两格——
+     * 少了它会造出一个「住在杏花坞的皇子」，那种状态系统自己
      * 掷不出来，拿它当起点，量到的就不是真实会发生的事。
      *
-     * `province` / `prefecture` 保持默认掷出来的那一对：对皇室来说
+     * `province` / `prefecture` 保持默认掷出来的那一对：对宗室来说
      * 那是他日后被贬去的府，出生时他自己也还不知道有这么个地方。
      * 这几格必须赶在 `usePeopleStore()` 之前设好——家里人是那一刻
      * 才记进册子的，落的地点就是那一刻的家。
      */
-    const origin = ORIGINS.find((one) => one.trade === trade)
-    if (origin) {
-      household.locale = origin.locales[0] ?? household.locale
-      household.capital = origin.capital ?? null
-    }
+    const origin = originById(id)
+    household.locale = origin.locales[0] ?? household.locale
+    household.capital = origin.capital ?? null
     const world = useWorldStore()
     useCharacterStore()
     const people = usePeopleStore()
@@ -308,7 +309,7 @@ function born(trade: Trade): boolean {
 
     const adopted = people.guardians
       .filter((id) => people.isAlive(id))
-      .some((id) => livingOfKeeper(people.personOf(id)?.trade ?? '') !== undefined)
+      .some((id) => livingOfKeeper(people.personOf(id)?.doing ?? '') !== undefined)
     if (adopted) continue
     if (people.kinOf('生父').length === 0) continue
     if (!people.isAlive('mother')) continue
@@ -319,7 +320,7 @@ function born(trade: Trade): boolean {
 }
 
 function walk(path: Path): Walked | string {
-  if (!born(path.trade)) return '掷了两万回也没掷出一个能量东西的起点，判据本身失效了'
+  if (!born(path.origin)) return '掷了两万回也没掷出一个能量东西的起点，判据本身失效了'
   const people = usePeopleStore()
 
   const siblingBond = pickSiblingBond()

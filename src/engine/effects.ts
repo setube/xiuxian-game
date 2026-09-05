@@ -65,7 +65,7 @@ const TEXT_FIELDS = [
   'summary',
   'name',
   'note',
-  'trade',
+  'doing',
   'self',
   'source',
   'doubt',
@@ -252,6 +252,14 @@ function applyOne(
     case 'household':
       if (effect.standing !== undefined) household.shiftStanding(effect.standing)
       if (effect.debt !== undefined) household.shiftDebt(effect.debt)
+      /**
+       * 家世落一档。只有旨意那两处写它，所以这里不做任何校验——
+       * 「从寻常升回宗室」不该被这一行拦住，那是内容的事，不是引擎的事。
+       *
+       * 落下来之后 `census` 一个字不动，是因为压根没人写它：
+       * 这不是这里克制，是那一格至今没有写手（见 `types/game.ts` 那一段）。
+       */
+      if (effect.station !== undefined) household.station = effect.station
       return null
     case 'family': {
       /**
@@ -265,7 +273,7 @@ function applyOne(
        * 现在分两条路：`born` 的先生出一个真人来，其余的照旧只是改动静。
        */
       if (effect.born === true && people.personOf(effect.id) === undefined) {
-        const kin = bearKin(effect.id, household.trade, household.home)
+        const kin = bearKin(effect.id, household.origin, household.home)
         people.meet(effect.id, effect.calls ?? kin.calls, 0, effect.note)
       } else if (effect.note !== undefined || effect.calls !== undefined) {
         people.meet(
@@ -294,7 +302,7 @@ function applyOne(
       // 他去了别处、换了差事、没了——都不是把他删掉，是改他的下落
       people.amend(effect.id, {
         ...(effect.place === undefined ? {} : { place: effect.place }),
-        ...(effect.trade === undefined ? {} : { trade: effect.trade }),
+        ...(effect.doing === undefined ? {} : { doing: effect.doing }),
         ...(effect.fate === undefined ? {} : { fate: effect.fate }),
         ...(effect.health === undefined ? {} : { health: effect.health }),
       })
@@ -320,7 +328,7 @@ function applyOne(
             given: effect.who.given,
             gender: effect.who.gender,
             bornYear: world.time.year - effect.who.age,
-            trade: effect.who.trade,
+            doing: effect.who.doing,
             place: household.home,
           }),
         )

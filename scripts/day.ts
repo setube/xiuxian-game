@@ -29,7 +29,9 @@ import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
-import type { RegionState, Trade } from '../src/types/game'
+import type { OriginId, RegionState } from '../src/types/game'
+
+import { beOf } from './origin'
 
 /**
  * 走查跑多少天。
@@ -64,10 +66,10 @@ function dearth(): RegionState {
  * 头一版把两行写反了，结果旱年和丰年抽的是同一个池，
  * 而输出看上去很正常，只是「地是干的」那一条永远不出现。
  */
-function fresh(age = 12, trade: Trade = '农户', state = calm(), schooled = true) {
+function fresh(age = 12, origin: OriginId = 'farm', state = calm(), schooled = true) {
   setActivePinia(createPinia())
+  beOf(origin)
   const household = useHouseholdStore()
-  household.trade = trade
   const world = useWorldStore()
   const character = useCharacterStore()
   usePeopleStore()
@@ -82,7 +84,7 @@ const TIERS: readonly Tier[] = ['无事', '处境', '见闻', '转折', '大事'
 // —— 一、一天是什么样子 ——
 console.log('\n=== 一个十二岁的孩子，自己安排的一天 ===\n')
 {
-  const { world } = fresh(12, '农户', dearth())
+  const { world } = fresh(12, 'farm', dearth())
   const picks: [Slot, string][] = [
     ['上午', 'work'],
     ['下午', 'town'],
@@ -115,8 +117,8 @@ console.log(`\n=== ${RUNS} 次行动的形状 ===\n`)
   const tally = new Map<Tier, number>()
   for (let i = 0; i < RUNS; i += 1) {
     const state = i % 3 === 0 ? dearth() : calm()
-    const trade = (['农户', '猎户', '商户', '匠户'] as Trade[])[i % 4]!
-    fresh(7 + (i % 10), trade, state, i % 5 !== 0)
+    const origin = (['farm', 'hunt', 'cloth', 'craft'] as OriginId[])[i % 4]!
+    fresh(7 + (i % 10), origin, state, i % 5 !== 0)
     const slot = SLOTS[i % SLOTS.length]!
     const doings = doingsAt(slot)
     const doing = doings[i % doings.length]!
@@ -185,7 +187,7 @@ console.log('\n=== 同一块地，旱年和丰年不是一件事 ===\n')
   ] as [string, RegionState][]) {
     const seen = new Map<string, number>()
     for (let i = 0; i < 200; i += 1) {
-      fresh(12, '农户', state)
+      fresh(12, 'farm', state)
       const beat = spend('上午', 'work')
       if (!beat) continue
       const first = beatLines(beat)[0]!
@@ -208,7 +210,7 @@ console.log('\n=== 能去哪儿，本身就是处境的一部分 ===\n')
     ['没上过学的孩子', false, true],
     ['没有人管的孩子', true, false],
   ] as [string, boolean, boolean][]) {
-    fresh(12, '农户', calm(), schooled)
+    fresh(12, 'farm', calm(), schooled)
     if (!hasElder) {
       /**
        * 把抚养关系整个摘掉。
@@ -249,7 +251,7 @@ console.log('\n=== 去哪儿，决定你可能撞上什么 ===\n')
     const omens = new Map<string, number>()
     let n = 0
     for (let i = 0; i < TRIES; i += 1) {
-      fresh(13, '农户', calm())
+      fresh(13, 'farm', calm())
       const beat = spend('上午', doing)
       if (!beat) continue
       n += 1

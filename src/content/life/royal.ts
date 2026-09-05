@@ -223,7 +223,9 @@ export const royalScenes: SceneLibrary = {
         id: 'edict',
         onEnter: [
           { type: 'time', months: 3 },
-          { type: 'household', standing: -60 },
+          // 封号除了，门第跟着除。`census` 不动——玉牒上那个名字不归旨意管，
+          // 于是从这天起他是「宗室籍的寻常人家」，两格头一回劈开
+          { type: 'household', standing: -60, station: '寻常' },
           { type: 'family', id: 'father', alive: false, note: '大行皇帝。你没有见到最后一面。' },
           { type: 'family', id: 'mother', note: '随你迁出京城。头发白了一半。' },
           { type: 'identity', identity: '庶人' },
@@ -337,7 +339,7 @@ export const royalScenes: SceneLibrary = {
             type: 'meet',
             id: 'baker',
             calls: '街口卖炊饼的',
-            who: { surname: '周', given: '大', gender: '男', age: 44, trade: '炊饼摊' },
+            who: { surname: '周', given: '大', gender: '男', age: 44, doing: '支着个炊饼摊' },
             bond: '友',
             delta: 8,
             note: '头一个不知道你从前是谁的人。他只当你是城南新搬来那家的孩子。',
@@ -425,13 +427,19 @@ export const royalScenes: SceneLibrary = {
        *
        * 搬家和爵位那几笔不在这儿落：旨意念完人还没走，
        * 而「街坊都知道搬来了个从前的王爷」得等他真搬过去。
+       *
+       * 家世那一格反过来，必须落在这儿——门第是被这道旨意本身削掉的，
+       * 不是搬完家才塌的。落了它，十六岁站在渡口的那个人才不再是贵人；
+       * 少了它，`riverman` 那条 `{ station: '宗室' }` 会把他重新认回去。
+       *
+       * **`census` 不跟着落。**爵没了，玉牒上那个名字还在。
        */
       open: {
         id: 'open',
         manner: '礼上',
         onEnter: [
           { type: 'time', months: 4 },
-          { type: 'household', standing: -48 },
+          { type: 'household', standing: -48, station: '寻常' },
           { type: 'identity', identity: '寓公之子' },
           { type: 'flag', key: 'the-fall', value: true },
           { type: 'flag', key: 'demoted', value: true },
@@ -519,7 +527,7 @@ export const royalEvents: readonly LifeEvent[] = [
     // 钦天监的门只开那么一次。撞不撞得上要看运气，进不进去要看你自己
     id: 'royal-observatory',
     window: { from: 9, to: 14 },
-    requires: [{ trade: '皇室' }],
+    requires: [{ origin: 'court' }],
     scene: 'royal:observatory',
     weight: 10,
   },
@@ -538,7 +546,9 @@ export const royalEvents: readonly LifeEvent[] = [
      */
     id: 'royal-fall',
     window: { from: 13, to: 15 },
-    requires: [{ trade: '皇室' }, { flag: { key: 'court-fate', equals: '倾' } }],
+    // 问主键不问家世：这一卷是给**生在宫里的那个人**写的，
+    // 而 `station` 到这一年还可能是「宗室」的人另有一支（王府那一行）
+    requires: [{ origin: 'court' }, { flag: { key: 'court-fate', equals: '倾' } }],
     chain: CHAIN,
     scene: 'royal:fall',
     weight: 200,
@@ -548,7 +558,7 @@ export const royalEvents: readonly LifeEvent[] = [
     // 十六岁那年就以世子的身份站在渡口——那也是一种人生
     id: 'royal-demote',
     window: { from: 12, to: 15 },
-    requires: [{ trade: '王府' }, { flag: { key: 'court-fate', equals: '倾' } }],
+    requires: [{ origin: 'manor' }, { flag: { key: 'court-fate', equals: '倾' } }],
     chain: CHAIN,
     scene: 'royal:demote',
     weight: 200,

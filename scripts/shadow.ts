@@ -117,7 +117,7 @@ function implies(a: Condition, b: Condition): boolean {
     return wide.alive === undefined || wide.alive === narrow.alive
   }
 
-  // knowledge / item / trade / gender / stage / family：一模一样才算
+  // knowledge / item / 出身那五格 / gender / stage / family：一模一样才算
   return same(a[key as keyof Condition], b[key as keyof Condition])
 }
 

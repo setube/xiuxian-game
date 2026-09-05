@@ -17,6 +17,14 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  *
  * 五条路通向的不是同一个答案。有的让你知道「这世上有修士」，
  * 有的只让你知道「有些事不对劲」——而后者其实更常见。
+ *
+ * ## 这里说的「行当」是哪一格
+ *
+ * 前四卷问的是**产**（`business`）——有没有那一处铺面。
+ * 撞见半夜投宿的客人，前提是家里有个客栈可投；
+ * 认不出的那味药材，得先有个药柜摆在那儿。
+ * 只有末一卷问的是**家世**（`station`）：不许记档的案子进不了民宅，
+ * 它要的不是一间铺子，是这家人够得着那份卷宗。
  */
 export const tradeScenes: SceneLibrary = {
   'trade:guest': {
@@ -625,21 +633,21 @@ export const tradeEvents: readonly LifeEvent[] = [
   {
     id: 'trade-guest',
     window: { from: 8, to: 16 },
-    requires: [{ trade: '客栈' }],
+    requires: [{ business: '客栈' }],
     scene: 'trade:guest',
     weight: 10,
   },
   {
     id: 'trade-drunk',
     window: { from: 9, to: 16 },
-    requires: [{ trade: '酒楼' }],
+    requires: [{ business: '酒楼' }],
     scene: 'trade:drunk',
     weight: 10,
   },
   {
     id: 'trade-herb',
     window: { from: 9, to: 16 },
-    requires: [{ trade: '药铺' }],
+    requires: [{ business: '药铺' }],
     scene: 'trade:herb',
     weight: 10,
   },
@@ -647,14 +655,14 @@ export const tradeEvents: readonly LifeEvent[] = [
     // 镖局丢人这件事不是年年有。它得等到孩子大到能听懂那句话
     id: 'trade-road',
     window: { from: 10, to: 16 },
-    requires: [{ trade: '镖局' }],
+    requires: [{ business: '镖局' }],
     scene: 'trade:road',
     weight: 9,
   },
   {
     id: 'trade-archive',
     window: { from: 11, to: 16 },
-    requires: [{ trade: '官宦' }],
+    requires: [{ station: '仕宦' }],
     scene: 'trade:archive',
     weight: 9,
   },

@@ -81,7 +81,7 @@ function blankAspects(): Aspects {
  */
 function rollAttributes(): Attributes {
   const household = useHouseholdStore()
-  const origin = originAttributes(household.trade)
+  const origin = originAttributes(household.origin)
   return {
     ...origin,
     // 记性受出身影响很小，主要是天生的
@@ -176,7 +176,7 @@ export const useCharacterStore = defineStore(
      * 你姓什么取决于生父姓什么；生父都没有的孩子，
      * 姓是收留他的人给的——那也是一条信息。
      */
-    const birth = beBorn(household.trade, household.home)
+    const birth = beBorn(household.origin, household.home)
     const name = ref(birth.name)
     /**
      * 身子骨的底子。它不是 debuff，是人生的形状——
@@ -242,7 +242,7 @@ export const useCharacterStore = defineStore(
      * ## 依赖方向
      *
      * `character → household → people → world`，全单向，这一行不改变它。
-     * character 在 setup 开头就 `useHouseholdStore()` 取过 trade 和 home 了，
+     * character 在 setup 开头就 `useHouseholdStore()` 取过出身和 home 了，
      * 这里只是又读了它一格。
      */
     const living = computed<Living>(() => {
@@ -516,7 +516,7 @@ export const useCharacterStore = defineStore(
      * 从前这里有一句 `usePeopleStore().reset()`，是把次序记在了第三个地方。
      */
     function reset(): void {
-      name.value = beBorn(household.trade, household.home).name
+      name.value = beBorn(household.origin, household.home).name
       constitution.value = rollConstitution()
       identity.value = INITIAL_IDENTITY
       livings.value = []

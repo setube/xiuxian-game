@@ -342,7 +342,7 @@ export function makePerson(input: {
   given: string
   gender: Gender
   bornYear: number
-  trade: string
+  doing: string
   temper?: Temper
   health?: number
   place: string
@@ -354,7 +354,7 @@ export function makePerson(input: {
     given: input.given,
     gender: input.gender,
     bornYear: input.bornYear,
-    trade: input.trade,
+    doing: input.doing,
     temper: input.temper ?? rollTemper(),
     health: input.health ?? randomBetween(40, 80),
     place: input.place,

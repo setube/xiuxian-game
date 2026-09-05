@@ -725,7 +725,7 @@ export const encounterEvents: readonly LifeEvent[] = [
     // 南来北往的人歇脚的地方：铺子、客栈、酒楼。田里的孩子碰不上这一幕
     id: 'omen-merchant-1',
     window: { from: 9, to: 11 },
-    requires: [{ trade: '商户' }],
+    requires: [{ business: '布庄' }],
     scene: 'omen:merchant',
     weight: 8,
   },
@@ -748,14 +748,14 @@ export const encounterEvents: readonly LifeEvent[] = [
     // 掌柜的孩子在柜台后头，跑堂的孩子在灶间，凑到檐下要更大一点
     id: 'omen-merchant-inn',
     window: { from: 10, to: 13 },
-    requires: [{ trade: '客栈' }],
+    requires: [{ business: '客栈' }],
     scene: 'omen:merchant',
     weight: 8,
   },
   {
     id: 'omen-merchant-tavern',
     window: { from: 10, to: 13 },
-    requires: [{ trade: '酒楼' }],
+    requires: [{ business: '酒楼' }],
     scene: 'omen:merchant',
     weight: 8,
   },

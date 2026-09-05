@@ -16,14 +16,14 @@
  * 而且错得比文案严重：数据层说这一世是皇室，内容层写的是农户。
  * 两层各说各的，世界事实自相矛盾。
  *
- * 病根不在那一行字上，在一个更早的假设里：**正文把 `household.trade`
+ * 病根不在那一行字上，在一个更早的假设里：**正文把「这家人靠地吃饭」
  * 当成了默认真相**——默认爹是农民，娘是农妇，家是小院，孩子下地干活。
  * 而这个游戏早就允许父母双亡、长姐拉扯、老乞丐捡去、寺里养大、
- * 官宦、王府、皇室。默认那个农户世界，是从头到尾没人质疑过的旧假设。
+ * 衙门当差、王府、宫里。默认那个农户世界，是从头到尾没人质疑过的旧假设。
  *
  * ## 三道分工
  *
- * 1. **七种人家，同一天。** 农户/猎户/商户/官宦/皇室/寺中孤儿/乞丐收养，
+ * 1. **七种人家，同一天。** 种地/打猎/做买卖/当差/宫里/寺中孤儿/乞丐收养，
  *    各自把「帮家里干活」这一天连同它牵出来的心念一句一句读出来，
  *    检查有没有出现不属于这个家庭的生活事实。这一道必须全绿，没有豁免。
  * 2. **全库对账。** 扫遍所有正文，沿 requires 算出「谁读得到这一句」，
@@ -42,7 +42,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { BEATS, DOINGS } from '../src/content/days'
 import { DAMPERS, LEANINGS, SPARKS } from '../src/content/leanings'
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
-import { ALL_LIVINGS, livingOfKeeper, livingOfTrade } from '../src/content/living'
+import { ALL_LIVINGS, LIVINGS, livingOfKeeper, livingOfOrigin } from '../src/content/living'
 import { CIRCUMSTANCES } from '../src/content/circumstances'
 import { meetsAll } from '../src/engine/conditions'
 import { fillString } from '../src/engine/interpolate'
@@ -50,7 +50,8 @@ import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
-import type { Condition, Effect, SceneNode, Trade } from '../src/types/game'
+import type { Condition, Effect, OriginId, SceneNode } from '../src/types/game'
+import { asksOrigin, beOf, originsUnder } from './origin'
 import { conditionsOf, exitsOf } from './refs'
 
 // ============================================================
@@ -190,45 +191,41 @@ const FACTS: readonly Fact[] = [
 
 const ALL_IDS: readonly string[] = ALL_LIVINGS.map((one) => one.id)
 
-/** 十一种户籍。写死一遍是有意的：`Trade` 加一种，这里对不上就该来改 */
-const TRADES: readonly Trade[] = [
-  '农户',
-  '猎户',
-  '匠户',
-  '商户',
-  '客栈',
-  '酒楼',
-  '药铺',
-  '镖局',
-  '官宦',
-  '王府',
-  '皇室',
-]
-
-/** 户籍带来的那几种日子 */
-const TRADE_IDS: readonly string[] = [...new Set(TRADES.map((trade) => livingOfTrade(trade).id))]
+/**
+ * 出身给得起的那几种日子。
+ *
+ * 从 `LIVINGS` 那张表算，不在这儿手抄一份十一行的名单。那张表是
+ * `Record<OriginId, Living>`——**加一行出身，它不表态就编译不过**，
+ * 于是这里自动跟着走。手抄的那份不会：它会安安静静地少算一种日子，
+ * 而少算的后果是「谁读得到这一句」算窄了，也就是漏报。
+ *
+ * 上一版这里确实是手抄的，抄的是十一个行当名。那时它还说得通——
+ * 户籍是个平的枚举，除了抄没有别的办法。现在出身是一张表，
+ * 表自己知道自己有几行。
+ */
+const FROM_ORIGIN: readonly string[] = [...new Set(Object.values(LIVINGS).map((one) => one.id))]
 
 /**
  * 被人捡去养大之后过的那几种日子。
  *
- * 它们不属于任何一种户籍——**这正是 `trade` 和 `living` 分家的原因**：
- * 老乞丐捡去养大的孩子户籍还是农户，日子是讨饭的。
+ * 它们不属于任何一行出身——**这正是出身和 `living` 分家的原因**：
+ * 老乞丐捡去养大的孩子，家里的籍还是民户、业还是务农，日子是讨饭的。
  *
- * 从境况表里算，不是「全部减去户籍那几种」。那个减法从前是对的，
+ * 从境况表里算，不是「全部减去出身那几种」。那个减法从前是对的，
  * 因为那时候一种日子只有两个来源；`fallen` / `market` 出现之后它就错了——
  * 门第塌了不是「被人捡去养大」，可减法会把它算进来，
  * 于是「问一句谁把你养大的」会连带放行两种出生时不可能有的日子。
  */
-const KEEPER_IDS: readonly string[] = [
+const FROM_KEEPER: readonly string[] = [
   ...new Set(
     CIRCUMSTANCES.flatMap((one) => one.kin)
-      .map((kin) => livingOfKeeper(kin.trade ?? '')?.id)
+      .map((kin) => livingOfKeeper(kin.doing ?? '')?.id)
       .filter((id): id is string => id !== undefined),
   ),
 ]
 
 /** 生下来就在过的日子：出身给的那几种，加上抚养人带来的那几种 */
-const BORN_IDS: readonly string[] = [...new Set([...TRADE_IDS, ...KEEPER_IDS])]
+const BORN_IDS: readonly string[] = [...new Set([...FROM_ORIGIN, ...FROM_KEEPER])]
 
 /**
  * 半路上才有的日子。**出身条件一句也说不出它们。**
@@ -270,10 +267,10 @@ const MIDLIFE_IDS: readonly string[] = ALL_IDS.filter((id) => !BORN_IDS.includes
  */
 function livingsOfCircumstance(one: (typeof CIRCUMSTANCES)[number]): readonly string[] {
   const keeper = one.kin
-    .filter((kin) => kin.bond === '抚养' && kin.trade !== undefined)
-    .map((kin) => livingOfKeeper(kin.trade ?? ''))
+    .filter((kin) => kin.bond === '抚养' && kin.doing !== undefined)
+    .map((kin) => livingOfKeeper(kin.doing ?? ''))
     .find((living) => living !== undefined)
-  return keeper === undefined ? TRADE_IDS : [keeper.id, ...TRADE_IDS]
+  return keeper === undefined ? FROM_ORIGIN : [keeper.id, ...FROM_ORIGIN]
 }
 
 /**
@@ -324,10 +321,10 @@ function livingsUnder(conditions: readonly Condition[] | undefined): Set<string>
     else if (one.living?.hasChore !== undefined) {
       const want = one.living.hasChore
       here = ALL_LIVINGS.filter((living) => (living.chore !== null) === want).map((l) => l.id)
-    } else if (one.trade !== undefined) {
-      // 户籍锁不死日子：被老乞丐捡去养大的农户孩子，trade 还是农户，
+    } else if (asksOrigin(one)) {
+      // 出身锁不死日子：被老乞丐捡去养大的孩子，家里的籍和业一格没动，
       // 过的却是讨饭的日子。所以这里得把三种收养的日子一并放行
-      here = [livingOfTrade(one.trade).id, ...KEEPER_IDS]
+      here = [...originsUnder(one).map((row) => livingOfOrigin(row.id).id), ...FROM_KEEPER]
     } else if (one.bond !== undefined) {
       const kind = one.bond.kind
       const mustLive = one.bond.alive === true
@@ -392,7 +389,7 @@ function linesOf(node: SceneNode): string[] {
 
 interface Fixture {
   label: string
-  trade: Trade
+  origin: OriginId
   /** 指望被什么人养大。空着就是自家大人带 */
   keeper?: string
   /** 该解析出哪一种日子。这一格是给尺子自检用的 */
@@ -402,17 +399,19 @@ interface Fixture {
 /**
  * 用户点名的那七种人家。
  *
- * 前五种走户籍，后两种走抚养——**后两种才是这套东西真正的考题**：
- * 户籍写着农户，日子过的却是讨饭和寺里，正文得听后者的。
+ * 前五种走出身，后两种走抚养——**后两种才是这套东西真正的考题**：
+ * 家里的籍还是民户、业还是务农，日子过的却是讨饭和寺里，正文得听后者的。
+ * 所以后两种的 `origin` 一律写 `farm`：**那正是它们该出的丑**——
+ * 出身那一行一个字没变，而日子整个换了。
  */
 const FIXTURES: readonly Fixture[] = [
-  { label: '农户', trade: '农户', living: 'farm' },
-  { label: '猎户', trade: '猎户', living: 'hunt' },
-  { label: '商户', trade: '商户', living: 'shop' },
-  { label: '官宦', trade: '官宦', living: 'office' },
-  { label: '皇室', trade: '皇室', living: 'palace' },
-  { label: '寺中孤儿', trade: '农户', keeper: '寺中的老僧', living: 'temple' },
-  { label: '乞丐收养', trade: '农户', keeper: '讨饭的', living: 'begging' },
+  { label: '农户', origin: 'farm', living: 'farm' },
+  { label: '猎户', origin: 'hunt', living: 'hunt' },
+  { label: '布庄', origin: 'cloth', living: 'shop' },
+  { label: '当差', origin: 'office', living: 'office' },
+  { label: '宫里', origin: 'court', living: 'palace' },
+  { label: '寺中孤儿', origin: 'farm', keeper: '寺中的老僧', living: 'temple' },
+  { label: '乞丐收养', origin: 'farm', keeper: '讨饭的', living: 'begging' },
 ]
 
 const CALM = { rain: 55, harvest: 58, grain: 112, order: 66, plague: 0 }
@@ -428,7 +427,7 @@ function bear(fixture: Fixture): boolean {
   for (let tries = 0; tries < 6000; tries += 1) {
     setActivePinia(createPinia())
     const household = useHouseholdStore()
-    household.trade = fixture.trade
+    beOf(fixture.origin)
     const world = useWorldStore()
     useCharacterStore()
     const people = usePeopleStore()
@@ -438,8 +437,8 @@ function bear(fixture: Fixture): boolean {
 
     const keepers = people.guardians
       .filter((id) => people.isAlive(id))
-      .map((id) => people.personOf(id)?.trade ?? '')
-      .filter((trade) => livingOfKeeper(trade) !== undefined)
+      .map((id) => people.personOf(id)?.doing ?? '')
+      .filter((doing) => livingOfKeeper(doing) !== undefined)
     const hit =
       fixture.keeper === undefined ? keepers.length === 0 : keepers.includes(fixture.keeper)
     if (hit) return true
@@ -572,14 +571,14 @@ function sameDay(): string[] {
  */
 const KNOWN: readonly string[] = [
   // ────────────────────────────────────────────────
-  // 一、卷上写的是户籍，可户籍锁不死日子
+  // 一、卷上问的是出身，可出身锁不死日子
   //
-  // `{ trade: '农户' }` 这个条件放行的不止农户的日子——**被老乞丐捡去
-  // 养大的农户孩子，户籍还是农户**，于是他也走到了这一节，
+  // `{ origin: 'farm' }` 这个条件放行的不止农户的日子——**被老乞丐捡去
+  // 养大的孩子，家里的籍还是民户、业还是务农**，于是他也走到了这一节，
   // 读到的是「娘把你放在田埂上」。他没有田埂。
   //
   // 销账的办法：这几处分流问的其实一直是「过什么日子」，
-  // 把 `{ trade: 'X' }` 换成 `{ living: { is: '…' } }` 就对了。
+  // 把 `{ origin: 'X' }` 换成 `{ living: { is: '…' } }` 就对了。
   // 那是重写童年卷的活，不在这次审计的范围里。
   // ────────────────────────────────────────────────
   'child:memory:escort · 门槛',
@@ -666,7 +665,7 @@ function livingSetAt(sceneId: string, nodeId: string): string | undefined {
  *
  * 逐节点算，不是逐卷算——这个分别是必须的：`child:memory` 那一卷的入口
  * 对谁都开着，可它底下十个分流节点各自锁着一种出身，
- * 「{dam}把你放在田埂上」只有走 `{ trade: '农户' }` 那条边才读得到。
+ * 「{dam}把你放在田埂上」只有走 `{ origin: 'farm' }` 那条边才读得到。
  * 按卷算会把这十节全判成穿帮，**门禁一旦开始喊狼来了，就没人再听它。**
  *
  * 走法是从每一卷的入口漫开，边上带着条件就在那里收窄一次，
@@ -959,7 +958,7 @@ function ruler(): string[] {
     {
       what: '问一句「你还有爹吗」',
       when: { bond: { kind: '生父', alive: true } },
-      want: TRADE_IDS,
+      want: FROM_ORIGIN,
     },
     {
       what: '问一句「谁把你养大的」',
@@ -970,7 +969,7 @@ function ruler(): string[] {
     {
       what: '问一句「爹还在吗」',
       when: { family: { id: 'father', alive: true } },
-      want: TRADE_IDS,
+      want: FROM_ORIGIN,
     },
     {
       // 这一条是反过来量的：**只有 living 本身问得住 living**。
@@ -990,7 +989,7 @@ function ruler(): string[] {
   // 反过来也要钉一下：一种捡来养的日子都没有的话，上面那圈等于空转
   const keeperKinds = new Set(
     CIRCUMSTANCES.flatMap((one) => livingsOfCircumstance(one)).filter(
-      (id) => !TRADE_IDS.includes(id),
+      (id) => !FROM_ORIGIN.includes(id),
     ),
   )
   if (keeperKinds.size === 0) {
@@ -1043,11 +1042,11 @@ function ruler(): string[] {
    * 没有这一段的话，上面那四行有一种作弊解法能全绿：整卷无脑替换。
    *
    * 两个关键词都不写在这儿：下游换上的是哪种日子，问那一节的 `onEnter`；
-   * 上游该是哪种日子，问户籍表。手抄一份的话，内容改了判据不会红。
+   * 上游该是哪种日子，问出身表。手抄一份的话，内容改了判据不会红。
    */
-  const upstream: readonly { scene: string; node: string; then: string; trade: Trade }[] = [
-    { scene: 'royal:fall', node: 'open', then: 'edict', trade: '皇室' },
-    { scene: 'royal:demote', node: 'open', then: 'home', trade: '王府' },
+  const upstream: readonly { scene: string; node: string; then: string; origin: OriginId }[] = [
+    { scene: 'royal:fall', node: 'open', then: 'edict', origin: 'court' },
+    { scene: 'royal:demote', node: 'open', then: 'home', origin: 'manor' },
   ]
   for (const one of upstream) {
     const key = at(one.scene, one.node)
@@ -1063,14 +1062,14 @@ function ruler(): string[] {
       wrong.push(`${key} 一个读者也算不出来`)
       continue
     }
-    const born = livingOfTrade(one.trade).id
+    const born = livingOfOrigin(one.origin).id
     if (got.has(becomes)) {
       wrong.push(
         `${key} 的读者里混进了 ${becomes}——那是下游 ${one.then} 才换上的日子，变化倒着传到了上游`,
       )
     }
     if (!got.has(born)) {
-      wrong.push(`${key} 的读者里没有 ${born}——事情还没发生，${one.trade}的人反倒读不到自家的卷`)
+      wrong.push(`${key} 的读者里没有 ${born}——事情还没发生，${one.origin} 的人反倒读不到自家的卷`)
     }
   }
 

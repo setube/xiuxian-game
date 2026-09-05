@@ -33,7 +33,9 @@ import { applyEffects } from '../src/engine/effects'
 import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
-import type { KnowledgeEntry, Trade } from '../src/types/game'
+import type { KnowledgeEntry, OriginId } from '../src/types/game'
+
+import { beOf } from './origin'
 
 /**
  * 走查跑多少次。
@@ -49,12 +51,12 @@ import type { KnowledgeEntry, Trade } from '../src/types/game'
  */
 const RUNS = 2000
 
-function fresh(trade: Trade = '农户', literate = true, insight = 45) {
+function fresh(id: OriginId = 'farm', literate = true, insight = 45) {
   setActivePinia(createPinia())
+  beOf(id)
   const household = useHouseholdStore()
   const character = useCharacterStore()
   const world = useWorldStore()
-  household.trade = trade
   character.attributes = { ...character.attributes, insight }
   if (literate) {
     character.learn({
@@ -84,17 +86,17 @@ let failed = 0
 // —— ① 同一册书，不同的人看出不同的东西 ——
 console.log('\n=== ① 三个人站在同一个摊子前，看见的是三册不同的书 ===\n')
 {
-  const CASES: [string, Trade, boolean, number][] = [
-    ['药铺的孩子', '药铺', true, 45],
-    ['商户的孩子', '商户', true, 45],
-    ['农家的孩子（认字）', '农户', true, 45],
-    ['农家的孩子（不认字）', '农户', false, 45],
-    ['心思很细的孩子', '农户', true, 68],
+  const CASES: [string, OriginId, boolean, number][] = [
+    ['药铺的孩子', 'herb', true, 45],
+    ['布庄的孩子', 'cloth', true, 45],
+    ['农家的孩子（认字）', 'farm', true, 45],
+    ['农家的孩子（不认字）', 'farm', false, 45],
+    ['心思很细的孩子', 'farm', true, 68],
   ]
-  for (const [label, trade, literate, insight] of CASES) {
+  for (const [label, id, literate, insight] of CASES) {
     const tally = new Map<BookReading, number>()
     for (let i = 0; i < 200; i += 1) {
-      fresh(trade, literate, insight)
+      fresh(id, literate, insight)
       const seen = appraise('符书')
       tally.set(seen.reading, (tally.get(seen.reading) ?? 0) + 1)
     }
@@ -103,7 +105,7 @@ console.log('\n=== ① 三个人站在同一个摊子前，看见的是三册不
       .map(([reading, n]) => `${reading} ${Math.round((n / 200) * 100)}%`)
     console.log(`  ${label.padEnd(20)} ${parts.join('　')}`)
   }
-  console.log('\n  同一册符书：药铺的孩子看见方子，商户的孩子看见账，不认字的只看见纸。')
+  console.log('\n  同一册符书：药铺的孩子看见方子，布庄的孩子看见账，不认字的只看见纸。')
 }
 
 // —— ② reading 可以是错的 ——
@@ -115,7 +117,7 @@ console.log('\n=== ② 判断可以是错的，而且当场不揭晓 ===\n')
   for (const truth of TRUTHS) {
     let wrong = 0
     for (let i = 0; i < 200; i += 1) {
-      fresh('农户', true, 45)
+      fresh('farm', true, 45)
       if (appraise(truth).mistaken) wrong += 1
     }
     const rate = (wrong / 200) * 100
@@ -172,12 +174,12 @@ console.log('\n=== ④ 同一册书，四种人生，四种认知历史 ===\n')
   function live(
     label: string,
     truth: BookTruth,
-    trade: Trade,
+    id: OriginId,
     wants: BookReading,
     acts: readonly ('买' | '问' | '守' | '走')[],
     reachFerry: boolean,
   ): void {
-    const { character, world } = fresh(trade, true, 45)
+    const { character, world } = fresh(id, true, 45)
     world.setFlag('pedlar-book', truth)
     let seen = appraise(truth)
     for (let i = 0; i < 400 && seen.reading !== wants; i += 1) seen = appraise(truth)
@@ -215,17 +217,17 @@ console.log('\n=== ④ 同一册书，四种人生，四种认知历史 ===\n')
     console.log()
   }
 
-  live('A　误读 → 买下 → 揣着 → 十六岁被点破', '符书', '农户', '值钱的', ['买', '守'], true)
+  live('A　误读 → 买下 → 揣着 → 十六岁被点破', '符书', 'farm', '值钱的', ['买', '守'], true)
   live(
     'B　读对方向 → 问 → 买下 → 揣着，没走到渡口',
     '残卷',
-    '农户',
+    'farm',
     '古怪的字',
     ['问', '买', '守'],
     false,
   )
-  live('C　没在意，走开了', '残卷', '农户', '古怪的字', ['走'], false)
-  live('D　误读成账册 → 去问 → 问出了别的东西', '符书', '客栈', '账册', ['问', '买', '守'], false)
+  live('C　没在意，走开了', '残卷', 'farm', '古怪的字', ['走'], false)
+  live('D　误读成账册 → 去问 → 问出了别的东西', '符书', 'inn', '账册', ['问', '买', '守'], false)
 }
 
 // —— 认知历史真的不一样吗 ——
@@ -237,8 +239,8 @@ console.log('=== 同一册书能长出多少种认知历史 ===\n')
   let held = 0
 
   for (let i = 0; i < RUNS; i += 1) {
-    const trade = (['农户', '商户', '药铺', '客栈', '官宦'] as Trade[])[i % 5]!
-    const { character, world } = fresh(trade, i % 7 !== 0, 40 + (i % 30))
+    const id = (['farm', 'cloth', 'herb', 'inn', 'office'] as OriginId[])[i % 5]!
+    const { character, world } = fresh(id, i % 7 !== 0, 40 + (i % 30))
     const truth = rollBookTruth()
     world.setFlag('pedlar-book', truth)
     const seen = appraise(truth)

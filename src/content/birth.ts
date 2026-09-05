@@ -1,4 +1,4 @@
-import { ORIGINS, SURNAMES } from '@/content/origins'
+import { SURNAMES, originById } from '@/content/origins'
 import {
   type Circumstance,
   keeperName,
@@ -8,7 +8,7 @@ import {
 import { pick, randomBetween } from '@/engine/random'
 import { makePerson, rollTemper, usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
-import type { Bond, Chapter, Gender, Trade } from '@/types/game'
+import type { Bond, Chapter, Gender, OriginId } from '@/types/game'
 
 /**
  * 出生。
@@ -42,18 +42,18 @@ const FEMALE_GIVEN = [
 ] as const
 
 /** 男子的名，按出身取字。名字本身就是家世 */
-const MALE_GIVEN: Record<Trade, readonly string[]> = {
-  农户: ['怀山', '大有', '长根', '春发', '守田'],
-  猎户: ['铁山', '虎生', '老岩', '青松', '得胜'],
-  匠户: ['文柏', '守成', '直方', '斧头', '砚生'],
-  商户: ['敬堂', '万金', '瑞丰', '通海', '德昌'],
-  客栈: ['来顺', '迎宾', '安平', '广通', '四海'],
-  酒楼: ['庆丰', '醉山', '满堂', '和鼎', '德茂'],
-  药铺: ['济仁', '和甫', '济安', '慎之', '存德'],
-  镖局: ['震山', '威远', '镇江', '雄飞', '定邦'],
-  官宦: ['文渊', '希圣', '承宗', '维桢', '敬修'],
-  王府: ['载德', '崇礼', '守正', '恪勤', '慎行'],
-  皇室: ['明煦', '承乾', '昭宁', '景元', '嘉佑'],
+const MALE_GIVEN: Record<OriginId, readonly string[]> = {
+  farm: ['怀山', '大有', '长根', '春发', '守田'],
+  hunt: ['铁山', '虎生', '老岩', '青松', '得胜'],
+  craft: ['文柏', '守成', '直方', '斧头', '砚生'],
+  cloth: ['敬堂', '万金', '瑞丰', '通海', '德昌'],
+  inn: ['来顺', '迎宾', '安平', '广通', '四海'],
+  tavern: ['庆丰', '醉山', '满堂', '和鼎', '德茂'],
+  herb: ['济仁', '和甫', '济安', '慎之', '存德'],
+  escort: ['震山', '威远', '镇江', '雄飞', '定邦'],
+  office: ['文渊', '希圣', '承宗', '维桢', '敬修'],
+  manor: ['载德', '崇礼', '守正', '恪勤', '慎行'],
+  court: ['明煦', '承乾', '昭宁', '景元', '嘉佑'],
 }
 
 /**
@@ -119,12 +119,12 @@ export interface Birth {
  * 你姓什么取决于生父姓什么；生父都没有的孩子，
  * 姓是收留他的人给的，或者干脆是庙里排的——那也是一条信息。
  */
-export function beBorn(trade: Trade, home: string): Birth {
+export function beBorn(id: OriginId, home: string): Birth {
   const people = usePeopleStore()
   // 先把世界推到玩家出生那一年。他睁开眼时这个府是什么光景，
   // 是前面十几年一年一年变成的——那些年跟他没有关系，但确实发生过
   useWorldStore().seedHistory()
-  const origin = ORIGINS.find((item) => item.trade === trade) ?? ORIGINS[0]!
+  const origin = originById(id)
   const circumstance = rollCircumstance()
   // 爹娘生在玩家出生之前多少年——按世界纪年算，不是按玩家的年龄算
   const bornYear = useWorldStore().time.year
@@ -157,11 +157,14 @@ export function beBorn(trade: Trade, home: string): Birth {
           gender === '女'
             ? (pick(FEMALE_GIVEN) ?? '清荷')
             : isBlood
-              ? (pick(MALE_GIVEN[trade]) ?? '怀山')
+              ? (pick(MALE_GIVEN[id]) ?? '怀山')
               : stranger.given,
         gender,
         bornYear: bornYear - gap,
-        trade: kin.trade ?? (gap > 15 ? origin.trade : '还没成人'),
+        // 他做什么营生。收养他的人自带一句（讨饭的、寺中的老僧），
+        // 血亲长辈填这家人的**业**——是「务农」不是「农户」，
+        // 因为这一格问的是他在做什么，不是官府认定他家是什么户
+        doing: kin.doing ?? (gap > 15 ? origin.livelihood : '还没成人'),
         temper: rollTemper(),
         health: randomBetween(40, 85),
         place: home,
@@ -235,7 +238,7 @@ function houseSurname(people: ReturnType<typeof usePeopleStore>): string {
  *
  * @returns 玩家怎么称呼他，以及他是你的什么人
  */
-export function bearKin(id: string, trade: Trade, home: string): { calls: string; bond: Bond } {
+export function bearKin(id: string, origin: OriginId, home: string): { calls: string; bond: Bond } {
   const people = usePeopleStore()
   const gender: Gender = Math.random() < 0.5 ? '男' : '女'
   const bond: Bond = gender === '女' ? '妹' : '弟'
@@ -245,11 +248,12 @@ export function bearKin(id: string, trade: Trade, home: string): { calls: string
       id,
       // 弟妹是血亲，跟这一家同姓
       surname: houseSurname(people),
-      given: gender === '女' ? (pick(FEMALE_GIVEN) ?? '菱儿') : (pick(MALE_GIVEN[trade]) ?? '长根'),
+      given:
+        gender === '女' ? (pick(FEMALE_GIVEN) ?? '菱儿') : (pick(MALE_GIVEN[origin]) ?? '长根'),
       gender,
       // 今年生的。他的年纪从此自己算，不必有谁去维护
       bornYear: useWorldStore().time.year,
-      trade: '还没成人',
+      doing: '还没成人',
       temper: rollTemper(),
       health: randomBetween(40, 85),
       place: home,

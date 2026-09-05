@@ -54,7 +54,7 @@ export const WISHES: readonly Wish[] = [
       {
         leaning: 'heal',
         weight: 8,
-        requires: [{ trade: '药铺' }],
+        requires: [{ business: '药铺' }],
         text: '柜台后头那些抽屉，你从前只当是家里的营生。',
       },
       {

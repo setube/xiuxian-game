@@ -45,8 +45,16 @@ export interface Kin {
   older: number
   /** 一开始就不在了。这个人存在过，只是玩家没见过 */
   goneAtBirth?: boolean
-  /** 他做什么营生。留空就跟着家里的行当走 */
-  trade?: string
+  /**
+   * 他做什么营生。留空就跟着这家人的**业**走。
+   *
+   * 填了的这三个（讨饭的、寺中的老僧、逃难路上的人）不只是一句显示文字：
+   * `living.ts` 拿它们当键查「这个人过的是什么日子」，
+   * 而那一查会盖过这个家——**你生在哪一家已经不重要了，
+   * 你过的是把你养大的那个人的日子。**所以这里改一个字，
+   * 那边就查不到，静默落回这个家。改动前先看 `KEEPER_LIVINGS`。
+   */
+  doing?: string
 }
 
 export interface Circumstance {
@@ -177,7 +185,7 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
     id: 'temple-foundling',
     summary: '生下来就被丢在庙门口，寺里收留了',
     weight: 6,
-    kin: [{ id: 'monk', bond: '抚养', calls: '师父', older: 40, trade: '寺中的老僧' }],
+    kin: [{ id: 'monk', bond: '抚养', calls: '师父', older: 40, doing: '寺中的老僧' }],
     standing: -18,
     flags: ['foundling', 'no-parents', 'in-temple'],
   },
@@ -185,7 +193,7 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
     id: 'beggar-foundling',
     summary: '幼年被遗弃，老乞丐把你捡了回去',
     weight: 5,
-    kin: [{ id: 'beggar', bond: '抚养', calls: '老丈', older: 46, trade: '讨饭的' }],
+    kin: [{ id: 'beggar', bond: '抚养', calls: '老丈', older: 46, doing: '讨饭的' }],
     standing: -28,
     flags: ['foundling', 'no-parents', 'begging'],
   },
@@ -200,7 +208,7 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
     id: 'war-separated',
     summary: '战乱中出生，与父母失散，被陌生人带走',
     weight: 4,
-    kin: [{ id: 'keeper', bond: '抚养', calls: '收留你的人', older: 38, trade: '逃难路上的人' }],
+    kin: [{ id: 'keeper', bond: '抚养', calls: '收留你的人', older: 38, doing: '逃难路上的人' }],
     standing: -24,
     flags: ['separated', 'unknown-origin'],
   },

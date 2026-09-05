@@ -22,6 +22,8 @@ import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 import type { RegionState, Topic } from '../src/types/game'
 
+import { beOf } from './origin'
+
 /** 旱灾中段：米铺已经关门，官府还在说限价之内 */
 function droughtWorld(): RegionState {
   return { rain: 26, harvest: 30, grain: 168, order: 36, plague: 0 }
@@ -33,7 +35,7 @@ function setup(age = 12) {
   const world = useWorldStore()
   const character = useCharacterStore()
   const people = usePeopleStore()
-  household.trade = '农户'
+  beOf('farm')
   world.regions = { [household.prefecture]: { state: droughtWorld(), last: {} } }
   world.bornYear = world.time.year - age
   return { household, world, character, people }

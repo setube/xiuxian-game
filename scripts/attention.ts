@@ -9,7 +9,7 @@
  *
  *     insight ≥ 34 || body ≥ 52
  *
- * 十一种出身里只有农户两项都够不着，可童年那些事——下地、跟车、认药——
+ * 十一行出身里只有种地那一行两项都够不着，可童年那些事——下地、跟车、认药——
  * 到十岁之前就把属性推过了线。这一关被童年系统提前替他解决了。
  *
  * ## 可修法不是把那条线抬高
@@ -44,7 +44,8 @@ import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useNarrativeStore } from '../src/stores/narrative'
 import { useWorldStore } from '../src/stores/world'
-import type { Trade } from '../src/types/game'
+
+import { beOf } from './origin'
 
 /**
  * 世数按最稀的那一档定。
@@ -75,8 +76,8 @@ console.log('\n=== 一、可达性：把状态构造出来，三档都出得来�
    * 头一版正是这样，「一个什么也不占的人」那一格印出了「常年在山里走 +10」。
    */
   const plain = (insight: number, body: number): void => {
-    // 匠户：既不常年在山里走，也不认草木。一个中性的出身
-    useHouseholdStore().trade = '匠户' as Trade
+    // 木工那一行：既不常年在山里走，也不认草木。一个中性的出身
+    beOf('craft')
     const character = useCharacterStore()
     character.attributes.insight = insight
     character.attributes.body = body
@@ -104,7 +105,7 @@ console.log('\n=== 一、可达性：把状态构造出来，三档都出得来�
       () => {
         plain(52, 45)
         const world = useWorldStore()
-        useHouseholdStore().trade = '猎户' as Trade
+        beOf('hunt')
         world.setFlag('road-weather', '晴')
         world.setFlag('wounded-outcome', 'lift-hunter')
         world.setFlag('leaning:know', true)
@@ -283,7 +284,7 @@ console.log('\n=== 四、同一个人，不同的一天 ===\n')
     for (let i = 0; i < TRIES; i += 1) {
       setActivePinia(createPinia())
       // 同一个农家孩子。两天里他是同一个人，属性一分不差
-      useHouseholdStore().trade = '农户' as Trade
+      beOf('farm')
       const character = useCharacterStore()
       character.attributes.insight = 38
       character.attributes.body = 44

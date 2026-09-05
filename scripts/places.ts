@@ -11,7 +11,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { PREFECTURES } from '../src/content/geography'
 import { ORIGINS } from '../src/content/origins'
 import { useHouseholdStore } from '../src/stores/household'
-import type { Trade } from '../src/types/game'
+import type { OriginId } from '../src/types/game'
 
 /**
  * 走查跑多少世。
@@ -34,7 +34,7 @@ const RUNS = 6000
 /**
  * 门牌的全集，算出来的，不是抽出来的。
  *
- * 门牌是三段拼的：`州 · 府 · 街巷村名`（皇室例外，家在京城，是 `天启 · 皇城 · 村名`）。
+ * 门牌是三段拼的：`州 · 府 · 街巷村名`（宗室那两行例外，家在京城，是 `天启 · 皇城 · 村名`）。
  * 每种出身有自己的村名池，而每种出身都落得到任何一个府——
  * **那正是底下第二条门禁验的事**——所以全集就是这个笛卡尔积。
  *
@@ -59,7 +59,14 @@ for (const origin of ORIGINS) {
 
 const byPrefecture: Record<string, number> = {}
 const homes = new Set<string>()
-const spread = new Map<Trade, Set<string>>()
+/**
+ * 每一行出身各自落过哪些府。
+ *
+ * 键是**出身主键**，不是那五格里的某一格：王府与宫里五格一字不差，
+ * 拿「宗室」当键的话这两行会并成一格，而底下第二条门禁数的正是
+ * 「每一行落过几个府」——并了格，少落府的那一行就被另一行盖住了。
+ */
+const spread = new Map<OriginId, Set<string>>()
 
 for (let i = 0; i < RUNS; i += 1) {
   setActivePinia(createPinia())
@@ -68,10 +75,10 @@ for (let i = 0; i < RUNS; i += 1) {
   byPrefecture[seat] = (byPrefecture[seat] ?? 0) + 1
   homes.add(household.home)
 
-  let seen = spread.get(household.trade)
+  let seen = spread.get(household.origin)
   if (!seen) {
     seen = new Set()
-    spread.set(household.trade, seen)
+    spread.set(household.origin, seen)
   }
   seen.add(household.prefecture)
 }
@@ -89,11 +96,16 @@ for (const p of PREFECTURES) {
 console.log(`\n  不重样的门牌    抽到 ${homes.size} 种，一共 ${EVERY_HOME.size} 种`)
 console.log(`\n  每种出身落过几个府（共 ${PREFECTURES.length} 个）：`)
 for (const origin of ORIGINS) {
-  const seen = spread.get(origin.trade)
+  const seen = spread.get(origin.id)
   const n = seen ? seen.size : 0
-  // 皇室生在京城，但州府照掷——那是他日后被贬去的地方
+  // 宗室生在京城，但州府照掷——那是他日后被贬去的地方
   const note = origin.capital ? '（家在京城，这是贬所）' : ''
-  console.log(`    ${origin.trade}  ${String(n).padStart(2)} / ${PREFECTURES.length}  ${note}`)
+  // 主键做行首、籍和业做说明：光印 `manor` 看不出那是什么人家，
+  // 光印「宗室 · 食禄」又分不出王府那一行和宫里那一行
+  const what = `${origin.census} · ${origin.livelihood}`
+  console.log(
+    `    ${origin.id.padEnd(7)}${what.padEnd(12)}${String(n).padStart(2)} / ${PREFECTURES.length}  ${note}`,
+  )
 }
 
 /**
@@ -130,14 +142,14 @@ for (const origin of ORIGINS) {
    * （十一种出身摊开，没有哪个府占到三成），
    * 只有这一条量得出「府和出身又绑回去了」。
    *
-   * 门槛照最稀的那一种定：皇室权重 2/205，六千世里五十几个人，
+   * 门槛照最稀的那一行定：生在宫里那一行权重 2/205，六千世里五十几个人，
    * 落满十个府是常态，取一半留足余量。
    */
   const FLOOR = Math.ceil(PREFECTURES.length / 2)
   for (const origin of ORIGINS) {
-    const n = spread.get(origin.trade)?.size ?? 0
+    const n = spread.get(origin.id)?.size ?? 0
     if (n < FLOOR) {
-      console.log(`\n  ✗ ${origin.trade} 只落过 ${n} 个府——府名怕是又跟出身绑死了。`)
+      console.log(`\n  ✗ ${origin.id} 只落过 ${n} 个府——府名怕是又跟出身绑死了。`)
       bad += 1
     }
   }

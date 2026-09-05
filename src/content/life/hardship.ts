@@ -128,7 +128,7 @@ export const hardshipScenes: SceneLibrary = {
            * 是这个人换了个地方谋生。他在那儿老去、生病，
            * 还以为自己的孩子在老家等他。玩家看不见，但世界记得。
            */
-          { type: 'person', id: 'father', place: '邻县 · 河堤工地', trade: '修河堤的工' },
+          { type: 'person', id: 'father', place: '邻县 · 河堤工地', doing: '修河堤的工' },
           { type: 'flag', key: 'father-away', value: true },
           /**
            * 他回不回得来，在他走出村口的那一刻就定了。
@@ -227,7 +227,15 @@ export const hardshipScenes: SceneLibrary = {
         onEnter: [
           { type: 'time', months: 9 },
           { type: 'household', standing: 6, debt: -8 },
-          { type: 'person', id: 'father', place: '{home}', trade: '{trade}，腰不太好', health: 42 },
+          {
+            type: 'person',
+            id: 'father',
+            place: '{home}',
+            // 换出来的是这一家的**业**（务农、经商、走镖），
+            // 不是从前那个混装的行当词——「客栈，腰不太好」不是一句人话
+            doing: '{livelihood}，腰不太好',
+            health: 42,
+          },
           { type: 'flag', key: 'father-home', value: true },
           { type: 'flag', key: 'father-away', value: false },
           { type: 'chronicle', text: '父亲从外地回来了。' },
@@ -438,7 +446,7 @@ export const hardshipScenes: SceneLibrary = {
           { kind: 'divider', variant: 'ink' },
           { kind: 'narration', text: '你没有再去私塾。' },
         ],
-        branches: [{ requires: [{ trade: '农户' }], next: 'to-fields' }],
+        branches: [{ requires: [{ livelihood: '务农' }], next: 'to-fields' }],
         next: 'to-work',
       },
 
@@ -506,7 +514,7 @@ export const hardshipEvents: readonly LifeEvent[] = [
     id: 'debt-drought',
     window: { from: 7, to: 10 },
     requires: [
-      { trade: '农户' },
+      { livelihood: '务农' },
       { bond: { kind: '生父', alive: true } },
       { standing: { atMost: 46 } },
     ],

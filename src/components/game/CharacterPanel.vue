@@ -43,7 +43,7 @@ function kinLine(id: string): string {
   if (person.fate === '杳') return '没有消息。'
   const acquaintance = people.known[id]
   const called = acquaintance?.knowsName ? `${person.surname}${person.given}，` : ''
-  return `${called}${people.ageOf(id)}岁。${person.trade}`
+  return `${called}${people.ageOf(id)}岁。${person.doing}`
 }
 
 const leaning = useLeaningStore()
@@ -70,8 +70,35 @@ const traces = computed(() =>
 )
 
 const { name, age, identity, realm, aspects } = storeToRefs(character)
-const { trade, gender, home, members, outlook } = storeToRefs(household)
+const { livelihood, business, station, gender, home, members, outlook } = storeToRefs(household)
 const { place } = storeToRefs(world)
+
+/**
+ * 家世那一行。
+ *
+ * 从前是一句写死的 `你家在{home}，{trade}。`，而它对两种出身是穿帮的：
+ * 皇室那一世读到的是「你家在天启皇城 · 东宫，皇室。」——
+ * 一个人不会这样介绍自己家。毛病出在那个字段身上：
+ * 十一个值里既有营生又有铺面又有身份，一句模板套不住。
+ *
+ * 现在三格各答各的，而且**先后是有讲究的**：
+ *
+ *     有铺面的　　先说铺面　　　　那是这家人每天待的地方
+ *     宗室　　　　什么也不说　　　宫墙里的人不谈「靠什么过活」
+ *     仕宦　　　　说门第　　　　　「当差」不是这家人的自我认识
+ *     其余　　　　说业　　　　　　靠地、靠山、靠手艺
+ *
+ * 宗室那一档只剩地址，看着短，可那正是实情——**他家不靠任何营生过活**，
+ * 而这件事一旦被削爵那一卷改掉（`station` 落到「寻常」），
+ * 这一行会自己变成「靠……过活」，不必再改一个字。
+ */
+const houseLine = computed(() => {
+  const at = `你家在${home.value}`
+  if (business.value) return `${at}，开着一间${business.value}。`
+  if (station.value === '宗室') return `${at}。`
+  if (station.value === '仕宦') return `${at}，官宦人家。`
+  return `${at}，靠${livelihood.value}过活。`
+})
 
 function selfOf(key: AspectKey, fallback: string): string {
   return aspects.value[key].self ?? fallback
@@ -104,7 +131,7 @@ function isUnknown(key: AspectKey): boolean {
          父亲死在外地那年你十四岁，这件事此后一直在你的人生里 -->
     <section class="household">
       <h3 class="ink-label">家世</h3>
-      <p class="self">你家在{{ home }}，{{ trade }}。</p>
+      <p class="self">{{ houseLine }}</p>
       <p class="self outlook">{{ outlook }}</p>
       <ul class="kin">
         <li

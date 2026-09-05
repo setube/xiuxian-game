@@ -102,7 +102,7 @@ export function encounterCultivator(cultivatorId: string): Meeting | null {
       given: cultivator.given,
       gender: cultivator.gender,
       bornYear: world.time.year - cultivator.bornBefore,
-      trade: '修行',
+      doing: '修行',
       temper: cultivator.temper,
       place: cultivator.place,
     }),

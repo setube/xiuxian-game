@@ -13,21 +13,24 @@
  */
 import { createPinia, setActivePinia } from 'pinia'
 
-import { ORIGINS } from '../src/content/origins'
+import { ORIGINS, originById } from '../src/content/origins'
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
+import { meetsAll } from '../src/engine/conditions'
 import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useNarrativeStore } from '../src/stores/narrative'
 import { useWorldStore } from '../src/stores/world'
-import type { Trade } from '../src/types/game'
+import type { OriginId } from '../src/types/game'
+
+import { beOf } from './origin'
 
 /**
  * 走查跑多少世。
  *
  * ## 这一支印的是一张百分比表，可它真正验得动的只有「在不在」
  *
- * 十一种出身按权重掷，最稀的皇室占 2/205——**一个百分点**。
+ * 十一种出身按权重掷，最稀的那一行（生在宫里）占 2/205——**一个百分点**。
  * 五百世里那是五个人，而这张表要给它算「读过书 %」「走本行 %」
  * 「知修士 %」五个百分比：五个人算出来的百分比，一个人就是二十个点。
  * 一千世翻倍到十个人，那张表照样不该当真——**稀出身那几行是给人看形状的，
@@ -35,7 +38,7 @@ import type { Trade } from '../src/types/game'
  *
  * 一千世的用处在别处：门禁要的是「每种出身都掷到过」和
  * 「每种有专属卷的出身，都有人真的走了本行」。
- * 五百世下皇室期望五个人，两百批里有一批整批落空——那是误报；
+ * 五百世下最稀那一行期望五个人，两百批里有一批整批落空——那是误报；
  * 一千世期望十个，落空率降到两万分之一。
  *
  * 一世要走完一辈子，一千世跑一百六十秒上下。
@@ -53,54 +56,74 @@ interface Row {
 }
 
 /**
- * 每种出身专属的那一卷。撞上它才算「走了自己的路」。
+ * 每一行出身专属的那一卷。撞上它才算「走了自己的路」。
  *
- * ## 商户那一行从前写的是 `event:omen-merchant`，而年表上没有这个 id
+ * ## 键是出身主键，可年表那边认的不是主键
  *
- * 真正的商户入口卷叫 `omen-merchant-1`（九到十一岁，`requires` 商户）。
- * 少了后缀的那个名字**从来不会有任何一世把它设上**，
- * 于是这张表里商户那一格恒为 0%——而它读起来完全不像坏了：
- * 「商户 0%」看上去就像「商户走本行的机会很少」，
+ * 这张表左边写 `cloth`，而 `omen-merchant-1` 的 `requires` 写的是
+ * `{ business: '布庄' }`——**两边根本不是同一个字段**。
+ * 中间那一步「布庄这行的产是布庄」由出身表担着，谁也没在这里写下来。
+ * 所以这张表能错的方式不止「卷名拼错」一种，还有「配错了行」：
+ * 把 `escort` 指向 `trade-guest`，两个名字都存在，跑一千世也只会
+ * 安静地报一个 0%。底下那一步把这两种错一起兜住。
+ *
+ * ## 布庄那一行从前写的是 `event:omen-merchant`，而年表上没有这个 id
+ *
+ * 真正的入口卷叫 `omen-merchant-1`。少了后缀的那个名字
+ * **从来不会有任何一世把它设上**，于是这张表里那一格恒为 0%——
+ * 而它读起来完全不像坏了：「0%」看上去就像「做买卖的人家走本行的机会很少」，
  * 一个说得通的世界设定。
  *
  * 这一支从前没有门禁，所以这个 0% 印了多少遍也没人管。
- * 底下那道「有专属卷的出身都得有人走本行」一开就抓住了它。
  */
-const OWN_EVENT: Partial<Record<Trade, string>> = {
-  客栈: 'event:trade-guest',
-  酒楼: 'event:trade-drunk',
-  药铺: 'event:trade-herb',
-  镖局: 'event:trade-road',
-  官宦: 'event:trade-archive',
-  商户: 'event:omen-merchant-1',
+const OWN_EVENT: Partial<Record<OriginId, string>> = {
+  inn: 'event:trade-guest',
+  tavern: 'event:trade-drunk',
+  herb: 'event:trade-herb',
+  escort: 'event:trade-road',
+  office: 'event:trade-archive',
+  cloth: 'event:omen-merchant-1',
 }
 
 /**
- * 开跑之前先核一遍这几个名字在年表上有没有。
+ * 开跑之前先核一遍：这几卷在年表上有没有，以及那一行人**够不够格**走进去。
  *
- * **跑一千世去发现一个拼错的字符串，是最贵的一种发现方式**，
+ * **跑一千世去发现一个配错的映射，是最贵的一种发现方式**，
  * 而且它只在「恰好那一格该有人」的时候才发现得了——
  * 换成一种本来就罕见的出身，0% 会被当成正常结果读过去。
+ *
+ * 后半条不是照着 `requires` 抄一遍字段名，而是真把那一行摆出来，
+ * 拿**引擎自己那把尺**（`meetsAll`）去量。年表那边把
+ * `{ business: '布庄' }` 改成 `{ livelihood: '经商' }`，
+ * 或者出身表把布庄那一行的产挪走，这里都会当场红。
  *
  * 这一条不花钱，不靠抽样，跑之前一秒钟就能给出答案。
  */
 let nameErrors = 0
-for (const [trade, flag] of Object.entries(OWN_EVENT) as [Trade, string][]) {
-  const id = flag.replace(/^event:/, '')
-  if (!lifeEvents.some((one) => one.id === id)) {
-    console.log(`  ✗ 「${trade}」认的那一卷叫 ${id}，可年表上根本没有这个 id。`)
+for (const [id, flag] of Object.entries(OWN_EVENT) as [OriginId, string][]) {
+  const eventId = flag.replace(/^event:/, '')
+  const event = lifeEvents.find((one) => one.id === eventId)
+  if (!event) {
+    console.log(`  ✗ 「${id}」认的那一卷叫 ${eventId}，可年表上根本没有这个 id。`)
+    nameErrors += 1
+    continue
+  }
+  setActivePinia(createPinia())
+  beOf(id)
+  if (!meetsAll(event.requires)) {
+    console.log(`  ✗ 「${id}」这一行人走不进 ${eventId}——那一卷要的条件他们不满足。`)
     nameErrors += 1
   }
 }
 if (nameErrors > 0) {
-  console.log('    这几格会恒为 0%，而 0% 读起来像是世界设定，不像是拼错了。\n')
+  console.log('    这几格会恒为 0%，而 0% 读起来像是世界设定，不像是配错了。\n')
   process.exitCode = 1
 }
 
-const rows = new Map<Trade, Row>()
+const rows = new Map<OriginId, Row>()
 
-function rowOf(trade: Trade): Row {
-  let row = rows.get(trade)
+function rowOf(id: OriginId): Row {
+  let row = rows.get(id)
   if (!row) {
     row = {
       n: 0,
@@ -111,9 +134,20 @@ function rowOf(trade: Trade): Row {
       revealed: 0,
       endings: {},
     }
-    rows.set(trade, row)
+    rows.set(id, row)
   }
   return row
+}
+
+/**
+ * 这一行人家怎么称呼。
+ *
+ * 表格第一列是主键（`manor` 和 `court` 只有主键分得开），
+ * 第二列给一个认得出的词：有铺面的说铺面，没有的说靠什么过活。
+ */
+function nameOf(id: OriginId): string {
+  const row = originById(id)
+  return row.business ?? row.livelihood
 }
 
 for (let i = 0; i < RUNS; i += 1) {
@@ -137,11 +171,11 @@ for (let i = 0; i < RUNS; i += 1) {
     turns += 1
   }
 
-  const row = rowOf(household.trade)
+  const row = rowOf(household.origin)
   row.n += 1
   if (world.getFlag('schooled') === true) row.schooled += 1
 
-  const own = OWN_EVENT[household.trade]
+  const own = OWN_EVENT[household.origin]
   if (own && world.hasFlag(own)) row.ownScene += 1
 
   if (character.knows('cultivators-exist')) row.heardOfCultivators += 1
@@ -158,21 +192,22 @@ function pct(part: number, whole: number): string {
 }
 
 console.log(`\n=== 按出身分组（${RUNS} 世）===\n`)
-console.log('  出身    份额    读过书  走本行   知修士  认出来  被点破')
-console.log('  ' + '─'.repeat(56))
+console.log('  出身               份额    读过书  走本行   知修士  认出来  被点破')
+console.log('  ' + '─'.repeat(64))
 
-// 按配置里的权重顺序列，好跟 origins.ts 对着看
+// 按配置里的权重顺序列，好跟 content/origins.ts 对着看
 for (const origin of ORIGINS) {
-  const row = rows.get(origin.trade)
+  const who = `${origin.id.padEnd(7)}${nameOf(origin.id)}`
+  const row = rows.get(origin.id)
   if (!row) {
     // 世数从常量取。从前这里写死「四千世里一次也没掷到」，而 RUNS 是 500——
     // **一句只在出错时才会印出来的话，撒的谎八倍于真相**
-    console.log(`  ${origin.trade}  （${RUNS} 世里一次也没掷到）`)
+    console.log(`  ${who}  （${RUNS} 世里一次也没掷到）`)
     continue
   }
-  const own = OWN_EVENT[origin.trade] ? pct(row.ownScene, row.n) : '  —  '
+  const own = OWN_EVENT[origin.id] ? pct(row.ownScene, row.n) : '  —  '
   console.log(
-    `  ${origin.trade}  ${pct(row.n, RUNS)}  ${String(row.n).padStart(4)}  ` +
+    `  ${who}  ${pct(row.n, RUNS)}  ${String(row.n).padStart(4)}  ` +
       `${pct(row.schooled, row.n)}  ${own}  ` +
       `${pct(row.heardOfCultivators, row.n)}  ${pct(row.recognized, row.n)}  ${pct(row.revealed, row.n)}`,
   )
@@ -180,13 +215,13 @@ for (const origin of ORIGINS) {
 
 console.log(`\n--- 十六岁那年的落点，按出身 ---`)
 for (const origin of ORIGINS) {
-  const row = rows.get(origin.trade)
+  const row = rows.get(origin.id)
   if (!row) continue
   const parts = Object.entries(row.endings)
     .sort((a, b) => b[1] - a[1])
     .map(([node, count]) => `${node} ${pct(count, row.n).trim()}`)
     .join('   ')
-  console.log(`  ${origin.trade}  ${parts}`)
+  console.log(`  ${origin.id.padEnd(7)}${nameOf(origin.id)}  ${parts}`)
 }
 
 /**
@@ -204,10 +239,10 @@ console.log()
 {
   let bad = 0
 
-  // 一、每种出身都得掷得到。皇室占一个百分点，一千世里是十个人上下
+  // 一、每一行出身都得掷得到。最稀那一行占一个百分点，一千世里是十个人上下
   for (const origin of ORIGINS) {
-    if ((rows.get(origin.trade)?.n ?? 0) === 0) {
-      console.log(`  ✗ 「${origin.trade}」一世也没掷到——它写在册子上，可谁也生不到那儿去。`)
+    if ((rows.get(origin.id)?.n ?? 0) === 0) {
+      console.log(`  ✗ 「${origin.id}」一世也没掷到——它写在册子上，可谁也生不到那儿去。`)
       bad += 1
     }
   }
@@ -218,12 +253,16 @@ console.log()
    * **这一条才是「不是属性面板」的正面证据。** 份额对得上、读书率有差别，
    * 这些数字全都能在「出身只是几个初始数值」的世界里长出来；
    * 只有「生在药铺的人撞上了药铺那一卷」是钱买不到的。
+   *
+   * 开跑前那一步已经证明了「这一行人够格走进那一卷」，这一条问的是
+   * 另一半：**年表真的把它掷出来过吗**。窗口太窄、权重太低、
+   * 或者那几年被别的卷占满，都会让一个够格的人一辈子撞不上。
    */
-  for (const [trade, event] of Object.entries(OWN_EVENT) as [Trade, string][]) {
-    const row = rows.get(trade)
+  for (const [id, event] of Object.entries(OWN_EVENT) as [OriginId, string][]) {
+    const row = rows.get(id)
     if (!row || row.n === 0) continue // 上一条已经拦过了
     if (row.ownScene === 0) {
-      console.log(`  ✗ 「${trade}」的 ${row.n} 个人里，没有一个撞上过 ${event}。`)
+      console.log(`  ✗ 「${id}」的 ${row.n} 个人里，没有一个撞上过 ${event}。`)
       bad += 1
     }
   }
@@ -240,11 +279,11 @@ console.log()
   const weightSum = ORIGINS.reduce((sum, one) => sum + one.weight, 0)
   for (const origin of ORIGINS) {
     if (origin.weight < 10) continue
-    const got = (rows.get(origin.trade)?.n ?? 0) / RUNS
+    const got = (rows.get(origin.id)?.n ?? 0) / RUNS
     const want = origin.weight / weightSum
     if (got < want * 0.6 || got > want * 1.6) {
       console.log(
-        `  ✗ 「${origin.trade}」占 ${(got * 100).toFixed(1)}%，` +
+        `  ✗ 「${origin.id}」占 ${(got * 100).toFixed(1)}%，` +
           `而权重说它该占 ${(want * 100).toFixed(1)}%。`,
       )
       bad += 1
@@ -260,11 +299,11 @@ console.log()
    * 不是留给「有几个人卡住也没关系」的。
    */
   for (const origin of ORIGINS) {
-    const row = rows.get(origin.trade)
+    const row = rows.get(origin.id)
     if (!row || row.n === 0) continue
     const stuck = row.endings['(未收尾)'] ?? 0
     if (stuck / row.n > 0.02) {
-      console.log(`  ✗ 「${origin.trade}」的 ${row.n} 个人里，${stuck} 个走不到收尾。`)
+      console.log(`  ✗ 「${origin.id}」的 ${row.n} 个人里，${stuck} 个走不到收尾。`)
       bad += 1
     }
   }

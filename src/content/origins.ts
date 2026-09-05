@@ -1,4 +1,12 @@
-import type { Attributes, NarrativeBlock, Trade } from '@/types/game'
+import type {
+  Attributes,
+  Business,
+  Census,
+  Livelihood,
+  NarrativeBlock,
+  OriginId,
+  Station,
+} from '@/types/game'
 
 import { CAPITAL } from './geography'
 
@@ -16,9 +24,44 @@ import { CAPITAL } from './geography'
  * 权重照着真实的社会结构配：种地的占四成，当官的百里挑一。
  * 稀有出身不是「更好的开局」——官宦子弟识字最多，但手无缚鸡之力，
  * 而且他家那点权势在修行者眼里一文不值。
+ *
+ * ## 一行是四格，不是一个词
+ *
+ * 上一版每一行只有一个 `trade: '客栈'`，而那个词同时在说四件事：
+ * 官府认定这家是民户、这家靠经商过活、家里那处铺面是客栈、这是寻常人家。
+ * 四件事挤在一个词里，于是「凡是做买卖的人家」这种条件写不出来——
+ * 只能把 `商户 客栈 酒楼` 挨个列一遍，而列漏一个没有任何机器会提醒。
+ *
+ * 现在四格分开写，各自回答一个问题（见 `types/game.ts` 里那一段）。
+ * 看这张表最快的读法是竖着看某一列：
+ *
+ *     census      十一行里只有四种值，因为籍本来就粗
+ *     livelihood  八种，这是这张表真正的骨架
+ *     business    五行有铺面，六行是 null——null 那六行整段不成立
+ *     station     只有三种，而它是唯一一格人生中途还会变的
+ *
+ * 竖着看还能看出一件不那么显眼的事：**`livelihood` 一列已经把 `census`
+ * 一列决定死了**（务农→民户、木工→匠户、行医→医户、食禄→宗室，
+ * 十一行没有例外）。所以籍这一格今天不靠取值养活自己，它靠的是
+ * 削爵那天不跟着 `station` 走——静态上它是冗余的，动态上它不是。
+ * 哪天「世代军籍那一家」写出来，这句话才会连静态那一半也成立。
  */
 export interface Origin {
-  trade: Trade
+  /**
+   * 主键。剧本要精确到某一行的时候问它。
+   *
+   * 留一个 id 而不是拿四格拼，是因为宫里那一支和藩府那一支
+   * **四格完全相同**，可它们是两卷不同的内容。
+   */
+  id: OriginId
+  /** 籍：官府认定这家是什么户 */
+  census: Census
+  /** 业：这一家靠什么过活 */
+  livelihood: Livelihood
+  /** 产：家里那一处铺面。没有就是 null */
+  business: Business | null
+  /** 家世：这是什么样的人家 */
+  station: Station
   weight: number
   /**
    * 家在城里乡里的哪一处，只到街巷村名这一级。
@@ -58,7 +101,11 @@ export const SURNAMES = ['沈', '陈', '柳', '周', '方', '许', '苏', '程',
 
 export const ORIGINS: readonly Origin[] = [
   {
-    trade: '农户',
+    id: 'farm',
+    census: '民户',
+    livelihood: '务农',
+    business: null,
+    station: '寻常',
     weight: 78,
     locales: ['柳溪村', '下河屯', '青石铺', '杏花坞', '王家庄', '桑园里', '芦花荡'],
     standing: { from: 26, to: 38 },
@@ -73,7 +120,11 @@ export const ORIGINS: readonly Origin[] = [
     ],
   },
   {
-    trade: '猎户',
+    id: 'hunt',
+    census: '民户',
+    livelihood: '打猎',
+    business: null,
+    station: '寻常',
     weight: 22,
     locales: ['石坳', '北岭', '鹰嘴崖', '黑松坡', '猎户屯'],
     standing: { from: 28, to: 40 },
@@ -88,7 +139,19 @@ export const ORIGINS: readonly Origin[] = [
     ],
   },
   {
-    trade: '匠户',
+    /**
+     * 匠户。
+     *
+     * 全表唯一一行籍和业**必须分开写**的：籍是匠户（官府定的，世袭，
+     * 要轮班当差），业是木工（他实际在做的活）。上一版这两件事共用
+     * 「匠户」一个词，于是「这家人改行去码头扛活」写不出来——
+     * 一改就把籍一起改了，而改籍要旨意。
+     */
+    id: 'craft',
+    census: '匠户',
+    livelihood: '木工',
+    business: null,
+    station: '寻常',
     weight: 20,
     locales: ['南关外', '东窑', '铁匠巷', '砖窑口', '锯木场'],
     standing: { from: 38, to: 50 },
@@ -103,7 +166,19 @@ export const ORIGINS: readonly Origin[] = [
     ],
   },
   {
-    trade: '商户',
+    /**
+     * 布庄。
+     *
+     * 上一版这一行叫「商户」，而那个词把业和产压成了一格：
+     * 这一家的业是经商，产是一间布庄，**跟客栈酒楼是同一层东西**。
+     * 开场正文里那句「家中开着一间布庄」当时只是一句文案，
+     * 剧本读不到它，于是铺子里那几卷只能挨个列出身名。
+     */
+    id: 'cloth',
+    census: '民户',
+    livelihood: '经商',
+    business: '布庄',
+    station: '寻常',
     weight: 18,
     locales: ['西街', '南市', '绸缎街', '货栈巷', '通汇坊'],
     standing: { from: 56, to: 70 },
@@ -128,7 +203,11 @@ export const ORIGINS: readonly Origin[] = [
      * 逃难的、赶考的、押货的，都在他家歇过脚。
      * 所以他的气运高得没道理——那只是因为路过的人足够多。
      */
-    trade: '客栈',
+    id: 'inn',
+    census: '民户',
+    livelihood: '经商',
+    business: '客栈',
+    station: '寻常',
     weight: 16,
     locales: ['北门外', '官道旁', '十里铺', '渡口街', '驿马巷'],
     standing: { from: 44, to: 58 },
@@ -150,7 +229,11 @@ export const ORIGINS: readonly Origin[] = [
      * 一个孩子在这里听到的不是远方，是这座城里谁跟谁有过节、
      * 哪家的银子来路不明、去年秋天衙门里死了个人。
      */
-    trade: '酒楼',
+    id: 'tavern',
+    census: '民户',
+    livelihood: '经商',
+    business: '酒楼',
+    station: '寻常',
     weight: 14,
     locales: ['鼓楼下', '十字街', '状元桥', '望江楼下', '闹市口'],
     standing: { from: 52, to: 66 },
@@ -175,8 +258,16 @@ export const ORIGINS: readonly Origin[] = [
      * 「认得草木」这件事在凡人阶段只是个营生，
      * 可修行界的灵草也是草——多年以后，他会是唯一一个
      * 看见那株东西时觉得「这不对」的人。
+     *
+     * 籍是医户——明代确有医户，跟军民匠灶一样是「以籍为定」的一种。
+     * 这一行因此是全表唯一一处业和籍**互相印证**的：这家人世代行医，
+     * 官府册子上写的也是医户。跟匠户那一行正好相反。
      */
-    trade: '药铺',
+    id: 'herb',
+    census: '医户',
+    livelihood: '行医',
+    business: '药铺',
+    station: '寻常',
     weight: 13,
     locales: ['东街', '药王巷', '回春巷', '济世坊', '晒药坪'],
     standing: { from: 50, to: 62 },
@@ -198,7 +289,11 @@ export const ORIGINS: readonly Origin[] = [
      * 那句「不能走」不是迷信——镖队真的在山里丢过人。
      * 这一家的孩子比谁都早知道：这世上有凡人惹不起的东西。
      */
-    trade: '镖局',
+    id: 'escort',
+    census: '民户',
+    livelihood: '走镖',
+    business: '镖局',
+    station: '寻常',
     weight: 11,
     locales: ['西关', '校场后街', '武库巷', '演武场东', '镖行街'],
     standing: { from: 46, to: 60 },
@@ -220,8 +315,20 @@ export const ORIGINS: readonly Origin[] = [
      * 他识字最多、家底最厚，但手无缚鸡之力，
      * 而且他家那点权势在修行者眼里一文不值——
      * 八品官的儿子和农户的儿子站在渡口，青衫人看他们的眼神是一样的。
+     *
+     * 这一行最能说明为什么四格非拆不可：**「官宦」从来不是一种户籍。**
+     * 八品官的家在黄册上仍旧是民户，他本人的差事才是官——
+     * 所以籍写民户，业写当差，而「这是官宦人家」是第三格的事。
+     *
+     * 拆开之后有一处内容立刻变准了：七岁开蒙那一卷里
+     * 「官宦人家不送孩子去村塾」问的是家世不是营生，
+     * 现在它写的就是 `{ station: '仕宦' }`。
      */
-    trade: '官宦',
+    id: 'office',
+    census: '民户',
+    livelihood: '当差',
+    business: null,
+    station: '仕宦',
     weight: 7,
     locales: ['衙后街', '学政巷', '儒林坊', '府前街', '清风巷'],
     standing: { from: 72, to: 88 },
@@ -247,8 +354,18 @@ export const ORIGINS: readonly Origin[] = [
      *
      * 他什么都有，唯独没有「碰上事」的机会——出门有人跟着，
      * 山道不会让他走，货郎的摊子他这辈子都不会蹲下去看。
+     *
+     * 它跟底下皇室那一行**四格一模一样**：籍宗室、业食禄、无产、家世宗室。
+     * 这不是没填全，是实情——从「这家人是什么样的」这个角度看，
+     * 藩府和宫里确实是同一种人家。分得开它们的只有 `id`，
+     * 而那正是主键该干的事：合并写 `{ station: '宗室' }`，
+     * 分开写 `{ origin: 'manor' }`。
      */
-    trade: '王府',
+    id: 'manor',
+    census: '宗室',
+    livelihood: '食禄',
+    business: null,
+    station: '宗室',
     weight: 4,
     locales: ['靖王府', '恭王府', '庄王府', '肃王府', '宁王府', '睿王府'],
     standing: { from: 88, to: 96 },
@@ -278,7 +395,11 @@ export const ORIGINS: readonly Origin[] = [
      *
      * 直到有一天，宫墙自己塌了。
      */
-    trade: '皇室',
+    id: 'court',
+    census: '宗室',
+    livelihood: '食禄',
+    business: null,
+    station: '宗室',
     weight: 2,
     locales: ['东宫', '长庆殿'],
     capital: CAPITAL,
@@ -297,3 +418,15 @@ export const ORIGINS: readonly Origin[] = [
     ],
   },
 ]
+
+/**
+ * 按主键找一行出身。
+ *
+ * 找不到就返回 `ORIGINS[0]`，跟从前那句 `?? ORIGINS[0]!` 一样——
+ * 但这里是**唯一一处**这么写，别处一律拿到 `Origin` 再读它的格子。
+ * 从前 `rollName`、`originAttributes`、`originOpening` 各自 find 一遍，
+ * 三处各写一次同样的兜底，而那三处兜底谁也没验过。
+ */
+export function originById(id: OriginId): Origin {
+  return ORIGINS.find((one) => one.id === id) ?? ORIGINS[0]!
+}

@@ -103,7 +103,22 @@ const CHECKS = {
     )
   },
 
-  trade: (trade, { household }) => household.trade === trade,
+  /**
+   * 出身那四格，外加主键。
+   *
+   * 五个各查各的，**不是一个字段的五种写法**——挑哪一格问，
+   * 就是在声明这一卷凭什么发生。上一版只有一个 `trade`，
+   * 于是「凡是做买卖的人家」得写成三行各指一次，
+   * 而「是不是贵人」得写成两行，漏一行没有任何机器会提醒。
+   *
+   * 四格里只有 `origin` 是掷定不动的；另外三格都会随人生变，
+   * 所以这里一律读 store 的**当前值**，不回头查那张出身表。
+   */
+  origin: (origin, { household }) => household.origin === origin,
+  census: (census, { household }) => household.census === census,
+  livelihood: (livelihood, { household }) => household.livelihood === livelihood,
+  business: (business, { household }) => household.business === business,
+  station: (station, { household }) => household.station === station,
 
   /**
    * 你过的是什么日子。

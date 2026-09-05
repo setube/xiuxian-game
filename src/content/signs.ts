@@ -99,7 +99,7 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'rain-short',
     when: { rain: { atMost: 34 } },
-    who: [{ trade: '农户' }],
+    who: [{ livelihood: '务农' }],
     says: '入夏之后没下过透雨。地里裂了缝。',
     from: 'rain',
     weight: 45,
@@ -108,7 +108,7 @@ export const SIGNS: readonly SignRule[] = [
     /** 猎户不看地，看山 */
     id: 'rain-short-hills',
     when: { rain: { atMost: 34 } },
-    who: [{ trade: '猎户' }],
+    who: [{ livelihood: '打猎' }],
     says: '山泉细了。今年的兽也比往年瘦。',
     from: 'rain',
     weight: 45,
@@ -116,7 +116,7 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'harvest-poor',
     when: { harvest: { atMost: 34 } },
-    who: [{ trade: '农户' }],
+    who: [{ livelihood: '务农' }],
     says: '秋后打下来的粮，装不满往年的仓。',
     from: 'harvest',
     tone: 'deep',
@@ -125,7 +125,7 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'harvest-good',
     when: { harvest: { atLeast: 68 } },
-    who: [{ trade: '农户' }],
+    who: [{ livelihood: '务农' }],
     says: '今年是个好年景。场院上晒得满满的。',
     from: 'harvest',
     tone: 'faint',
@@ -166,7 +166,7 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'order-escort-busy',
     when: { order: { atMost: 40 } },
-    who: [{ trade: '镖局' }],
+    who: [{ business: '镖局' }],
     says: '局里的活多了。走一趟的价钱涨了一倍。',
     reading: '你那时候只觉得高兴。',
     from: 'order',
@@ -175,7 +175,7 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'order-inn-empty',
     when: { order: { atMost: 40 } },
-    who: [{ trade: '客栈' }],
+    who: [{ business: '客栈' }],
     says: '店里空了。住进来的多是给不出房钱的。',
     from: 'order',
     tone: 'deep',
@@ -184,7 +184,7 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'order-shop-road',
     when: { order: { atMost: 40 } },
-    who: [{ trade: '商户' }],
+    who: [{ business: '布庄' }],
     says: '进货的路不好走了。铺子里的货卖一件少一件。',
     from: 'order',
     weight: 50,
@@ -216,7 +216,7 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'calm-fields',
     when: { rain: { atLeast: 42, atMost: 68 }, harvest: { atLeast: 42 } },
-    who: [{ trade: '农户' }],
+    who: [{ livelihood: '务农' }],
     says: '雨水还算匀。地里的活跟往年一样多。',
     from: 'rain',
     tone: 'faint',
@@ -233,7 +233,7 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'calm-inn',
     when: { order: { atLeast: 50 } },
-    who: [{ trade: '客栈' }],
+    who: [{ business: '客栈' }],
     says: '店里住得七八分满。南来北往的，什么口音都有。',
     from: 'order',
     tone: 'faint',
@@ -254,7 +254,7 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'plague-herbs',
     when: { plague: { atLeast: 20 } },
-    who: [{ trade: '药铺' }],
+    who: [{ business: '药铺' }],
     says: '抓药的人从早排到晚。有几味药早就没了。',
     reading: '{elder}把门槛外的人挡了回去，那天他一句话也没说。',
     from: 'plague',

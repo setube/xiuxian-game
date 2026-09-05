@@ -35,6 +35,7 @@ import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useLeaningStore } from '../src/stores/leanings'
 import { useNarrativeStore } from '../src/stores/narrative'
+import type { Condition } from '../src/types/game'
 
 /**
  * 走查跑多少世。
@@ -283,12 +284,26 @@ console.log('\n=== 五、念头怎么在后面的日子里反复出现 ===\n')
 console.log('\n=== 六、火种寄生在已经发生过的事上 ===\n')
 {
   const kinds = { 旗标: 0, 知识: 0, 日录标记: 0, 出身: 0, 关系: 0 }
+  /**
+   * 出身如今是五格（籍、业、产、家世、主键），挑中任意一格都算「认出身」。
+   *
+   * 写成 `(keyof Condition)[]` 而不是几个字符串，是为了让改名当场红：
+   * 这一行数的是**这些火种认了几次出身**，认错字段的话它会静静地少数几个，
+   * 而少数几个正好看着像「火种不认出身」——那恰恰是这一节想证明的结论。
+   */
+  const OF_ORIGIN: readonly (keyof Condition)[] = [
+    'origin',
+    'census',
+    'livelihood',
+    'business',
+    'station',
+  ]
   for (const spark of SPARKS) {
     if (spark.tags) kinds.日录标记 += 1
     for (const condition of spark.requires ?? []) {
       if (condition.flag) kinds.旗标 += 1
       if (condition.knowledge) kinds.知识 += 1
-      if (condition.trade) kinds.出身 += 1
+      if (OF_ORIGIN.some((key) => condition[key] !== undefined)) kinds.出身 += 1
       if (condition.bond) kinds.关系 += 1
     }
   }

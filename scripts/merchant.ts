@@ -29,10 +29,11 @@ import {
   type MerchantLore,
 } from '../src/engine/hearsay'
 import { useCharacterStore } from '../src/stores/character'
-import { useHouseholdStore } from '../src/stores/household'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 import type { KnowledgeEntry } from '../src/types/game'
+
+import { beOf } from './origin'
 
 /**
  * 走查跑多少次。
@@ -51,8 +52,7 @@ const RUNS = 2000
 
 function fresh(insight = 45) {
   setActivePinia(createPinia())
-  const household = useHouseholdStore()
-  household.trade = '商户'
+  beOf('cloth')
   const character = useCharacterStore()
   character.attributes = { ...character.attributes, insight }
   usePeopleStore()

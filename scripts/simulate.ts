@@ -17,11 +17,13 @@
 import { createPinia, setActivePinia } from 'pinia'
 
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
+import { originById } from '../src/content/origins'
 import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useNarrativeStore } from '../src/stores/narrative'
 import { useWorldStore } from '../src/stores/world'
+import type { OriginId } from '../src/types/game'
 
 /**
  * 走查跑多少世。
@@ -54,7 +56,8 @@ const MAX_TURNS = 500
 interface Tally {
   finished: number
   stuck: number
-  trades: Record<string, number>
+  /** 按**出身主键**分的一千世。数的是掷出来的那一行，不是后来变成的样子 */
+  origins: Record<string, number>
   ages: number[]
   debtChainComplete: number
   schooled: number
@@ -91,7 +94,7 @@ function run(tally: Tally): void {
   if (narrative.ended) tally.finished += 1
   else tally.stuck += 1
 
-  tally.trades[household.trade] = (tally.trades[household.trade] ?? 0) + 1
+  tally.origins[household.origin] = (tally.origins[household.origin] ?? 0) + 1
   tally.ages.push(character.age)
   tally.knowledgeCounts.push(character.knowledge.length)
 
@@ -123,7 +126,7 @@ function median(values: readonly number[]): number {
 const tally: Tally = {
   finished: 0,
   stuck: 0,
-  trades: {},
+  origins: {},
   ages: [],
   debtChainComplete: 0,
   schooled: 0,
@@ -151,8 +154,13 @@ if (tally.stuck > 0) {
 }
 
 console.log(`\n--- 出身 ---`)
-for (const [trade, count] of Object.entries(tally.trades).sort((a, b) => b[1] - a[1])) {
-  console.log(`  ${trade}  ${count}  ${percent(count, RUNS)}`)
+for (const [id, count] of Object.entries(tally.origins).sort((a, b) => b[1] - a[1])) {
+  // 主键做键、五格里的三格做说明。光印一个 `manor` 看不出那是什么人家，
+  // 而光印「宗室」又分不出王府那一支和宫里那一支
+  const row = originById(id as OriginId)
+  const shop = row.business ? ` · ${row.business}` : ''
+  const what = `${row.census} · ${row.livelihood}${shop}`
+  console.log(`  ${id.padEnd(7)}${what.padEnd(16)}${count}  ${percent(count, RUNS)}`)
 }
 
 console.log(`\n--- 收尾年龄 ---`)

@@ -105,7 +105,7 @@ export function foundingOrder(): StoreName[] {
  * 重开一世：八个 store 按立基次第归零。
  *
  * 次序在这里是真的要紧，不是整齐好看——`world.reset()` 会读 `household.home`，
- * `character.reset()` 会读 `household.trade`。家世没先重掷，
+ * `character.reset()` 会读 `household.origin`。家世没先重掷，
  * 新的一世就会长在上一世的家里。
  */
 export function resetAll(): void {

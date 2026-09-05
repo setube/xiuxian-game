@@ -65,7 +65,7 @@ console.log(`\n=== ${CIRCUMSTANCES.length} 种出生境况 ===\n`)
       const gone = person.fate !== '在' ? '　（没见过／不在了）' : ''
       console.log(
         `    ${relation.bond.padEnd(3)} ${person.surname}${person.given}` +
-          `　${people.ageOf(relation.to)}岁　${person.trade}${gone}`,
+          `　${people.ageOf(relation.to)}岁　${person.doing}${gone}`,
       )
     }
     const guardianNames = guardians.map((id) => {

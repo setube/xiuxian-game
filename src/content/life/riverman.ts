@@ -27,17 +27,20 @@ export const rivermanScenes: SceneLibrary = {
         blocks: [{ kind: 'heading', title: '十六' }],
         // 进城的理由各不相同。这十六年怎么过的、生在哪一家，
         // 决定你为什么会在那个下午站到那个渡口上。
-        // 行当先于身份：镖局的孩子就算念过书，十六岁那年也是跟着车队去的
+        // 铺面先于门第：镖局的孩子就算念过书，十六岁那年也是跟着车队去的
         branches: [
-          // 墙塌过的人排在最前：他现在什么也不是，来渡口不需要理由
+          // 墙塌过的人排在最前：他现在什么也不是，来渡口不需要理由。
+          //
+          // 这一行如今是**双保险**：削爵那一卷把 `station` 落到了「寻常」，
+          // 底下那条宗室的岔自己就关了。留着它是因为两件事不是一回事——
+          // 旗标记的是「他身上出过那件事」，家世记的是「他现在是什么人家」
           { requires: [{ flag: { key: 'the-fall' } }], next: 'as-nobody' },
-          { requires: [{ trade: '皇室' }], next: 'as-highborn' },
-          { requires: [{ trade: '王府' }], next: 'as-highborn' },
-          { requires: [{ trade: '镖局' }], next: 'as-escort' },
-          { requires: [{ trade: '药铺' }], next: 'as-healer' },
-          { requires: [{ trade: '客栈' }], next: 'as-innkeep' },
-          { requires: [{ trade: '酒楼' }], next: 'as-taverner' },
-          { requires: [{ trade: '官宦' }], next: 'as-gentry' },
+          { requires: [{ station: '宗室' }], next: 'as-highborn' },
+          { requires: [{ business: '镖局' }], next: 'as-escort' },
+          { requires: [{ business: '药铺' }], next: 'as-healer' },
+          { requires: [{ business: '客栈' }], next: 'as-innkeep' },
+          { requires: [{ business: '酒楼' }], next: 'as-taverner' },
+          { requires: [{ station: '仕宦' }], next: 'as-gentry' },
           { requires: [{ flag: { key: 'has-craft' } }], next: 'as-apprentice' },
           { requires: [{ flag: { key: 'has-shopwork' } }], next: 'as-clerk' },
           { requires: [{ flag: { key: 'schooled', equals: true } }], next: 'as-student' },
@@ -294,7 +297,7 @@ export const rivermanScenes: SceneLibrary = {
             // 父亲交代过：别动手，也别跑，站着让他过去
             id: 'recall-warning',
             label: '你想起父亲交代过的那句话',
-            requires: [{ flag: { key: 'heard-of-cultivators' } }, { trade: '镖局' }],
+            requires: [{ flag: { key: 'heard-of-cultivators' } }, { business: '镖局' }],
             echo: '你站住了，两只手都松开着。',
             effects: [
               { type: 'time', days: 1 },

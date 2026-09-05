@@ -2,7 +2,7 @@
 /**
  * 宗室那两条线的加压走查。
  *
- * 皇室四千世里只掷出三十来次，样本太薄，看不出坠落链有没有真的走完。
+ * 生在宫里那一行四千世里只掷出三十来次，样本太薄，看不出坠落链有没有真的走完。
  * 这里绕开权重，直接把出身钉死，各跑一千世。
  */
 import { createPinia, setActivePinia } from 'pinia'
@@ -13,11 +13,13 @@ import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useNarrativeStore } from '../src/stores/narrative'
 import { useWorldStore } from '../src/stores/world'
-import type { Trade } from '../src/types/game'
+import type { OriginId } from '../src/types/game'
+
+import { beOf } from './origin'
 
 const RUNS = 300
 
-function probe(trade: Trade): void {
+function probe(id: OriginId, label: string): void {
   const tally = {
     n: 0,
     fell: 0,
@@ -38,8 +40,9 @@ function probe(trade: Trade): void {
     const world = useWorldStore()
     const character = useCharacterStore()
     const household = useHouseholdStore()
-    // 绕开权重：这一支太稀有，按权重掷根本攒不出样本
-    household.trade = trade
+    // 绕开权重：这一支太稀有，按权重掷根本攒不出样本。
+    // 钉的是主键——王府与宫里那五格完全相同，只有主键分得开这两支
+    beOf(id)
     const story = useStory(lifeScenes, {
       events: lifeEvents,
       routine: lifeRoutine,
@@ -70,9 +73,9 @@ function probe(trade: Trade): void {
   }
 
   const p = (v: number) => `${((v / tally.n) * 100).toFixed(0)}%`
-  console.log(`\n=== ${trade}（${RUNS} 世，出身钉死）===`)
+  console.log(`\n=== ${label}（${RUNS} 世，出身钉死）===`)
   console.log(`  墙塌了          ${p(tally.fell)}`)
-  if (trade === '皇室') {
+  if (id === 'court') {
     console.log(`  塌了以后走出门  ${p(tally.walkedOut)}`)
     console.log(`  撞上钦天监      ${p(tally.observatory)}`)
     console.log(`  溜进去了        ${p(tally.entered)}`)
@@ -99,6 +102,6 @@ function probe(trade: Trade): void {
   )
 }
 
-probe('皇室')
-probe('王府')
+probe('court', '生在宫里')
+probe('manor', '生在王府')
 console.log()

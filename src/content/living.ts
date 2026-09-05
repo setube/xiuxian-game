@@ -1,4 +1,4 @@
-import type { Trade } from '@/types/game'
+import type { OriginId } from '@/types/game'
 
 /**
  * 这家人过的是什么日子。
@@ -10,7 +10,7 @@ import type { Trade } from '@/types/game'
  * **错的不是主语，是那把锄头。**
  *
  * 从前正文能写出「皇子下地割草」，不是因为哪一句文案写错了，
- * 是因为内容层一直把 `household.trade` 当成默认真相：
+ * 是因为内容层一直把出身当成默认真相：
  * 父亲 = 农民，母亲 = 农妇，孩子 = 下地，家里 = 小院。
  * 数据层已经掷出了皇室，内容层还在演农户。
  *
@@ -35,9 +35,9 @@ import type { Trade } from '@/types/game'
  *
  * ## 解析顺序：先问你自己，再问抚养人，最后落回这个家
  *
- * 被老乞丐捡去养大的孩子，`household.trade` 仍然是他生在的那一家，
+ * 被老乞丐捡去养大的孩子，家里的籍和业仍然是他生在的那一家的，
  * 可他过的是讨饭的日子。而一个十七岁被削了爵迁出京城的皇子，
- * 家里的户籍还是皇室，抚养他的人也还是母妃，**可他过的已经不是宫里的日子**。
+ * 家里的籍还是宗室，抚养他的人也还是母妃，**可他过的已经不是宫里的日子**。
  * 所以生活事实的来源有三级先后：
  *
  *     先看你自己现在过着什么日子（`character.livings` 里还没封口的那一段）
@@ -46,7 +46,7 @@ import type { Trade } from '@/types/game'
  *
  * 这跟 `interpolate.ts` 里 `callByBond(['生父','抚养','生母'])`
  * 「先问关系网，再落笔」是同一条纪律。后两级的落点是现成的：
- * `circumstances.ts` 里只有三种收养境况填了 `Kin.trade`
+ * `circumstances.ts` 里只有三种收养境况填了 `Kin.doing`
  * （讨饭的 / 寺中的老僧 / 逃难路上的人），姐姐兄长叔父都留空——
  * 留空是对的，姐姐把你拉扯大，家还是那个农户家。
  *
@@ -55,7 +55,7 @@ import type { Trade } from '@/types/game'
  *
  * ## 怎么用
  *
- * 剧本里写 `{ living: 'farm' }` 做条件，不写 `if trade === '皇室'`。
+ * 剧本里写 `{ living: 'farm' }` 做条件，不写 `if origin === 'court'`。
  * 十一种出身摊到七种日子上，往后加一种出身只是往这张表里添一行，
  * 不是往全库添几百个 if。
  */
@@ -143,7 +143,7 @@ const PALACE: Living = {
 /**
  * 讨饭的。
  *
- * 老乞丐把你捡回来养大——这一条压过 `household.trade`：
+ * 老乞丐把你捡回来养大——这一条压过这个家本身：
  * 你生在哪一家已经不重要了，你过的是他的日子。
  */
 const BEGGING: Living = {
@@ -234,28 +234,33 @@ const MARKET: Living = {
 /**
  * 出身 → 日子。
  *
- * `Record<Trade, Living>` 是有意的：**加一种出身，这里不表态就编译不过。**
+ * `Record<OriginId, Living>` 是有意的：**加一种出身，这里不表态就编译不过。**
  * 能用类型守住的就别拿门禁去守。
+ *
+ * 键从前是那个混装的行当名，现在是出身主键。这里**故意不改成按业或按产查**：
+ * 「过什么日子」是那一整家的样子决定的，不是某一格决定的——
+ * 镖局那一家的业是走镖，可孩子看见的是院里的兵器架和满墙镖旗，
+ * 那更接近手艺人家的日子（`CRAFT`），不是「走镖」这个词能推出来的。
  */
-export const LIVINGS: Record<Trade, Living> = {
-  农户: HOMESTEAD,
-  猎户: HUNT,
-  匠户: CRAFT,
-  商户: SHOP,
-  客栈: SHOP,
-  酒楼: SHOP,
-  药铺: CLINIC,
-  镖局: CRAFT,
-  官宦: OFFICE,
-  王府: PALACE,
-  皇室: PALACE,
+export const LIVINGS: Record<OriginId, Living> = {
+  farm: HOMESTEAD,
+  hunt: HUNT,
+  craft: CRAFT,
+  cloth: SHOP,
+  inn: SHOP,
+  tavern: SHOP,
+  herb: CLINIC,
+  escort: CRAFT,
+  office: OFFICE,
+  manor: PALACE,
+  court: PALACE,
 }
 
 /**
  * 抚养人的营生 → 日子。
  *
- * 键取的是 `circumstances.ts` 里 `Kin.trade` 那几个字，一字不差。
- * 对不上就返回 undefined，于是自动落回这个家的营生——
+ * 键取的是 `circumstances.ts` 里 `Kin.doing` 那几个字，一字不差。
+ * 对不上就返回 undefined，于是自动落回这个家——
  * 姐姐、兄长、叔父把你拉扯大都走这一条，**而那是对的**：
  * 家还是那个家，只是当家的人换了。
  */
@@ -266,13 +271,13 @@ const KEEPER_LIVINGS: Readonly<Record<string, Living>> = {
 }
 
 /** 把你养大的那个人过的是什么日子。他的营生对不上任何一种，就返回 undefined */
-export function livingOfKeeper(trade: string): Living | undefined {
-  return KEEPER_LIVINGS[trade]
+export function livingOfKeeper(doing: string): Living | undefined {
+  return KEEPER_LIVINGS[doing]
 }
 
-/** 这家的营生对应哪一种日子 */
-export function livingOfTrade(trade: Trade): Living {
-  return LIVINGS[trade]
+/** 这一行出身对应哪一种日子 */
+export function livingOfOrigin(id: OriginId): Living {
+  return LIVINGS[id]
 }
 
 /**

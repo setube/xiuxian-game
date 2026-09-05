@@ -54,7 +54,7 @@ function noteFor(id: string): string {
   if (person.fate === '杳') return '再没有消息。'
   const remembered = known.value[id]?.note
   if (remembered) return remembered
-  return `${people.ageOf(id)}岁。${person.trade}`
+  return `${people.ageOf(id)}岁。${person.doing}`
 }
 </script>
 

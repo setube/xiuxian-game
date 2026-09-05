@@ -25,12 +25,16 @@ export const schoolingScenes: SceneLibrary = {
         ],
         branches: [
           // 宗室开蒙不问家境。皇子由翰林侍讲，世子有王府西席，
-          // 这一步在他生下来那天就定了
-          { requires: [{ trade: '皇室' }], next: 'hall' },
-          { requires: [{ trade: '王府' }], next: 'hall' },
+          // 这一步在他生下来那天就定了。
+          //
+          // 问的是**家世**那一格，不是哪一行出身：上一版这里得写两行
+          // （皇室一行、王府一行），漏一行没有任何机器会提醒。
+          // 而且它现在还多管一件事——削爵那天 `station` 落到「寻常」，
+          // 这一支自己就关了，不必回头改这两行
+          { requires: [{ station: '宗室' }], next: 'hall' },
           // 官宦人家不送孩子去村塾。这一条不问家境——
           // 就算八品官家道中落，请西席也是最后才裁的开销
-          { requires: [{ trade: '官宦' }], next: 'tutor' },
+          { requires: [{ station: '仕宦' }], next: 'tutor' },
           // 其余三档，不是一道线。玩家一步也点不了——
           // 那年家里有没有余钱，是前面七年一点一点攒出来或者赔进去的
           { requires: [{ standing: { atLeast: 46 } }], next: 'afford' },

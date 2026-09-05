@@ -72,7 +72,7 @@ console.log('\n=== 你爹是谁 ===\n')
     if (!person) continue
     const acquaintance = people.known[id]
     console.log(`  ${person.surname}${person.given}`)
-    console.log(`    ${people.ageOf(id)}岁 · ${person.gender} · ${person.trade} · ${person.temper}`)
+    console.log(`    ${people.ageOf(id)}岁 · ${person.gender} · ${person.doing} · ${person.temper}`)
     console.log(`    此刻在：${person.place}`)
     console.log(`    下落：${person.fate}`)
     console.log(`    玩家叫他：${acquaintance?.calls ?? '（不认识）'}`)

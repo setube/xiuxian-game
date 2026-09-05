@@ -1,7 +1,7 @@
 import { useCharacterStore } from '@/stores/character'
 import { useHouseholdStore } from '@/stores/household'
 import { useWorldStore } from '@/stores/world'
-import type { NarrativeBlock } from '@/types/game'
+import type { NarrativeBlock, OriginId } from '@/types/game'
 
 import { pickWeighted } from './random'
 
@@ -129,17 +129,19 @@ export interface Appraisal {
  * 但这里多一条山道上没有的东西——**出身直接塑造误读的形状**：
  *
  * - 药铺的孩子从小认药，看见一册手抄本第一反应是方子
- * - 商户、客栈、酒楼家的孩子成天见账，一行一行的就是账
+ * - 做买卖的人家，孩子成天见账，一行一行的就是账
  * - 不认字的人根本走不到「这些字很怪」那一层，对他只是纸
  *
  * 三个人站在同一个摊子前，看见的是三册不同的书。
  */
+/** 从小在官府文书边上长大的那三行出身。见下面「不该看的」那一段 */
+const BRED_NEAR_OFFICE: readonly OriginId[] = ['office', 'manor', 'court']
+
 export function appraise(truth: BookTruth): Appraisal {
   const character = useCharacterStore()
   const household = useHouseholdStore()
   const attributes = character.attributes
   const literate = character.knows('literacy')
-  const trade = household.trade
 
   const weighted = GUESSES.map((guess) => {
     let weight = guess.base
@@ -163,18 +165,27 @@ export function appraise(truth: BookTruth): Appraisal {
     }
 
     if (guess.reading === '账册') {
-      // 成天见账的人家
-      if (trade === '商户' || trade === '客栈' || trade === '酒楼') weight += 26
-      if (trade === '官宦') weight += 10
+      // 成天见账的人家。问的是**业**：布庄、客栈、酒楼三家的柜台上
+      // 摆的是同一样东西，上一版这里得把三个行当各点一次
+      if (household.livelihood === '经商') weight += 26
+      if (household.station === '仕宦') weight += 10
     }
 
     if (guess.reading === '药方') {
-      if (trade === '药铺') weight += 34
+      // 问的是**产**。行医的未必坐堂，可药柜是实打实摆在那儿的
+      if (household.business === '药铺') weight += 34
     }
 
     if (guess.reading === '不该看的') {
-      // 见过官府脸色的人家，孩子对「这东西不该留」格外敏感
-      if (trade === '官宦' || trade === '王府' || trade === '皇室') weight += 18
+      /**
+       * 见过官府脸色的人家，孩子对「这东西不该留」格外敏感。
+       *
+       * 这一条问的是**出身主键**，跟上面两条不是一个路子，理由值得写下来：
+       * 这份敏感是在那个院子里养出来的，而家世那一格会被一道旨意改掉。
+       * 写成 `station !== '寻常'` 更短，可削爵那天他就「忘了」
+       * 从小听惯的那句「这个不许往外说」——一个人不会那样忘事。
+       */
+      if (BRED_NEAR_OFFICE.includes(household.origin)) weight += 18
       weight += Math.max(0, attributes.insight - 48) * 0.6
     }
 

@@ -11,7 +11,7 @@
  * 落到代码上，`household` 是根。`world` 建的时候要读它：
  *
  *     const place = ref(household.home)          // world.ts
- *     const birth = beBorn(household.trade, ...) // character.ts
+ *     const birth = beBorn(household.origin, household.home) // character.ts
  *
  * 这四处是**初始化期跨 store 读值**，跟函数体里读值完全是两回事，
  * 而代码上看不出区别——两者写出来都是 `useHouseholdStore()`。

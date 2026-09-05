@@ -54,7 +54,8 @@ import { useCharacterStore, type LivingSpan } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
-import type { Effect, Trade } from '../src/types/game'
+import type { Effect, OriginId } from '../src/types/game'
+import { beOf } from './origin'
 import { effectsOf } from './refs'
 
 /** 风调雨顺。这一道不查年景，把它按住免得饥荒插进来搅局 */
@@ -106,7 +107,14 @@ function resolve(step: Step): Site | string {
 interface Path {
   id: string
   label: string
-  trade: Trade
+  /**
+   * 从哪一行掷出来的。
+   *
+   * 钉的是**出身主键**，不是那五格里的某一格：削爵和削藩这两条人生
+   * 五格一字不差（宗室 · 食禄 · 无产 · 宗室），只有主键分得开，
+   * 而它们恰恰是这一支拿来做交叉的那一对。
+   */
+  origin: OriginId
   steps: readonly Step[]
 }
 
@@ -121,13 +129,13 @@ const PATHS: readonly Path[] = [
   {
     id: 'palace',
     label: '墙没塌的那个：皇子一直在宫里',
-    trade: '皇室',
+    origin: 'court',
     steps: [],
   },
   {
     id: 'fall-street',
     label: '削爵迁出，开门出去走到街上',
-    trade: '皇室',
+    origin: 'court',
     steps: [
       { scene: 'royal:fall', node: 'edict' },
       { scene: 'royal:fall', node: 'edict', choice: 'street' },
@@ -136,7 +144,7 @@ const PATHS: readonly Path[] = [
   {
     id: 'fall-inside',
     label: '削爵迁出，把门关上',
-    trade: '皇室',
+    origin: 'court',
     steps: [
       { scene: 'royal:fall', node: 'edict' },
       { scene: 'royal:fall', node: 'edict', choice: 'inside' },
@@ -156,7 +164,7 @@ const PATHS: readonly Path[] = [
      */
     id: 'demote',
     label: '削藩：王府的孩子成了寓公之子',
-    trade: '王府',
+    origin: 'manor',
     steps: [
       { scene: 'royal:demote', node: 'open' },
       { scene: 'royal:demote', node: 'home' },
@@ -180,13 +188,13 @@ const PATHS: readonly Path[] = [
      */
     id: 'shopwork',
     label: '农户的孩子自己去镇上做工',
-    trade: '农户',
+    origin: 'farm',
     steps: [{ scene: 'reunion:apprentice', node: 'open', choice: 'go' }],
   },
   {
     id: 'farm',
     label: '对照：农户的孩子，一辈子没换过日子',
-    trade: '农户',
+    origin: 'farm',
     steps: [],
   },
 ]
@@ -255,11 +263,11 @@ function textOf(text: string | readonly string[]): string {
  *
  * @returns 掷成了没有。掷不成说明这一掷本身出了问题，判据失效
  */
-function born(trade: Trade): boolean {
+function born(id: OriginId): boolean {
   for (let tries = 0; tries < 6000; tries += 1) {
     setActivePinia(createPinia())
+    beOf(id)
     const household = useHouseholdStore()
-    household.trade = trade
     const world = useWorldStore()
     useCharacterStore()
     const people = usePeopleStore()
@@ -267,15 +275,15 @@ function born(trade: Trade): boolean {
     world.regions = { [household.prefecture]: { state: { ...CALM }, last: {} } }
 
     const adopted = people.guardians
-      .filter((id) => people.isAlive(id))
-      .some((id) => livingOfKeeper(people.personOf(id)?.trade ?? '') !== undefined)
+      .filter((one) => people.isAlive(one))
+      .some((one) => livingOfKeeper(people.personOf(one)?.doing ?? '') !== undefined)
     if (!adopted) return true
   }
   return false
 }
 
 function walk(path: Path): Walked | string {
-  if (!born(path.trade)) return '掷了六千回也没掷出一个没被人捡去养的孩子，判据本身失效了'
+  if (!born(path.origin)) return '掷了六千回也没掷出一个没被人捡去养的孩子，判据本身失效了'
   const household = useHouseholdStore()
   const world = useWorldStore()
   const character = useCharacterStore()

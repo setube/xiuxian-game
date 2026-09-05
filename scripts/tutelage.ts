@@ -57,10 +57,11 @@ import {
 import { GRASPS, QUIET_BREATH, type Grasp, type Hold } from '../src/content/rites'
 import { footingWith, graspOf, holdOf, practise, teach, weighUp } from '../src/engine/tutelage'
 import { useCharacterStore } from '../src/stores/character'
-import { useHouseholdStore } from '../src/stores/household'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 import { FOOTINGS, type Attributes, type Footing } from '../src/types/game'
+
+import { beOf } from './origin'
 
 /** 每一节各跑多少世。三百是让底下那些比例站得住的最小体面数目 */
 const RUNS = 300
@@ -171,20 +172,24 @@ const SLOW: Attributes = { ...PLAIN_STEADY, memory: 26, insight: 20 }
  * **先 `useCharacterStore()` 再动别的**：创建那一刻等于出生，
  * 它把 `bornYear` 钉在当时的 `time.year` 上。顺序反了，人就凭空老了几岁。
  *
- * ## 那一行 `trade` 是有意钉死的
+ * ## 那一行出身是有意钉死的
  *
  * 出身本来是随机掷的，而它此刻决定 `handsKnow()`——也就决定这个人
  * 会不会被陶仲的教法送岔。不钉死的话，同一份属性跑两回可以落在两条路上，
  * 底下每一道判据都要跟着抖。
  *
- * 钉成「药铺」是钉在**不走岔**那一侧：这一支验的是上一章那八件事，
+ * 钉成药铺那一行是钉在**不走岔**那一侧：这一支验的是上一章那八件事，
  * 走岔进来只会把它们搅浑。走岔单验在 `scripts/mastery.ts`，
  * 那一支反过来把出身当成主要的区分力用。
+ *
+ * `beOf('herb')` 摆的是那一整行五格，而 `handsKnow()` 只读其中的**产**
+ * （柜台上那副药）。摆整行不是多余：少摆一格的话，
+ * 这个人会是个「开药铺但户籍是宗室」的怪物，而怪物走查出来的结论不算数。
  */
 function fresh(attributes: Attributes): void {
   setActivePinia(createPinia())
   useCharacterStore().attributes = { ...attributes }
-  useHouseholdStore().trade = '药铺'
+  beOf('herb')
 }
 
 /**

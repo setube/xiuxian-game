@@ -1,4 +1,4 @@
-import type { Bond, Gender, Manner, Trade } from '@/types/game'
+import type { Bond, Gender, Manner, OriginId } from '@/types/game'
 
 /**
  * 称谓语境。
@@ -63,7 +63,7 @@ import type { Bond, Gender, Manner, Trade } from '@/types/game'
  * 旨意能除掉封号，除不掉父子。所以解析一句话要问四个格子——
  *
  *     关系　　他是我什么人　　　　　`Bond`
- *     教养　　我是在哪儿学会说话的　`Trade` → `Register`
+ *     教养　　我是在哪儿学会说话的　`OriginId` → `Register`
  *     爵位　　他身上有没有封爵　　　`Person.rank`
  *     场合　　此刻在不在行礼　　　　`Manner`
  *
@@ -191,19 +191,30 @@ export const REGISTERS: readonly Register[] = [
  * 种地的、打猎的、开客栈的、坐堂看诊的没有分别，
  * 在这儿写八遍只会让上面那两格显不出来。
  *
- * 挂在 `Trade`（户籍）上，不挂在 `living`（他过的日子）上，
- * 理由见 `engine/address.ts`——削爵之后日子变了，户籍没变，
- * 而话是在那个户籍底下学会的。
+ * ## 为什么挂在出身主键上，而不是家世那一格
+ *
+ * 上一版这张表挂在 `Trade` 上，注释里写着「挂在户籍上」——
+ * 而它列的三个值 `皇室 王府 官宦` **一个也不是户籍**。
+ * 那三个词当时同时兼着籍、业、家世好几层意思，于是这句解释
+ * 听着有道理，实际指的是另一回事。拆开四格之后这处必须重新表态。
+ *
+ * 表态的结果是**挂主键**，理由是一句话就能验的：
+ * `court` 和 `manor` 的家世同为「宗室」，可宫里学的是「爹爹／娘娘」，
+ * 王府学的是「父亲／母亲」。**教养分得比家世细**，
+ * 所以它挂不到 `station` 上，只能挂到那一行本身。
+ *
+ * 而它同样不挂 `living`（他过的日子），理由跟从前一样没变，
+ * 只是现在说得准了：削爵之后日子变了，**这个人是在哪儿学会说话的没变**。
  */
-const BY_TRADE: Partial<Record<Trade, string>> = {
-  皇室: 'palace',
-  王府: 'study',
-  官宦: 'study',
+const BY_ORIGIN: Partial<Record<OriginId, string>> = {
+  court: 'palace',
+  manor: 'study',
+  office: 'study',
 }
 
 /** 这样的人家，孩子学的是哪一套话。没有特别的一套就返回 undefined */
-export function registerFor(trade: Trade): Register | undefined {
-  const id = BY_TRADE[trade]
+export function registerFor(origin: OriginId): Register | undefined {
+  const id = BY_ORIGIN[origin]
   return id === undefined ? undefined : REGISTERS.find((one) => one.id === id)
 }
 

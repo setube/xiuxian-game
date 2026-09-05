@@ -37,7 +37,8 @@ import { useHouseholdStore } from '../src/stores/household'
 import { useLeaningStore } from '../src/stores/leanings'
 import { useNarrativeStore } from '../src/stores/narrative'
 import { useWorldStore } from '../src/stores/world'
-import type { Trade } from '../src/types/game'
+
+import { beOf } from './origin'
 
 /**
  * ## 世数按最稀的那一格定——可有一格是买不来的
@@ -131,7 +132,7 @@ console.log('\n=== 三、同一个愿望，五个人走向五个地方 ===\n')
     [
       '家里开药铺的孩子',
       () => {
-        useHouseholdStore().trade = '药铺' as Trade
+        beOf('herb')
       },
     ],
     [

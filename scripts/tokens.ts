@@ -19,6 +19,8 @@ import { useNarrativeStore } from '../src/stores/narrative'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 
+import { beOf } from './origin'
+
 const RUNS = 400
 const leaks: string[] = []
 
@@ -34,7 +36,7 @@ for (let i = 0; i < RUNS; i += 1) {
   const household = useHouseholdStore()
   const people = usePeopleStore()
   // 轮着钉死出身，好让十一种都被扫到
-  household.trade = ORIGINS[i % ORIGINS.length]!.trade
+  beOf(ORIGINS[i % ORIGINS.length]!.id)
   const story = useStory(lifeScenes, {
     events: lifeEvents,
     routine: lifeRoutine,
@@ -88,7 +90,7 @@ for (let i = 0; i < RUNS; i += 1) {
     if (person) {
       check('姓', person.surname)
       check('名', person.given)
-      check('营生', person.trade)
+      check('手上的活', person.doing)
       check('所在', person.place)
       for (const chapter of person.history) check('往事', chapter.what)
     }

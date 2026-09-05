@@ -38,15 +38,21 @@
  * ## 三份样本的根骨完全相同，区别只在出身
  *
  * 这是第三道的全部凭据。`SAME_BONES` 那一块钉死了六项，
- * 三份样本只差一个 `insight` 和一个 `trade`——
+ * 三份样本只差一个 `insight` 和一行 `origin`——
  * **而学得会的是悟性低的那个。** 少了这一处对齐，
  * 「他学不会」永远可以解释成「他资质差一点」。
+ *
+ * 出身钉的是整行五格（`beOf`），而 `handsKnow()` 只读其中两格：
+ * 家里那处铺面是不是药铺，或者这家人是不是靠打猎过活。
+ * 摆整行不是多余——少摆一格会摆出「开着药铺却是宗室」这种人，
+ * 而那种人走查出来的结论不算数。
  *
  * 跑法：npx vite-node scripts/mastery.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 
 import { THE_ONE_AT_THE_HERB_SHED } from '../src/content/cultivators'
+import { originById } from '../src/content/origins'
 import { QUIET_BREATH, type Grasp, type Hold } from '../src/content/rites'
 import {
   footingWith,
@@ -58,9 +64,10 @@ import {
   type Practice,
 } from '../src/engine/tutelage'
 import { useCharacterStore } from '../src/stores/character'
-import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
-import type { Attributes, Trade } from '../src/types/game'
+import type { Attributes, OriginId } from '../src/types/game'
+
+import { beOf } from './origin'
 
 /** 剧本里那一章给到几回叩门的机会 */
 const KNOCKS = 12
@@ -102,9 +109,26 @@ const SAME_BONES: Omit<Attributes, 'insight'> = {
 interface Sample {
   label: string
   attributes: Attributes
-  trade: Trade
+  origin: OriginId
   /** 小时候在后院认过药。这是一条**见闻**，不是出身——见第三道末尾 */
   herbLore?: boolean
+}
+
+/**
+ * 这一行出身在这一支里怎么称呼。
+ *
+ * 取的是 `handsKnow()` 真正会去问的那两格：先看家里那处铺面，
+ * 没有铺面就看这家靠什么过活。**印出来的词跟判据读的是同一格**——
+ * 印一个「官宦」而判据读的是 `business`，那这一行字就是在替读者猜。
+ */
+function originName(id: OriginId): string {
+  const row = originById(id)
+  return row.business ?? row.livelihood
+}
+
+/** 报出身用的那一段：主键在前，因为只有它分得开每一行 */
+function who(sample: Sample): string {
+  return `${sample.origin}（${originName(sample.origin)}）`
 }
 
 /**
@@ -116,7 +140,7 @@ interface Sample {
  */
 const SHED_CHILD: Sample = {
   label: '药铺的孩子',
-  trade: '药铺',
+  origin: 'herb',
   attributes: { ...SAME_BONES, insight: 30 },
 }
 
@@ -133,7 +157,7 @@ const SHED_CHILD: Sample = {
  */
 const OFFICIAL_CHILD: Sample = {
   label: '官宦的孩子',
-  trade: '官宦',
+  origin: 'office',
   attributes: { ...SAME_BONES, insight: 40 },
 }
 
@@ -141,12 +165,12 @@ const OFFICIAL_CHILD: Sample = {
  * 匠户的孩子，悟性也是 30，可他小时候在后院翻过药。
  *
  * 这一份是第三道最要紧的一处收尾：**这不是出身决定论。**
- * 决定他不走岔的不是「药铺」两个字，是他手上那份不靠话的经验——
+ * 决定他不走岔的不是家里那处药铺，是他手上那份不靠话的经验——
  * 一条见闻就够了。
  */
 const SMITH_CHILD: Sample = {
   label: '认过药的匠户孩子',
-  trade: '匠户',
+  origin: 'craft',
   attributes: { ...SAME_BONES, insight: 30 },
   herbLore: true,
 }
@@ -162,21 +186,21 @@ const SMITH_CHILD: Sample = {
  */
 const SHARP_OFFICIAL: Sample = {
   label: '悟性够的官宦孩子',
-  trade: '官宦',
+  origin: 'office',
   attributes: { ...SAME_BONES, insight: 50 },
 }
 
 /** 想通了，可身上那个地方一辈子没反应。第一道的第三格 */
 const ROOTLESS_SHED: Sample = {
   label: '碰不着的药铺孩子',
-  trade: '药铺',
+  origin: 'herb',
   attributes: { ...SAME_BONES, insight: 30, root: 41, spirit: 38 },
 }
 
 /** 碰着了，可那五句到死也没想通。第一道的第四格 */
 const DULL_SHED: Sample = {
   label: '想不通的药铺孩子',
-  trade: '药铺',
+  origin: 'herb',
   attributes: { ...SAME_BONES, insight: 14 },
 }
 
@@ -189,7 +213,7 @@ const DULL_SHED: Sample = {
  */
 const ASTRAY_AND_SLOW: Sample = {
   label: '在岔上背书的孩子',
-  trade: '官宦',
+  origin: 'office',
   attributes: { ...SAME_BONES, insight: 40, memory: 26 },
 }
 
@@ -211,7 +235,7 @@ function fresh(sample: Sample): void {
   setActivePinia(createPinia())
   const character = useCharacterStore()
   character.attributes = { ...sample.attributes }
-  useHouseholdStore().trade = sample.trade
+  beOf(sample.origin)
   if (!sample.herbLore) return
   character.learn({
     id: 'herb-lore',
@@ -417,10 +441,10 @@ console.log('  两个孩子，根骨一项不差，师父同一个，教的同�
       .map((key) => `${key}=${sample.attributes[key]}`)
       .join(' ')
   console.log(
-    `  ${SHED_CHILD.label}　　悟性 ${SHED_CHILD.attributes.insight}　出身${SHED_CHILD.trade}`,
+    `  ${SHED_CHILD.label}　　悟性 ${SHED_CHILD.attributes.insight}　出身 ${who(SHED_CHILD)}`,
   )
   console.log(
-    `  ${OFFICIAL_CHILD.label}　　悟性 ${OFFICIAL_CHILD.attributes.insight}　出身${OFFICIAL_CHILD.trade}`,
+    `  ${OFFICIAL_CHILD.label}　　悟性 ${OFFICIAL_CHILD.attributes.insight}　出身 ${who(OFFICIAL_CHILD)}`,
   )
   console.log(`  其余六项：${bones(SHED_CHILD)}`)
   console.log(`  　　　　　${bones(OFFICIAL_CHILD)}\n`)
@@ -443,7 +467,7 @@ console.log('  两个孩子，根骨一项不差，师父同一个，教的同�
    * 真正管用的是他手上那份不靠话的经验，**而那是一条见闻，一段人生**。
    */
   console.log(
-    `\n  ${SMITH_CHILD.label}（悟性 ${SMITH_CHILD.attributes.insight}，出身${SMITH_CHILD.trade}）：`,
+    `\n  ${SMITH_CHILD.label}（悟性 ${SMITH_CHILD.attributes.insight}，出身 ${who(SMITH_CHILD)}）：`,
   )
   console.log(`  想到「${smith.grasp}」，身上「${smith.hold}」`)
   judge(smith.hold === '摸着了', '出身不是药铺，可他小时候认过药——他也学会了')
