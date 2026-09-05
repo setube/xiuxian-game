@@ -61,11 +61,14 @@ function faultsOfHouses(
   }
   const surnames = new Set<string>()
   for (const house of Object.values(houses)) {
-    if (!house.members.includes(house.head)) faults.push(`${house.id} 的户主不在自家成员里`)
+    // 自家那一户（`home`）记的是亲人之外还有谁——王府的乳母、管事、门房。
+    // 户主是爹，他在关系图上不在这份名单里；姓当然跟自家同。这两条只量邻居
+    const own = house.id === 'home'
+    if (!own && !house.members.includes(house.head)) faults.push(`${house.id} 的户主不在自家成员里`)
     for (const id of house.members) {
       if (!roster.has(id)) faults.push(`${house.id} 的成员 ${id} 不在人口册上`)
     }
-    if (house.surname === ownSurname) faults.push(`${house.id} 跟自家同姓「${ownSurname}」`)
+    if (!own && house.surname === ownSurname) faults.push(`${house.id} 跟自家同姓「${ownSurname}」`)
     if (surnames.has(house.surname)) faults.push(`两户邻居都姓「${house.surname}」`)
     surnames.add(house.surname)
   }
@@ -194,7 +197,10 @@ interface Lived {
 
 const lives: Lived[] = []
 const borrowingsSoFar = (): number => lives.filter((l) => l.borrowing !== null).length
-while (lives.length < LIVES || (borrowingsSoFar() < BORROWINGS_WANTED && lives.length < LIVES_CAP)) {
+while (
+  lives.length < LIVES ||
+  (borrowingsSoFar() < BORROWINGS_WANTED && lives.length < LIVES_CAP)
+) {
   setActivePinia(createPinia())
   const narrative = useNarrativeStore()
   const people = usePeopleStore()
@@ -278,7 +284,9 @@ while (lives.length < LIVES || (borrowingsSoFar() < BORROWINGS_WANTED && lives.l
     )
     bad += 1
   } else if (borrowed.length === 0) {
-    console.log(`  ✗ 四、${lives.length} 世没有一世读到荒年借粮那一句——邻居系统的第一个使用者没人读到。`)
+    console.log(
+      `  ✗ 四、${lives.length} 世没有一世读到荒年借粮那一句——邻居系统的第一个使用者没人读到。`,
+    )
     bad += 1
   } else if (rawInText.length > 0) {
     console.log(`  ✗ 四、荒年那一句落纸时没换干净：${rawInText[0]!.borrowing}`)

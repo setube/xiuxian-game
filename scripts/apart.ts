@@ -615,9 +615,29 @@ function noLongerDaily(): string[] {
   }
 
   if (demote) {
+    /**
+     * 府里的人立成真人之后，「举家」不再等于「身边的人都走」。
+     *
+     * 正文明写：管事回乡下，门房、婢女、小厮各自在城里找活路，只有乳母跟着走。
+     * 于是这四个人**散了，不是落下**——量的是他们真离开了那座王府；
+     * 其余在身边的人（亲人、乳母）照旧得在新家。
+     */
+    const DISPERSED = ['steward', 'gatekeeper', 'maid', 'page']
     const strayed = Object.entries(demote.after.people).filter(
-      ([id, folk]) => folk.alive && !folk.nearby && demote.before.people[id]?.nearby === true,
+      ([id, folk]) =>
+        folk.alive &&
+        !folk.nearby &&
+        demote.before.people[id]?.nearby === true &&
+        !DISPERSED.includes(id),
     )
+    for (const id of DISPERSED) {
+      const folk = demote.after.people[id]
+      if (folk?.alive && folk.place === demote.before.home) {
+        wrong.push(
+          `府邸收回了，${folk.calls ?? id}却还在王府里（${folk.place}）——正文说他散了，人没散`,
+        )
+      }
+    }
     for (const [id, folk] of strayed) {
       wrong.push(
         `举家迁出王府，${folk.calls ?? id}却被落下了（他在 ${folk.place}，家在 ${demote.after.home}）——` +
@@ -897,6 +917,8 @@ const HANDED_OVER: Readonly<Record<string, string>> = {
   'reunion:homecoming#open:back-to-town': 'kept.ts',
   'reunion:emptied#open': 'kept.ts',
   'reunion:emptied#open:back-to-town': 'kept.ts',
+  // 王府的孩子才走得到书房（两分之一百的出身）；manor.ts 掷够十世王府，量教授进没进门
+  'school:threshold#study': 'manor.ts',
 }
 
 function handoverHolds(sites: Map<string, string[]>): string[] {

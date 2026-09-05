@@ -71,14 +71,16 @@ for (let i = 0; i < BIRTHS; i += 1) {
 
   // 该住在哪儿：从出身和抚养人认。抚养人的 id 是境况表里写死的
   const guardians = people.guardians
+  // 抚养人压过出身：生在王府却被寺里收留、被人捡去的孩子，住的是寺、是街上——
+  // 跟别的人家一样。宫里那一支例外，它在 `settlePlaces` 里也是先于境况返回的
   const expected: ResidenceKind = household.capital
     ? '宫'
-    : household.station === '宗室'
-      ? '王府'
-      : guardians.includes('monk')
-        ? '寺'
-        : guardians.includes('beggar') || guardians.includes('keeper')
-          ? '无'
+    : guardians.includes('monk')
+      ? '寺'
+      : guardians.includes('beggar') || guardians.includes('keeper')
+        ? '无'
+        : household.station === '宗室'
+          ? '王府'
           : '宅'
 
   births.push({
@@ -112,9 +114,7 @@ for (let i = 0; i < BIRTHS; i += 1) {
 {
   const byKind = new Map<ResidenceKind, number>()
   for (const b of births) byKind.set(b.expected, (byKind.get(b.expected) ?? 0) + 1)
-  console.log(
-    `  住处：${[...byKind.entries()].map(([k, n]) => `${k} ${n}`).join('　')}`,
-  )
+  console.log(`  住处：${[...byKind.entries()].map(([k, n]) => `${k} ${n}`).join('　')}`)
   const missing = (['宅', '宫', '王府', '寺', '无'] as const).filter((k) => !byKind.has(k))
   const wrongKind = births.filter((b) => b.kind !== b.expected)
   const noSettlement = births.filter((b) => b.settlement === null)
@@ -123,13 +123,17 @@ for (let i = 0; i < BIRTHS; i += 1) {
     bad += 1
   } else if (wrongKind.length > 0) {
     const one = wrongKind[0]!
-    console.log(`  ✗ 二、${wrongKind.length} 世住错了地方，例如 ${one.origin} 该住「${one.expected}」，立的是「${one.kind}」。`)
+    console.log(
+      `  ✗ 二、${wrongKind.length} 世住错了地方，例如 ${one.origin} 该住「${one.expected}」，立的是「${one.kind}」。`,
+    )
     bad += 1
   } else if (noSettlement.length > 0) {
     console.log(`  ✗ 二、${noSettlement.length} 世不归任何聚落——讨饭的也得知道自己在哪个镇上讨。`)
     bad += 1
   } else {
-    console.log(`  ✓ 二、宫里的住宫，藩王住王府，寺里的住寺，讨饭的没有居所，其余住宅；人人归一级聚落。`)
+    console.log(
+      `  ✓ 二、宫里的住宫，藩王住王府，寺里的住寺，讨饭的没有居所，其余住宅；人人归一级聚落。`,
+    )
   }
 }
 
@@ -147,13 +151,17 @@ for (let i = 0; i < BIRTHS; i += 1) {
 
   console.log(
     `  邻村：住村里的 ${villagers.length} 世，住城里的 ${townsfolk.length} 世` +
-      (sample ? `；例如住在${sample.own}的人，邻村是 ${sample.nearby.join('、')}，正文落纸「${sample.villageFill}」` : ''),
+      (sample
+        ? `；例如住在${sample.own}的人，邻村是 ${sample.nearby.join('、')}，正文落纸「${sample.villageFill}」`
+        : ''),
   )
   if (villagers.length === 0) {
     console.log(`  ✗ 三、没有一世住在村里，邻村没验到。`)
     bad += 1
   } else if (noNearby.length > 0 || sameName.length > 0) {
-    console.log(`  ✗ 三、${noNearby.length} 世住村里却没有邻村，${sameName.length} 世的邻村跟自己村同名。`)
+    console.log(
+      `  ✗ 三、${noNearby.length} 世住村里却没有邻村，${sameName.length} 世的邻村跟自己村同名。`,
+    )
     bad += 1
   } else if (townHasNearby.length > 0) {
     console.log(`  ✗ 三、${townHasNearby.length} 世住在城里却有邻村——城里没有邻村这回事。`)
@@ -165,14 +173,18 @@ for (let i = 0; i < BIRTHS; i += 1) {
     )
     bad += 1
   } else {
-    console.log(`  ✓ 三、住村里的有一两个邻村，名字不跟自己村重；住城里的没有；正文里那句落纸是村名。`)
+    console.log(
+      `  ✓ 三、住村里的有一两个邻村，名字不跟自己村重；住城里的没有；正文里那句落纸是村名。`,
+    )
   }
 }
 
 // 四、征象看住处不看日子
 {
   // 只看住在宅里或没有居所的木匠：生在木匠家却被寺里收留的孩子住在寺，看不见街是对的
-  const craftsmen = births.filter((b) => b.origin === 'craft' && (b.kind === '宅' || b.kind === '无'))
+  const craftsmen = births.filter(
+    (b) => b.origin === 'craft' && (b.kind === '宅' || b.kind === '无'),
+  )
   const farmers = births.filter((b) => b.origin === 'farm' && b.kind === '宅')
   const walled = births.filter((b) => b.kind === '宫' || b.kind === '王府' || b.kind === '寺')
   const craftWrong = craftsmen.filter((b) => b.seesVillage || !b.seesStreet)
@@ -194,7 +206,9 @@ for (let i = 0; i < BIRTHS; i += 1) {
     console.log(`  ✗ 四、${walledWrong.length} 个宫、王府、寺里的人看见了村口或粮铺。`)
     bad += 1
   } else {
-    console.log(`  ✓ 四、木匠看得见粮铺看不见村口，农户反过来，高墙里的两样都看不见——征象看的是住处。`)
+    console.log(
+      `  ✓ 四、木匠看得见粮铺看不见村口，农户反过来，高墙里的两样都看不见——征象看的是住处。`,
+    )
   }
 }
 
@@ -209,7 +223,11 @@ for (let i = 0; i < BIRTHS; i += 1) {
     if (household.origin !== 'court') continue
     const narrative = useNarrativeStore()
     const world = useWorldStore()
-    const story = useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale })
+    const story = useStory(lifeScenes, {
+      events: lifeEvents,
+      routine: lifeRoutine,
+      finale: lifeFinale,
+    })
     story.begin()
     let turns = 0
     while (!narrative.ended && turns < 200 && !world.hasFlag('the-fall')) {
@@ -230,7 +248,9 @@ for (let i = 0; i < BIRTHS; i += 1) {
     console.log(`  ✗ 五、${unmoved} 世迁出京城之后居所还没搬——门牌换了，人还住在宫里。`)
     bad += 1
   } else if (lostOld > 0) {
-    console.log(`  ✗ 五、${lostOld} 世搬走之后原来那处宫从册上消失了——他从那儿搬走了，那地方没有消失。`)
+    console.log(
+      `  ✗ 五、${lostOld} 世搬走之后原来那处宫从册上消失了——他从那儿搬走了，那地方没有消失。`,
+    )
     bad += 1
   } else {
     console.log(`  ✓ 五、宫里坠落的 ${fell} 世都住进了府城的宅，原来那处宫还在册上。`)
@@ -250,7 +270,9 @@ for (let i = 0; i < BIRTHS; i += 1) {
   const caughtCross = faultsOfTree(crossed).length > 0
   const caughtLoop = faultsOfTree(looped).length > 0
   if (!caughtCross || !caughtLoop) {
-    console.log(`  ✗ 尺子自检没通过：村挂在京师下${caughtCross ? '抓到了' : '没抓到'}，绕圈${caughtLoop ? '抓到了' : '没抓到'}。`)
+    console.log(
+      `  ✗ 尺子自检没通过：村挂在京师下${caughtCross ? '抓到了' : '没抓到'}，绕圈${caughtLoop ? '抓到了' : '没抓到'}。`,
+    )
     bad += 1
   } else {
     console.log(`  ✓ 尺子自检：村挂在京师下、府县互为上级，两样掰坏的树都红。`)

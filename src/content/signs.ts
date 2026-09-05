@@ -364,6 +364,41 @@ export const SIGNS: readonly SignRule[] = [
     tone: 'faint',
     weight: 22,
   },
+
+  // ============================================================
+  // 王府。
+  //
+  // 不是宫里那一组换个称号。王府在府城里，世界的消息进得来，只是要过长史司、
+  // 过门房、过管事，到孩子眼前时已经是府里的事：进出的人多了，禄米拖了，
+  // 父王赏了谁责了谁。「贵」不在东西上，在人有多少、规矩有多少、谁替谁办事。
+  // ============================================================
+  {
+    id: 'manor-busy',
+    when: { order: { atMost: 44 } },
+    who: [{ living: { is: 'manor' } }],
+    says: '府里进出的人多了。长史来回话的次数也多了，前殿常亮灯到天黑。',
+    reading: '你以为是府里有喜事。',
+    from: 'order',
+    weight: 45,
+  },
+  {
+    id: 'manor-stipend',
+    when: { grain: { atLeast: 126 } },
+    who: [{ living: { is: 'manor' } }],
+    says: '府里裁了两个人。乳母说，年景不好，禄米又拖了。',
+    reading: '你不知道禄米是什么。你只知道园子里少了一个扫地的。',
+    from: 'grain',
+    weight: 40,
+  },
+  {
+    id: 'manor-quiet',
+    when: { grain: { atLeast: 84, atMost: 122 }, order: { atLeast: 48 } },
+    who: [{ living: { is: 'manor' } }],
+    says: '府里一切照旧。前院有人得了赏，一匹布，府里传了好几天。',
+    from: 'order',
+    tone: 'faint',
+    weight: 22,
+  },
 ]
 
 export interface SignMeta {

@@ -213,10 +213,107 @@ export function beBorn(id: OriginId, home: string): Birth {
     surname: finalSurname,
   })
 
+  // 王府里的人。乳母、管事、门房、婢女、小厮——他们是真人，不是一个 servantCount
+  // 住在王府里才有：被寺里收留的那个孩子身边是老僧，不是乳母
+  if (id === 'manor' && useWorldStore().residenceKind() === '王府') {
+    settleManorHousehold({ people, id, home, bornYear, surname: finalSurname })
+  }
+
   return {
     name: `${finalSurname}${pick(origin.given) ?? '生'}`,
     circumstance,
   }
+}
+
+/**
+ * 立王府里的人。
+ *
+ * 用户 2026-09-06 定的：**府里的下人也必须是真人。** 不是 `servantCount = 37`，
+ * 是乳母、管事、门房、婢女、小厮各有年纪、脾气、过去——乳母有自己留在乡下的孩子，
+ * 管事服侍这个家三十年，小厮出身城外的农家。他们进人口册，会老会死，
+ * 也会被逐出府（`royal:dismissal`）——身份会变，那正是这一层要说的话。
+ *
+ * 他们记在 `houses['home']` 里：玩家自家这一户除了亲人还有谁。
+ * 脾气是掷的，跟别人一样——**宗室身份和具体人物分开**，在王府里不体面的人照样有。
+ */
+function settleManorHousehold(input: {
+  people: ReturnType<typeof usePeopleStore>
+  id: OriginId
+  home: string
+  bornYear: number
+  surname: string
+}): void {
+  const { people, id, home, bornYear, surname } = input
+  const staff: {
+    pid: string
+    gender: Gender
+    older: [number, number]
+    doing: string
+    calls: string
+    past?: Chapter
+  }[] = [
+    {
+      pid: 'nurse',
+      gender: '女',
+      older: [22, 36],
+      doing: '乳母',
+      calls: '乳母',
+      past: { id: 'own-child', atAge: 20, what: '自己的孩子留在乡下，托给了娘家。', known: false },
+    },
+    {
+      pid: 'steward',
+      gender: '男',
+      older: [42, 60],
+      doing: '府里的管事',
+      calls: '老管家',
+      past: {
+        id: 'served-long',
+        atAge: 20,
+        what: '从上一代王爷起就在府里，服侍这个家三十年。',
+        known: false,
+      },
+    },
+    { pid: 'gatekeeper', gender: '男', older: [30, 55], doing: '门房', calls: '门房' },
+    { pid: 'maid', gender: '女', older: [12, 18], doing: '府里的婢女', calls: '春杏' },
+    {
+      pid: 'page',
+      gender: '男',
+      older: [10, 15],
+      doing: '府里的小厮',
+      calls: '小厮',
+      past: {
+        id: 'farm-born',
+        atAge: 12,
+        what: '家里是城外种地的，十二岁被招进府。',
+        known: false,
+      },
+    },
+  ]
+  const members: string[] = []
+  for (const one of staff) {
+    const person = makePerson({
+      id: one.pid,
+      surname: pick(SURNAMES) ?? '刘',
+      given:
+        one.gender === '女' ? (pick(FEMALE_GIVEN) ?? '巧云') : (pick(MALE_GIVEN.farm) ?? '大有'),
+      gender: one.gender,
+      bornYear: bornYear - randomBetween(one.older[0], one.older[1]),
+      doing: one.doing,
+      place: home,
+      history: one.past ? [one.past] : [],
+    })
+    people.enroll(person)
+    people.meet(person.id, one.calls, 0)
+    members.push(person.id)
+  }
+  people.enrollHouse({
+    id: 'home',
+    surname,
+    head: 'father',
+    members,
+    residence: 'home',
+    livelihood: originById(id).livelihood,
+  })
 }
 
 /**
@@ -265,25 +362,62 @@ function settlePlaces(input: {
 
   world.enrollPlace({ id: 'prefecture', name: household.prefecture, kind: '府', within: null })
   const counties = [...COUNTY_NAMES].sort(() => Math.random() - 0.5)
-  world.enrollPlace({ id: 'county', name: counties[0] ?? '清平县', kind: '县', within: 'prefecture' })
+  world.enrollPlace({
+    id: 'county',
+    name: counties[0] ?? '清平县',
+    kind: '县',
+    within: 'prefecture',
+  })
   // 邻县：修河堤的活在那儿，父亲死在那儿——它得是一个真的地方
-  world.enrollPlace({ id: 'county-2', name: counties[1] ?? '安化县', kind: '县', within: 'prefecture' })
+  world.enrollPlace({
+    id: 'county-2',
+    name: counties[1] ?? '安化县',
+    kind: '县',
+    within: 'prefecture',
+  })
 
   const rural = id === 'farm' || id === 'hunt'
   let parent: string
   if (rural) {
-    world.enrollPlace({ id: 'town', name: pick(TOWN_NAMES) ?? '石桥镇', kind: '镇', within: 'county' })
+    world.enrollPlace({
+      id: 'town',
+      name: pick(TOWN_NAMES) ?? '石桥镇',
+      kind: '镇',
+      within: 'county',
+    })
     world.enrollPlace({ id: 'village', name: household.locale, kind: '村', within: 'town' })
     // 邻村一到两个：走山道去的那个村，托人来问亲事的那个村
-    const names = VILLAGE_NAMES.filter((name) => name !== household.locale).sort(() => Math.random() - 0.5)
+    const names = VILLAGE_NAMES.filter((name) => name !== household.locale).sort(
+      () => Math.random() - 0.5,
+    )
     for (let n = 0; n < randomBetween(1, 2); n += 1) {
-      world.enrollPlace({ id: `village-${n + 2}`, name: names[n] ?? '南坡', kind: '村', within: 'town' })
+      world.enrollPlace({
+        id: `village-${n + 2}`,
+        name: names[n] ?? '南坡',
+        kind: '村',
+        within: 'town',
+      })
     }
     parent = 'village'
   } else {
-    world.enrollPlace({ id: 'city', name: `${household.prefecture}城`, kind: '城', within: 'county' })
+    world.enrollPlace({
+      id: 'city',
+      name: `${household.prefecture}城`,
+      kind: '城',
+      within: 'county',
+    })
     if (origin.station === '宗室') {
-      // 王府占一整片，不挂在哪条街下
+      // 王府占一整片，不挂在哪条街下。生在王府却被寺里收留、被人捡去的孩子，
+      // 住的不是王府——境况压过出身，跟别的人家一样
+      if (roofless) {
+        world.settle(null, 'city')
+        return
+      }
+      if (inTemple) {
+        world.enrollPlace({ id: 'home', name: '寺', kind: '寺', within: 'city' })
+        world.settle('home', 'city')
+        return
+      }
       world.enrollPlace({ id: 'home', name: household.locale, kind: '王府', within: 'city' })
       world.settle('home', 'city')
       return

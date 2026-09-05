@@ -313,7 +313,8 @@ function applyOne(
     case 'person': {
       // 他去了别处、换了差事、没了——都不是把他删掉，是改他的下落
       people.amend(effect.id, {
-        ...(effect.place === undefined ? {} : { place: effect.place }),
+        // 地名跟 `home` 那条一样过记号：正文里写「{prefecture} · 城西旧宅」，落的是真地名
+        ...(effect.place === undefined ? {} : { place: fillString(effect.place) }),
         ...(effect.doing === undefined ? {} : { doing: effect.doing }),
         ...(effect.fate === undefined ? {} : { fate: effect.fate }),
         ...(effect.health === undefined ? {} : { health: effect.health }),

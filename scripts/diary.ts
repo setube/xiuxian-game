@@ -47,6 +47,12 @@ function fresh(age = 12, origin: OriginId = 'farm') {
   beOf(origin)
   const household = useHouseholdStore()
   const world = useWorldStore()
+  // 去镇上、上山、找村里的孩子玩现在都问住处。这一支不走出生那一卷，
+  // 于是自己立一处村里的宅——跟 `settlePlaces` 给种地人家立的一样
+  world.enrollPlace({ id: 'town', name: '镇', kind: '镇', within: null })
+  world.enrollPlace({ id: 'village', name: '村', kind: '村', within: 'town' })
+  world.enrollPlace({ id: 'home', name: '家', kind: '宅', within: 'village' })
+  world.settle('home', 'village')
   const character = useCharacterStore()
   usePeopleStore()
   const diary = useDiaryStore()
@@ -191,7 +197,8 @@ console.log('\n=== ④ 你十四岁以后，再也没有替家里下过地 ===\n
   const farmDays = diary.days.length
   // 十五岁起改成往镇上跑
   for (let year = 0; year < 4; year += 1) {
-    for (let n = 0; n < 2; n += 1) liveADay(['town'])
+    // 「待在家里」谁都去得了。从前写的是「去镇上」——那个去处现在按住处限定，住城里的人去不了
+    for (let n = 0; n < 2; n += 1) liveADay(['home'])
     world.advanceTime({ years: 1 })
   }
 

@@ -31,7 +31,11 @@ export const schoolingScenes: SceneLibrary = {
           // （皇室一行、王府一行），漏一行没有任何机器会提醒。
           // 而且它现在还多管一件事——削爵那天 `station` 落到「寻常」，
           // 这一支自己就关了，不必回头改这两行
-          { requires: [{ station: '宗室' }], next: 'hall' },
+          // 宗室开蒙不问家境，可宫里和王府是两处：皇子由翰林侍讲，
+          // 世子由王府教授（长史司的属官）。从前两支共用 `hall`，
+          // 于是王府的孩子读到「钦天监就在这座宫里」——换个称号当换了生活
+          { requires: [{ origin: 'court' }], next: 'hall' },
+          { requires: [{ origin: 'manor' }], next: 'study' },
           // 官宦人家不送孩子去村塾。这一条不问家境——
           // 就算八品官家道中落，请西席也是最后才裁的开销
           { requires: [{ station: '仕宦' }], next: 'tutor' },
@@ -103,6 +107,56 @@ export const schoolingScenes: SceneLibrary = {
        * 识字对这一家不是机会，是理所当然——所以这一节没有「能不能读」的悬念，
        * 只有「读得多认真」。代价换成了另一样：他从来没有跟同龄人一起念过书。
        */
+      /**
+       * 王府书房。
+       *
+       * 教授是长史司的属官，从八品，每日辰时到书房，酉时回自己家——
+       * 他不住在府里，有自己的家人。开蒙不问家境，跟宫里一样；
+       * 不一样的是这里没有钦天监，没有三个伺候的站在门外，
+       * 书房窗外是府里的园子，隔着一道墙是府城的街。
+       */
+      study: {
+        id: 'study',
+        onEnter: [
+          { type: 'time', months: 4 },
+          { type: 'flag', key: 'schooled', value: true },
+          { type: 'flag', key: 'royal-schooling', value: true },
+          { type: 'attribute', key: 'insight', delta: 5 },
+          {
+            type: 'roll',
+            key: 'court-fate',
+            among: [
+              { value: '安', weight: 58 },
+              { value: '倾', weight: 42 },
+            ],
+          },
+          // 教授先在这儿入册：他不叫「先生」，府里上下叫他「教授」
+          {
+            type: 'meet',
+            id: 'teacher',
+            calls: '教授',
+            delta: 12,
+            who: { surname: '周', given: '敬之', gender: '男', age: 48, doing: '王府教授' },
+            bond: '师',
+          },
+          { type: 'chronicle', text: '你开蒙了。教授是长史司的属官。' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '开蒙的日子是{elder}定的。那天前殿有客，他没有来。' },
+          { kind: 'narration', text: '教授姓周，长史司的属官，每日辰时到书房，酉时回自己家。' },
+          { kind: 'narration', text: '书房里只有你一个人。乳母在门外，一步没走开。' },
+          { kind: 'dialogue', speaker: '周教授', text: '世子请把手伸出来。' },
+          { kind: 'narration', text: '他看了看你的手，什么也没说。' },
+          { kind: 'event', text: '你开始认字了。' },
+          {
+            kind: 'narration',
+            text: '窗外是园子。隔着一道墙，听得见街上有人在卖东西。',
+            tone: 'faint',
+          },
+        ],
+        next: 'lessons',
+      },
+
       tutor: {
         id: 'tutor',
         onEnter: [

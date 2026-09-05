@@ -141,6 +141,26 @@ const PALACE: Living = {
 }
 
 /**
+ * 王府。
+ *
+ * ## 不是宫里的下级场景，是另一套生活空间
+ *
+ * 从前 `manor` 和 `court` 共用 `palace` 这一种日子——那正是用户 2026-09-06 点名
+ * 最危险的一处：换个称号就当换了生活。王府挂在府城下（`Place`），这只是空间事实；
+ * 它跟宫里不同的是**人员组成、生活秩序、出入规则、日常事务**：
+ * 父王不是天子，见他不用通传，可他多半在前殿见属官；府里有长史司、有管事、
+ * 有乳母婢女门房，饭是人端来的，门是人看着的，出府要有人跟着。
+ *
+ * `chore` 仍是 null：王府的孩子不做活，这一点跟宫里一样。
+ * 分别不在这一格，在 `birth.ts` 立的那几个府里的人，和 `days.ts` 里王府的去处。
+ */
+const MANOR: Living = {
+  id: 'manor',
+  chore: null,
+  summary: '王府。见不见得着父亲，看前殿今日有没有客',
+}
+
+/**
  * 讨饭的。
  *
  * 老乞丐把你捡回来养大——这一条压过这个家本身：
@@ -252,7 +272,7 @@ export const LIVINGS: Record<OriginId, Living> = {
   herb: CLINIC,
   escort: CRAFT,
   office: OFFICE,
-  manor: PALACE,
+  manor: MANOR,
   court: PALACE,
 }
 
@@ -301,6 +321,7 @@ export function livingById(id: string): Living | undefined {
 /** 全部日子，去重。门禁遍历用 */
 export const ALL_LIVINGS: readonly Living[] = [
   HOMESTEAD,
+  MANOR,
   HUNT,
   CRAFT,
   SHOP,

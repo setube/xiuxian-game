@@ -1,5 +1,8 @@
 import type { Beat, Doing } from '@/engine/daily'
 
+import { CITY_BEATS, CITY_DOINGS } from './days-city'
+import { MANOR_BEATS, MANOR_DOINGS } from './days-manor'
+
 /**
  * 一天里可以去的地方，和去了之后可能发生的事。
  *
@@ -15,6 +18,8 @@ import type { Beat, Doing } from '@/engine/daily'
 
 /** 今天可以去哪儿 */
 export const DOINGS: readonly Doing[] = [
+  ...MANOR_DOINGS,
+  ...CITY_DOINGS,
   {
     /**
      * 「帮家里干活」这句话本身就有前提：**这家得有活。**
@@ -64,12 +69,15 @@ export const DOINGS: readonly Doing[] = [
     // 镇上要走半天。傍晚再动身，天黑前回不来
     label: '去镇上',
     slots: ['上午', '下午'],
+    // 村里镇上的人才「去镇上」；住城里的是「上街」，宫和王府出不了门
+    requires: [{ dwelling: { settlement: ['村', '镇'], kind: ['宅', '无'] } }],
     echo: '你往镇上去了。',
   },
   {
     id: 'hill',
     label: '往山那边走走',
     slots: ['上午', '下午'],
+    requires: [{ dwelling: { settlement: ['村'], kind: ['宅', '无'] } }],
     echo: '你往山那边去了。',
   },
   {
@@ -96,6 +104,8 @@ export const DOINGS: readonly Doing[] = [
     id: 'kids',
     label: '找村里的孩子玩',
     slots: ['上午', '下午'],
+    // 城里的孩子玩的是巷子里的孩子——那是另一句，不在这儿用记号掩盖
+    requires: [{ dwelling: { settlement: ['村'], kind: ['宅', '无'] } }],
     echo: '你跑出去找人玩。',
   },
   {
@@ -119,6 +129,8 @@ export const DOINGS: readonly Doing[] = [
  * 多数时候答案是不需要——那就写成「无事」，让它只负责把这一天写实。
  */
 export const BEATS: readonly Beat[] = [
+  ...MANOR_BEATS,
+  ...CITY_BEATS,
   // ============================================================
   // 帮家里干活
   //

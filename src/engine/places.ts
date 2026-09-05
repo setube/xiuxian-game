@@ -51,7 +51,10 @@ export function chainOf(places: Readonly<Record<string, Place>>, id: string): Pl
 
 /** 这一处归在哪一级聚落。宅归村，街归城，宫归京师 */
 export function settlementOf(places: Readonly<Record<string, Place>>, id: string): Place | null {
-  return chainOf(places, id).find((place) => SETTLEMENT_KINDS.includes(place.kind as SettlementKind)) ?? null
+  return (
+    chainOf(places, id).find((place) => SETTLEMENT_KINDS.includes(place.kind as SettlementKind)) ??
+    null
+  )
 }
 
 /** 脚下这一处是什么样的地方。没有居所（讨饭、逃难）就是「无」 */
@@ -97,7 +100,9 @@ export function faultsOfTree(places: Readonly<Record<string, Place>>): string[] 
       continue
     }
     if (!PLACE_PARENTS[place.kind].includes(parent.kind)) {
-      faults.push(`「${place.name}」（${place.kind}）挂在「${parent.name}」（${parent.kind}）下——两棵树串了`)
+      faults.push(
+        `「${place.name}」（${place.kind}）挂在「${parent.name}」（${parent.kind}）下——两棵树串了`,
+      )
     }
     const chain = chainOf(places, place.id)
     if (chain[chain.length - 1]?.within !== null) {

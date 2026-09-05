@@ -421,6 +421,78 @@ export const royalScenes: SceneLibrary = {
    * 三节各自都不解释这件事，正文里一个字也没提「称呼变了」——
    * 玩家是从那三个词上读出来的。这是这一层唯一说得出口的验收标准。
    */
+  /**
+   * 逐出府。
+   *
+   * 王府里的小厮是真人：出身城外农家，十二岁被招进府。这一节他犯了错，
+   * 管事要逐他出去。**身份会变**——他从「府里的小厮」变成「在城里给人做事」，
+   * 人还在人口册上，只是不在这个家里了。
+   *
+   * 世子替不替他说话，改的是他跟管事的关系，不改小厮的下场：
+   * 府里的规矩不由一个孩子定。这正是「贵」的样子——谁能做决定，不是谁有多少东西。
+   */
+  'royal:dismissal': {
+    id: 'royal:dismissal',
+    title: '逐出府',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        blocks: [
+          {
+            kind: 'narration',
+            text: '前院丢了东西。{call:steward}查了三天，查到{call:page}头上。',
+          },
+          { kind: 'narration', text: '他跪在廊下，没有辩。' },
+          { kind: 'narration', text: '{call:steward}说，府里的规矩，这样的人留不得。' },
+        ],
+        choices: [
+          {
+            id: 'plead',
+            label: '替他说一句',
+            echo: '你说，他平日老实。',
+            effects: [
+              { type: 'time', days: 3 },
+              { type: 'attribute', key: 'will', delta: 3 },
+              {
+                type: 'relation',
+                id: 'steward',
+                name: '老管家',
+                delta: -6,
+                note: '你替小厮说话那天，他没接你的话。',
+              },
+              { type: 'relation', id: 'page', name: '小厮', delta: 10 },
+            ],
+            next: 'gone',
+          },
+          {
+            id: 'silent',
+            label: '没说话',
+            echo: '你站在廊上，什么也没说。',
+            effects: [
+              { type: 'time', days: 3 },
+              { type: 'attribute', key: 'insight', delta: 2 },
+            ],
+            next: 'gone',
+          },
+        ],
+      },
+      gone: {
+        id: 'gone',
+        onEnter: [
+          { type: 'person', id: 'page', place: '城里 · 街上', doing: '在城里给人做事' },
+          { type: 'flag', key: 'page-dismissed', value: true },
+          { type: 'chronicle', text: '府里逐了一个小厮。' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '第二天他就不在府里了。' },
+          { kind: 'narration', text: '{call:nurse}说，听说他在城里给人做事。', tone: 'faint' },
+          { kind: 'narration', text: '你替他说没说话，他都是走了。', tone: 'faint' },
+        ],
+      },
+    },
+  },
+
   'royal:demote': {
     id: 'royal:demote',
     title: '削爵',
@@ -472,9 +544,25 @@ export const royalScenes: SceneLibrary = {
           // 那边叫庶人，这边叫寓公之子，而两家过的都是「屋子还在，营生没有」。
           // 这一处并列正是 identity 与 living 分开的理由本身
           { type: 'living', living: 'fallen' },
+          /**
+           * 府邸收回，府里的人散了。
+           *
+           * 这几笔是 `scripts/apart.ts` 逼出来的：府里的人立成真人之后，「举家」
+           * 头一回把乳母、管事、门房都算成了家里人，而旧宅三进，养不起一府的人。
+           * 管事年纪大了回乡下，门房、婢女、小厮各自在城里找活路——**身份会变**，
+           * 他们从「府里的人」变回城里的人；只有乳母跟着走。
+           * 这几笔落在 `home` 之前：「举家」带的是这时候还在府里的人。
+           */
+          { type: 'person', id: 'steward', place: '城外 · 乡下', doing: '回乡下去了' },
+          { type: 'person', id: 'gatekeeper', place: '城里 · 街上', doing: '在城里给人看门' },
+          { type: 'person', id: 'maid', place: '城里 · 街上', doing: '被人家雇了去' },
+          { type: 'person', id: 'page', place: '城里 · 街上', doing: '在城里给人做事' },
           // 「全家迁出王府」——正文明写的，所以这里是举家。
           // 跟隔壁那一卷的分别正在这里：那边只有母子二人走
           { type: 'home', place: '{province} · {prefecture} · 城西旧宅', takes: '举家' },
+          // 乳母跟着走。「举家」带的是户里的亲人（`household.members`），她不在那份名单上，
+          // 得正文点名——她跟这个家的关系本来就是正文给的
+          { type: 'person', id: 'nurse', place: '{province} · {prefecture} · 城西旧宅' },
         ],
         blocks: [
           { kind: 'divider', variant: 'dots' },
@@ -484,6 +572,9 @@ export const royalScenes: SceneLibrary = {
             text: '新住处在{prefecture}城里，三进的院子，比王府小了不知多少倍。',
           },
           { kind: 'narration', text: '街坊都知道搬来了个从前的王爷，头几个月总有人在门口张望。' },
+          // 乳母跟没跟来不在这句里说：她是 onEnter 那一笔搬过来的，人际面板上看得见「在身边」。
+          // 点名写她得问她还在不在，而那个条件到这一年几乎恒真——写成「所见」是装饰
+          { kind: 'narration', text: '府里的人散了，各自去找活路。' },
           { kind: 'narration', text: '后来就没人看了。' },
           {
             kind: 'narration',
@@ -558,11 +649,30 @@ export const royalEvents: readonly LifeEvent[] = [
     weight: 200,
   },
   {
+    // 王府里逐一个小厮。小厮、管事、乳母都得还在——正文点名说谁，条件就问谁
+    id: 'royal-dismissal',
+    window: { from: 9, to: 13 },
+    requires: [
+      { origin: 'manor' },
+      { dwelling: { kind: ['王府'] } },
+      { family: { id: 'page', alive: true } },
+      { family: { id: 'steward', alive: true } },
+      { family: { id: 'nurse', alive: true } },
+    ],
+    scene: 'royal:dismissal',
+    weight: 60,
+  },
+  {
     // 削藩比夺嫡常见，但同样是早就掷定的。没摊上的，
     // 十六岁那年就以世子的身份站在渡口——那也是一种人生
     id: 'royal-demote',
     window: { from: 12, to: 15 },
-    requires: [{ origin: 'manor' }, { flag: { key: 'court-fate', equals: '倾' } }],
+    // 「全家迁出王府」——得真住在王府里。生在王府却在寺里长大的孩子，削的不是他的家
+    requires: [
+      { origin: 'manor' },
+      { dwelling: { kind: ['王府'] } },
+      { flag: { key: 'court-fate', equals: '倾' } },
+    ],
     chain: CHAIN,
     scene: 'royal:demote',
     weight: 200,

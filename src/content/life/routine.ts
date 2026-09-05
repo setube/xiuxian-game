@@ -91,11 +91,31 @@ export const routineScenes: SceneLibrary = {
           {
             id: 'run',
             label: '在外面疯跑',
+            // 宫里和王府的孩子出不了那道门——不是不许跑，是门房不放
+            requires: [{ dwelling: { kind: ['宅', '寺', '无'] } }],
             echo: '你成天在外面跑。',
             effects: [
               { type: 'time', months: 8 },
               { type: 'attribute', key: 'body', delta: 3 },
               { type: 'attribute', key: 'fortune', delta: 1 },
+            ],
+            next: null,
+          },
+          {
+            id: 'nurse',
+            label: '整日跟着乳母',
+            /*
+             * 王府的孩子不是母妃带的，是乳母带的。她是一个真人（`birth.ts` 立的），
+             * 有自己留在乡下的孩子——这一条不是「跟着{dam}」换个词，
+             * 是另一套照料关系。
+             */
+            requires: [{ family: { id: 'nurse', alive: true } }],
+            echo: '你整日跟在乳母身后。',
+            effects: [
+              { type: 'time', months: 8 },
+              { type: 'attribute', key: 'insight', delta: 1 },
+              { type: 'attribute', key: 'will', delta: 1 },
+              { type: 'relation', id: 'nurse', name: '乳母', delta: 8 },
             ],
             next: null,
           },
@@ -245,7 +265,7 @@ export const routineScenes: SceneLibrary = {
              * **门第塌了的宗室，是真的要出去挣这口饭的**，
              * 而那正是那一册要说的话。
              */
-            requires: [{ living: { notIn: ['palace'] } }],
+            requires: [{ living: { notIn: ['palace', 'manor'] } }],
             effects: [
               { type: 'time', years: 1 },
               { type: 'attribute', key: 'body', delta: 5 },
@@ -369,7 +389,7 @@ export const routineScenes: SceneLibrary = {
             hint: '在外头的日子不好过，但家里能宽裕些',
             echo: '这两年你多半在外头做工。',
             // 理由同少年那一卷：高墙里头的人不出去做工，削爵之后才开
-            requires: [{ living: { notIn: ['palace'] } }],
+            requires: [{ living: { notIn: ['palace', 'manor'] } }],
             effects: [
               { type: 'time', years: 2 },
               { type: 'attribute', key: 'body', delta: 5 },

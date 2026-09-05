@@ -101,6 +101,7 @@ const SETTLED = [
   'clinic',
   'office',
   'palace',
+  'manor',
   'temple',
   'fallen',
   'market',
