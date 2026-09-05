@@ -1,3 +1,4 @@
+import { describeAge } from '@/engine/describe'
 import type { Bond, Person } from '@/types/game'
 
 /**
@@ -29,6 +30,13 @@ export interface NoteInput {
   remembered?: string
   /** 他今年多大 */
   age: number
+  /**
+   * 出生到现在过了几个月。**只有头一年用得着。**
+   *
+   * 不给就只说整岁，于是刚落地的弟弟在面板上是「〇岁」——
+   * 那不是年龄，是一个没算出来的数。给了就说「三个月」。
+   */
+  months?: number
   /** 知道名字就写在前头，「陈怀山，」。不知道就不写——名字要有人告诉你才知道 */
   name?: string
   /**
@@ -96,7 +104,7 @@ export const HOUSEHOLD_BONDS: readonly Bond[] = [
  * 再说玩家自己记下的印象；最后才是他在做什么。
  */
 export function noteOf(input: NoteInput): string {
-  const { person, remembered, age, name, vanished, fallback } = input
+  const { person, remembered, age, months, name, vanished, fallback } = input
 
   if (!person) return ''
   if (person.fate === '殁') return '不在了。'
@@ -115,7 +123,9 @@ export function noteOf(input: NoteInput): string {
    * 改过名（见 `engine/savefile.ts`）。玩家读到的字里一个英文字母也不该有
    * （`scripts/verify.ts` 守着这条），所以这里绝不能让 `${undefined}` 落到纸上。
    */
+  // 岁数这一句走 `describeAge`：头一年它说的是「三个月」不是「〇岁」
+  const said = `${describeAge(age, months)}。`
   const doing = person.doing ?? (age >= WORKS_FROM ? fallback : undefined)
-  if (!doing) return `${called}${age}岁。`
-  return `${called}${age}岁。${doing}`
+  if (!doing) return `${called}${said}`
+  return `${called}${said}${doing}`
 }

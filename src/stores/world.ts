@@ -83,6 +83,16 @@ export const useWorldStore = defineStore(
     const regions = ref<Record<string, Region>>({})
     /** 玩家出生那一年。年龄由它和当下时序算出来 */
     const bornYear = ref(0)
+    /**
+     * 玩家出生在那一年的几月。
+     *
+     * 光有年份，头一年只能写成「〇岁」——一个刚出生的婴儿，
+     * 面板上写着一个〇，那不是年龄，那是没算出来。
+     * 有了月，第一年才说得出「三个月」「快一岁了」。
+     *
+     * 只有第一年用得着它。往后年龄按整年算，跟从前一样。
+     */
+    const bornMonth = ref(1)
     const chronicle = ref<ChronicleEntry[]>([])
 
     const isNewGame = computed(() => chronicle.value.length === 0)
@@ -159,6 +169,7 @@ export const useWorldStore = defineStore(
      */
     function seedHistory(): void {
       bornYear.value = time.value.year
+      bornMonth.value = time.value.month
       runWorld(Math.max(0, time.value.year - 1), true)
     }
 
@@ -219,6 +230,7 @@ export const useWorldStore = defineStore(
       flags.value = {}
       regions.value = {}
       bornYear.value = 0
+      bornMonth.value = 1
       chronicle.value = []
     }
 
@@ -229,6 +241,7 @@ export const useWorldStore = defineStore(
       flags,
       regions,
       bornYear,
+      bornMonth,
       chronicle,
       isNewGame,
       advanceTime,

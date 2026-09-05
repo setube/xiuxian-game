@@ -54,7 +54,13 @@ export const ERRANDS: readonly Errand[] = [
     label: '找先生问一句',
     echo: '你在散学之后没走，等先生收拾完了书。',
     days: 1,
-    requires: [{ flag: { key: 'leaning:know' } }, { flag: { key: 'schooled', equals: true } }],
+    // 「散学之后等先生收拾完了书」——这一趟的每一种结局都是先生在说话，
+    // 他得还在。旗标 `schooled` 说的是「念过书」，那件事不会因为他死了就变
+    requires: [
+      { flag: { key: 'leaning:know' } },
+      { flag: { key: 'schooled', equals: true } },
+      { family: { id: 'teacher', alive: true } },
+    ],
     turnouts: [
       {
         id: 'not-to-be-spoken',

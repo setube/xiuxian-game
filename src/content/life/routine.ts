@@ -67,7 +67,20 @@ export const routineScenes: SceneLibrary = {
           {
             id: 'follow-mother',
             label: '整日跟着{dam}',
-            echo: '你整日跟在母亲身后。',
+            /*
+             * 娘还在，才有这一条。
+             *
+             * 从前它是无条件的，于是**娘没了之后，这一条还在选项里**，
+             * 选下去回响一句「你整日跟在母亲身后」，
+             * 底下那个 `relation` 还照旧给她加六分好感。
+             * 三处错叠在一起：门开着、话说岔了、账记到了一个死人头上。
+             *
+             * `{dam}` 那个占位符本身是防住了的——`isNearby` 不认死人，
+             * 它会落到别的长辈身上。可 `echo` 里的「母亲」是**硬写的**，
+             * 占位符防住的那一层，硬写的字直接绕过去了。
+             */
+            requires: [{ family: { id: 'mother', alive: true } }],
+            echo: '你整日跟在{dam}身后。',
             effects: [
               { type: 'time', months: 8 },
               { type: 'attribute', key: 'insight', delta: 2 },
@@ -224,6 +237,15 @@ export const routineScenes: SceneLibrary = {
             label: '出去做工，挣几个钱',
             hint: '家里能松一口气',
             echo: '这一年你在外面做工。',
+            /*
+             * 高墙里头的人不出去做工。
+             *
+             * 问的是 `living`（他现在过什么日子）而不是 `station`（玉牒上写着什么）：
+             * 削爵之后日子变成 `fallen`，这扇门自己就开了——
+             * **门第塌了的宗室，是真的要出去挣这口饭的**，
+             * 而那正是那一册要说的话。
+             */
+            requires: [{ living: { notIn: ['palace'] } }],
             effects: [
               { type: 'time', years: 1 },
               { type: 'attribute', key: 'body', delta: 5 },
@@ -346,6 +368,8 @@ export const routineScenes: SceneLibrary = {
             label: '出门做工，挣几个钱回来',
             hint: '在外头的日子不好过，但家里能宽裕些',
             echo: '这两年你多半在外头做工。',
+            // 理由同少年那一卷：高墙里头的人不出去做工，削爵之后才开
+            requires: [{ living: { notIn: ['palace'] } }],
             effects: [
               { type: 'time', years: 2 },
               { type: 'attribute', key: 'body', delta: 5 },

@@ -76,9 +76,41 @@ export function describeTime(time: GameTime): string {
   return `人间 · ${describeStamp(time)}`
 }
 
-/** 年龄的文字说法。 */
-export function describeAge(age: number): string {
+/**
+ * 年龄的文字说法。
+ *
+ * ## 头一年不说「〇岁」
+ *
+ * 「〇岁」不是一个年龄，是一个没算出来的数——中文里没人这么说话。
+ * 一个刚落地的孩子说「刚出生」，满了月说「三个月」，快满周岁说「快一岁了」。
+ *
+ * 满一岁之后回到整年，跟从前一样：一个人的岁数在中文里本来就是整年的，
+ * 「三岁零四个月」是大人替他算的，不是他自己那一格。
+ *
+ * @param age 整岁。`year - bornYear`
+ * @param months 出生到现在过了几个月。**只有头一年用得着**；
+ *   不给就退回整岁的说法（有些地方拿不到出生月，比如构造出来的人）
+ */
+export function describeAge(age: number, months?: number): string {
+  if (age === 0 && months !== undefined) {
+    if (months <= 0) return '刚出生'
+    if (months >= 11) return '快一岁了'
+    return `${toChineseNumber(months)}个月`
+  }
   return `${toChineseNumber(age)}岁`
+}
+
+/**
+ * 出生到此刻过了几个月。
+ *
+ * 年月都要，因为跨年之后光看月份会倒退（腊月生的，次年正月是「一个月」
+ * 不是「负十一个月」）。
+ */
+export function monthsSince(
+  born: { year: number; month: number },
+  now: { year: number; month: number },
+): number {
+  return Math.max(0, (now.year - born.year) * 12 + (now.month - born.month))
 }
 
 /** 一段时长。effects 里的 time 据此译成选项右侧的小字 */

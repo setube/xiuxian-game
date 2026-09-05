@@ -2,7 +2,7 @@
 import { storeToRefs } from 'pinia'
 
 import { ASPECTS } from '@/engine/aspects'
-import { describeAge, describeStamp } from '@/engine/describe'
+import { describeAge, describeStamp, monthsSince } from '@/engine/describe'
 import { selfSense } from '@/engine/leanings'
 import { noteOf } from '@/engine/note'
 import { useCharacterStore } from '@/stores/character'
@@ -45,6 +45,7 @@ function kinLine(id: string): string {
   return noteOf({
     person,
     age: people.ageOf(id),
+    months: people.monthsOf(id),
     name: acquaintance?.knowsName && person ? `${person.surname}${person.given}` : undefined,
     vanished: '没有消息。',
     // 这一栏本来就只列自家人，所以落回家里的营生在这儿是无条件的
@@ -76,6 +77,19 @@ const traces = computed(() =>
 )
 
 const { name, age, identity, realm, aspects } = storeToRefs(character)
+
+/**
+ * 头一年那句岁数。
+ *
+ * 「〇岁」不是年龄，是没算出来的数。世界记着他生在哪年哪月，
+ * 这里把那两个数还原成一句人话：刚出生 / 三个月 / 快一岁了。
+ */
+const ageText = computed(() =>
+  describeAge(
+    age.value,
+    monthsSince({ year: world.bornYear, month: world.bornMonth }, world.time),
+  ),
+)
 const { livelihood, business, station, gender, home, members, outlook } = storeToRefs(household)
 const { place } = storeToRefs(world)
 
@@ -121,7 +135,7 @@ function isUnknown(key: AspectKey): boolean {
       <dt>姓名</dt>
       <dd>{{ name }}</dd>
       <dt>年龄</dt>
-      <dd>{{ describeAge(age) }} · {{ gender }}</dd>
+      <dd>{{ ageText }} · {{ gender }}</dd>
       <dt>身份</dt>
       <dd>{{ identity }}</dd>
       <!-- 凡人不会用「境界」想自己。等真入了门，这一行才有意义 -->

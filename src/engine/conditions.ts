@@ -163,6 +163,13 @@ const CHECKS = {
   living: (living, { character }) => {
     const current = character.living
     if (living.is !== undefined && current.id !== living.is) return false
+    // 「这几种日子里的人看得见」——`who` 那一串是 AND，一种一条写不出「或者」。
+    // 而「谁看得见村口」天然是一组日子，不是一种
+    if (living.in !== undefined && !living.in.includes(current.id)) return false
+    // 「除了这几种日子，谁都行」。常态是「能」，所以拿它写例外，
+    // 而不是拿 `in` 列一张「谁能」的白名单——白名单每加一种日子都要回来改，
+    // 漏改的那一种会安安静静地被挡在外头
+    if (living.notIn !== undefined && living.notIn.includes(current.id)) return false
     if (living.hasChore !== undefined && (current.chore !== null) !== living.hasChore) return false
     return true
   },

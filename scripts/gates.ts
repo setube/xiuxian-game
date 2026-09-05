@@ -34,7 +34,7 @@
  *      没有记录时按给定顺序跑——头一次会慢一点，跑完就有数了。
  */
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { constants, cpus, setPriority } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -43,55 +43,42 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url))
 const TIMES = join(ROOT, 'node_modules', '.tmp', 'gate-times.json')
 
 /**
- * 要跑的那四十支。
+ * 要跑哪几支：`scripts/` 下的 `.ts`，减掉底下这张排除表。
  *
- * 这张名单是照着从前那九批一字不差抄下来的，好让改造前后跑的是同一批东西。
- * `scripts/` 下还有 refs、simulate、verify、note、savefile 五支不在此列——
- * 它们本来就不在那九批里。**要不要一起跑是另一个问题**，
- * 这里只负责把原来那批跑得快一点，不顺手改变跑的范围。
+ * ## 从前这里是一张手写的四十行名单
+ *
+ * 那张名单是照着改造前那九批一字不差抄下来的，好让前后跑的是同一批东西。
+ * 用意是对的，代价是**新写的门禁不会自己进来**：`verify`、`note`、
+ * `savefile` 三支判定型的当时不在那九批里，于是 `bun scripts/gates.ts`
+ * 跑完印一句「全部通过」，而它们一支也没跑。
+ *
+ * 这跟门禁自己那条纪律是同一件事：**没查到和查过了长得一模一样。**
+ * 所以改成扫目录——写一支新的丢进 `scripts/`，它自动进这一批。
+ *
+ * ## 扫目录自带一个坑，而它一声不响
+ *
+ * `gates.ts` 自己也在 `scripts/` 底下。头一版忘了排除它，
+ * 于是这一支把自己当成一支门禁又跑了一遍，那一遍又跑一遍——
+ * **进程数按指数涨，而输出是空的**：运行器要等全部跑完才打印，
+ * 于是它看起来只是「有点慢」，二十五分钟后还是一个字也没有。
+ *
+ * 排除表里第一行就是它自己，别删。
  */
-const GATES = [
-  'address',
-  'apart',
-  'attention',
-  'book',
-  'circumstance',
-  'day',
-  'diary',
-  'errand',
-  'founding',
-  'grasp',
-  'household',
-  'inquire',
-  'kept',
-  'leanings',
-  'leaving',
-  'lifelong',
-  'living',
-  'mastery',
-  'meeting',
-  'merchant',
-  'observe',
-  'origin',
-  'origins',
-  'people',
-  'perceive',
-  'places',
-  'portrait',
-  'probe',
-  'royal',
-  'seeking',
-  'seen',
-  'settle',
-  'shadow',
-  'standing',
-  'tokens',
-  'tutelage',
-  'upbringing',
-  'wishes',
-  'world',
-  'wounded',
-]
+const NOT_A_GATE: Readonly<Record<string, string>> = {
+  gates: '就是这一支自己——不排除掉它会递归着把自己再跑一遍',
+  refs: '库，不是门禁——别的支从它这儿取引用',
+  origin: '库，被 upbringing / living 等支取用（它自己也判几条，所以仍然跑）',
+  simulate: '观察型：印一千世的统计给人看，不判成败',
+}
+
+/** 这些虽然列在排除表里，但它自己也判据，照跑 */
+const STILL_RUN = new Set(['origin'])
+
+const GATES = readdirSync(join(ROOT, 'scripts'))
+  .filter((file) => file.endsWith('.ts'))
+  .map((file) => file.slice(0, -3))
+  .filter((name) => STILL_RUN.has(name) || NOT_A_GATE[name] === undefined)
+  .sort()
 
 /**
  * 同时跑几支。
@@ -186,6 +173,16 @@ function runGate(name: string): Promise<Result> {
 
 const asked = process.argv.slice(2)
 const wanted = asked.length > 0 ? asked : GATES
+if (asked.length === 0) {
+  // 跳过了谁、为什么，要印出来。不印的话「没跑」和「跑过了」长得一样
+  const skipped = Object.entries(NOT_A_GATE).filter(([name]) => !STILL_RUN.has(name))
+  if (skipped.length > 0) {
+    console.log(
+      `不跑：${skipped.map(([name, why]) => `${name}（${why}）`).join('；')}
+`,
+    )
+  }
+}
 const missing = wanted.filter((name) => !existsSync(join(ROOT, 'scripts', `${name}.ts`)))
 if (missing.length > 0) {
   console.error(`找不到这几支：${missing.join('、')}`)

@@ -75,6 +75,22 @@ export const usePeopleStore = defineStore(
     }
 
     /**
+     * 他出生到现在过了几个月。
+     *
+     * **只有头一年用得着。** 一个刚落地的弟弟，`ageOf` 给的是 0，
+     * 而面板上写「〇岁」不是年龄，是一个没算出来的数。
+     * 跨年之后光看月份会倒退，所以年月一起算。
+     */
+    function monthsOf(id: string): number {
+      const person = roster.value[id]
+      if (!person) return 0
+      return Math.max(
+        0,
+        (world.time.year - person.bornYear) * 12 + (world.time.month - person.bornMonth),
+      )
+    }
+
+    /**
      * 玩家此刻会怎么称呼他。
      *
      * 知道姓名就叫姓名，不知道就用那个描述性的叫法——
@@ -310,6 +326,7 @@ export const usePeopleStore = defineStore(
       acquaintedCount,
       personOf,
       ageOf,
+      monthsOf,
       callOf,
       enroll,
       amend,
@@ -342,6 +359,8 @@ export function makePerson(input: {
   given: string
   gender: Gender
   bornYear: number
+  /** 生在那一年的几月。不传就掷一个——长辈生在几十年前的哪个月，世界没记过 */
+  bornMonth?: number
   doing?: string
   /** 他过的是什么日子。绝大多数人不写——他们过的就是这个家的日子 */
   living?: string
@@ -356,6 +375,7 @@ export function makePerson(input: {
     given: input.given,
     gender: input.gender,
     bornYear: input.bornYear,
+    bornMonth: input.bornMonth ?? randomBetween(1, 12),
     doing: input.doing,
     living: input.living,
     temper: input.temper ?? rollTemper(),

@@ -44,6 +44,7 @@ import { useCharacterStore } from '../src/stores/character'
 import { useDiaryStore } from '../src/stores/diary'
 import { useHouseholdStore } from '../src/stores/household'
 import { useLeaningStore } from '../src/stores/leanings'
+import { makePerson, usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 import type { Choice, Effect } from '../src/types/game'
 
@@ -80,6 +81,32 @@ function seeker(age = 12): void {
   world.setFlag('leaning:know', true)
   world.setFlag('schooled', true)
   world.setFlag('trader-here', true)
+  /*
+   * 先生也得真在册子上。
+   *
+   * `schooled` 那个旗标说的是「念过书」，而「找先生问一句」问的是
+   * **那个人还在不在**——旗标不会因为一个人死了就变，
+   * 所以那一条差事另外要一句 `{ family: { id: 'teacher', alive: true } }`。
+   *
+   * 这里少摆一个人，那一条就永远看不见，而这一节报出来的是
+   * 「有念头也只看得见 3 条，库里有 4 条」——**看着像内容坏了，
+   * 其实是构造少了一件东西**。构造是判据的一部分。
+   */
+  const people = usePeopleStore()
+  const household = useHouseholdStore()
+  people.enroll(
+    makePerson({
+      id: 'teacher',
+      surname: '周',
+      given: '敬之',
+      gender: '男',
+      bornYear: world.time.year - 50,
+      doing: '教你认字',
+      place: household.home,
+    }),
+  )
+  people.meet('teacher', '先生', 15)
+  people.bind('me', 'teacher', '师')
 }
 
 // ============================================================

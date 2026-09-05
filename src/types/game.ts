@@ -441,6 +441,17 @@ export interface Person {
   /** 生于世界纪年第几年。年龄由它和当下时序算出来，不单独存 */
   bornYear: number
   /**
+   * 生在那一年的几月。
+   *
+   * 只有头一年用得着：一个刚落地的弟弟，面板上写「〇岁」不是年龄，
+   * 是没算出来。有了月才说得出「三个月」。
+   *
+   * 长辈这一格是掷的——他生在三十年前的哪个月，世界没记过，
+   * 掷一个也不算撒谎；而**新生的孩子必须传此刻的月**，
+   * 那件事世界正看着，掷一个就是编。
+   */
+  bornMonth: number
+  /**
    * 他做什么营生。**说不上的人就空着。**
    *
    * 自由字符串，跟 `household.livelihood` 那个枚举**不是一回事**，
@@ -1127,7 +1138,7 @@ export interface Condition {
    * 用 `hasChore` 而不是把六种日子列成一串「或」，是因为列出来的那一串
    * 加一种出身就得回来改，而且没有任何机器会提醒——那正是这次要拆掉的东西。
    */
-  living?: { is?: string; hasChore?: boolean }
+  living?: { is?: string; in?: readonly string[]; notIn?: readonly string[]; hasChore?: boolean }
   gender?: Gender
   stage?: LifeStage
 }

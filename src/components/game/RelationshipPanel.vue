@@ -57,6 +57,7 @@ function noteFor(id: string): string {
     person: people.personOf(id),
     remembered: known.value[id]?.note,
     age: people.ageOf(id),
+    months: people.monthsOf(id),
     vanished: '再没有消息。',
     // 只有同一个家里过活的人才落回家业。先生、商旅、掌柜不做你家的营生
     fallback: bonds.some((bond) => HOUSEHOLD_BONDS.includes(bond))

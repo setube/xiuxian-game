@@ -270,6 +270,9 @@ export function bearKin(id: string, origin: OriginId, home: string): { calls: st
       gender,
       // 今年生的。他的年纪从此自己算，不必有谁去维护
       bornYear: useWorldStore().time.year,
+      // 这个月生的。**必须传**——世界正看着这件事发生，掷一个月份就是编，
+      // 而编出来的月份会让面板上写出「十一个月」大的新生儿
+      bornMonth: useWorldStore().time.month,
       // 营生这一格空着。刚落地的孩子说不上做什么，
       // 而「还没成人」是年龄的另一种说法——年龄自己会算，不必在这儿再说一遍
       doing: undefined,

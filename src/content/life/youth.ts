@@ -20,7 +20,9 @@ export const youthScenes: SceneLibrary = {
           { kind: 'narration', text: '先生把你叫到跟前，问你想不想去。' },
           { kind: 'dialogue', speaker: '周先生', text: '去试一试。不见得中，见识总是好的。' },
           { kind: 'narration', text: '你见他眼神里有点别的东西，但他没有说。' },
-          { kind: 'narration', text: '家里的意思，全看你爹娘一句话。' },
+          // 硬写「你爹娘」在爹没了的人生里是穿帮。`{elder}` 会落到
+          // 此刻真正当家的那个人身上——娘、姐姐，或是收留你的人
+          { kind: 'narration', text: '家里的意思，全看{elder}一句话。' },
         ],
         choices: [
           {
@@ -297,7 +299,13 @@ export const youthEvents: readonly LifeEvent[] = [
     // 这不是设定上的偷懒，是那个世道本来的样子
     id: 'youth-exam',
     window: { from: 13, to: 16 },
-    requires: [{ flag: { key: 'schooled', equals: true } }, { gender: '男' }],
+    requires: [
+      { flag: { key: 'schooled', equals: true } },
+      { gender: '男' },
+      // 这一节开口的是先生（「先生把你叫到跟前」），他得还在。
+      // 旗标不会因为一个人死了就变，同 `days.ts` 里「去私塾」那一条
+      { family: { id: 'teacher', alive: true } },
+    ],
     scene: 'youth:exam',
     weight: 5,
   },

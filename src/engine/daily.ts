@@ -123,8 +123,24 @@ export function doingsAt(slot: Slot): Doing[] {
  *
  * 权重表里「无事」压过其余所有档加起来——**这不是配平，是立场**。
  * 一生中绝大多数日子本来就什么也没发生。
+ *
+ * ## 去处的条件在这里要再验一遍
+ *
+ * `doingId` 是从 `day-{slot}` 那个旗标里读出来的，而旗标记的是
+ * **玩家当时的打算**——`doingsAt` 在他落笔那一刻验过一次条件，
+ * 此后就没人再管了。
+ *
+ * 于是先生殁了之后，「去私塾」这个去处在菜单上确实关掉了，
+ * 可旗标还写着 `school`，`spend` 照样抽出「先生今天讲的是旧课」。
+ * 一个死了的人接着讲了好几年课，而**菜单上一个字也看不出异样**。
+ *
+ * 所以这里再验一次。验不过就当他什么也没做——那正是真相：
+ * 他打算去私塾，可私塾没有了。
  */
 export function spend(slot: Slot, doingId: string): Beat | undefined {
+  const doing = doingById(doingId)
+  if (doing && !meetsAll(doing.requires)) return undefined
+
   const pool = BEATS.filter(
     (beat) =>
       beat.doing === doingId &&

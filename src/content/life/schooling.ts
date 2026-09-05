@@ -564,7 +564,20 @@ export const schoolingEvents: readonly LifeEvent[] = [
   {
     id: 'school-praise',
     window: { from: 9, to: 13 },
-    requires: [{ flag: { key: 'schooled', equals: true } }],
+    /*
+     * 先生还在，才有这一节。
+     *
+     * 这一卷里「先生看了你一会儿」「先生把你留了一下」都是硬写的字——
+     * 那是对的，这一卷说的就是他。可这一节从前只问 `schooled` 那个旗标，
+     * **旗标不会因为一个人死了就变**，于是先生殁了之后他还在讲台上讲课。
+     *
+     * 私塾这几节都得问一句：教你的那个人还在不在。
+     * 写法照 `school-strength` 那一条（它早就在问生母还在不在）。
+     */
+    requires: [
+      { flag: { key: 'schooled', equals: true } },
+      { family: { id: 'teacher', alive: true } },
+    ],
     scene: 'school:praise',
     weight: 5,
   },
@@ -578,6 +591,8 @@ export const schoolingEvents: readonly LifeEvent[] = [
   {
     id: 'school-fair',
     window: { from: 8, to: 13 },
+    // 同 `school-praise`：这一节里说话的是先生，他得还在
+    requires: [{ family: { id: 'teacher', alive: true } }],
     scene: 'school:fair',
     weight: 4,
   },

@@ -414,7 +414,14 @@ export const encounterScenes: SceneLibrary = {
         branches: [
           // 认得字的人看得懂「这不是普通的字」——
           // 不认字的人连这一层都不知道，那对他只是一册废纸
-          { requires: [{ knowledge: 'literacy' }], next: 'literate' },
+          //
+          // 还要问一句先生在不在：这一节的正文是「你拿去问过先生」，
+          // 那是一件得有人在才做得成的事。识字是一种本事，
+          // **有个人可以去问是另一回事**，而后者会随着他咽气那天没掉
+          {
+            requires: [{ knowledge: 'literacy' }, { family: { id: 'teacher', alive: true } }],
+            next: 'literate',
+          },
         ],
         next: 'kept',
       },

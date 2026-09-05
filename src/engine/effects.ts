@@ -353,6 +353,17 @@ function applyOne(
             given: effect.who.given,
             gender: effect.who.gender,
             bornYear: world.time.year - effect.who.age,
+            /*
+             * 出生的月份。
+             *
+             * `age: 0` 的那种（家里添了孩子）是**此刻**落地的，
+             * 月份就是这个月——掷一个就是编，而编出来的会让面板上
+             * 写出「十一个月」大的新生儿。
+             *
+             * `age > 0` 的那种（娶进门的、拜的师、街上的掌柜）
+             * 生在多少年前的哪个月，世界没记过，交给 `makePerson` 掷。
+             */
+            ...(effect.who.age === 0 ? { bornMonth: world.time.month } : {}),
             doing: effect.who.doing,
             place: household.home,
           }),

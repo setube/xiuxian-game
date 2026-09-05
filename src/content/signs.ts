@@ -39,6 +39,40 @@ export interface SignRule {
   weight?: number
 }
 
+/**
+ * 抬头看得见村口的人。
+ *
+ * 「村里排了守夜的」「村口常有陌生人过」——这些是村子的事。
+ * 王府的孩子院墙有两丈高，他看不见村口，他看见的是别的东西。
+ */
+const IN_VILLAGE = ['farm', 'hunt'] as const
+
+/**
+ * 日子过在街面上的人。铺子、集市、行人都在眼前。
+ *
+ * 讨饭的和路上逃难的也在里头——**他们比谁都在街上**。
+ * 不在里头的是宫里（`palace`）和寺里（`temple`）：
+ * 一个隔着宫墙，一个隔着山门。
+ */
+const ON_THE_STREET = [
+  'craft',
+  'shop',
+  'clinic',
+  'office',
+  'market',
+  'fallen',
+  'begging',
+  'adrift',
+] as const
+
+/**
+ * 村里街上都算。
+ *
+ * 瘟疫、兵祸这类事没有谁躲得开，**除了高墙里头那些人**——
+ * 而那不是因为他们没事，是因为消息到不了他们眼前。
+ */
+const OUTSIDE = [...IN_VILLAGE, ...ON_THE_STREET] as const
+
 export const SIGNS: readonly SignRule[] = [
   // ============================================================
   // 粮价：最普遍的一条。人人有份，但看见的东西不一样
@@ -46,6 +80,8 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'grain-cheap',
     when: { grain: { atMost: 82 } },
+    // 粮铺门口那一堆，得日子过在街面上才看得见
+    who: [{ living: { in: ON_THE_STREET } }],
     says: '今年的米便宜。粮铺门口堆到了街上。',
     from: 'grain',
     tone: 'faint',
@@ -79,6 +115,7 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'grain-high',
     when: { grain: { atLeast: 150 } },
+    who: [{ living: { in: ON_THE_STREET } }],
     says: '米价比往年贵了许多。买米的人排到了巷口。',
     from: 'grain',
     weight: 35,
@@ -86,6 +123,7 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'grain-shut',
     when: { grain: { atLeast: 178 } },
+    who: [{ living: { in: ON_THE_STREET } }],
     says: '米铺白天也上着门板。',
     reading: '有人说是没货了，也有人说是不肯卖。',
     from: 'grain',
@@ -138,6 +176,8 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'order-strangers',
     when: { order: { atMost: 44 } },
+    // 村口是村子的事。院墙两丈高的人家看不见村口
+    who: [{ living: { in: IN_VILLAGE } }],
     says: '村口这阵子常有陌生人过。',
     // 这一条是全册最要紧的一处误读：他看见的是人，不是原因
     reading: '你以为是过路的客商。',
@@ -158,6 +198,7 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'order-watch',
     when: { order: { atMost: 36 } },
+    who: [{ living: { in: IN_VILLAGE } }],
     says: '入夜以后没什么人出门了。村里排了守夜的。',
     from: 'order',
     tone: 'deep',
@@ -192,6 +233,8 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'order-good',
     when: { order: { atLeast: 66 } },
+    // 更夫的梆子是街面上的东西。村里没有更夫
+    who: [{ living: { in: ON_THE_STREET } }],
     says: '这两年外头太平。夜里也听得见更夫的梆子。',
     from: 'order',
     tone: 'faint',
@@ -208,6 +251,8 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'calm-market',
     when: { grain: { atLeast: 84, atMost: 122 }, order: { atLeast: 48 } },
+    // 「镇上的集照常开」从前是人人可见的，于是王府的世子也逛集市
+    who: [{ living: { in: ON_THE_STREET } }],
     says: '镇上的集照常开。米价跟去年差不多。',
     from: 'grain',
     tone: 'faint',
@@ -225,6 +270,8 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'calm-road',
     when: { order: { atLeast: 50 } },
+    // 官道从村边过，也从镇上过。高墙里头那些人看不见它
+    who: [{ living: { in: OUTSIDE } }],
     says: '官道上照常有车马过。',
     from: 'order',
     tone: 'faint',
@@ -246,6 +293,7 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'plague-coffins',
     when: { plague: { atLeast: 28 } },
+    who: [{ living: { in: OUTSIDE } }],
     says: '街上开始有人抬棺。抬的时候不敢走大路。',
     from: 'plague',
     tone: 'cinnabar',
@@ -260,6 +308,65 @@ export const SIGNS: readonly SignRule[] = [
     from: 'plague',
     tone: 'deep',
     weight: 70,
+  },
+
+  // ============================================================
+  // 高墙里头。
+  //
+  // 这一组是给 `who` 补上之后逼出来的：粮铺、集市、村口、更夫，
+  // 一句一句都收给了外头的人，于是宫里和寺里**一条征象也读不到**——
+  // 日常那一卷的「抬头看一眼外头」对他们成了空的。
+  //
+  // 而那正好说反了这一册要说的话。世界的消息没有绕开他们，
+  // 是**换了一副样子送到他们眼前**：不是米价，是厨房上的份例；
+  // 不是村口的陌生人，是父王连着几天不回府。
+  // 他看见的东西比谁都少，也比谁都晚——**这本身就是一种处境**。
+  // ============================================================
+  {
+    id: 'palace-allowance',
+    when: { grain: { atLeast: 126 } },
+    who: [{ living: { is: 'palace' } }],
+    says: '厨房上的份例减了。',
+    reading: '你不知道外头米价涨了。你只知道今天的点心少了一样。',
+    from: 'grain',
+    weight: 40,
+  },
+  {
+    id: 'palace-father-away',
+    when: { order: { atMost: 44 } },
+    who: [{ living: { is: 'palace' } }],
+    says: '父亲这阵子常不在府里。回来得很晚，也不叫人。',
+    reading: '你以为他在忙什么正经差事。',
+    from: 'order',
+    tone: 'deep',
+    weight: 45,
+  },
+  {
+    id: 'palace-quiet',
+    when: { grain: { atLeast: 84, atMost: 122 }, order: { atLeast: 48 } },
+    who: [{ living: { is: 'palace' } }],
+    says: '府里一切照旧。前殿的宴请三天两头有。',
+    from: 'order',
+    tone: 'faint',
+    weight: 22,
+  },
+  {
+    id: 'temple-incense',
+    when: { order: { atMost: 44 } },
+    who: [{ living: { is: 'temple' } }],
+    says: '来上香的人多了。跪得也久。',
+    reading: '你以为是佛法灵验。',
+    from: 'order',
+    weight: 45,
+  },
+  {
+    id: 'temple-quiet',
+    when: { order: { atLeast: 48 } },
+    who: [{ living: { is: 'temple' } }],
+    says: '寺里跟往年一样。早晚两堂课，谁也不多说话。',
+    from: 'order',
+    tone: 'faint',
+    weight: 22,
   },
 ]
 
