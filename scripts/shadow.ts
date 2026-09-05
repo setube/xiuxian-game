@@ -41,7 +41,7 @@
  * 报 0 可能是干净，也可能是瞎。所以末尾钉了十个例子：
  * 六个必须抓到，四个必须不误报。**先证明这把尺子是准的，再信它量出的数。**
  *
- * 跑法：npx vite-node scripts/shadow.ts
+ * 跑法：bun scripts/shadow.ts
  */
 import { lifeScenes } from '../src/content/life'
 import type { Condition, SceneNode } from '../src/types/game'

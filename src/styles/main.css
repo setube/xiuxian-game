@@ -1,4 +1,6 @@
-@import 'tailwindcss';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* ==========================================================================
    丹青水墨 · 设计令牌
@@ -7,8 +9,18 @@
    颜色直接参与信息层级：
      浓墨 = 重要   墨色 = 正文   淡墨 = 次要   极淡 = 装饰   朱砂 = 关键/危险
    框线与压痕负责「这是一个界面」：状态栏、操作区、面板必须看得出边界。
+
+   ## 这里是这些令牌唯一的出处
+
+   从前它写在 Tailwind v4 的 `@theme {}` 里，那一个块同时干两件事：
+   生成底下 142 处要用的 `var(--color-*)`，和生成 `text-cinnabar` 那种工具类。
+   v3 没有 `@theme`，所以色值留在这儿，`tailwind.config.js` 那边指回这些变量——
+   **抄成两份的那天起，两处就会各自漂，而漂了不会有任何机器提醒。**
+
+   自定义属性本身很老（Chrome 49 起就有），是这套配色能一路兼容到
+   Chrome 51 的原因之一。
    ========================================================================== */
-@theme {
+:root {
   /* —— 宣纸 —— */
   --color-paper: #f4efe4;
   --color-paper-aged: #ebe3d3;
@@ -98,9 +110,15 @@
     flex-direction: column;
     width: 100%;
     max-width: var(--container-frame);
+    /* 两行都要留着：`dvh` 是 Chrome 108 才有的，老内核整条声明读不懂、
+       直接跳过，于是落回上面那行 `vh`。移动端地址栏收放时会差一截，
+       但差一截总好过整屏没高度 */
+    height: 100vh;
     height: 100dvh;
-    margin-inline: auto;
-    border-inline: 1px solid var(--color-rule);
+    margin-left: auto;
+    margin-right: auto;
+    border-left: 1px solid var(--color-rule);
+    border-right: 1px solid var(--color-rule);
   }
 
   /* 古籍的双栏线：主线之外再落一道更细的，界面才有「框」的分量 */
@@ -120,7 +138,7 @@
   .ink-prose {
     /* 段间距是段落自己的事。写成 .ink-prose + .ink-prose 会漏掉
        「对话之后紧跟叙事」这一种——那时前一个兄弟是 .dialogue，选择器落空，两段会粘在一起 */
-    margin-block-start: 0.72em;
+    margin-top: 0.72em;
     line-height: 1.85;
     letter-spacing: 0.02em;
     text-align: justify;
@@ -129,7 +147,7 @@
 
   /* 卷首不留天头 */
   .ink-prose:first-child {
-    margin-block-start: 0;
+    margin-top: 0;
   }
 
   .ink-indent {
@@ -163,7 +181,6 @@
   /* 树状子条目。知识、行囊、他人之言共用：条目是纲，这一行是目 */
   .ink-branch {
     display: flex;
-    gap: 0.4em;
     color: var(--color-ink-faint);
     font-size: var(--text-note);
     line-height: 1.75;
@@ -172,6 +189,10 @@
   .ink-branch::before {
     content: '└─';
     flex: none;
+    /* 这一格的间距不能用 `gap`（要 Chrome 84），也不能用 `> * + *`——
+       第一个弹性项是这个伪元素，相邻兄弟选择器够不着它。
+       所以间距挂在它自己右边 */
+    margin-right: 0.4em;
     color: var(--color-ink-ghost);
   }
 

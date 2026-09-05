@@ -16,7 +16,7 @@
  *   ④ **越来越自信但越来越错**的人生跑得出来
  *      这一条最要紧：认知不是越问越对的
  *
- * 跑法：npx vite-node scripts/merchant.ts
+ * 跑法：bun scripts/merchant.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 

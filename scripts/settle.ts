@@ -29,7 +29,7 @@
  * `roll` 也是随机的，两遍跑出来必然不同——**那样这支脚本永远红，而且红得没有意义**。
  * 第一版就栽在这儿：三个时间值互不相同，看着像分相失败，其实是尺子在抖。
  *
- * 跑法：npx vite-node scripts/settle.ts
+ * 跑法：bun scripts/settle.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 

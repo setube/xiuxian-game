@@ -1,3 +1,5 @@
+import { getActivePinia } from 'pinia'
+
 import { useCharacterStore } from '@/stores/character'
 import { useHouseholdStore } from '@/stores/household'
 import { usePeopleStore } from '@/stores/people'
@@ -185,14 +187,50 @@ function matches(condition: Condition, ctx: Ctx): boolean {
   return true
 }
 
+/**
+ * 三个仓库按「这一世」记住。
+ *
+ * ## 为什么值得记
+ *
+ * `meetsAll` 是全作被调得最凶的函数之一：每进一节要过一遍它的每个选项、
+ * 每条 `seen`、每条 `branches`，年表抽事件还要拿每件事的 `requires` 再过一遍。
+ * 一世下来是几万次，而**每一次都在重新解析同样的三个仓库**。
+ *
+ * CPU 采样把这件事量出来了：`pinia.useStore` 一个人占整个运行时的 36.6%，
+ * 其中 25 个百分点是从这一行进去的——比这套模拟里任何一段游戏逻辑都多。
+ * 它本身不是什么重活，只是次数太多。
+ *
+ * ## 为什么按 pinia 实例记是安全的
+ *
+ * 三件事凑齐才成立，缺一不可：
+ *
+ *   1. 同一个 pinia 上，`useStore()` 每次返回的是**同一个仓库实例**——
+ *      这是 Pinia 自己的保证，仓库就存在 `pinia._s` 那张表里。
+ *   2. 仓库实例握着的是响应式引用，读它的字段永远读到当下的值。
+ *      **记住的是「上哪儿读」，不是「读到了什么」**，所以状态怎么变都不影响。
+ *   3. 换一世就是 `setActivePinia(createPinia())`，一个新对象，
+ *      身份比不上，缓存当场作废。走查一世一个 pinia，靠的正是这一条。
+ *
+ * 弃卷重来走的是 `resetAll()`，它只清状态、不换仓库实例，所以缓存照旧成立。
+ *
+ * 底下 `bond` 那一格仍旧现取现用 `usePeopleStore()`：那是有意的
+ * （只有问到关系的条件才需要人物库），而且采样里它只占 0.8%，不值当为它开一格。
+ */
+let ctxPinia: unknown = null
+let ctxCache: Ctx | null = null
+
 /** 全部满足才算通过；无条件即通过。 */
 export function meetsAll(conditions?: readonly Condition[]): boolean {
   if (!conditions || conditions.length === 0) return true
 
-  const ctx: Ctx = {
-    world: useWorldStore(),
-    character: useCharacterStore(),
-    household: useHouseholdStore(),
+  const pinia = getActivePinia()
+  if (ctxCache === null || ctxPinia !== pinia) {
+    ctxPinia = pinia
+    ctxCache = {
+      world: useWorldStore(),
+      character: useCharacterStore(),
+      household: useHouseholdStore(),
+    }
   }
-  return conditions.every((condition) => matches(condition, ctx))
+  return conditions.every((condition) => matches(condition, ctxCache as Ctx))
 }

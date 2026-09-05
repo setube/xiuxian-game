@@ -37,9 +37,10 @@ const { chronicle } = storeToRefs(world)
 
 .entries > li {
   /* 左侧一道淡墨竖线把年月串起来，像一卷编年的骑缝 */
-  border-inline-start: 1px solid var(--color-rule);
-  padding-inline-start: 0.85rem;
-  padding-block: 0.15rem;
+  border-left: 1px solid var(--color-rule);
+  padding-left: 0.85rem;
+  padding-top: 0.15rem;
+  padding-bottom: 0.15rem;
 }
 
 .entries > li + li {

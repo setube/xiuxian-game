@@ -103,7 +103,7 @@ function noteFor(id: string): string {
 
 /* 关系比称呼轻一档：它是注解，不是名字 */
 .bond {
-  margin-inline-start: 0.6em;
+  margin-left: 0.6em;
   color: var(--color-ink-faint);
   font-size: var(--text-note);
   letter-spacing: 0.1em;

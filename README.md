@@ -1,4 +1,4 @@
-# 会呼吸的修仙
+# 模拟修仙人生
 
 一款纯文字的人生模拟。**纯文字，但仍然是一款游戏** —— 丹青水墨只是视觉风格，
 不能压过交互、信息层级和游戏功能。
@@ -11,11 +11,11 @@
 但可能改变一个人的寿数和他眼里世界的样子。
 
 一生从出生跑到咽气。天年在出生那一刻掷定（`engine/lifespan.ts`），
-**没有任何一卷内容能提前终止人生**。跑 `npx vite-node scripts/lifelong.ts`
-看当下这一批的样子：六百世里咽气的岁数中位六十出头，两头在四十五到八十几之间，
+**没有任何一卷内容能提前终止人生**。跑 `bun scripts/lifelong.ts`
+看当下这一批的样子：六千世里咽气的岁数中位六十出头，两头在四十五到八十几之间，
 碰上修行那件事的一成上下。
 
-> 这三个数每跑一批都会挪一两点——它们是六百世抽出来的，不是配置里写死的。
+> 这三个数每跑一批都会挪一两点——它们是六千世抽出来的，不是配置里写死的。
 > 底下凡是带百分比的说法都同理：**看的是量级，不是那个小数点**。
 > 一个抄进文档就再也不会自己更新的具体数，早晚会变成一句有出处的假话。
 
@@ -58,29 +58,31 @@
 ## 运行
 
 ```bash
-pnpm install
-pnpm dev              # http://localhost:5173
-pnpm build            # vue-tsc --build && vite build
-pnpm lint             # eslint .
-pnpm format           # prettier --write
+bun install
+bun run dev           # http://localhost:5173
+bun run build         # vue-tsc --build && vite build
+bun run lint          # eslint .
+bun run format        # prettier --write
 
-npx vite-node scripts/simulate.ts   # 随机跑一千世，看人生是否走得通
-npx vite-node scripts/lifelong.ts   # 一生门禁：跑得完，而且每一段都真的有人在过（失败以非零码退出）
-npx vite-node scripts/verify.ts     # 八道结构门禁（失败以非零码退出）
-npx vite-node scripts/grasp.ts      # 认知三轴门禁
-npx vite-node scripts/errand.ts     # 凡人寻找修士这一章的七道门禁（失败以非零码退出）
-npx vite-node scripts/meeting.ts    # 第一次真正接触修士的七道门禁（失败以非零码退出）
-npx vite-node scripts/tutelage.ts   # 他为什么愿意教你：八道门禁（失败以非零码退出）
-npx vite-node scripts/mastery.ts    # 教了你和你会了之间隔着什么：七道门禁（失败以非零码退出）
-npx vite-node scripts/settle.ts     # 结算顺序走查：time 写在哪儿都一样
-npx vite-node scripts/founding.ts   # 立基次第门禁：谁先建、重掷有没有漏（失败以非零码退出）
-npx vite-node scripts/shadow.ts     # 分支遮蔽走查：前一条会不会挡住后一条
-npx vite-node scripts/upbringing.ts # 出身门禁：正文里不许无条件假定出身（失败以非零码退出）
-npx vite-node scripts/living.ts     # 日子门禁：当下的日子会变，过去的日子不许丢（失败以非零码退出）
-npx vite-node scripts/apart.ts      # 离乡门禁：关系不因搬家消失，接触范围跟着地点走（失败以非零码退出）
-npx vite-node scripts/kept.ts       # 疏远门禁：不见面不等于关系变差，重逢沿用原来的关系（失败以非零码退出）
-npx vite-node scripts/address.ts    # 称谓门禁：教养、爵位、场合三层叠出他开口那个词，别人怎么称呼他另走一路（失败以非零码退出）
-npx vite-node scripts/household.ts  # 户籍家世门禁：八格分别负责改变什么，全库效果实跑一遍量出来（失败以非零码退出）
+bun run gate          # 四十支门禁一起跑，四分钟出结果（失败以非零码退出）
+
+bun scripts/simulate.ts   # 随机跑一千世，看人生是否走得通
+bun scripts/lifelong.ts   # 一生门禁：跑得完，而且每一段都真的有人在过（失败以非零码退出）
+bun scripts/verify.ts     # 八道结构门禁（失败以非零码退出）
+bun scripts/grasp.ts      # 认知三轴门禁
+bun scripts/errand.ts     # 凡人寻找修士这一章的七道门禁（失败以非零码退出）
+bun scripts/meeting.ts    # 第一次真正接触修士的七道门禁（失败以非零码退出）
+bun scripts/tutelage.ts   # 他为什么愿意教你：八道门禁（失败以非零码退出）
+bun scripts/mastery.ts    # 教了你和你会了之间隔着什么：七道门禁（失败以非零码退出）
+bun scripts/settle.ts     # 结算顺序走查：time 写在哪儿都一样
+bun scripts/founding.ts   # 立基次第门禁：谁先建、重掷有没有漏（失败以非零码退出）
+bun scripts/shadow.ts     # 分支遮蔽走查：前一条会不会挡住后一条
+bun scripts/upbringing.ts # 出身门禁：正文里不许无条件假定出身（失败以非零码退出）
+bun scripts/living.ts     # 日子门禁：当下的日子会变，过去的日子不许丢（失败以非零码退出）
+bun scripts/apart.ts      # 离乡门禁：关系不因搬家消失，接触范围跟着地点走（失败以非零码退出）
+bun scripts/kept.ts       # 疏远门禁：不见面不等于关系变差，重逢沿用原来的关系（失败以非零码退出）
+bun scripts/address.ts    # 称谓门禁：教养、爵位、场合三层叠出他开口那个词，别人怎么称呼他另走一路（失败以非零码退出）
+bun scripts/household.ts  # 户籍家世门禁：八格分别负责改变什么，全库效果实跑一遍量出来（失败以非零码退出）
 ```
 
 无后端、无环境变量、无网络请求。进度存在 `localStorage`，刷新即续上一局。
@@ -156,7 +158,7 @@ npx vite-node scripts/household.ts  # 户籍家世门禁：八格分别负责改
 所以它必须是一条跑得起来的验收，而不是文档里的一句话：
 
 ```bash
-npx vite-node scripts/verify.ts
+bun scripts/verify.ts
 ```
 
 > 任何重要事件，在没有对应关系节点时，都不能产生关系穿帮。
@@ -170,7 +172,7 @@ NPC 存在、关系正确、世界状态正确，可正文把出身那一格当�
 **同一种病：写剧本的人把自己脑子里那个家，当成了所有人的世界。**
 
 ```bash
-npx vite-node scripts/upbringing.ts
+bun scripts/upbringing.ts
 ```
 
 > 出现生活细节时，必须有对应的人生环境来源。
@@ -184,7 +186,7 @@ npx vite-node scripts/upbringing.ts
 所以它跟第 4 条是同一个手法：**旧的那一段不删，只封口。**
 
 ```bash
-npx vite-node scripts/living.ts
+bun scripts/living.ts
 ```
 
 > 当前的日子只能有一段，过去的日子一段也不能少。
@@ -233,7 +235,7 @@ npx vite-node scripts/living.ts
 新的人由「你走到了那儿」带来，不由「你换了一种日子」带来。
 
 ```bash
-npx vite-node scripts/apart.ts
+bun scripts/apart.ts
 ```
 
 > 离开一种生活不结束任何关系，只改变谁在身边。
@@ -297,7 +299,7 @@ if (!nearby) affinity--
 门禁实跑掷出来的第一个抚养人就是 `uncle`，不是 mother。
 
 ```bash
-npx vite-node scripts/kept.ts
+bun scripts/kept.ts
 ```
 
 > 走了三年再回来，她还是那样叫你——不是因为好感够高，是因为她认了你这么多年。
@@ -576,7 +578,7 @@ interface Attestation {
 不是他学的话不一样。削了爵，盖下来的那层没了，他就跟官宦家的孩子说同一个词。
 
 ```bash
-npx vite-node scripts/address.ts
+bun scripts/address.ts
 ```
 
 > 别人怎么称呼他，一道旨意就改了；他怎么称呼别人，改不掉。
@@ -737,7 +739,7 @@ royal:demote#open     { type: 'household', standing: -48, station: '寻常' }
 它把「八格分别负责改变什么」跑成数字，五段各答一问。
 
 ```bash
-npx vite-node scripts/household.ts
+bun scripts/household.ts
 ```
 
 **一、谁读得动哪一格。** 全库 281 条条件里数出来：
@@ -1153,7 +1155,7 @@ stageOf　　16 岁仍算「少年」，17 岁才成年
 修行还碰不碰得上 窗口收到 16–28、加了命数门槛之后，会不会没人碰得上
 ```
 
-六百世实跑（约 90 秒，每世约 122 下）：
+六千世实跑（约 90 秒，每世约 122 下）：
 
 ```text
 掷定的天年   最短 44　四分之一 56　中位 64　四分之三 72　最长 82
@@ -1188,7 +1190,7 @@ stageOf　　16 岁仍算「少年」，17 岁才成年
 具体的数照样打印出来给人读。**给人读的数和用来判的数是两回事**，
 前者越细越好，后者一细就会在某次无关的改动里假红。
 
-#### 跑六百世而不是三百世，是量出来的
+#### 跑六千世而不是三百世，是量出来的
 
 少年那一档特别稀：十三到十六岁那几年年表塞得很满（少年、那一日、离村、
 寻访、师承、照面全挤在这几岁），候选池难得空一次。三百世量下来那一档
@@ -4352,9 +4354,9 @@ A 与 D 各自的比例照报不误，只是不再拿它们卡门禁——
 
 一生现在从出生跑到咽气，可**十七岁之后年表几乎是空的**——七十二件事件里
 绝大多数封顶在十六岁。成年、壮年、老年那三卷日常眼下独自撑着人生后半段
-（六百世里一共停了上万回）。人生的形状在，血肉还不够。
+（六千世里一共停了上万回）。人生的形状在，血肉还不够。
 
-反过来，启蒙和少年那两档日常几乎没人停得到（六百世里各只有十来世）：
+反过来，启蒙和少年那两档日常几乎没人停得到（六千世里各只有十来世）：
 七到十六岁那几年年表塞得太满，候选池难得空一次。**两头的稀薄是同一件事
 的两面——内容全压在前十六年。**
 

@@ -167,8 +167,29 @@ export const useWorldStore = defineStore(
       if (!visited.value.includes(next)) visited.value = [...visited.value, next]
     }
 
+    /**
+     * 立一面旗子。
+     *
+     * ## 这里是就地改，不是整份换掉
+     *
+     * 从前写的是 `flags.value = { ...flags.value, [key]: value }`。那是
+     * 不可变更新的标准写法，读起来也干净，**代价是每立一面旗子就把整袋旗子
+     * 重抄一遍**——而旗子是随着一生只增不减的，抄的份量一年比一年重。
+     *
+     * CPU 采样量到它占整个运行时的 11.7%，比条件求值、效果结算都多。
+     * 那不是哪一处写错了，是这一行本身就是平方级的：n 面旗子要抄 n 次。
+     *
+     * 就地改在 Vue 3 里是安全的，两件事托着：`ref` 装对象会做深层响应式，
+     * **改一格和换一整份同样会触发依赖**；而 Proxy 也认得「新增一个键」，
+     * 这一点跟 Vue 2 不同，那边才需要 `$set`。
+     *
+     * 还有一条是这个仓库自己的：**整袋 `flags` 没有任何外人直接读**，
+     * `world.ts` 之外一律走 `hasFlag` / `getFlag`。所以没有谁会拿对象身份
+     * 变没变当信号——那正是不可变更新在别处唯一真正买到的东西。
+     * 哪天有人要 `watch` 这一袋，记得写 `{ deep: true }`。
+     */
     function setFlag(key: string, value: FlagValue): void {
-      flags.value = { ...flags.value, [key]: value }
+      flags.value[key] = value
     }
 
     function getFlag(key: string): FlagValue | undefined {

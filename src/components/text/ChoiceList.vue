@@ -53,12 +53,11 @@ function pick(option: ChoiceOption): void {
 .choice {
   display: flex;
   align-items: baseline;
-  gap: 0.55em;
   width: 100%;
   padding: 0.45rem 0.6rem;
   /* 左侧提手：平时透明，可点时由朱砂顶出来。这是「可操作」的视觉承诺 */
   border: 0;
-  border-inline-start: 2px solid transparent;
+  border-left: 2px solid transparent;
   background: none;
   color: var(--color-ink);
   font-family: inherit;
@@ -71,6 +70,12 @@ function pick(option: ChoiceOption): void {
     background-color 0.25s ease,
     border-color 0.25s ease,
     color 0.25s ease;
+}
+
+/* 间距走相邻兄弟的 margin，不用 gap——弹性盒的 gap 要 Chrome 84，
+   而这个项目的下限是 51。这一行没有换行，所以两者完全等价 */
+.choice > * + * {
+  margin-left: 0.55em;
 }
 
 .choice .mark {
@@ -111,7 +116,7 @@ function pick(option: ChoiceOption): void {
 
 .choice:hover,
 .choice:focus-visible {
-  border-inline-start-color: var(--color-cinnabar);
+  border-left-color: var(--color-cinnabar);
   /* 压痕：纸被按下去的一小块，不是色块 */
   background-color: rgb(35 32 28 / 5%);
   color: var(--color-ink-deep);
@@ -151,7 +156,7 @@ function pick(option: ChoiceOption): void {
 
 .choice.locked:hover,
 .choice.locked:focus-visible {
-  border-inline-start-color: var(--color-ink-ghost);
+  border-left-color: var(--color-ink-ghost);
   background-color: transparent;
   color: var(--color-ink-faint);
 }

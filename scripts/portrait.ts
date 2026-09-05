@@ -11,15 +11,12 @@
  * 2. 「学识」栏和「修行」栏里的话，会不会互相打架。
  * 3. 有多少人一辈子没被任何修士看过——那些人到死都不知道自己是什么料。
  *
- * 跑法：npx vite-node scripts/portrait.ts
+ * 跑法：bun scripts/portrait.ts
  */
-import { createPinia, setActivePinia } from 'pinia'
-
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
-import { useStory } from '../src/engine/story'
-import { useCharacterStore } from '../src/stores/character'
-import { useNarrativeStore } from '../src/stores/narrative'
 import type { AspectKey } from '../src/types/game'
+import { mapShards } from './lib/parallel'
+// 本地仍叫 Character：这一支通篇都这么称呼它，改名只会让 diff 变大
+import type { Portrait as Character } from './tasks/portrait-lives'
 
 /**
  * 走查跑多少世。
@@ -46,29 +43,6 @@ import type { AspectKey } from '../src/types/game'
  * 比没有门禁更坏——它教人把红灯当噪音**。
  */
 const RUNS = 1200
-
-function live() {
-  setActivePinia(createPinia())
-  const narrative = useNarrativeStore()
-  const character = useCharacterStore()
-  const story = useStory(lifeScenes, {
-    events: lifeEvents,
-    routine: lifeRoutine,
-    finale: lifeFinale,
-  })
-  story.begin()
-
-  let turns = 0
-  while (!narrative.ended && turns < 200) {
-    const open = narrative.options.filter((o) => !o.locked)
-    if (open.length === 0) break
-    story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-    turns += 1
-  }
-  return character
-}
-
-type Character = ReturnType<typeof live>
 
 /**
  * 把一个人这辈子听过的话印出来。
@@ -101,7 +75,7 @@ function printPortrait(character: Character): void {
 }
 
 // —— 统计：多少人一辈子没被修士看过 ——
-// 标题里的世数从常量取。从前这里写死「六百世统计」，而 RUNS 是 300——
+// 标题里的世数从常量取。从前这里写死「六千世统计」，而 RUNS 是 300——
 // **数字一个没错，只是分母比它自己宣称的少了一半**
 let heardMortal = 0
 let heardAdept = 0
@@ -111,8 +85,11 @@ const claimCounts: number[] = []
 // 头一个听过修士评价的人生，留着给第一节印。那种人生才看得出落差
 let sample: Character | null = null
 
-for (let i = 0; i < RUNS; i += 1) {
-  const character = live()
+const lives = (
+  await mapShards<Character[]>({ task: 'scripts/tasks/portrait-lives.ts', runs: RUNS })
+).flat()
+
+for (const character of lives) {
   const learning = character.aspects.learning.claims.length
   const cultivation = character.aspects.cultivation.claims.length
   const root = character.aspects.root.claims.length

@@ -26,7 +26,8 @@ const inkClass = computed(() => toneClass(tone))
 
 <style scoped>
 .record {
-  margin-block: 0.55em;
+  margin-top: 0.55em;
+  margin-bottom: 0.55em;
   font-size: var(--text-note);
   letter-spacing: 0.1em;
   line-height: 1.6;

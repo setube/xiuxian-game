@@ -35,7 +35,7 @@
  * 左边那一列每个数都说得出「这不像一个人的一生」，而头一版的三个问法
  * 一个也接不住它们。**判据写完得先问：这个机制要是根本不存在，它还会绿吗。**
  *
- * 跑法：npx vite-node scripts/standing.ts
+ * 跑法：bun scripts/standing.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 

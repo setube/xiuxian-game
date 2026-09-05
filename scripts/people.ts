@@ -9,17 +9,10 @@
  * 3. **离家不等于消失。** 父亲去外地做工之后，人还在册子上，还在某个地方。
  * 4. **玩家的认知是分层的。** 认识他 ≠ 知道他叫什么 ≠ 知道他的过去。
  *
- * 跑法：npx vite-node scripts/people.ts
+ * 跑法：bun scripts/people.ts
  */
-import { createPinia, setActivePinia } from 'pinia'
-
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
-import { useStory } from '../src/engine/story'
-import { useCharacterStore } from '../src/stores/character'
-import { useHouseholdStore } from '../src/stores/household'
-import { useNarrativeStore } from '../src/stores/narrative'
-import { usePeopleStore } from '../src/stores/people'
-import { useWorldStore } from '../src/stores/world'
+import { mapShards } from './lib/parallel'
+import { live, type Observed } from './tasks/people-lives'
 
 /**
  * 走查跑多少世。
@@ -38,30 +31,6 @@ import { useWorldStore } from '../src/stores/world'
  * 父亲离过家的一百五十来个，两个数才配印出来给人读。
  */
 const RUNS = 1000
-
-function live() {
-  setActivePinia(createPinia())
-  const narrative = useNarrativeStore()
-  const character = useCharacterStore()
-  const people = usePeopleStore()
-  const household = useHouseholdStore()
-  const world = useWorldStore()
-  const story = useStory(lifeScenes, {
-    events: lifeEvents,
-    routine: lifeRoutine,
-    finale: lifeFinale,
-  })
-  story.begin()
-
-  let turns = 0
-  while (!narrative.ended && turns < 200) {
-    const open = narrative.options.filter((o) => !o.locked)
-    if (open.length === 0) break
-    story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-    turns += 1
-  }
-  return { character, people, household, world }
-}
 
 // —— 一、随便挑一世，把爹娘印出来 ——
 console.log('\n=== 你爹是谁 ===\n')
@@ -118,37 +87,40 @@ const exits = new Map<string, number>()
 /** 三个出口各自的下落。「杳」不是「殁」——剧本自己把这两件事分得很清楚 */
 const fates = new Map<string, number>()
 
-for (let i = 0; i < RUNS; i += 1) {
-  const { character, people, world } = live()
-  const father = people.personOf('father')
+const observed = (
+  await mapShards<Observed[]>({ task: 'scripts/tasks/people-lives.ts', runs: RUNS })
+).flat()
 
+for (const one of observed) {
   /**
    * 铁律要先查，因为它要查的恰恰是「`personOf` 取不到」这件事。
    *
    * 从前这一行下面紧跟着 `if (!father) continue`——**而「父亲从世界上消失了」
    * 长得就是 `personOf` 取不到**。那条 continue 会把这一支唯一要拦的缺陷
    * 静静吞掉，然后底下那一节照样报「人一直都在」。
+   *
+   * 摊到多个线程之后这条次序更要紧了：worker 只把事实取回来
+   * （`exit` 是什么、`hasFather` 真假），**谁先查谁后查仍然由这里说了算**。
    */
-  const exit = world.getFlag('father-fate')
-  if (exit !== undefined) {
+  if (one.exit !== null) {
     everAway += 1
-    exits.set(String(exit), (exits.get(String(exit)) ?? 0) + 1)
+    exits.set(one.exit, (exits.get(one.exit) ?? 0) + 1)
     // 无论死活，他都该还在册子上，而且有个地方。「杳」也算——
     // 剧本自己写着「他还在册子上，可能还活着」
-    if (!father || !father.place) vanished += 1
+    if (!one.hasFather || !one.fatherHasPlace) vanished += 1
   }
 
-  if (!father) continue
+  if (!one.hasFather) continue
 
   // 玩家随父姓
-  if (character.name.slice(0, 1) === father.surname) sameSurname += 1
-  if (father.history.length > 0) fatherHasPast += 1
-  if (father.history.some((c) => c.known)) learnedSomething += 1
-  if (father.history.some((c) => c.id === 'met-adept' && c.known)) learnedAdept += 1
+  if (one.surnameMatches) sameSurname += 1
+  if (one.historyLength > 0) fatherHasPast += 1
+  if (one.knownAny) learnedSomething += 1
+  if (one.knownMetAdept) learnedAdept += 1
 
-  fates.set(father.fate, (fates.get(father.fate) ?? 0) + 1)
+  fates.set(one.fate!, (fates.get(one.fate!) ?? 0) + 1)
 
-  parentAges.push(world.bornYear - father.bornYear)
+  parentAges.push(one.parentAge!)
 }
 
 const pct = (n: number) => `${((n / RUNS) * 100).toFixed(1)}%`

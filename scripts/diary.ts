@@ -20,7 +20,7 @@
  *
  * ③ 是「日志」和「回忆」的分界线，④ 是「回忆」和「人生」的分界线。
  *
- * 跑法：npx vite-node scripts/diary.ts
+ * 跑法：bun scripts/diary.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 

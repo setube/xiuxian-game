@@ -16,7 +16,8 @@ defineProps<{
 <style scoped>
 /* 章节起首。留白足以分段即可，不必空出半屏 */
 .heading {
-  margin-block: 0.6rem 1rem;
+  margin-top: 0.6rem;
+  margin-bottom: 1rem;
   text-align: center;
 }
 </style>

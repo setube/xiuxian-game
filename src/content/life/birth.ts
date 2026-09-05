@@ -1,12 +1,5 @@
 import { ORIGINS, originById } from '@/content/origins'
-import type {
-  Effect,
-  LifeEvent,
-  NarrativeBlock,
-  OriginId,
-  Scene,
-  SceneLibrary,
-} from '@/types/game'
+import type { Effect, LifeEvent, NarrativeBlock, OriginId, Scene, SceneLibrary } from '@/types/game'
 
 /**
  * 出生。

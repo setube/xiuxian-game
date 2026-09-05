@@ -14,7 +14,7 @@
  * 2. **看不全**（一年只给一两处，攒不出精确的世界模型）
  * 3. **可能读错**（街上多了外乡人：商队？还是逃荒的？）
  *
- * 跑法：npx vite-node scripts/perceive.ts
+ * 跑法：bun scripts/perceive.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 

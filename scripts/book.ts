@@ -17,7 +17,7 @@
  *
  * 最后看一个指标：**同一册书，不同的人生路径能不能长出不同的认知历史。**
  *
- * 跑法：npx vite-node scripts/book.ts
+ * 跑法：bun scripts/book.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 

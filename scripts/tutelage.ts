@@ -44,7 +44,7 @@
  * 「背书那一关练得多真的能过」。守「X 不影响结果」，
  * 必须真的把 X 变一遍，而且要有一个「X 应该影响结果」的对照组在旁边。
  *
- * 跑法：npx vite-node scripts/tutelage.ts
+ * 跑法：bun scripts/tutelage.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 

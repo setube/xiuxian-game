@@ -13,21 +13,18 @@
  * 正是在那儿显出来的。后半段人人都在过日子，出身早就被自己的经历盖过去了——
  * 底下那段注释记着这件事怎么让一整张表失去了分辨力。
  *
- * 跑法：npx vite-node scripts/origins.ts
+ * 跑法：bun scripts/origins.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 
 import { ORIGINS, originById } from '../src/content/origins'
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
+import { lifeEvents } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
-import { useStory } from '../src/engine/story'
-import { useCharacterStore } from '../src/stores/character'
-import { useHouseholdStore } from '../src/stores/household'
-import { useNarrativeStore } from '../src/stores/narrative'
-import { useWorldStore } from '../src/stores/world'
 import type { OriginId } from '../src/types/game'
 
+import { mapShards } from './lib/parallel'
 import { beOf } from './origin'
+import type { Observed } from './tasks/origins-lives'
 
 /**
  * 走查跑多少世。
@@ -154,40 +151,23 @@ function nameOf(id: OriginId): string {
   return row.business ?? row.livelihood
 }
 
-for (let i = 0; i < RUNS; i += 1) {
-  setActivePinia(createPinia())
-  const narrative = useNarrativeStore()
-  const world = useWorldStore()
-  const character = useCharacterStore()
-  const household = useHouseholdStore()
-  const story = useStory(lifeScenes, {
-    events: lifeEvents,
-    routine: lifeRoutine,
-    finale: lifeFinale,
+const observed = (
+  await mapShards<Observed[], Partial<Record<OriginId, string>>>({
+    task: 'scripts/tasks/origins-lives.ts',
+    runs: RUNS,
+    payload: OWN_EVENT,
   })
-  story.begin()
+).flat()
 
-  let turns = 0
-  while (!narrative.ended && turns < 200) {
-    const open = narrative.options.filter((o) => !o.locked)
-    if (open.length === 0) break
-    story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-    turns += 1
-  }
-
-  const row = rowOf(household.origin)
+for (const one of observed) {
+  const row = rowOf(one.origin)
   row.n += 1
-  if (world.getFlag('schooled') === true) row.schooled += 1
-
-  const own = OWN_EVENT[household.origin]
-  if (own && world.hasFlag(own)) row.ownScene += 1
-
-  if (character.knows('cultivators-exist')) row.heardOfCultivators += 1
-  if (world.hasFlag('saw-a-cultivator')) row.recognized += 1
-  if (character.inventory.some((item) => item.formerName !== undefined)) row.revealed += 1
-
-  const ending = narrative.nodeId ?? '(未收尾)'
-  row.endings[ending] = (row.endings[ending] ?? 0) + 1
+  if (one.schooled) row.schooled += 1
+  if (one.ownScene) row.ownScene += 1
+  if (one.heardOfCultivators) row.heardOfCultivators += 1
+  if (one.recognized) row.recognized += 1
+  if (one.revealed) row.revealed += 1
+  row.endings[one.ending] = (row.endings[one.ending] ?? 0) + 1
 }
 
 function pct(part: number, whole: number): string {

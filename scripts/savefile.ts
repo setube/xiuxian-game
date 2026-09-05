@@ -29,7 +29,7 @@
  * 一、二守**存档闸**（`engine/savefile.ts`）：版本对不上就把旧存档清掉。
  * 三守**落字**：一个字段缺了的人喂给 `noteOf`，它不许把英文印出来。
  *
- * 跑法：npx vite-node scripts/savefile.ts
+ * 跑法：bun scripts/savefile.ts
  */
 import { SAVE_VERSION, guardSaveFile } from '../src/engine/savefile'
 import { noteOf } from '../src/engine/note'

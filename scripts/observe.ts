@@ -12,7 +12,7 @@
  *    同一个人让同一个修士看一百次，看他说过多少种不同的话。
  *    如果永远只说同一句，那「他可能看错了」就是句空话。
  *
- * 跑法：npx vite-node scripts/observe.ts
+ * 跑法：bun scripts/observe.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 

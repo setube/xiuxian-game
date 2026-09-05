@@ -26,7 +26,7 @@
  * 所以那一道拿同一把尺子去量筑基修士：他看得见 root，
  * **他那一组必须显著有别**。两边一起看，尺子才有话语权。
  *
- * 跑法：npx vite-node scripts/meeting.ts
+ * 跑法：bun scripts/meeting.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 

@@ -2,7 +2,7 @@
 /**
  * 分开了这么多年，还是原来那些人。
  *
- * 跑法：`npx vite-node scripts/kept.ts`
+ * 跑法：`bun scripts/kept.ts`
  *
  * ## 这一道守的是一条更细的界线
  *

@@ -83,10 +83,11 @@ watch(
 .tab {
   position: relative;
   flex: 1 1 0;
-  padding-block: 0.6rem;
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
   border: 0;
   /* 栏与栏之间落一道细线，六格才是六格，不是一排文字 */
-  border-inline-start: 1px solid var(--color-rule);
+  border-left: 1px solid var(--color-rule);
   background: none;
   color: var(--color-ink-faint);
   font-family: inherit;
@@ -100,7 +101,7 @@ watch(
 }
 
 .tab:first-child {
-  border-inline-start: 0;
+  border-left: 0;
 }
 
 .tab:hover {
@@ -122,8 +123,9 @@ watch(
 .tab.active::before {
   content: '';
   position: absolute;
-  inset-block-start: -1px;
-  inset-inline: 0;
+  top: -1px;
+  left: 0;
+  right: 0;
   height: 2px;
   background-color: var(--color-cinnabar);
 }
@@ -131,8 +133,8 @@ watch(
 /* 未读：一点朱砂。数量无意义，「有新东西」才是玩家要知道的 */
 .dot {
   position: absolute;
-  inset-block-start: 0.4rem;
-  inset-inline-end: 0.5rem;
+  top: 0.4rem;
+  right: 0.5rem;
   width: 5px;
   height: 5px;
   border-radius: 50%;

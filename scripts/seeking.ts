@@ -25,18 +25,17 @@
  * 第七节走完整人生，量的是**那条路他有没有机会走上去**——
  * 两个数字差了一个数量级，而**差的那部分正是这一册要说的话**。
  *
- * 跑法：npx vite-node scripts/seeking.ts
+ * 跑法：bun scripts/seeking.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 
 import { LEADS, PLACES } from '../src/content/leads'
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { askAround, crossed, follow, knock, leadsHeard } from '../src/engine/seeking'
-import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
-import { useNarrativeStore } from '../src/stores/narrative'
 import { useWorldStore } from '../src/stores/world'
+import { mapShards, shardsOf } from './lib/parallel'
+import { mergeShards, type SeekingShard } from './tasks/seeking-lives'
 
 /**
  * 走查跑多少世。
@@ -394,92 +393,37 @@ console.log('\n=== 七、可观测路径：真人生里走得到吗 ===\n')
   /** 一批没撞上时追加多少世。累计六千世，期望两回的话掷出全零是四百分之一的事 */
   const RETRY = 4000
 
-  const funnel = {
-    心里生出想弄明白: 0,
-    听说过世上有修士: 0,
-    两样都占上: 0,
-    抽中了问人那一卷: 0,
-    真问着了东西: 0,
-    两条对上了: 0,
-  }
-  /** 那两卷各自被走进去几回。**这才是门禁真正要的那个数** */
-  let enteredCrossed = 0
-  let enteredDoor = 0
-  /** 「两条对上了」是在几岁对上的。窗口是十三到十六，所以这个分布要人看着 */
-  const ages = new Map<number, number>()
-
   /**
-   * 走一条完整人生，返回这一世有没有走进「两条对上了」那一卷。
+   * 这两千世摊到多个线程上同时跑。
    *
-   * `count` 决定这一世算不算进上面那个漏斗。**追加的那几批不算**——
-   * 漏斗报的是比例，混进批次不同的世数，比例就跟分母对不上了，
-   * 而那个比例正是这一节要给人看的东西。
+   * 单世模拟整个搬去了 `tasks/seeking-lives.ts`，走法一步没动——
+   * 同一套年表、同样两百回合上限、同样把钩子挂在 `locate` 上。
+   * 改的只是记账方式：原先各世往这里几个计数器上直接 `+= 1`，
+   * 现在每片各攒各的，跑完由 `mergeShards` 加起来。
+   * **加法可结合，所以摊成几片都不影响总数**——只有比例的分母要当心，
+   * 那个得用 `LIVES`，不能拿某一片的世数去除。
    *
-   * 名字要跟第五节那个 `oneLife` 岔开：两个都在走一条人生，可走法是两回事——
-   * 那一个手里替他掷「他问了几年」，这一个把年表整个跑一遍。
-   * 同名的话块作用域会把外面那个遮住，而遮住的样子跟一切正常一模一样。
+   * ## 为什么动的是这一节
+   *
+   * 这一支原先要跑十三分半，是四十支门禁里最慢的一支，而慢处全在这一节：
+   * **两千世 × 每世一百多个回合**，前面六节加起来不到十秒。
+   * 这个乘积不是哪一处写坏了，没得修；能拆的地方只有一个——
+   * 世与世之间没有任何一条边，每一世自己 `createPinia()`，
+   * 它们本来就可以同时跑。
+   *
+   * 顺带捡了第二份便宜：worker 那一侧是原生 Node 起的，认 `NODE_ENV=production`，
+   * 于是 pinia 和 vue 都走生产版构建。开发版每次 `useStore()` 都要备一份警告
+   * 文案、挂一次 devtools 埋点，而 `useStore` 正是这套模拟里最热的那个函数
+   * （CPU 采样占三成六）。光这一项，单世就从 477 毫秒掉到 180 毫秒。
+   * 主线程吃不到这份便宜——它是 vite-node 起的，按自己那套条件解析，
+   * 给多少 NODE_ENV 都还是开发版，实测只从 63.7 秒动到 61.4 秒。
    */
-  const liveThrough = (count: boolean): boolean => {
-    setActivePinia(createPinia())
-    const narrative = useNarrativeStore()
-    const world = useWorldStore()
-    const character = useCharacterStore()
+  const spread = shardsOf(LIVES)
+  console.log(`  ${LIVES} 世摊成 ${spread.length} 片同时跑，每片 ${spread[0]} 世上下……\n`)
 
-    let asked = 0
-    let crossedAt = -1
-    let hitCrossed = 0
-    let hitDoor = 0
-    /**
-     * 顺着他真正走过的路记一笔。
-     *
-     * 不能从 `narrative.sceneId` 采样——`enterNode` 会一口气自动接好几节，
-     * 中间那些在下一次落笔之前就被覆盖了。`locate` 是每进一个节点
-     * 都会被调到的那个，所以包在这里。
-     */
-    const locate = narrative.locate
-    narrative.locate = (sceneId: string, nodeId: string): void => {
-      if (sceneId === 'seek:asking' && nodeId === 'open') asked += 1
-      if (sceneId === 'seek:crossed' && nodeId === 'open') hitCrossed += 1
-      if (sceneId === 'seek:door' && nodeId === 'open') hitDoor += 1
-      locate(sceneId, nodeId)
-      // 落笔之后再看：那一句 ask-around 的效果就是在这一步生效的
-      if (crossedAt < 0 && world.hasFlag('leads-crossed')) crossedAt = character.age
-    }
-
-    const story = useStory(lifeScenes, {
-      events: lifeEvents,
-      routine: lifeRoutine,
-      finale: lifeFinale,
-    })
-    story.begin()
-
-    let turns = 0
-    while (!narrative.ended && turns < 200) {
-      const open = narrative.options.filter((option) => !option.locked)
-      if (open.length === 0) break
-      story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-      turns += 1
-    }
-
-    if (count) {
-      enteredCrossed += hitCrossed
-      enteredDoor += hitDoor
-      const knows = character.knowledge.some((one) => one.id === 'cultivators-exist')
-      const wants = world.hasFlag('leaning:know')
-      if (wants) funnel.心里生出想弄明白 += 1
-      if (knows) funnel.听说过世上有修士 += 1
-      if (knows && wants) funnel.两样都占上 += 1
-      if (asked > 0) funnel.抽中了问人那一卷 += 1
-      if (leadsHeard().length > 0) funnel.真问着了东西 += 1
-      if (world.hasFlag('leads-crossed')) {
-        funnel.两条对上了 += 1
-        ages.set(crossedAt, (ages.get(crossedAt) ?? 0) + 1)
-      }
-    }
-    return hitCrossed > 0
-  }
-
-  for (let i = 0; i < LIVES; i += 1) liveThrough(true)
+  const { funnel, enteredCrossed, enteredDoor, ages } = mergeShards(
+    await mapShards<SeekingShard>({ task: 'scripts/tasks/seeking-lives.ts', runs: LIVES }),
+  )
 
   console.log(`  ${LIVES} 世完整人生。每一环都在乘：\n`)
   for (const [label, n] of Object.entries(funnel)) {
@@ -510,16 +454,24 @@ console.log('\n=== 七、可观测路径：真人生里走得到吗 ===\n')
      * 六千世掷出全零是四百分之一的事。
      *
      * 判据一格没松：路真断了，追加多少世也撞不上，照红。松掉的只是抽样。
+     *
+     * ## 摊开跑之后，这里不再是「撞上就停」
+     *
+     * 原先是一世一世往下跑，撞见头一回就收手，所以能报「第几世上撞见的」。
+     * 摊到多个线程之后那个序号没有意义了——十二片同时在跑，
+     * 谁先撞上取决于线程调度，**报出来的数会一次一个样**。
+     * 所以这里改成跑满四千世，报的是「四千世里撞见几回」。
+     *
+     * 代价是这条岔路比从前多跑几世。不心疼：按上面那个算法，
+     * 四百分之一才会走到这里，而摊开之后跑满四千世也就三十来秒。
+     * **为一条几乎不走的路加一套提前终止，复杂度花在了看不见的地方。**
      */
-    let extra = 0
-    let hit = false
-    while (extra < RETRY && !hit) {
-      hit = liveThrough(false)
-      extra += 1
-    }
-    if (hit) {
+    const extra = mergeShards(
+      await mapShards<SeekingShard>({ task: 'scripts/tasks/seeking-lives.ts', runs: RETRY }),
+    )
+    if (extra.enteredCrossed > 0) {
       console.log(
-        `\n  这一批 ${LIVES} 世没人走进那一卷，追加第 ${extra} 世上撞见一回——` +
+        `\n  这一批 ${LIVES} 世没人走进那一卷，追加的 ${RETRY} 世里撞见 ${extra.enteredCrossed} 回——` +
           '路是通的，只是比这个批次量还稀。',
       )
     } else {

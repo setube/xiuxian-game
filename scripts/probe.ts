@@ -26,8 +26,9 @@ import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
 import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
-import { useNarrativeStore } from '../src/stores/narrative'
 import { useWorldStore } from '../src/stores/world'
+import { mapShards } from './lib/parallel'
+import type { Observed } from './tasks/probe-lives'
 
 /**
  * ## 世数按次稀那一格定，不按最稀那一格
@@ -238,62 +239,38 @@ function namesTheBook(): string[] {
   return wrong
 }
 
-for (let i = 0; i < RUNS; i += 1) {
-  setActivePinia(createPinia())
-  const narrative = useNarrativeStore()
-  const world = useWorldStore()
-  const character = useCharacterStore()
-  const story = useStory(lifeScenes, {
-    events: lifeEvents,
-    routine: lifeRoutine,
-    finale: lifeFinale,
-  })
-  story.begin()
+const observed = (
+  await mapShards<Observed[]>({ task: 'scripts/tasks/probe-lives.ts', runs: RUNS })
+).flat()
 
-  let turns = 0
-  while (!narrative.ended && turns < 200) {
-    const open = narrative.options.filter((o) => !o.locked)
-    if (open.length === 0) break
-    story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-    turns += 1
-  }
-
-  if (world.hasFlag('event:omen-wounded')) chain.上了山道 += 1
+for (const one of observed) {
+  if (one.onTrail) chain.上了山道 += 1
   // 那天他有没有把注意力放在那儿。这一格从前是一行属性阈值，量出来人人都过
-  if (world.getFlag('attention') === 'caught') chain.注意力放在了那儿 += 1
+  if (one.attentionCaught) chain.注意力放在了那儿 += 1
   // 看进去了，还得没把他当成醉汉或死人——那两种读法会让他绕开走
-  const reading = world.getFlag('wounded-reading')
-  if (
-    world.getFlag('attention') === 'caught' &&
-    typeof reading === 'string' &&
-    !WALKS_AWAY.has(reading)
-  ) {
+  if (one.attentionCaught && one.reading !== null && !WALKS_AWAY.has(one.reading)) {
     chain.没当成别的东西 += 1
   }
 
-  const outcome = world.getFlag('wounded-outcome')
-  if (typeof outcome === 'string') {
+  const outcome = one.outcome
+  if (outcome !== null) {
     outcomes.set(outcome, (outcomes.get(outcome) ?? 0) + 1)
     if (outcome.startsWith('lift-')) chain['最后那回伸手扶了'] += 1
   }
 
-  if (character.has('thin-book')) {
+  if (one.hasBook) {
     carriesBook += 1
     // 书在手里，可这一卷给他记的出口不是修士那一档——他后来又走了一回山道
     if (outcome !== 'lift-adept') {
-      const where = typeof outcome === 'string' ? outcome : '（这一卷根本没结算过）'
+      const where = outcome ?? '（这一卷根本没结算过）'
       overwritten.set(where, (overwritten.get(where) ?? 0) + 1)
     }
   }
 
-  if (
-    world.hasFlag('met-stranger') ||
-    world.hasFlag('knows-the-book') ||
-    world.hasFlag('marked-known')
-  ) {
+  if (one.metStranger || one.knowsBook || one.markedKnown) {
     river.在渡口走上前 += 1
   }
-  if (world.hasFlag('knows-the-book')) river.有人点破 += 1
+  if (one.knowsBook) river.有人点破 += 1
 }
 
 console.log(`\n=== 那册书的漏斗（${RUNS} 世）===\n`)

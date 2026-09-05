@@ -61,13 +61,19 @@ onUnmounted(() => {
   flex: none;
   align-items: baseline;
   justify-content: space-between;
-  gap: 1rem;
   padding: 0.6rem 1.25rem;
+}
+
+/* 间距走相邻兄弟的 margin，不用 gap——弹性盒的 gap 要 Chrome 84，
+   而这个项目的下限是 51。这一行没有换行，所以两者完全等价 */
+.head > * + * {
+  margin-left: 1rem;
 }
 
 @media (width >= 640px) {
   .head {
-    padding-inline: 1.75rem;
+    padding-left: 1.75rem;
+    padding-right: 1.75rem;
   }
 }
 
@@ -106,7 +112,8 @@ onUnmounted(() => {
 
 @media (width >= 640px) {
   .body {
-    padding-inline: 1.75rem;
+    padding-left: 1.75rem;
+    padding-right: 1.75rem;
   }
 }
 </style>

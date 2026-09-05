@@ -23,22 +23,21 @@
  * 那个念头就是系统偷偷安排的主线——而这里，「想活久一点」
  * 通向五个地方，其中一个是「什么也没通向」。
  *
- * 跑法：npx vite-node scripts/wishes.ts
+ * 跑法：bun scripts/wishes.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { LEANINGS } from '../src/content/leanings'
 import { WISHES, WISH_SPARKS } from '../src/content/wishes'
 import { BRANCH_AT, branch } from '../src/engine/leanings'
-import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useLeaningStore } from '../src/stores/leanings'
-import { useNarrativeStore } from '../src/stores/narrative'
 import { useWorldStore } from '../src/stores/world'
 
 import { beOf } from './origin'
+import { mapShards } from './lib/parallel'
+import type { Observed } from './tasks/wishes-lives'
 
 /**
  * ## 世数按最稀的那一格定——可有一格是买不来的
@@ -223,30 +222,17 @@ console.log('\n=== 四、真实人生里，这个愿望通向了哪儿 ===\n')
   let wished = 0
   let branched = 0
 
-  for (let i = 0; i < RUNS; i += 1) {
-    setActivePinia(createPinia())
-    const narrative = useNarrativeStore()
-    const story = useStory(lifeScenes, {
-      events: lifeEvents,
-      routine: lifeRoutine,
-      finale: lifeFinale,
-    })
-    story.begin()
-    let turns = 0
-    while (!narrative.ended && turns < 500) {
-      const open = narrative.options.filter((option) => !option.locked)
-      if (open.length === 0) break
-      story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-      turns += 1
-    }
-    const leaning = useLeaningStore()
-    const world = useWorldStore()
-    if (leaning.peakOf('live-long') < BRANCH_AT) continue
+  const observed = (
+    await mapShards<Observed[]>({ task: 'scripts/tasks/wishes-lives.ts', runs: RUNS })
+  ).flat()
+
+  for (const one of observed) {
+    if (one.peak < BRANCH_AT) continue
     wished += 1
     // 攒到了门槛却还没分岔的，不算一种落点——**它是还没走到，不是走到了没处去**
-    if (!world.hasFlag('branched:live-long')) continue
+    if (!one.branched) continue
     branched += 1
-    const into = (world.getFlag('branched-into') as string | undefined) ?? NOWHERE
+    const into = one.into ?? NOWHERE
     where.set(into, (where.get(into) ?? 0) + 1)
   }
 

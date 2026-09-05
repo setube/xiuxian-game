@@ -12,7 +12,7 @@
  * 2. 父债那条链走完过几次（因果链是不是真的长得出来）
  * 3. 十六岁那年，不同的人身上带着不同的东西吗（还是人人一个样）
  *
- * 跑法：npx vite-node scripts/simulate.ts
+ * 跑法：bun scripts/simulate.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 

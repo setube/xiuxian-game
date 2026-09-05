@@ -10,7 +10,7 @@
  *    「他知道但不肯说」和「他真不知道」是两道独立的闸。
  * 3. **知识分层**：听说 → 见过 → 猜想 → 确信 → 亲历，且只能往上走。
  *
- * 跑法：npx vite-node scripts/inquire.ts
+ * 跑法：bun scripts/inquire.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 

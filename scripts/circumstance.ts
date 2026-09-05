@@ -11,7 +11,7 @@
  * 3. **没有「最强开局」。** 决定能走多远的 root / spirit，
  *    在各种境况下分布必须一致——这是反元游戏的生死线。
  *
- * 跑法：npx vite-node scripts/circumstance.ts
+ * 跑法：bun scripts/circumstance.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 

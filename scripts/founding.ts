@@ -48,7 +48,7 @@
  * 底下第四段守着它：往八个 store 里各塞一枚哨兵，走玩家真正走的那条路
  * （`story.restart()`），看谁还留着上一世的东西。
  *
- * 跑法：npx vite-node scripts/founding.ts
+ * 跑法：bun scripts/founding.ts
  */
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'

@@ -35,7 +35,7 @@ const inkClass = computed(() => toneClass(tone))
 }
 
 .speaker {
-  margin-inline-end: 0.5em;
+  margin-right: 0.5em;
   color: var(--color-ink-faint);
   font-family: var(--font-serif);
   font-size: var(--text-note);

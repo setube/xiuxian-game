@@ -22,7 +22,7 @@
  * 还要分清被人说动之后的三种样子——只做「纠正」的话，
  * NPC 一开口玩家的世界模型就被改对，那还是百科系统。
  *
- * 跑法：npx vite-node scripts/grasp.ts
+ * 跑法：bun scripts/grasp.ts
  * 失败以非零码退出，可以直接挂进 CI。
  */
 import { createPinia, setActivePinia } from 'pinia'

@@ -21,9 +21,10 @@ const inkClass = computed(() => toneClass(tone))
 <style scoped>
 /* 左侧一道短墨竖：把这一句从叙述里挑出来，不必靠居中和大段留白 */
 .event {
-  margin-block: 1em;
-  padding-inline-start: 0.75em;
-  border-inline-start: 2px solid var(--color-ink-ghost);
+  margin-top: 1em;
+  margin-bottom: 1em;
+  padding-left: 0.75em;
+  border-left: 2px solid var(--color-ink-ghost);
   line-height: 1.8;
   letter-spacing: 0.04em;
 }

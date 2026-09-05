@@ -23,19 +23,18 @@
  * 念头一冒出来就变成「【任务：成为郎中】」，那是任务系统，
  * 不是一个人的一生。
  *
- * 跑法：npx vite-node scripts/leanings.ts
+ * 跑法：bun scripts/leanings.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { LEANINGS, SPARKS } from '../src/content/leanings'
 import { WISHES } from '../src/content/wishes'
 import { echoesOn, saysOf, selfSense } from '../src/engine/leanings'
-import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useLeaningStore } from '../src/stores/leanings'
-import { useNarrativeStore } from '../src/stores/narrative'
 import type { Condition } from '../src/types/game'
+import { mapShards } from './lib/parallel'
+import type { Lived } from './tasks/leanings-lives'
 
 /**
  * 走查跑多少世。
@@ -68,44 +67,6 @@ const RUNS = 1000
  */
 const GROWABLE = [...LEANINGS, ...WISHES]
 
-interface Lived {
-  named: string[]
-  stirring: string[]
-  age: number
-  trace: { at: number; text: string }[]
-}
-
-/** 随机走完一世，看他心里长出了什么 */
-function liveALife(): Lived {
-  setActivePinia(createPinia())
-  const narrative = useNarrativeStore()
-  const story = useStory(lifeScenes, {
-    events: lifeEvents,
-    routine: lifeRoutine,
-    finale: lifeFinale,
-  })
-  story.begin()
-  let turns = 0
-  while (!narrative.ended && turns < 500) {
-    const open = narrative.options.filter((option) => !option.locked)
-    if (open.length === 0) break
-    story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-    turns += 1
-  }
-  const leaning = useLeaningStore()
-  return {
-    named: leaning.named.map((item) => item.id),
-    stirring: leaning
-      .atLeast('反复')
-      .filter((item) => item.namedAt === null)
-      .map((item) => item.id),
-    age: useCharacterStore().age,
-    trace: leaning.growing
-      .flatMap((item) => item.moments)
-      .map((moment) => ({ at: moment.at.year, text: moment.text })),
-  }
-}
-
 let failed = 0
 
 // —— 一、内容里一个数字也不给玩家 ——
@@ -129,8 +90,9 @@ console.log('\n=== 一、他对自己的说法里，没有一个数字 ===\n')
 
 // —— 二、方向的分布形状 ——
 console.log('\n=== 二、一生走完，他心里长出了什么 ===\n')
-const lives: Lived[] = []
-for (let i = 0; i < RUNS; i += 1) lives.push(liveALife())
+const lives = (
+  await mapShards<Lived[]>({ task: 'scripts/tasks/leanings-lives.ts', runs: RUNS })
+).flat()
 {
   const none = lives.filter((life) => life.named.length === 0 && life.stirring.length === 0)
   const vague = lives.filter((life) => life.named.length === 0 && life.stirring.length > 0)

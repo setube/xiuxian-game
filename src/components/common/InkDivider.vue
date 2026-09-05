@@ -21,15 +21,18 @@ const { variant = 'line' } = defineProps<{ variant?: DividerVariant }>()
 
 /* 线用于分栏（正文与行动区之间），墨迹用于换场，因此后者留白更多 */
 .divider.line {
-  padding-block: 0.9rem;
+  padding-top: 0.9rem;
+  padding-bottom: 0.9rem;
 }
 
 .divider.dots {
-  padding-block: 0.7rem;
+  padding-top: 0.7rem;
+  padding-bottom: 0.7rem;
 }
 
 .divider.ink {
-  padding-block: 1.2rem;
+  padding-top: 1.2rem;
+  padding-bottom: 1.2rem;
 }
 
 /* 细线：两端渐隐，像一笔提按分明的横画，而不是 HTML 的 hr */

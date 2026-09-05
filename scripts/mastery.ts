@@ -47,7 +47,7 @@
  * 摆整行不是多余——少摆一格会摆出「开着药铺却是宗室」这种人，
  * 而那种人走查出来的结论不算数。
  *
- * 跑法：npx vite-node scripts/mastery.ts
+ * 跑法：bun scripts/mastery.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 

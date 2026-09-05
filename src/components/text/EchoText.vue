@@ -16,12 +16,18 @@ defineProps<{ text: string }>()
 <style scoped>
 .echo {
   display: flex;
-  gap: 0.5em;
-  margin-block: 0.9em;
+  margin-top: 0.9em;
+  margin-bottom: 0.9em;
   color: var(--color-ink-faint);
   font-size: var(--text-note);
   letter-spacing: 0.04em;
   line-height: 1.7;
+}
+
+/* 间距走相邻兄弟的 margin，不用 gap——弹性盒的 gap 要 Chrome 84，
+   而这个项目的下限是 51。这一行没有换行，所以两者完全等价 */
+.echo > * + * {
+  margin-left: 0.5em;
 }
 
 /* 一个朝下游走的箭头：这一行是「你做了什么」，不是「发生了什么」 */

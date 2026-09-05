@@ -16,7 +16,7 @@
  * B 证明**理解可以错误**，C 证明**机会不等于命运**，
  * D 证明**行动不保证结果**。这三件成立，「机缘不是抽奖」才算落地。
  *
- * 跑法：npx vite-node scripts/wounded.ts
+ * 跑法：bun scripts/wounded.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 

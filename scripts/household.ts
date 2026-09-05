@@ -38,7 +38,7 @@
  * （那个五今天已经不是五了，所以底下判据里不写死处数——
  * 会漂的数字写进判据，漂的时候判据一直是绿的。）
  *
- * 跑法：npx vite-node scripts/household.ts
+ * 跑法：bun scripts/household.ts
  * 失败会以非零码退出，可以直接挂进 CI。
  */
 import { readFileSync, readdirSync } from 'node:fs'

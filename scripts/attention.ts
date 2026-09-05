@@ -32,7 +32,7 @@
  * **事件概率 × 转化概率 × 行为概率乘出来太小，跑一万世也是零。**
  * 而那不代表它不通。
  *
- * 跑法：npx vite-node scripts/attention.ts
+ * 跑法：bun scripts/attention.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 

@@ -82,7 +82,7 @@ const groups = computed<KnowledgeGroup[]>(() =>
 <style scoped>
 /* 认识的深浅。比标题轻一档：它是注解，不是名字 */
 .grasp {
-  margin-inline-start: 0.6em;
+  margin-left: 0.6em;
   color: var(--color-ink-faint);
   font-size: var(--text-micro);
   letter-spacing: 0.14em;
@@ -127,7 +127,7 @@ const groups = computed<KnowledgeGroup[]>(() =>
 /* 认知历史。默认收着——摊开来会把「他现在怎么想」压下去 */
 .past {
   margin: 0.3rem 0 0;
-  padding-inline-start: 1.4em;
+  padding-left: 1.4em;
 }
 
 .past > summary {
@@ -145,15 +145,20 @@ const groups = computed<KnowledgeGroup[]>(() =>
 
 .moments {
   margin: 0.3rem 0 0;
-  padding-inline-start: 0;
+  padding-left: 0;
   list-style: none;
 }
 
 .moments > li {
   display: flex;
-  gap: 0.5em;
   align-items: baseline;
   line-height: 1.7;
+}
+
+/* 间距走相邻兄弟的 margin，不用 gap——弹性盒的 gap 要 Chrome 84，
+   而这个项目的下限是 51。这一行没有换行，所以两者完全等价 */
+.moments > li > * + * {
+  margin-left: 0.5em;
 }
 
 .moments > li + li {
@@ -175,7 +180,7 @@ const groups = computed<KnowledgeGroup[]>(() =>
 
 .when {
   margin: 0.1rem 0 0;
-  padding-inline-start: 1.4em;
+  padding-left: 1.4em;
 }
 
 .moments .when {

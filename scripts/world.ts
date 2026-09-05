@@ -16,7 +16,7 @@
  * 2. 旱灾链能走多远（少雨 → 减产 → 涨价 → 囤粮 → 限价 → 盗匪 → 改道 → 逃荒）
  * 3. 玩家出生时，这个世界已经有多少年历史
  *
- * 跑法：npx vite-node scripts/world.ts
+ * 跑法：bun scripts/world.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 

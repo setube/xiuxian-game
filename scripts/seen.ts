@@ -39,14 +39,11 @@
  * **要问的是他当时看见了什么，所以只能去正文里捞。**
  * 顺带把引擎那一环也验了：句子真落到纸上了没有。
  *
- * 跑法：npx vite-node scripts/seen.ts
+ * 跑法：bun scripts/seen.ts
  */
-import { createPinia, setActivePinia } from 'pinia'
-
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
-import { useStory } from '../src/engine/story'
-import { useNarrativeStore } from '../src/stores/narrative'
+import { lifeScenes } from '../src/content/life'
 import type { Condition } from '../src/types/game'
+import { mapShards } from './lib/parallel'
 
 /**
  * 走多少世。
@@ -132,36 +129,6 @@ for (const [sceneId, scene] of Object.entries(lifeScenes)) {
  * 而少年那一节是十三岁读的——等他走到渡口，那一段早被顶出去了。
  * 按 id 去重，多收几遍也不会重。
  */
-function liveALife(): string[] {
-  setActivePinia(createPinia())
-  const narrative = useNarrativeStore()
-  const story = useStory(lifeScenes, {
-    events: lifeEvents,
-    routine: lifeRoutine,
-    finale: lifeFinale,
-  })
-  const kept = new Set<string>()
-  const texts: string[] = []
-  const drain = (): void => {
-    for (const item of narrative.stream) {
-      if (kept.has(item.id)) continue
-      kept.add(item.id)
-      if ('text' in item.block) texts.push(item.block.text)
-    }
-  }
-
-  story.begin()
-  drain()
-  let turns = 0
-  while (!narrative.ended && turns < 500) {
-    const open = narrative.options.filter((option) => !option.locked)
-    if (open.length === 0) break
-    story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-    drain()
-    turns += 1
-  }
-  return texts
-}
 
 let failed = 0
 
@@ -170,8 +137,9 @@ console.log(
   `  ${watched.length} 个节点写了「所见」，一共 ${watched.reduce((n, one) => n + one.lines.length, 0)} 句。\n`,
 )
 
-const lives: string[][] = []
-for (let i = 0; i < RUNS; i += 1) lives.push(liveALife())
+const lives = (
+  await mapShards<string[][]>({ task: 'scripts/tasks/seen-lives.ts', runs: RUNS })
+).flat()
 
 for (const node of watched) {
   const arrived = lives.filter((text) => text.includes(node.arrival))

@@ -198,7 +198,7 @@ function isUnknown(key: AspectKey): boolean {
 
 .traces {
   margin: 0.4rem 0 0;
-  padding-inline-start: 1.4em;
+  padding-left: 1.4em;
 }
 
 .traces > summary {
@@ -222,9 +222,14 @@ function isUnknown(key: AspectKey): boolean {
 
 .traces li {
   display: flex;
-  gap: 0.6em;
   align-items: baseline;
   line-height: 1.8;
+}
+
+/* 间距走相邻兄弟的 margin，不用 gap——弹性盒的 gap 要 Chrome 84，
+   而这个项目的下限是 51。这一行没有换行，所以两者完全等价 */
+.traces li > * + * {
+  margin-left: 0.6em;
 }
 
 .traces .what {
@@ -234,20 +239,29 @@ function isUnknown(key: AspectKey): boolean {
 
 /* 四项事实，两列对齐。这一块要一眼扫完，不该有阅读的节奏 */
 .facts {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.15rem 1.1rem;
+  /* 两栏用浮动排，不用网格——那个布局方式要 Chrome 57，
+     而这个项目的下限是 51。`overflow: hidden` 是给浮动收边的，别删：
+     少了它，底下的 `.aspect` 会爬到标签栏旁边去 */
+  overflow: hidden;
   margin: 0 0 1.4rem;
   font-size: var(--text-note);
 }
 
 .facts dt {
+  float: left;
+  /* 每一行的标签都要另起一行，否则第二个标签会贴在上一行的值后面 */
+  clear: left;
+  /* 标签都是两个汉字，字距 0.16em——实测约 2rem，3.5rem 留足了余量 */
+  width: 3.5rem;
+  margin-bottom: 0.15rem;
   color: var(--color-ink-faint);
   letter-spacing: 0.16em;
 }
 
 .facts dd {
-  margin: 0;
+  /* 3.5rem 标签栏 + 1.1rem 栏距。从前这两个数由网格的
+     栏定义和栏距各管一半，现在合成这一个外边距 */
+  margin: 0 0 0.15rem 4.6rem;
   color: var(--color-ink-deep);
 }
 
@@ -278,18 +292,27 @@ function isUnknown(key: AspectKey): boolean {
 }
 
 .kin > li {
-  display: grid;
-  grid-template-columns: 3.2em 1fr;
-  gap: 0 0.8rem;
+  /* 关系名 + 那个人怎么样，两栏。用弹性盒不用网格——
+     网格布局要 Chrome 57，而这个项目的下限是 51 */
+  display: flex;
   line-height: 1.75;
 }
 
 .kin .who {
+  /* 从前这一栏宽度写在父级的栏定义里，
+     栏距写在 `gap` 里；现在两个数都落到这一格自己身上 */
+  flex: none;
+  width: 3.2em;
+  margin-right: 0.8rem;
   color: var(--color-ink-faint);
   letter-spacing: 0.16em;
 }
 
 .kin .what {
+  /* `min-width: 0` 不能省：弹性项默认不肯缩到内容宽度以下，
+     少了它，长句子会把这一行顶出版框 */
+  flex: 1 1 auto;
+  min-width: 0;
   color: var(--color-ink-deep);
 }
 
@@ -321,7 +344,7 @@ function isUnknown(key: AspectKey): boolean {
 /* 你对这句话的理解——通常是不理解。缩到连接符之后，说明它从属于上一句 */
 .doubt {
   margin: 0.1rem 0 0;
-  padding-inline-start: 1.4em;
+  padding-left: 1.4em;
   color: var(--color-ink-faint);
   font-family: var(--font-kai);
   font-size: var(--text-note);
@@ -330,6 +353,6 @@ function isUnknown(key: AspectKey): boolean {
 
 .when {
   margin: 0.1rem 0 0;
-  padding-inline-start: 1.4em;
+  padding-left: 1.4em;
 }
 </style>

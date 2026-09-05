@@ -46,9 +46,14 @@ const { inventory } = storeToRefs(character)
 .line {
   display: flex;
   align-items: baseline;
-  gap: 0.7em;
   margin: 0;
   line-height: 1.6;
+}
+
+/* 间距走相邻兄弟的 margin，不用 gap——弹性盒的 gap 要 Chrome 84，
+   而这个项目的下限是 51。这一行没有换行，所以两者完全等价 */
+.line > * + * {
+  margin-left: 0.7em;
 }
 
 .name {

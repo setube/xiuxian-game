@@ -93,8 +93,8 @@ const stopped = computed(() => whatStopped().map(describeGone))
 /* 「再也没有」那一段。朱砂框线，因为它是这一格真正的分量所在 */
 .gone {
   margin-bottom: 1.4rem;
-  padding-inline-start: 0.9em;
-  border-inline-start: 1px solid var(--color-cinnabar);
+  padding-left: 0.9em;
+  border-left: 1px solid var(--color-cinnabar);
 }
 
 .gone-line {
@@ -130,7 +130,7 @@ const stopped = computed(() => whatStopped().map(describeGone))
 /* 当年的原话 */
 .said {
   margin: 0;
-  padding-inline-start: 1.4em;
+  padding-left: 1.4em;
   color: var(--color-ink);
   line-height: 1.8;
 }
@@ -138,7 +138,7 @@ const stopped = computed(() => whatStopped().map(describeGone))
 /* 后来才明白的。朱砂，而且缩进比原文更深一档——它是注脚，不是正文 */
 .later {
   margin: 0.25rem 0 0;
-  padding-inline-start: 2.4em;
+  padding-left: 2.4em;
   color: var(--color-cinnabar);
   font-family: var(--font-kai);
   line-height: 1.8;

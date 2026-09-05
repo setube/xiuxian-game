@@ -142,7 +142,8 @@ onMounted(() => {
 
 @media (width >= 640px) {
   .page {
-    padding-inline: 1.75rem;
+    padding-left: 1.75rem;
+    padding-right: 1.75rem;
   }
 }
 
@@ -173,10 +174,12 @@ onMounted(() => {
 
 .jump {
   position: absolute;
-  inset-block-end: 0.75rem;
-  inset-inline: 0;
+  bottom: 0.75rem;
+  left: 0;
+  right: 0;
   width: fit-content;
-  margin-inline: auto;
+  margin-left: auto;
+  margin-right: auto;
   padding: 0.3rem 0.9rem;
   border: 1px solid var(--color-cinnabar);
   border-radius: 2px;

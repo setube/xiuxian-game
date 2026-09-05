@@ -17,7 +17,7 @@
  * 真实的一天最常见的结果本来就是「没什么特别的」——
  * **也正因为如此，真的改变了什么的那些日子才显得要紧。**
  *
- * 跑法：npx vite-node scripts/day.ts
+ * 跑法：bun scripts/day.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 

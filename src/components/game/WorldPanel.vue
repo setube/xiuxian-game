@@ -112,8 +112,13 @@ h3 {
 
 .row {
   display: flex;
-  gap: 1.4rem;
   margin-top: 0.5rem;
+}
+
+/* 间距走相邻兄弟的 margin，不用 gap——弹性盒的 gap 要 Chrome 84，
+   而这个项目的下限是 51。这一行没有换行，所以两者完全等价 */
+.row > * + * {
+  margin-left: 1.4rem;
 }
 
 .act {

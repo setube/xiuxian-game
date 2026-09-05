@@ -26,7 +26,7 @@
  * 数一数 `errandsNow()` 返回几条，不掷一次随机数。
  * **能静态判的别拿模拟去判**，模拟是用来量分布的，不是用来判存在的。
  *
- * 跑法：npx vite-node scripts/errand.ts
+ * 跑法：bun scripts/errand.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 
