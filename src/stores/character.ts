@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { createId } from '@/engine/id'
+import { rollSpan } from '@/engine/lifespan'
 import { randomBetween } from '@/engine/random'
 import type {
   AspectKey,
@@ -194,6 +195,17 @@ export const useCharacterStore = defineStore(
     const livings = ref<LivingSpan[]>([])
     const realm = ref<Realm>(INITIAL_REALM)
     const attributes = ref<Attributes>(withConstitution(rollAttributes(), constitution.value))
+    /**
+     * 天年：这一世能活多少年。
+     *
+     * 跟 `attributes.root` 同一条纪律——**出生那一刻就定了，
+     * 而这个人一辈子不会知道它是多少**。面板上没有它。
+     *
+     * 摆在 `attributes` 后面是因为它读身子骨：这具身体本身是什么底子，
+     * 决定了这一掷落在哪儿。跟出身无关，跟家里有没有钱无关。
+     * 为什么下限不是三岁、为什么修行能改它，都写在 `engine/lifespan.ts`。
+     */
+    const span = ref(rollSpan(attributes.value.body))
     const aspects = ref<Aspects>(blankAspects())
     /** 出生时一无所知，一条见闻也没有。此后每一条都是学来的 */
     const knowledge = ref<KnowledgeEntry[]>([])
@@ -261,6 +273,20 @@ export const useCharacterStore = defineStore(
 
     function setRealm(next: Realm): void {
       realm.value = next
+    }
+
+    /**
+     * 天年加减。
+     *
+     * 加的那一头是修行——「修仙可能改变生命长度」这句话唯一的落点。
+     * 减的那一头是大病、重伤、耗损：**一场病可以让人少活十年**，
+     * 而那件事得由具体的某一卷写出来，不是由一个概率表算出来。
+     *
+     * 削到当年以下就是当场死，所以不设下限保护：
+     * 「他没能熬过这个冬天」本来就该写得出来。
+     */
+    function extendSpan(years: number): void {
+      span.value = Math.max(0, span.value + years)
     }
 
     function setIdentity(next: string): void {
@@ -522,6 +548,7 @@ export const useCharacterStore = defineStore(
       livings.value = []
       realm.value = INITIAL_REALM
       attributes.value = withConstitution(rollAttributes(), constitution.value)
+      span.value = rollSpan(attributes.value.body)
       aspects.value = blankAspects()
       knowledge.value = []
       inventory.value = []
@@ -536,12 +563,14 @@ export const useCharacterStore = defineStore(
       living,
       realm,
       attributes,
+      span,
       aspects,
       knowledge,
       inventory,
       claimCount,
       adjustAttribute,
       setRealm,
+      extendSpan,
       setIdentity,
       liveAs,
       note,
@@ -566,6 +595,7 @@ export const useCharacterStore = defineStore(
         'livings',
         'realm',
         'attributes',
+        'span',
         'aspects',
         'knowledge',
         'inventory',

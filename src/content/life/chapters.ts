@@ -5,6 +5,7 @@ import { childhoodEvents, childhoodScenes } from './childhood'
 import { dayEvents, dayScenes } from './day'
 import { dearthEvents, dearthScenes } from './dearth'
 import { encounterEvents, encounterScenes } from './encounters'
+import { endingEvents, endingScenes } from './ending'
 import { hardshipEvents, hardshipScenes } from './hardship'
 import { illnessEvents, illnessScenes } from './illness'
 import { inquiryEvents, inquiryScenes } from './inquiry'
@@ -33,14 +34,24 @@ import { youthEvents, youthScenes } from './youth'
  *
  * ## 拓扑长这样
  *
- * 六十四卷，跨章的边只有一条：`day` → `encounters`。
- * 其余十七章彼此不连，各自靠年表被叫出来，演完就回年表。
+ * 绝大多数章彼此不连，各自靠年表被叫出来，演完就回年表。
+ * 跨章的边全在下面各章的 `to` 里，一条不落——现在是三条：
+ * `day` → `encounters` 这一条硬接，加上 `seeking` ⇄ `meeting` 那一对回头边。
  *
  * 这个形状是有意的：**每一章是一段可以独立读的人生片段**，
  * 而不是一棵必须从头走到尾的剧情树。链条是靠 flag 攒出来的
  * （欠债 → 父亲出门 → 死在外地），不是靠场景硬接。
- * 硬接的那一条（村里那日撞见的三桩事）反倒是个例外——
- * 它写在 `day` 的 `to` 里，看得见。
+ * 硬接的那几条反倒是例外——**它们全都写在 `to` 里，看得见**。
+ *
+ * ## 这段从前写着「六十四卷，跨章的边只有一条，其余十七章彼此不连」
+ *
+ * 三个数当时都对。后来加了章、加了卷、`seeking` 和 `meeting` 之间接了一对
+ * 回头边，三个数就全错了，而**没有任何一处会因此变红**——
+ * 一段散文里的数字没有出处，也就没有人替它把关。
+ *
+ * 所以现在这里一个数也不写：要数几章几卷，`CHAPTERS.length` 和
+ * `Object.keys(lifeScenes).length` 就在手边；要看跨章的边有哪些，
+ * 底下每一章的 `to` 是唯一真相源，`verify.ts` 拿它对着内容量。
  */
 export const CHAPTERS: readonly Chapter[] = [
   /** 睁开眼那一日。家里正在做的事，就是你的开局 */
@@ -82,17 +93,44 @@ export const CHAPTERS: readonly Chapter[] = [
     marks: ['knowledge', 'aspect'],
   },
 
-  /** 欠债、出门做工、死在外地。这一册里最长的一根链条 */
+  /**
+   * 欠债、出门做工、死在外地。这一册里最长的一根链条。
+   *
+   * ## 头一格从前写的是七岁
+   *
+   * 那时它跟 `schooling` 同岁起步，而**两者的先后决定一个人识不识字**：
+   * 七岁那年 `school:threshold` 拿家境分档，26 是读不上书的线。
+   * 欠债那一节要是排在入学之后，它压下去的那几分再也影响不到那道门——
+   * 家道中落只能改后半生，改不了「他有没有念过书」。
+   *
+   * 提到五岁不是为了让日子更苦，是为了**让这条链有机会赶在那道门之前**。
+   * 一个五岁上欠了债的农家，七岁那年才可能真的供不起。
+   *
+   * ## 提前两岁之后，那道门后面第一次站了人
+   *
+   * 改之前 `scripts/origins.ts` 印出来的是**十一种出身读过书全是 100%**——
+   * 一个连赤贫都没有的世界。于是 `school:threshold` 那三节
+   * 「供不起」的内容（`cannot` / `worked` / `peeked`）**写在库里，一千世无人读到**，
+   * 而它们看起来跟活的一模一样。
+   *
+   * 提到五岁之后农户那一行掉到六成六（别的出身仍是 100%——他们本来也不该穷）。
+   * 换句话说，**三分之一的农家子现在真的念不成书**：`cannot` 那一节第一次
+   * 有人读到，它底下那两条岔路（出门做工、趴在窗外听）也跟着活了过来。
+   *
+   * 这个数会漂，也**不是判据**：往这条链上再加一件事、或者调一调家境的起手，
+   * 它就变。它是这次改动生效的出处，不是一道门槛。
+   */
   {
     id: 'hardship',
     scenes: hardshipScenes,
     events: hardshipEvents,
     called: ['年表'],
     to: [],
-    age: [7, 15],
+    age: [5, 15],
     purpose: [
       '一个人的死怎么改掉之后十年',
       '把「家里少个劳力」变成后面事件读得到的事实，而不是一句旁白',
+      '家道中落要赶得上七岁那道入学的门槛，否则它只改得了后半生',
     ],
     marks: ['person', 'household'],
   },
@@ -190,8 +228,9 @@ export const CHAPTERS: readonly Chapter[] = [
    * 日常。年表挑不出事的时候人就回到这里，靠 `lifeRoutine` 按阶段映射。
    *
    * 唯一一章没有年表事件的——`age` 那一格因此空转，写全程。
-   * 四卷里有一卷（`routine:adult`）现在走不到，原委见 `routine.ts`，
-   * 看住它的是 `verify.ts` 第六道。
+   * 六卷对着六个人生阶段，每一卷都必须真的有人走到，
+   * 看住这件事的是 `verify.ts` 第六道。它从前守的是反过来的事：
+   * 「成年那一卷走不到」曾经是被承认的现状。
    */
   {
     id: 'routine',
@@ -346,23 +385,60 @@ export const CHAPTERS: readonly Chapter[] = [
   },
 
   /**
-   * 渡口。凡人这一段在这里收尾。
+   * 渡口。**这一章不再是终点。**
    *
-   * 两种身份：年表事件（十六岁起，权重 1000）和 `lifeFinale`。
-   * 窗口写到 99 岁不是因为九十九岁还能收尾，是因为**它必须永远在候选池里**——
-   * 池子一空，人就掉进日常那一章的成年卷，而那一卷还没写。
+   * 从前它有两种身份：年表事件（十六岁起，权重 1000）和 `lifeFinale`。
+   * 那个 1000 加上封到 99 岁的窗口，效果是它永远待在候选池里——
+   * 于是十六岁之后年表一次也抽不空，人永远进不了成年那一卷的日常，
+   * 而演到它就一定 `finish()`。**「十六岁没修上仙就结束」这条规则
+   * 就长在这三个数字里。**
+   *
+   * 现在三个数字都改了：
+   *
+   *     权重 1000 → 120　　　　它得跟别的事一起去争
+   *     窗口 16–99 → 16–28　　 撞见修士是往外闯的年纪才有的事
+   *     加了 requires　　　　　命数不够的人这辈子碰不上
+   *
+   * 那条 `fortune` 门槛是这次改动的重心：**修仙不再是人人必经的检测，
+   * 而是一件得靠自己走出来的事**。往城里跑、往山里跑、出远门都涨命数，
+   * 一辈子没出过村的人过不了那道坎——他的一生就完全不经过修行这条路，
+   * 而那是一种完整的人生，不是一种失败。
    */
   {
     id: 'riverman',
     scenes: rivermanScenes,
     events: rivermanEvents,
-    called: ['年表', '收尾'],
+    called: ['年表'],
     to: [],
-    age: [16, 99],
+    age: [16, 28],
     purpose: [
-      '把十六年攒下的东西，第一次拿到明白人面前过一眼',
+      '把这些年攒下的东西，第一次拿到明白人面前过一眼',
       '多年以后才明白，当年捡到的不是普通书',
     ],
     marks: ['reveal', 'claim'],
+  },
+
+  /**
+   * 落幕。全作唯一的终点。
+   *
+   * 不进年表（`events` 是空的，理由写在 `ending.ts`）：进得了年表
+   * 就意味着它可能被抽中，而没有任何一件事该让人在天年之前死掉。
+   * 走到这里只有一条路——`engine/lifespan.ts` 掷定的那个数到了。
+   *
+   * 年龄段写 [0, 99] 而不是 [40, 99]：天年可以被 `lifespan` 效果削减，
+   * 哪天写出一场要命的大病，那个人可能二十岁就走到这一卷。
+   */
+  {
+    id: 'ending',
+    scenes: endingScenes,
+    events: endingEvents,
+    called: ['收尾'],
+    to: [],
+    age: [0, 99],
+    purpose: [
+      '人生的终点是这个人不在了，不是他没通过某一道检测',
+      '这一卷一个字也不判成败——它只说这个人是谁',
+    ],
+    marks: ['chronicle'],
   },
 ]

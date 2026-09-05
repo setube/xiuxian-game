@@ -1,10 +1,10 @@
 import type { LifeEvent, SceneLibrary } from '@/types/game'
 
 /**
- * 十六岁 · 江上人。
+ * 江上人。
  *
- * 凡人这一段的收尾。它不发奖品，也不宣布你「觉醒」了什么——
- * 它只做一件事：把你这十六年攒下的东西，第一次拿到明白人面前过一眼。
+ * 它不发奖品，也不宣布你「觉醒」了什么——它只做一件事：
+ * 把你这些年攒下的东西，第一次拿到明白人面前过一眼。
  *
  * 于是同一条船、同一个人，落在不同的人眼里是不同的东西：
  *
@@ -13,8 +13,21 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  * - 怀里揣着一册看不懂的书的人，会听见有人第一次说出它的名字——
  *   那本东西他已经带了好几年，一直当它是废纸。
  *
- * 这是全作最迟到的一次反馈，也是整个凡人阶段真正的落点：
+ * 这是全作最迟到的一次反馈：
  * **你没有变强，你只是终于明白了自己身上早就发生过什么。**
+ *
+ * ## 这一卷不再是终点
+ *
+ * 从前它同时是年表事件和 `lifeFinale`，权重 1000、窗口封到 99 岁——
+ * 那个组合的效果是十六岁之后候选池永远不空，人人必到渡口，演完即卷终。
+ * **「十六岁没修上仙就结束」这条规则就长在那三个数字里。**
+ *
+ * 现在它跟别的事一样去争年表，争不到就轮不到它；
+ * 演完也不结束，人接着往下活。遇见修士是一生里的一件大事，
+ * 不是一生的终点——而这一生本来也可以完全不经过它。
+ *
+ * 所以卷里那些「你今年十六岁」的话都改了：这件事二十几岁才撞上
+ * 完全正常，写死一个岁数会当场穿帮。
  */
 export const rivermanScenes: SceneLibrary = {
   riverman: {
@@ -24,10 +37,10 @@ export const rivermanScenes: SceneLibrary = {
     nodes: {
       open: {
         id: 'open',
-        blocks: [{ kind: 'heading', title: '十六' }],
-        // 进城的理由各不相同。这十六年怎么过的、生在哪一家，
+        blocks: [{ kind: 'heading', title: '江上' }],
+        // 进城的理由各不相同。这些年怎么过的、生在哪一家，
         // 决定你为什么会在那个下午站到那个渡口上。
-        // 铺面先于门第：镖局的孩子就算念过书，十六岁那年也是跟着车队去的
+        // 铺面先于门第：镖局的孩子就算念过书，那一年也是跟着车队去的
         branches: [
           // 墙塌过的人排在最前：他现在什么也不是，来渡口不需要理由。
           //
@@ -713,12 +726,11 @@ export const rivermanScenes: SceneLibrary = {
         ],
         blocks: [
           { kind: 'narration', text: '你回到家的时候，天已经黑透了。' },
-          { kind: 'narration', text: '{dam}问你怎么回来得这样晚。你说路上耽搁了。' },
+          { kind: 'narration', text: '有人问你怎么回来得这样晚。你说路上耽搁了。' },
           { kind: 'narration', text: '那天夜里你没有睡着。' },
-          { kind: 'seal', text: '凡' },
           {
             kind: 'narration',
-            text: '你今年十六岁。到今天为止，你的人生和村里所有人都一样。',
+            text: '到今天为止，你的人生和村里所有人都一样。',
             tone: 'faint',
           },
           { kind: 'narration', text: '只是你现在知道，这世上还有别的活法。', tone: 'deep' },
@@ -733,10 +745,9 @@ export const rivermanScenes: SceneLibrary = {
           { kind: 'narration', text: '之后几日，江上再没有来过外乡人。' },
           { kind: 'narration', text: '日子照旧。挑水，做活，吃饭，睡觉。' },
           { kind: 'narration', text: '你几乎要以为，那天下午是自己想出来的。' },
-          { kind: 'seal', text: '凡' },
           {
             kind: 'narration',
-            text: '你今年十六岁。你的人生和村里所有人都一样。',
+            text: '你的人生和村里所有人都一样。',
             tone: 'faint',
           },
           {
@@ -752,16 +763,30 @@ export const rivermanScenes: SceneLibrary = {
 }
 
 /**
- * 收尾那一卷的入口。
+ * 渡口那一卷的入口。
  *
- * 权重压倒一切，窗口不封顶：十五岁那年若选了一条耗掉两年的路，
- * 十七岁才走到渡口也算数——错过了这一卷，这一世就没有尽头了。
+ * 三个数字合起来说的是同一句话：**遇见修士是走出来的，不是发下来的。**
+ *
+ *     weight 120　　跟别的事一起去争，抽不中就是没碰上
+ *     16–28　　　　 往外闯的那些年才会撞见；再往后人已经安顿下来了
+ *     fortune ≥ 55　命数不够的人这辈子路过不了那个渡口
+ *
+ * 那道 `fortune` 门槛是这次改动的重心。命数不是天上掉的：
+ * 往城里跑、农闲往山里跑、出一趟远门、跟同窗到处乱跑——
+ * 涨命数的全是**把自己往村子外面推**的那些选择。
+ * 一辈子守着地的人过不了这道坎，于是他的一生完全不经过修行这条路，
+ * 而那是一种完整的人生，不是一次失败。
+ *
+ * 这个数会漂（涨命数的选项一多，人人都过得去；一少，谁也过不去），
+ * 所以门禁不写死它，`scripts/lifelong.ts` 只守两头：
+ * **不是 0%，也不是 100%。**
  */
 export const rivermanEvents: readonly LifeEvent[] = [
   {
     id: 'riverman',
-    window: { from: 16, to: 99 },
+    window: { from: 16, to: 28 },
     scene: 'riverman',
-    weight: 1000,
+    weight: 120,
+    requires: [{ attribute: { key: 'fortune', atLeast: 55 } }],
   },
 ]

@@ -148,7 +148,7 @@ for (let i = 0; i < RUNS; i += 1) {
 
   fates.set(father.fate, (fates.get(father.fate) ?? 0) + 1)
 
-  parentAges.push(world.time.year - father.bornYear)
+  parentAges.push(world.bornYear - father.bornYear)
 }
 
 const pct = (n: number) => `${((n / RUNS) * 100).toFixed(1)}%`
@@ -159,22 +159,47 @@ console.log(`  玩家知道了「爹见过修士」          ${pct(learnedAdept)
 console.log(`  父亲离过家                        ${pct(everAway)}`)
 
 /**
- * 十六岁那年，父亲的下落。
+ * 一生走完那一刻，父亲的下落。
  *
  * 从前这里只有一行「父亲已故／失踪，但仍在册子上」，判据是 `fate !== '在'`——
  * **可那一格是个永真式包装成的统计**：能取到 `personOf('father')`
  * 本身就意味着他在册子上，「仍在册子上」这句话没有验证任何东西。
  * 而它把「杳」和「殁」并成一格，抹掉的正是这套系统最在意的那条区别。
+ *
+ * ## 这三行从前都写着「十六岁那年」
+ *
+ * `live()` 跑到 `narrative.ended` 为止。人生模拟那一轮之前，那一刻是十六岁；
+ * 之后它是**咽气那一年**，中位六十三岁。函数一个字没改，
+ * 采样点自己往后挪了将近半个世纪，而这几行的说法留在原地。
+ *
+ * 挪过之后数字变得很不一样，可它们没有一个是错的——
+ * 「殁 九成」在十六岁上会是内容坏了，在六十三岁上是人本来就该走了。
+ * **坏的是那行字，不是那个数。**
+ *
+ * 教训不是「记得改字」，是**报数时把采样点写进那行字里**。
+ * 一个不带采样点的百分比，读者只能拿自己脑子里的那个采样点去读它。
  */
-console.log(`\n  十六岁那年，父亲的下落：`)
+console.log(`\n  一生走完那一刻（多半是他六十来岁咽气那年），父亲的下落：`)
 for (const [fate, n] of [...fates.entries()].sort((a, b) => b[1] - a[1])) {
-  const gloss = fate === '在' ? '' : fate === '杳' ? '　没有消息，不算死' : '　死了，有人捎回了话'
+  const gloss =
+    fate === '在' ? '　比你活得还久' : fate === '杳' ? '　没有消息，不算死' : '　死了，有人捎回了话'
   console.log(`    ${fate}　${String(pct(n)).padStart(6)}${gloss}`)
 }
 
+/**
+ * 生你那年他多大。
+ *
+ * 这一行从前报的是「此刻他的年纪」，而那个数**跟着采样点一起漂**——
+ * 采样点挪到咽气那年之后，它报的是「假如他一直活着现在会有多大」，
+ * 中位九十二。一个九十二岁的爹说明不了任何事。
+ *
+ * 换成两个出生年一减，跟走到哪一年没有关系，量的正是这一行本来想问的：
+ * **这个爹是个什么年纪的人。** 一个人二十几岁上有了孩子，
+ * 那么他见修士、欠债、出门做工都发生在他自己还年轻的时候。
+ */
 const sorted = [...parentAges].sort((a, b) => a - b)
 console.log(
-  `\n  玩家十六岁时父亲的年纪：最小 ${sorted[0]}  中位 ${sorted[Math.floor(sorted.length / 2)]}  最大 ${sorted[sorted.length - 1]}`,
+  `\n  生你那年，父亲多大：最小 ${sorted[0]}  中位 ${sorted[Math.floor(sorted.length / 2)]}  最大 ${sorted[sorted.length - 1]}`,
 )
 
 // —— 三、铁律：人不因离开视野而消失 ——

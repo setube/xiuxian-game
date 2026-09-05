@@ -125,12 +125,12 @@ interface Path {
 }
 
 /**
- * 四条人生。
+ * 七条人生：宗室那四条，家里那两条，出门那一条。
  *
  * 第一条是主角：只有母妃跟着走，别人留在原地——**这是唯一能量出
  * 「接触范围变了」的那一条**。
  *
- * 后三条都是对照，各守一个反面：
+ * 接着三条都是对照，各守一个反面：
  *
  * - **举家迁走**：搬家不等于所有人都被推开。
  * - **搬了家却没出门**：换了地方过日子**不会自动**给你派一个新人。
@@ -139,6 +139,10 @@ interface Path {
  *   分别只在他把门关上了。于是「新人来自新地方」和
  *   「新人来自换了日子」这两种实现在这里分得开。
  * - **墙没塌**：不搬家的人，身边那几个一个也不该少。
+ *
+ * 最后三条问的是另一头——**新人不都来自远方**。它有三种来路，
+ * 各占一条：你被挪走（前四条）、人添到你这儿（娶嫁生养收徒）、
+ * 你每天出一趟门（私塾）。见各自的注解。
  */
 const PATHS: readonly Path[] = [
   {
@@ -181,6 +185,68 @@ const PATHS: readonly Path[] = [
     label: '对照 · 墙没塌：一直住在宫里',
     origin: 'court',
     steps: [],
+  },
+  /**
+   * 第五条不是宗室那一支的对照，它问的是另一头：**新人不都来自远方。**
+   *
+   * 前四条走的都是「你被挪到了别处，于是遇见别处的人」。可人生里
+   * 更常见的那一种是反过来的——你哪儿也没去，是家里添了人：
+   * 娶进门的、生下来的、上门来学手艺的。这几节一样在改变
+   * 「谁在你身边」，所以一样归这一道管。
+   *
+   * 儿子、女儿、徒弟一并走完：一世里未必都添得上，可每一节都得有人验过。
+   */
+  {
+    id: 'household',
+    label: '家里添的人：娶妻、添丁、收徒',
+    origin: 'farm',
+    steps: [
+      { scene: 'routine:adult', node: 'wife' },
+      { scene: 'routine:prime', node: 'son' },
+      { scene: 'routine:prime', node: 'daughter' },
+      { scene: 'routine:prime', node: 'teach' },
+    ],
+  },
+  /**
+   * 第六条问的是第三头：**新人既不来自远方，也不来自家里。**
+   *
+   * 前四条是「你被挪到了别处」，第五条是「人添到了你这儿」，
+   * 而这一条两样都不是——你哪儿也没搬，家里也没添人，
+   * 只是七岁那年每天出门走一趟，那头有一个教了你六年的人。
+   *
+   * 这一节从前不在这张表上：那个姓周的先生在四节入学戏里都有台词，
+   * **却从来没有被 `meet` 进来过**，人口册上一行也没有。补上那一笔之后
+   * 这一支的分母跟着 +1，于是这里红了一回——**那正是这张覆盖率表的用处**：
+   * 库里多一处在改变谁在你身边，它当天就问「谁量过」。
+   *
+   * 放在 `lessons` 而不是上面四节，是因为四条入学路认的是同一个人（见
+   * `content/life/schooling.ts`）。走它一趟，四条路就都验到了。
+   */
+  {
+    id: 'schooling',
+    label: '走出门遇见的人：私塾的先生',
+    origin: 'farm',
+    steps: [{ scene: 'school:threshold', node: 'lessons' }],
+  },
+  /**
+   * 「嫁」得单走一趟——**同一条人生里它会被「娶」盖住。**
+   *
+   * 娶和嫁按剧本本就是互斥的（`wed` 那一节按性别分流），起初图省事
+   * 把两节排进了同一条路。覆盖率表当场就绿了，两节都记着「走过」——
+   * 可 `meet` 认的是 id，而这两节写的是同一个 `spouse`：
+   * 前一节把人造出来之后，后一节的 `who` 一个字也没被读到。
+   *
+   * 也就是说，把 `husband` 整节从库里删掉，④ 和 ⑤ 照样是绿的。
+   * **一条走得到、却什么也验不到的路，比没有那条路更糟**——
+   * 它会在覆盖率表上占一行，看着像已经量过了。
+   *
+   * 所以另起一世。这一趟只有一步。
+   */
+  {
+    id: 'wed-out',
+    label: '家里添的人：嫁人',
+    origin: 'farm',
+    steps: [{ scene: 'routine:adult', node: 'husband' }],
   },
 ]
 
@@ -584,34 +650,81 @@ function noLongerDaily(): string[] {
 // ============================================================
 
 /**
- * 走到街上，遇见了一个原来那个世界里没有的人。
+ * 走完这一程，身边多了原来没有的人。
  *
  * 判据的两头都要：他此刻在册且在身边，**而且他出生那时候不在册**。
  * 少了后半句，「新的人」这件事随便指一个爹娘就能过。
+ */
+function broughtNewFacesNearby(one: Walked, blame: string): string[] {
+  const wrong: string[] = []
+  const fresh = Object.keys(one.after.people).filter((id) => one.before.people[id] === undefined)
+  if (fresh.length === 0) {
+    wrong.push(`【${one.label}】${blame}`)
+  }
+  for (const id of fresh) {
+    const folk = one.after.people[id]!
+    if (!folk.nearby) {
+      wrong.push(
+        `【${one.label}】新来的 ${folk.calls ?? id} 不在你的生活范围里` +
+          `（他在 ${folk.place}，你在 ${one.after.home}）——那他不算「新生活里接触到的人」`,
+      )
+    }
+    console.log(
+      `  【${one.label}】新遇见 · ${folk.calls ?? id}：在 ${folk.place}，在身边 ${folk.nearby ? '是' : '否'}`,
+    )
+  }
+  return wrong
+}
+
+/**
+ * 新生活环境可以接触到新的人。
+ *
+ * 两头各走一条：宗室那一支是**你被挪到了别处**，家里那一支是
+ * **你哪儿也没去，是人添到了你这儿**。两种都得落到同一个结论上——
+ * 身边多了一个原来不在册的人。
  */
 function newFaces(): string[] {
   const wrong: string[] = []
   const edict = of('edict')
 
   if (edict) {
-    const fresh = Object.keys(edict.after.people).filter(
-      (id) => edict.before.people[id] === undefined,
+    wrong.push(
+      ...broughtNewFacesNearby(
+        edict,
+        '迁出京城、开门走到街上，一个新的人也没遇见——换了地方过日子这件事没有落点',
+      ),
     )
-    if (fresh.length === 0) {
-      wrong.push('迁出京城、开门走到街上，一个新的人也没遇见——换了地方过日子这件事没有落点')
-    }
-    for (const id of fresh) {
-      const folk = edict.after.people[id]!
-      if (!folk.nearby) {
-        wrong.push(
-          `新遇见的 ${folk.calls ?? id} 不在你的生活范围里（他在 ${folk.place}，你在 ${edict.after.home}）——` +
-            '那他不算「新生活里接触到的人」',
-        )
-      }
-      console.log(
-        `  新遇见 · ${folk.calls ?? id}：在 ${folk.place}，在身边 ${folk.nearby ? '是' : '否'}`,
-      )
-    }
+  }
+
+  const household = of('household')
+  if (household) {
+    wrong.push(
+      ...broughtNewFacesNearby(
+        household,
+        '娶了妻、添了丁、收了徒，人口册上一个新的人也没有——那几节的 `meet` 没有真的造人',
+      ),
+    )
+  }
+
+  const schooling = of('schooling')
+  if (schooling) {
+    wrong.push(
+      ...broughtNewFacesNearby(
+        schooling,
+        '进了私塾念了六年，人口册上却没有那位先生——一个陪了你六年的人不在册，' +
+          '人物面板认不出他，`kinOf(师)` 也找不到他',
+      ),
+    )
+  }
+
+  const wedOut = of('wed-out')
+  if (wedOut) {
+    wrong.push(
+      ...broughtNewFacesNearby(
+        wedOut,
+        '嫁了人，家里却一个新的人也没有——那一节的 `meet` 没有真的造人',
+      ),
+    )
   }
 
   /**
@@ -658,51 +771,66 @@ function newFaces(): string[] {
  * 第三件是必须的——只查前两件的话，「一边添一边把某条旧边改成指向新人」
  * 这种实现能同时骗过它们。
  */
-function addedNotReplaced(): string[] {
+function addedNotReplacedIn(one: Walked): string[] {
   const wrong: string[] = []
-  const edict = of('edict')
-  if (!edict) return wrong
-
-  const fresh = Object.keys(edict.after.people).filter(
-    (id) => edict.before.people[id] === undefined,
-  )
-  const added = edict.after.relations.filter(
-    (edge) => relationById(edict.before, edge.id) === undefined,
+  const fresh = Object.keys(one.after.people).filter((id) => one.before.people[id] === undefined)
+  const added = one.after.relations.filter(
+    (edge) => relationById(one.before, edge.id) === undefined,
   )
 
   for (const id of fresh) {
     const mine = added.filter((edge) => edge.to === id && edge.from === 'me')
     if (mine.length === 0) {
       wrong.push(
-        `新遇见的 ${edict.after.people[id]?.calls ?? id} 在人际面板上有名字，关系图上却没有边——` +
-          '认得一个人和跟他有一层关系是两回事，但内容明写了 `bond` 就该有边',
+        `【${one.label}】新遇见的 ${one.after.people[id]?.calls ?? id} 在人际面板上有名字，` +
+          '关系图上却没有边——认得一个人和跟他有一层关系是两回事，但内容明写了 `bond` 就该有边',
       )
       continue
     }
-    for (const edge of mine) console.log(`  新添的边 · ${fingerprint(edge)}`)
+    for (const edge of mine) console.log(`  【${one.label}】新添的边 · ${fingerprint(edge)}`)
   }
 
-  const kept = edict.before.relations.filter(
-    (edge) => relationById(edict.after, edge.id) !== undefined,
-  )
-  if (kept.length !== edict.before.relations.length) {
+  const kept = one.before.relations.filter((edge) => relationById(one.after, edge.id) !== undefined)
+  if (kept.length !== one.before.relations.length) {
     wrong.push(
-      `出生时有 ${edict.before.relations.length} 条边，走完这一程只剩 ${kept.length} 条——` +
+      `【${one.label}】出生时有 ${one.before.relations.length} 条边，走完这一程只剩 ${kept.length} 条——` +
         '新关系是拿旧关系换来的',
     )
   }
-  if (edict.after.relations.length !== edict.before.relations.length + added.length) {
+  if (one.after.relations.length !== one.before.relations.length + added.length) {
     wrong.push(
-      `边的总数对不上：旧 ${edict.before.relations.length} + 新 ${added.length} ` +
-        `≠ 现在的 ${edict.after.relations.length}`,
+      `【${one.label}】边的总数对不上：旧 ${one.before.relations.length} + 新 ${added.length} ` +
+        `≠ 现在的 ${one.after.relations.length}`,
     )
   } else {
     console.log(
-      `  关系图：旧 ${edict.before.relations.length} 条一条没动，新添 ${added.length} 条，` +
-        `现在 ${edict.after.relations.length} 条`,
+      `  【${one.label}】关系图：旧 ${one.before.relations.length} 条一条没动，` +
+        `新添 ${added.length} 条，现在 ${one.after.relations.length} 条`,
     )
   }
 
+  return wrong
+}
+
+/**
+ * 添，不是换——四条路都问一遍。
+ *
+ * 家里那两条尤其要问：成家、添丁、收徒全都往关系图上牵新边，
+ * 而**那几条边跟出生时的爹娘长在同一张图上**。哪天有人图省事，
+ * 拿 `bind` 覆盖了某条旧边（比如把「父」改成指向岳父），
+ * 前两问都答得上来，只有第三问「总数对不上」会当场红。
+ *
+ * 私塾那一条问的是同一件事的另一种形状：**外姓人进来，不动本家的边。**
+ * 「师」是全库唯一一条跟血亲无关的边，牵它的时候最容易顺手写成
+ * 「先生占了父亲那一格」——三十年后落幕那一节按 `kin` 分流，
+ * 分到的就会是先生而不是儿子。
+ */
+function addedNotReplaced(): string[] {
+  const wrong: string[] = []
+  for (const id of ['edict', 'household', 'schooling', 'wed-out']) {
+    const one = of(id)
+    if (one) wrong.push(...addedNotReplacedIn(one))
+  }
   return wrong
 }
 

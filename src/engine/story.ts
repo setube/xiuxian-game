@@ -19,6 +19,7 @@ import { meetsAll } from './conditions'
 import { describeSpan, describeTime } from './describe'
 import { applyEffects } from './effects'
 import { fill, fillString } from './interpolate'
+import { isSpent } from './lifespan'
 import { stageOf } from './stages'
 
 /** 剧本若把 next 写成环，在此截断而不是让页面卡死 */
@@ -28,7 +29,7 @@ const MAX_AUTO_CHAIN = 32
  * 一次落笔最多连演几卷。防的是「事件 → 事件 → 事件」把玩家晾在一边。
  *
  * 导出是给门禁用的：`verify.ts` 第六道要拿它跟「连着不给玩家落笔的卷有几件」
- * 对一下——那是「成年之后的日子还走不到」所依赖的前提之一。
+ * 对一下——那是「每个阶段的日常都走得到」所依赖的前提之一。
  * 抄一个 4 过去也能跑，但抄的值会跟这里各走各的，那正是门禁最怕的事。
  */
 export const MAX_EVENT_CHAIN = 4
@@ -43,7 +44,17 @@ export interface LifePlan {
   events: readonly LifeEvent[]
   /** 每个阶段的日常场景。无事可叙时回到这里 */
   routine: Record<LifeStage, string>
-  /** 走到此处，凡人这一段就结束了 */
+  /**
+   * 落幕。
+   *
+   * 上一版这里写着「走到此处，凡人这一段就结束了」，指的是渡口那一卷——
+   * **人生在十六岁那年被一卷内容终止**。那句话读起来像在描述剧情结构，
+   * 实际上它是全作最要紧的一条规则：你这一生能不能在十六岁以前碰到修仙。
+   *
+   * 现在它是死亡那一卷。走到这里只有一条路：天年到了
+   * （`engine/lifespan.ts`）。**没有任何一卷内容能把人生终止**——
+   * 渡口那一卷今天照演，演完人接着往下活。
+   */
   finale: string
 }
 
@@ -199,13 +210,37 @@ export function useStory(library: SceneLibrary, plan: LifePlan): Story {
   /**
    * 一卷演完，回到年表。
    *
-   * 先问「此刻有什么事该发生」，没有就过日子。日子本身要花掉时间，
+   * 先问「这个人还在吗」，再问「此刻有什么事该发生」，
+   * 都没有就过日子。日子本身要花掉时间，
    * 于是下一次再问的时候，你已经不是同一个年纪了。
    */
   function toNextChapter(depth: number): void {
-    // 收尾那一卷演完就是卷终，不再往下接
+    // 落幕那一卷演完就是卷终，不再往下接
     if (narrative.sceneId === plan.finale) {
       narrative.finish()
+      return
+    }
+
+    /**
+     * 人生的终点不是走到某一卷，是这个人不在了。
+     *
+     * 这一句排在 finale 判定**之后**是必须的：排到前面去的话，
+     * 落幕那一卷刚演完还没来得及 `finish()`，就又被判一次死，
+     * 于是它把自己一遍遍接下去，人死在一个循环里。
+     *
+     * 排在年表**之前**也是必须的：天年到了那一年，
+     * 不该再抽出一件「你去城里赶集」来演。
+     */
+    const character = useCharacterStore()
+    if (isSpent(character.age, character.span)) {
+      const ending = resolve(plan.finale, '')
+      if (!ending) {
+        console.error(`落幕那一卷不在库里：${plan.finale}`)
+        narrative.finish()
+        return
+      }
+      // 落幕自身不再往下追事件——都到这一步了，年表没有话要说了
+      enterNode(ending, MAX_EVENT_CHAIN)
       return
     }
 

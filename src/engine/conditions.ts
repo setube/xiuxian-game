@@ -55,7 +55,7 @@ const CHECKS = {
     // 未指定 equals 时，只要求旗标为「真」
     flag.equals === undefined ? world.hasFlag(flag.key) : world.getFlag(flag.key) === flag.equals,
 
-  attribute: (attribute, { character }) => character.attributes[attribute.key] >= attribute.atLeast,
+  attribute: (attribute, { character }) => within(character.attributes[attribute.key], attribute),
 
   knowledge: (id, { character }) => character.knows(id),
 
@@ -70,21 +70,44 @@ const CHECKS = {
   /**
    * 有没有这层关系，那个人还在不在，还在不在你身边，这条边牵了多久。
    *
-   * 四问是层层收紧的，不是四选一：先得有这条边，再问活死，再问远近。
    * `alive` 与 `near` 都写成 `some(...) === 值` 而不是 `some(... === 值)`——
    * 前者说的是「这层关系里**有没有**一个满足的人」，`false` 就是
-   * 「一个也没有」。全库唯一用 `alive: false` 的那一处（`wishes.ts`）
-   * 靠的正是这个语义：他要的是「爹娘都不在了」，不是「死了一个」。
+   * 「一个也没有」。`wishes.ts` 那句心愿靠的正是这个语义：
+   * 他要的是「爹娘都不在了」，不是「死了一个」。
    *
    * `years` 是第四问，问的是**时间**而不是状态：这层关系里有没有一条边
    * 已经牵够了那么多年。它读 `Relation.since`，跟好感度没有关系——
    * 一个认了你十六年的人不会因为三年没见就只认识你三年。
+   *
+   * ## 一条边也没有的时候，`some` 就该是 `false`，而不是整条判据不成立
+   *
+   * 这里从前头一行写的是 `if (ids.length === 0) return false`——
+   * 意思是「先得有这条边，再问活死远近」。听着讲得通，实际上它在
+   * **空集合这一处推翻了 `some` 的语义**：一个人没有配偶，
+   * 「有活着的配偶」是 false，那么「没有活着的配偶」就该是 true，
+   * 可那一行让它也是 false。于是
+   * `{ kind: '配偶', alive: false }` 表达的不是「没成过家」，
+   * 而是「成过家，人没了」——**它是「鳏寡」，不是「未婚」。**
+   *
+   * 这不是一处推演出来的隐患，是量出来的：`routine.ts` 里
+   * 「说一门亲事」用的正是这一句，于是它对每一个没成过家的人都不成立，
+   * **全库没有一个人娶得成、嫁得出**。跟着塌掉的是生养（要在世的配偶）、
+   * 是三十岁那卷的教子女、是落幕那一节「跟你过了大半辈子的人」——
+   * 一句短路，四处内容没人读得到，一个错也不报。
+   *
+   * 现在没有那一行了：什么都不问就是问「有没有这层关系」，
+   * 问了就照 `some` 的语义答，空集合也照答。空集合上
+   * `some` 恒为 `false`，于是 `alive: true` 照旧不过、
+   * `alive: false` 过——**这才是 `some` 本来的意思。**
    */
   bond: (bond) => {
     // 这一格才需要人物库，用到时再取——别的条件不必为它初始化一个 store
     const people = usePeopleStore()
     const ids = people.kinOf(bond.kind)
-    if (ids.length === 0) return false
+    // 三问一个也没问，那问的就是第一问：有没有这层关系
+    if (bond.alive === undefined && bond.near === undefined && bond.years === undefined) {
+      return ids.length > 0
+    }
     if (bond.alive !== undefined && ids.some((id) => people.isAlive(id)) !== bond.alive) {
       return false
     }

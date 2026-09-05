@@ -100,12 +100,20 @@ import { OPENINGS } from '../src/content/openings'
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { CHAPTERS } from '../src/content/life/chapters'
 import { stageOf } from '../src/engine/stages'
-import { MAX_EVENT_CHAIN, useStory } from '../src/engine/story'
+import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useNarrativeStore } from '../src/stores/narrative'
 import { usePeopleStore } from '../src/stores/people'
 import type { Chapter, ChapterCall } from '../src/types/chapter'
-import type { Bond, Condition, Effect } from '../src/types/game'
+import type {
+  Bond,
+  Condition,
+  Effect,
+  LifeEvent,
+  LifeStage,
+  Scene,
+  SceneLibrary,
+} from '../src/types/game'
 import { conditionsOf, effectsOf, exitsOf } from './refs'
 
 const RUNS = 300
@@ -547,6 +555,14 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     place: null,
     home: null,
     realm: null,
+    /**
+     * 天年加减不落任何可被 requires 的键——**它连回执都不出**。
+     *
+     * 这道门禁数的是「谁给谁」的供需（某一格 requires 的东西有没有人产），
+     * 而没有任何一条条件读得到天年：面板上没有它，条件系统里也没有它。
+     * 这一格表态成 `null` 不是「拼不出名字」，是**它本来就不在这本账上**。
+     */
+    lifespan: null,
     identity: null,
     aspect: null,
     claim: null,
@@ -1026,78 +1042,101 @@ console.log('=== 可观测路径验收（人生里真走得到吗）===\n')
 }
 
 // ============================================================
-// 第六道：占位内容，得证明它还是占位
+// 第六道：人生的形状——六段日常各占一段，终点只有一个
 // ============================================================
 /**
- * `routine:adult`（成年之后的日子）是一卷占位内容：类型要求四个阶段各有一卷，
- * 而凡人这一段总有一天会往后延，它先替那一天占着位子。
+ * 这一道是从「占位内容验收」翻过来的，判据整个反了个面。
  *
- * 它现在走不到，而这是设计好的——**问题在于「走不到」不是它自己的性质，
- * 是别处四个数字凑出来的结论**。谁哪天动了年龄分档、给收尾事件加个条件、
- * 或者多写两卷不给玩家落笔的事件，它就会突然变成一个活的剧情入口：
- * 玩家读到一段谁也没设计过的人生，而没有任何东西会喊一声。
+ * ## 它从前守着什么
  *
- * **占位内容没有检查地躺着，就是这么变成隐藏债务的。** 所以这一道把
- * 那四个前提钉住，动了哪个都红灯。
+ * 上一版有一卷叫 `routine:adult` 的占位内容，谁也走不到，而这一道
+ * 守的正是「它还是走不到吗」。走不到并不是它自己的性质，是别处
+ * 四个数字凑出来的结论：渡口那一卷从十六岁起权重 1000、窗口封到 99 岁、
+ * 没有前置条件，于是年表候选池永远不空，`pickEvent` 永不返回 null，
+ * 日常那个入口根本轮不上；而 `lifeFinale` 又指着渡口，演到它就 `finish()`。
  *
- * ## 为什么不用模拟判
+ * 那四个数字合起来只说了一句话：**人生在十六岁那年结束**。
+ * 这一道当时把它当成现状钉得死死的——**一条判据长得越结实，
+ * 越可能是在替一个不该存在的结构做保。**
  *
- * 「跑三百世没走到」证明不了走不到——这一轮刚在第五道那里量明白：
- * 稀到千分之三的卷，十二批里有五批整卷缺席。**判存在得静态判。**
+ * ## 它今天守什么
  *
- * 而这件事恰好判得动，因为 `enterRoutine()` 只有两个入口：
- * 年表抽不出事（`pickEvent` 返回 null），或者连演的卷数顶到 `MAX_EVENT_CHAIN`。
- * 两条各堵两道，就是下面四条。
+ * 反过来的事，两件：人生有六段，每一段都有自己的日常；
+ * 终点只有一个，而且只有一条路进得去（天年到了，`engine/lifespan.ts`
+ * 出生那天掷的那个数）。六条判据一半对着一件。
  *
- * ## 这四条守的是前提，不是「绝对到不了」
+ *     ① 阶段跟年龄轴一一对得上　　　　　两档撞在一起，夹在中间那档就没人走得到；
+ *     　　　　　　　　　　　　　　　　　反过来漏掉一档，活到那一年就没处落脚
+ *     ② 一卷日常只归一档　　　　　　　　同一卷挂两个阶段，那是一格换了两个名字
+ *     ③ 每一档的日常都在库里　　　　　　挂了个不存在的卷名，要活到那一档才炸
+ *     ④ 落幕不在年表里　　　　　　　　　进得了年表就可能被抽中，人会莫名其妙地死
+ *     ⑤ 没有别的卷跳得进落幕　　　　　　有一条这样的边，就有了第二种死法
+ *     ⑥ 落幕跳转不出卷，且一定问玩家一句
  *
- * 头两条是硬的：收尾事件永远在候选池里，年表就永远抽得出事。
- * 后两条不是——连演那条路上还留着一道窄缝：**假如某一串不落笔的卷
- * 中途把时间推过了十七岁生日**，顶满之后落回来的就是成年那一卷。
- * 现在没有这样的串（不落笔就不花时间，时间几乎只走在选项的 effects 里），
- * 但这一道没有去证明它永远不会有——那要把每条路径上的时间效果都追一遍，
- * 判据会细到自己先烂掉。
+ * 第 ④ 条是直接钉死旧机制的那一条。从前 `lifeFinale` 指着渡口，
+ * 而渡口有年表事件——「演到它人生就结束」正是从那里长出来的。
+ * 今后谁再把某一卷同时写成年表事件和落幕，这一条当场红。
  *
- * 所以这一道诚实的说法是：**它盯的是让那一卷保持占位的四个前提，
- * 谁动了谁红灯**，而不是「这一卷数学上不可能被走到」。
- * 最该担心的那件事——哪天调了年龄分档，它就从死内容变成活入口，
- * 而玩家读到的是一段没人设计过的人生——正是第一条盯着的。
+ * ## 这一道先验自己的尺子
  *
- * ## 顺带纠一个错
+ * 六条判据全绿说明不了什么——**判据不会因为写得长就有效**。所以判词
+ * 写成了一个收世界、吐结论的纯函数，先拿七个手工掰坏的世界喂它一遍：
+ * 每个只掰一处，红的位置得正好落在那一处上。底样必须全绿，
+ * 七个变体各红且只红对应的那一条，尺子才算准。尺子不准的时候，
+ * 真世界那六个绿灯一个也不作数——这一道会先报尺子坏了，再谈内容。
  *
- * 这里原先写的理由是「十六岁那年收尾事件必被抽中」。**那句是错的**：
- * 十六岁之后还有二十来件散事件，权重合起来两百多，收尾权重 1000——
- * 单轮被挤掉的概率将近两成，人照样能活到十七岁。
+ * ## 这一道不数「有没有人真的走到」
  *
- * 真正管用的不是「必被抽中」，是**它永远在候选池里**（没有 requires，
- * 窗口一直开到 99）。池子不空，`pickEvent` 就不会返回 null，
- * 于是「年表抽不出事」这条路根本不会发生——抽中与否无所谓。
+ * 那是存在性，静态判不了——上一轮在第五道那里量明白过：
+ * 稀到千分之三的卷，跑三百世也有整批缺席。**存在性归模拟**，
+ * 由 `scripts/lifelong.ts` 跑完整人生去数每一档真正停了多少样本。
+ * 这一道只管结构：**六个格子是不是真的六个，终点是不是真的一个。**
  */
-console.log('=== 占位内容验收（成年那一卷还走不到吗）===\n')
+console.log('=== 人生的形状（六段日常各占一段，终点只有一个）===\n')
 {
-  const PLACEHOLDER = 'routine:adult'
+  /**
+   * 120 是扫描的上界，不是规矩：天年由 `lifespan.ts` 掷，扫到这儿
+   * 只为让最后一档露出头来。
+   */
+  const AGE_CEILING = 120
 
-  /** 成年从几岁起。拿 `stageOf` 反推，不抄 `stages.ts` 里的分档 */
-  let adultFrom = Number.POSITIVE_INFINITY
-  for (let age = 0; age <= 200; age += 1) {
-    if (stageOf(age) === '成年') {
-      adultFrom = age
-      break
-    }
+  /** 一个世界的形状。这一道要判的东西全在这四格里，别的一概不看 */
+  interface Shape {
+    routine: Readonly<Record<string, string>>
+    scenes: SceneLibrary
+    events: readonly LifeEvent[]
+    finale: string
   }
 
-  const finaleEvents = lifeEvents.filter((event) => event.scene.split('#')[0] === lifeFinale)
-  const finaleFrom = Math.min(...finaleEvents.map((event) => event.window.from))
+  interface Verdict {
+    claims: readonly { holds: boolean; text: string }[]
+    homeless: readonly string[]
+    uncovered: readonly string[]
+    shared: readonly (readonly [string, readonly string[]])[]
+    unresolved: readonly string[]
+    inTimeline: readonly LifeEvent[]
+    intoFinale: readonly string[]
+    leaks: readonly string[]
+    silent: boolean
+    reach: ReadonlyMap<string, { from: number; to: number }>
+    scenesSeen: number
+    nodesSeen: number
+    exitsSeen: number
+  }
 
   /**
-   * 这一卷有没有可能从头演到尾都不让玩家落笔。
+   * 这一卷有没有可能从头演到尾都不问玩家一句。
    *
-   * 从入口起走 `next` / `branches`，撞上带 `choices` 的节点这条路就算会停下来。
-   * 只要**存在**一条走到头都没停过的路，这一卷就算数——宁可多算，
-   * 因为这一格是在数「凑不凑得满连演的上限」，多算才是安全的那一边。
+   * 从入口起走出边，撞上带 `choices` 的节点这条路就算停下来过。
+   * 只要**存在**一条走到头都没停过的路，就算这一卷可能不问——宁可多算，
+   * 因为下面那一格要的是「一句都跑不掉」。
+   *
+   * 落幕必须问那一句。不问的话，玩家读完最后一段正文卷轴自己停了，
+   * 人生像是被系统关掉的；问了，合上眼这件事是他自己做的。
+   * 删掉 `gone` 那个「闭上眼睛」，这一格当场红。
    */
-  const mayNotAsk = (sceneId: string): boolean => {
-    const scene = lifeScenes[sceneId]
+  const mayNotAsk = (scenes: SceneLibrary, sceneId: string): boolean => {
+    const scene = scenes[sceneId]
     if (!scene) return false
     const memo = new Map<string, boolean>()
     const walk = (nodeId: string): boolean => {
@@ -1130,80 +1169,314 @@ console.log('=== 占位内容验收（成年那一卷还走不到吗）===\n')
   }
 
   /**
-   * 可能一句不问、又能在成年那年被抽中的事件。一件都不该有。
+   * 判一个世界的形状。
    *
-   * 连演顶到上限要连着 `MAX_EVENT_CHAIN` 卷不给玩家落笔——而不落笔就不花时间
-   * （时间几乎只走在选项的 effects 里），所以这一串演下来年龄基本不动。
-   * 库里凑得出这种卷的有六件，全部封顶在收尾那一年：连演真顶满了，
-   * 人也还没成年，落回去的是少年那一卷。
-   *
-   * **所以这一格看的不是件数，是窗口**：哪天有人把其中一件的窗口
-   * 往成年之后延一年，这条缝就宽了。
+   * 写成收世界、吐判词的纯函数，是为了下面那半件事：**这把尺子自己得能被验。**
+   * 六条判据只有真的会因为内容变坏而变红才算数，而验这件事的唯一办法
+   * 是手工掰坏几个世界喂进来，看它红在该红的那一条上。
    */
-  const silent = lifeEvents.filter((event) => mayNotAsk(event.scene.split('#')[0] ?? ''))
-  const silentPastAdult = silent.filter((event) => event.window.to >= adultFrom)
+  const judge = (world: Shape): Verdict => {
+    /**
+     * 年龄轴上每一档各占哪一段。问的是 `stageOf` 本人，不抄 `stages.ts` 的分档表——
+     * 抄一遍的话，改了分档而忘了改这里，两边一起错，判据照样绿。
+     */
+    const reach = new Map<string, { from: number; to: number }>()
+    for (let age = 0; age <= AGE_CEILING; age += 1) {
+      const stage = stageOf(age)
+      const seen = reach.get(stage)
+      reach.set(stage, { from: seen?.from ?? age, to: age })
+    }
 
-  /** 收尾那一卷的跳转有没有跑出卷外。跑出去了，演到它也不一定收得了尾 */
-  const finaleScene = lifeScenes[lifeFinale]
-  const finaleLeaks: string[] = []
-  for (const [nodeId, node] of Object.entries(finaleScene?.nodes ?? {})) {
-    for (const exit of exitsOf(node)) {
-      const [head, tail] = exit.to.split('#')
-      const stays = tail ? head === lifeFinale : Boolean(head && finaleScene?.nodes[head])
-      if (!stays) finaleLeaks.push(`${lifeFinale}#${nodeId} → ${exit.to}`)
+    const stages = Object.keys(world.routine)
+    /** 声明了这一档，年龄轴上却一岁也占不到——它那卷日常就是死内容 */
+    const homeless = stages.filter((stage) => !reach.has(stage))
+    /** 反过来：活人会走到这一档，而它没有日常可回。到了那一年就没处落脚 */
+    const uncovered = [...reach.keys()].filter((stage) => !(stage in world.routine))
+
+    /** 一卷挂了几档。挂两档就是两格并成了一格，而目录上还写着两格 */
+    const owners = new Map<string, string[]>()
+    for (const [stage, sceneId] of Object.entries(world.routine)) {
+      owners.set(sceneId, [...(owners.get(sceneId) ?? []), stage])
+    }
+    const shared = [...owners.entries()].filter(([, held]) => held.length > 1)
+    const unresolved = [...owners.keys()].filter((sceneId) => !world.scenes[sceneId])
+
+    /** 年表里指着落幕的事件。一件都不该有——这一条钉的就是旧机制 */
+    const inTimeline = world.events.filter((event) => event.scene.split('#')[0] === world.finale)
+
+    /**
+     * 全库扫一遍出边，一趟分出两种坏事：
+     *
+     *     别的卷跳进落幕　　那是第二种死法，而人生只该有一种
+     *     落幕跳出卷外　　　演到它也不一定收得了尾
+     */
+    const intoFinale: string[] = []
+    const leaks: string[] = []
+    let scenesSeen = 0
+    let nodesSeen = 0
+    let exitsSeen = 0
+    for (const [sceneId, scene] of Object.entries(world.scenes)) {
+      scenesSeen += 1
+      for (const [nodeId, node] of Object.entries(scene.nodes)) {
+        nodesSeen += 1
+        for (const exit of exitsOf(node)) {
+          exitsSeen += 1
+          const [head, tail] = exit.to.split('#')
+          const stays = tail ? head === sceneId : Boolean(head && scene.nodes[head])
+          if (sceneId === world.finale) {
+            if (!stays) leaks.push(`${sceneId}#${nodeId} → ${exit.to}`)
+          } else if (!stays && head === world.finale) {
+            intoFinale.push(`${sceneId}#${nodeId} → ${exit.to}`)
+          }
+        }
+      }
+    }
+
+    const silent = mayNotAsk(world.scenes, world.finale)
+
+    return {
+      claims: [
+        {
+          holds: homeless.length === 0 && uncovered.length === 0,
+          text: `${stages.length} 个人生阶段跟年龄轴一一对得上，各占一段`,
+        },
+        {
+          holds: shared.length === 0,
+          text: `${owners.size} 卷日常对着 ${stages.length} 个阶段，一卷只归一档`,
+        },
+        {
+          holds: unresolved.length === 0,
+          text: '每一档的日常都在库里解析得到',
+        },
+        {
+          holds: inTimeline.length === 0,
+          text: `年表里没有一件事指着落幕（${world.finale}）`,
+        },
+        {
+          holds: intoFinale.length === 0,
+          text: `扫过 ${exitsSeen} 条出边，没有别的卷跳得进落幕`,
+        },
+        {
+          holds: leaks.length === 0 && !silent,
+          text: '落幕的跳转都留在卷内，而且一定会问玩家一句',
+        },
+      ],
+      homeless,
+      uncovered,
+      shared,
+      unresolved,
+      inTimeline,
+      intoFinale,
+      leaks,
+      silent,
+      reach,
+      scenesSeen,
+      nodesSeen,
+      exitsSeen,
     }
   }
 
-  const claims: readonly { holds: boolean; text: string }[] = [
+  // ----------------------------------------------------------
+  // 先验尺子：手工掰坏的世界，红得对不对
+  // ----------------------------------------------------------
+  /**
+   * 底样是一个干干净净的小世界：真库加一卷手搭的落幕。
+   *
+   * 用手搭的落幕而不是真的那一卷，是为了让掰坏这件事完全可控——
+   * 底样必须全绿，六个变体各只掰一处，红的位置才说明得了问题。
+   */
+  const PROBE_FINALE = 'probe:finale'
+  const PROBE_JUMP = 'probe:jump'
+  const probeFinale: Scene = {
+    id: PROBE_FINALE,
+    title: '试',
+    entry: 'open',
+    nodes: {
+      open: { id: 'open', blocks: [], choices: [{ id: 'close', label: '完', next: null }] },
+    },
+  }
+  const baseline: Shape = {
+    routine: lifeRoutine,
+    scenes: { ...lifeScenes, [PROBE_FINALE]: probeFinale },
+    events: lifeEvents,
+    finale: PROBE_FINALE,
+  }
+
+  /** 每一条：掰哪儿、该红第几条（从 1 数）。掰一处只该红一条 */
+  const probes: readonly { hurt: number; what: string; world: Shape }[] = [
     {
-      holds: adultFrom > finaleFrom,
-      text: `收尾从 ${finaleFrom} 岁起可被抽中，而「成年」要到 ${adultFrom} 岁才开始`,
+      hurt: 1,
+      what: '多一个年龄轴上根本不存在的阶段',
+      world: { ...baseline, routine: { ...lifeRoutine, 虚设: PROBE_FINALE } },
     },
     {
-      holds: finaleEvents.every((event) => (event.requires ?? []).length === 0),
-      text: '收尾事件没有前置条件，到了年纪就一直在候选池里',
+      hurt: 2,
+      what: '两个阶段挂同一卷日常',
+      world: { ...baseline, routine: { ...lifeRoutine, 老年: lifeRoutine.壮年 } },
     },
     {
-      holds: finaleLeaks.length === 0,
-      text: '收尾那一卷的跳转都留在卷内，演到它就一定演到底',
+      hurt: 3,
+      what: '某一档的日常在库里不存在',
+      world: { ...baseline, routine: { ...lifeRoutine, 老年: 'routine:nowhere' } },
     },
     {
-      holds: silentPastAdult.length === 0,
-      text:
-        `凑得出连演的事件有 ${silent.length} 件（上限 ${MAX_EVENT_CHAIN} 卷），` +
-        `窗口都在 ${adultFrom} 岁之前封顶`,
+      hurt: 4,
+      what: '年表里加一件指着落幕的事件（这就是十六岁那条老路）',
+      world: {
+        ...baseline,
+        events: [...lifeEvents, { id: 'probe', window: { from: 0, to: 99 }, scene: PROBE_FINALE }],
+      },
+    },
+    {
+      hurt: 5,
+      what: '别的卷开一条边跳进落幕',
+      world: {
+        ...baseline,
+        scenes: {
+          ...baseline.scenes,
+          [PROBE_JUMP]: {
+            id: PROBE_JUMP,
+            title: '试',
+            entry: 'open',
+            nodes: { open: { id: 'open', blocks: [], next: PROBE_FINALE } },
+          },
+        },
+      },
+    },
+    {
+      hurt: 6,
+      what: '落幕的跳转跑出卷外',
+      world: {
+        ...baseline,
+        scenes: {
+          ...baseline.scenes,
+          [PROBE_FINALE]: {
+            ...probeFinale,
+            nodes: { open: { ...probeFinale.nodes.open!, next: 'somewhere-else' } },
+          },
+        },
+      },
+    },
+    {
+      hurt: 6,
+      what: '落幕一句也不问玩家',
+      world: {
+        ...baseline,
+        scenes: {
+          ...baseline.scenes,
+          [PROBE_FINALE]: {
+            ...probeFinale,
+            nodes: { open: { ...probeFinale.nodes.open!, choices: [] } },
+          },
+        },
+      },
     },
   ]
 
-  const broken = claims.filter((claim) => !claim.holds)
-  if (broken.length === 0) {
-    console.log(`  ${PLACEHOLDER} 还是走不到，四条前提都在：\n`)
-    for (const claim of claims) console.log(`    · ${claim.text}`)
+  const clean = judge(baseline).claims.filter((claim) => !claim.holds)
+  const misread: string[] = []
+  if (clean.length > 0) {
+    misread.push(`底样本该全绿，却红了 ${clean.length} 条：${clean.map((c) => c.text).join('；')}`)
+  }
+  for (const probe of probes) {
+    const red = judge(probe.world)
+      .claims.map((claim, index) => (claim.holds ? 0 : index + 1))
+      .filter((index) => index > 0)
+    if (red.length !== 1 || red[0] !== probe.hurt) {
+      misread.push(
+        `「${probe.what}」该只红第 ${probe.hurt} 条，实际红了 ${red.length === 0 ? '零条' : `第 ${red.join('、')} 条`}`,
+      )
+    }
+  }
+
+  // ----------------------------------------------------------
+  // 再判真世界
+  // ----------------------------------------------------------
+  const real = judge({
+    routine: lifeRoutine,
+    scenes: lifeScenes,
+    events: lifeEvents,
+    finale: lifeFinale,
+  })
+  const stages = Object.keys(lifeRoutine)
+  const broken = real.claims.filter((claim) => !claim.holds)
+
+  if (broken.length === 0 && misread.length === 0) {
     console.log(
-      '\n  前两条堵住「年表抽不出事」，后两条堵住「连演顶到上限」——\n' +
-        '  它只能靠这两条路被叫出来。\n',
+      `  尺子自己判得出对错——${probes.length} 个手工掰坏的世界，红的都红在该红的那一条上。\n`,
+    )
+    console.log('  真世界这六条都成立：\n')
+    for (const claim of real.claims) console.log(`    · ${claim.text}`)
+    console.log('\n  各档占的年龄段和它那一卷日常：\n')
+    for (const stage of stages) {
+      const at = real.reach.get(stage)
+      const range = !at
+        ? '——'
+        : at.to === AGE_CEILING
+          ? `${at.from} 岁往后`
+          : `${at.from}–${at.to} 岁`
+      console.log(`    ${stage}　${range.padEnd(12)}${lifeRoutine[stage as LifeStage]}`)
+    }
+    console.log(
+      `\n  覆盖率：${real.scenesSeen} 卷 / ${real.nodesSeen} 节 / ${real.exitsSeen} 条出边 / ` +
+        `${lifeEvents.length} 件年表事件，年龄轴扫到 ${AGE_CEILING} 岁。\n` +
+        '  这一道只判结构。每一档真的有没有人停在那儿，归 scripts/lifelong.ts。\n',
     )
   } else {
-    console.log(`  ✗ ${broken.length} 条前提不成立了：\n`)
-    for (const claim of broken) console.log(`    ${claim.text}`)
-    if (finaleLeaks.length > 0) {
-      console.log('\n    收尾卷跳出卷外的：')
-      for (const leak of finaleLeaks) console.log(`      ${leak}`)
+    if (misread.length > 0) {
+      console.log(`  ✗ 尺子自己就不准，${misread.length} 处：\n`)
+      for (const line of misread) console.log(`    ${line}`)
+      console.log('\n    先修尺子。尺子不准的时候，下面那些绿灯一个也不作数。\n')
+      process.exitCode = 1
     }
-    if (silentPastAdult.length > 0) {
-      console.log('\n    能演到成年那年、又可能一句不问的：')
-      for (const event of silentPastAdult) {
-        console.log(
-          `      ${event.id} → ${event.scene}　窗口 ${event.window.from}–${event.window.to}`,
-        )
+    if (broken.length > 0) {
+      console.log(`  ✗ ${broken.length} 条不成立：\n`)
+      for (const claim of broken) console.log(`    ${claim.text}`)
+      if (real.homeless.length > 0) {
+        console.log('\n    年龄轴上一岁也占不到的阶段（它那一卷日常成了死内容）：')
+        for (const stage of real.homeless) {
+          console.log(`      ${stage} → ${lifeRoutine[stage as LifeStage]}`)
+        }
       }
+      if (real.uncovered.length > 0) {
+        console.log('\n    活人走得到、却没有日常可回的阶段：')
+        for (const stage of real.uncovered) console.log(`      ${stage}`)
+      }
+      if (real.shared.length > 0) {
+        console.log('\n    一卷挂了好几档（目录上写着几格，实际是一格）：')
+        for (const [sceneId, held] of real.shared) {
+          console.log(`      ${sceneId} ← ${held.join('、')}`)
+        }
+      }
+      if (real.unresolved.length > 0) {
+        console.log('\n    库里找不到的日常：')
+        for (const sceneId of real.unresolved) console.log(`      ${sceneId}`)
+      }
+      if (real.inTimeline.length > 0) {
+        console.log('\n    年表里指着落幕的事件（这是「十六岁没修上仙就结束」那条老路）：')
+        for (const event of real.inTimeline) {
+          console.log(
+            `      ${event.id} → ${event.scene}　窗口 ${event.window.from}–${event.window.to}`,
+          )
+        }
+      }
+      if (real.intoFinale.length > 0) {
+        console.log('\n    别的卷跳进落幕的边：')
+        for (const edge of real.intoFinale) console.log(`      ${edge}`)
+      }
+      if (real.leaks.length > 0) {
+        console.log('\n    落幕跳出卷外的边：')
+        for (const leak of real.leaks) console.log(`      ${leak}`)
+      }
+      if (real.silent) {
+        console.log('\n    落幕有一条路从头演到尾不问玩家一句——合上眼那一下得是他自己按的。')
+      }
+      console.log(
+        '\n  人生的终点只该有一个，而且只有天年到了才走得到它。\n' +
+          '  上面每一条破掉，都是在往人生里加一个别的出口，或者把某一段日子悄悄抹掉。\n',
+      )
+      process.exitCode = 1
     }
-    console.log(
-      `\n  ${PLACEHOLDER} 现在可能真的走得到了。那是占位内容，不是写好的人生——` +
-        '\n  玩家会读到一段谁也没设计过的东西。要么把这一卷补成真内容，' +
-        '\n  要么想清楚这次改动是不是本来就打算把成年之后接上。\n',
-    )
-    process.exitCode = 1
   }
 }
 

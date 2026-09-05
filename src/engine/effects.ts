@@ -4,7 +4,7 @@ import { useHouseholdStore } from '@/stores/household'
 import { makePerson, usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
 import { observerById } from '@/content/observers'
-import { bearKin } from '@/content/birth'
+import { bearKin, houseSurname } from '@/content/birth'
 import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 
 import { beatLines, spend } from './daily'
@@ -166,6 +166,18 @@ function applyOne(
     case 'realm':
       character.setRealm(effect.realm)
       return record(`境界 · ${effect.realm}`, 'cinnabar')
+    /**
+     * 天年加减。**不出回执**，理由跟底下的 `living` 是同一条，
+     * 而且这一条更硬：天年是隐藏的量，露出数字，
+     * 「他这一生有多长」就从人生变成了一根进度条。
+     *
+     * 落这条效果的那一卷，正文里必须自己写出那件事——
+     * 「你觉得这半年身上轻快了不少」、「那场病之后你就再没利索过」。
+     * 光落效果不写正文的话，玩家的人生被改了而他完全不知道。
+     */
+    case 'lifespan':
+      character.extendSpan(effect.years)
+      return null
     case 'identity':
       character.setIdentity(effect.identity)
       return record(`身份 · ${effect.identity}`)
@@ -321,10 +333,23 @@ function applyOne(
        * 而且只在剧本明写了 `who` 的时候做。
        */
       if (effect.who !== undefined && people.personOf(effect.id) === undefined) {
+        /**
+         * 不写姓就是跟本家同姓——家里添的孩子走的是这条路。
+         *
+         * 这一句从前是 `people.personOf('me')?.surname`，而
+         * **「我」从来不在人口册上**（`'me'` 只是关系图上的节点名，
+         * 没有任何地方 enroll 过它），于是它恒为 undefined，
+         * 家里添的孩子一律落回「某」。下面那句 `console.error`
+         * 每回都真的喊了——喊在一支没人盯着的走查脚本的标准错误里。
+         *
+         * 现在问的是 `houseSurname`，跟出生那一刻定姓、跟添弟弟妹妹
+         * 走的是同一份规矩，不是第三份抄写。
+         */
+        const surname = effect.who.surname ?? houseSurname(people)
         people.enroll(
           makePerson({
             id: effect.id,
-            surname: effect.who.surname,
+            surname,
             given: effect.who.given,
             gender: effect.who.gender,
             bornYear: world.time.year - effect.who.age,
@@ -912,7 +937,7 @@ function applyOne(
  * 读起来就该是这个次序，而作者不该为了引擎的实现细节把它倒过来写。
  *
  * 所以把时间提到**结算的前一相**：这一批里所有 `time` 先走完，
- * 其余三十六种再按原序落下。剧本爱怎么排怎么排，
+ * 其余各种再按原序落下。剧本爱怎么排怎么排，
  * **顺序不再影响结果**——不是被门禁查出来的，是压根不存在了。
  * 跟 `learn()` 里「接触只能往上」是同一个手法：
  * 能让错误不存在，就别去检查它存不存在。
@@ -922,19 +947,21 @@ function applyOne(
  * 真要表达「先发生 A，三年后发生 B」，那本来就是两个节点，
  * 不是一批效果——跟 `seen` 那格记的是同一条界线：换节点才是换事件。
  *
- * ## 为什么是一张三十七行的表，而不是 `type === 'time'`
+ * ## 为什么是一张穷举表，而不是 `type === 'time'`
  *
  * 因为这一相还会长。世界年龄、天气、灵气浓度、因果链——
  * 凡是「不陈述事实、只改变其余事实如何被解释」的东西，都属于这里。
  * 写成 `if (effect.type === 'time')`，加第二个的那天不会有人想起这件事，
  * 而漏掉的后果跟今天一模一样：后面的效果读到的是改之前的世界。
  *
- * 表钉在这儿，加第三十八种效果就得表态它是哪一相，不表态编译不过。
+ * 表钉在这儿，新加一种效果就得表态它是哪一相，不表态编译不过。
+ * （这句从前写着「加第三十八种」——那个数字后来漂了，
+ * 而漂的时候没有任何东西吭声。会漂的数不写进解释里。）
  * `assertNever` 守的是「新变体有没有被处理」，这张表守的是
  * 「新变体属于哪一相」——两件事，两把锁。
  */
 const PHASE = {
-  /** 唯一的上下文相。它一动，底下三十六种记下的时刻全跟着变 */
+  /** 唯一的上下文相。它一动，底下那一整列记下的时刻全跟着变 */
   time: '上下文',
 
   attribute: '事实',
@@ -945,6 +972,14 @@ const PHASE = {
   place: '事实',
   home: '事实',
   realm: '事实',
+  /**
+   * 天年加减。
+   *
+   * 是「事实」相不是「上下文」相：它改的是这个人还剩多少年，
+   * 不改同批别的效果怎么被解释。同批里的 `time` 推进的是**已经过了多久**，
+   * 两个数各走各的，直到 `story.ts` 拿 `isSpent` 把它们对上。
+   */
+  lifespan: '事实',
   identity: '事实',
   living: '事实',
   aspect: '事实',

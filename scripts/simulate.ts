@@ -82,6 +82,21 @@ function run(tally: Tally): void {
 
   story.begin()
 
+  /**
+   * 落幕那一卷分流到哪一节。
+   *
+   * 不能读跑完之后的 `narrative.nodeId`：`enterNode` 会一口气从
+   * kin / spouse / alone 接到 `gone`，最后停的永远是 `gone`，
+   * **一个永远只印一个值的指标等于没有指标**。所以包在 `locate` 上采样，
+   * 它是每进一个节点都会被调到的那个。
+   */
+  const locate = narrative.locate
+  let parting = '(没走到落幕)'
+  narrative.locate = (sceneId: string, nodeId: string): void => {
+    if (sceneId === lifeFinale && nodeId !== 'last' && nodeId !== 'gone') parting = nodeId
+    locate(sceneId, nodeId)
+  }
+
   let turns = 0
   while (!narrative.ended && turns < MAX_TURNS) {
     const open = narrative.options.filter((option) => !option.locked)
@@ -109,9 +124,8 @@ function run(tally: Tally): void {
     tally.knowsTheBook += 1
   }
 
-  // 收尾那一卷落在哪个结局上，就是这一世带着什么走到渡口的
-  const ending = narrative.nodeId ?? '(未收尾)'
-  tally.endings[ending] = (tally.endings[ending] ?? 0) + 1
+  // 临终身边有没有人。这一层只能是一种，也是落幕那一卷唯一分流的地方
+  tally.endings[parting] = (tally.endings[parting] ?? 0) + 1
 }
 
 function percent(part: number, whole: number): string {
@@ -163,7 +177,7 @@ for (const [id, count] of Object.entries(tally.origins).sort((a, b) => b[1] - a[
   console.log(`  ${id.padEnd(7)}${what.padEnd(16)}${count}  ${percent(count, RUNS)}`)
 }
 
-console.log(`\n--- 收尾年龄 ---`)
+console.log(`\n--- 咽气那年的岁数 ---`)
 console.log(
   `  最小 ${Math.min(...tally.ages)}  中位 ${median(tally.ages)}  最大 ${Math.max(...tally.ages)}`,
 )
@@ -174,7 +188,9 @@ console.log(`  父债链走到父亲死    ${percent(tally.debtChainComplete, RU
 console.log(`  认出了修士          ${percent(tally.metCultivator, RUNS)}`)
 console.log(`  身上有东西被点破    ${percent(tally.knowsTheBook, RUNS)}`)
 
-console.log(`\n--- 十六岁那年的落点 ---`)
+// 从前这里叫「十六岁那年的落点」——那时人生在渡口结束，落在哪个节点上
+// 就是这一世的判词。现在只有落幕一个终点，这里量的是临终身边有没有人。
+console.log(`\n--- 临终身边 ---`)
 for (const [node, count] of Object.entries(tally.endings).sort((a, b) => b[1] - a[1])) {
   console.log(`  ${node.padEnd(14)}  ${count}  ${percent(count, RUNS)}`)
 }

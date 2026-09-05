@@ -96,7 +96,8 @@ function implies(a: Condition, b: Condition): boolean {
   if (key === 'attribute') {
     const wide = a.attribute!
     const narrow = b.attribute!
-    return wide.key === narrow.key && wide.atLeast <= narrow.atLeast
+    // 天赋从「只问够不够高」变成闭区间之后，这里跟年龄、家境是同一种判法
+    return wide.key === narrow.key && covers(wide, narrow)
   }
 
   if (key === 'region') {

@@ -7,39 +7,61 @@
  * 是没走上山道、没看见人、掷出来的不是修士、还是在渡口没走过去。
  *
  * 这里把几道关卡逐级数出来，好知道该拧哪一颗螺丝。
+ *
+ * ## 两种判法，各管各的
+ *
+ * 上半场是抽样：一千二百世随机地活，数每一关过了多少人。它答得了
+ * 「有多少人赶上」，答不了「赶上了会怎样」——最稀那一格期望不到一个人，
+ * 判据写在那儿就是掷硬币。
+ *
+ * 下半场是构造：不掷骰子，把那册书发到手里，站到那个人面前，
+ * 问库里那一节会不会说出它的名字（`namesTheBook`）。
+ * **稀有的是机会，不是那句话本身**——机会有多稀由内容决定，
+ * 这一支只报数；而机会一旦落到谁头上，那句话必须出现，这一条判死。
  */
 import { createPinia, setActivePinia } from 'pinia'
 
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
+import { meetsAll } from '../src/engine/conditions'
+import { applyEffects } from '../src/engine/effects'
 import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useNarrativeStore } from '../src/stores/narrative'
 import { useWorldStore } from '../src/stores/world'
 
 /**
- * ## 世数按最后那一格定
+ * ## 世数按次稀那一格定，不按最稀那一格
  *
- * 三百世够看前几格，不够看最后那一句。感知层从一行阈值
+ * 三百世够看前几格，不够看后面几格。感知层从一行阈值
  * （`insight ≥ 34`，三百世三百个人全都过）换成「那天他心里装着什么」
  * 之后，这条链多了两道真会筛人的关——而它们是**一道乘法里的两环**：
  *
- *     这辈子拿到过那册书　　8.3%（三百世）→ 3.9%（一千二百世）
- *     多年以后有人点破　　　2.7%（三百世）→ 1.8%（一千二百世）
+ *     这辈子拿到过那册书　　8.3%（三百世）→ 3.1%（一千二百世）
  *
  * 这不是内容坏了，是感知层实打实吃掉的：注意力落在那儿的只剩五成半，
  * 其中又有四分之一把人看成了醉汉或死人，绕开走了。**这个代价是明知故犯的**——
  * 那一关从前不存在，而「机会摆在面前，看不看得见是另一回事」这句话
  * 得有人真的看不见才算数。
  *
- * ## 那两个百分比不是同一个世数下量的，这里要说清楚
+ * ## 最稀那一格已经稀到不能用抽样判了
  *
- * 改完先跑了七百世，最后那格印出 5 个人（0.7%）；一千二百世再跑，
- * 是 22 个（1.8%）。两批差了近一倍——因为那两格高度相关（被点破的人
- * 是拿到书的人的子集），一批偏低就一起偏低，七百世那次两格都低了两个标准差。
+ * 「多年以后有人点破」这一格，从前一千二百世能落 22 个人（1.8%）。
+ * 那个数是**「十六岁人人必到渡口」**撑出来的：渡口那一卷从前既是年表事件
+ * 又是 `lifeFinale`，权重 1000、窗口封到 99 岁，谁也绕不开。
  *
- * **一个期望五的格子，下一批完全可能是一**，而 `> 0` 那条门禁红起来的时候，
- * 红的原因不是内容坏了，是抽样。**一支会随机红灯的门禁比没有门禁更糟**——
- * 它会把对的判成错的。所以世数定在一千二。
+ * 人生模拟那一轮把这三个数字拆了（`window: 16–28`、`weight: 120`、
+ * `fortune ≥ 55`），渡口从此要跟别的事争年表。于是这一格塌成了两件稀事的乘积：
+ *
+ *     走上前搭话　　　　2.1%（一千二百世里 25 个）
+ *     手里有那册书　　　3.1%（一千二百世里 37 个）
+ *     两件都赶上　　　　约 0.8 个人
+ *
+ * **一个期望是 0.8 的格子，`> 0` 那条判据就是掷硬币**：内容一个字没坏，
+ * 它也有三分之一的批次会红。那一条因此撤了——不是放宽，是换了个问法：
+ * 底下多了一段**构造出来的对证**，直接把书放进手里，站到那个人面前，
+ * 问库里那一节会不会说出它的名字。见 `namesTheBook()`。
+ *
+ * 世数留在一千二，因为次稀那一格（拿到书，37 个）还得靠它。
  */
 const RUNS = 1200
 
@@ -91,9 +113,11 @@ const WALKS_AWAY = new Set(['醉汉', '死人'])
 /**
  * 渡口那一节。
  *
- * **它不是山道的下一环**，所以单独一段印。十六岁那年谁都可能走上前搭话，
- * 手里有没有那册书是另一回事——旧版把六格串成一条，
- * 于是这里的过关率印出来是 438%。
+ * **它不是山道的下一环**，所以单独一段印。走上前搭话跟手里有没有那册书
+ * 是两件独立的事——旧版把六格串成一条，于是这里的过关率印出来是 438%。
+ *
+ * 「十六岁那年」这个说法也一并撤了：那一卷现在的窗口是十六到二十八，
+ * 而且要跟别的事争年表，一千二百世里只有二十几个人走上过前。
  */
 const river = {
   在渡口走上前: 0,
@@ -115,6 +139,104 @@ let carriesBook = 0
  * 它们认的其实是「最后一回」。
  */
 const overwritten = new Map<string, number>()
+
+/** 渡口那一节把「身上揣着什么」翻成结局的地方。门牌号写在这儿，效果不抄 */
+const NAMING = { scene: 'riverman', node: 'approached', truth: 'named-true' } as const
+
+/**
+ * 构造出来的对证：**带着那册书站到那个人面前，他会说出它的名字。**
+ *
+ * 这一段不掷骰子，也不模拟一生。上头那个漏斗量的是「有多少人赶上了」，
+ * 这一段量的是另一件事——**赶上了的人，那句话到底会不会出现**。
+ * 两件事从前混在一格里，而那一格的期望只有 0.8 个人，
+ * 于是「内容坏了」和「这批没人赶上」印出来是同一个红灯。
+ *
+ * 分开之后，各归各的判法：
+ *
+ *     有多少人赶上　　抽样，报数不判　　　（会漂，且漂得很凶）
+ *     赶上了会怎样　　构造，判死　　　　　（不该漂，漂了就是内容坏了）
+ *
+ * 书是从库里发的，不是这儿捏的：`encounter` 那个效果照常走，
+ * 山道上那一档的 `grants` 给什么就是什么。哪天那册书改了 id，
+ * 这一段跟着变，不用改一个字。
+ *
+ * 末尾那一问才是这段的关键：**同一节，手里没书的人不会走到那儿。**
+ * 少了它，这一段等于只验了「`named-true` 这一节存在」——
+ * 而那件事静态就看得见，用不着跑。
+ */
+function namesTheBook(): string[] {
+  const wrong: string[] = []
+  const scene = lifeScenes[NAMING.scene]
+  const node = scene?.nodes[NAMING.node]
+  if (!node) {
+    return [`库里找不到 ${NAMING.scene}#${NAMING.node}——渡口那一节改了名，这一段就没有对证了`]
+  }
+  const branches = node.branches ?? []
+
+  /** 站到那个人面前，这一节把他送去哪儿 */
+  const namedNow = (): string => {
+    for (const branch of branches) {
+      if (meetsAll(branch.requires)) return branch.next
+    }
+    return node.next ?? '（没有去处）'
+  }
+
+  // —— 手里有那册书 ——
+  setActivePinia(createPinia())
+  const world = useWorldStore()
+  const character = useCharacterStore()
+  useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale }).begin()
+
+  // 山道上遇见的是修士，他也确实看成了伤者、伸了手。发书那一步归库里那张表
+  world.setFlag('wounded-man', '修士')
+  world.setFlag('wounded-reading', '伤者')
+  applyEffects([{ type: 'encounter', approach: '扶' }])
+
+  if (!character.has('thin-book')) {
+    wrong.push('照库里那张表扶了修士一把，行囊里却没有那册书——发书那一步断了')
+    return wrong
+  }
+  console.log('  带着那册书：山道上扶了修士一把，书在行囊里')
+
+  const withBook = namedNow()
+  console.log(`  带着那册书：站到他面前，这一节把人送去 ${withBook}`)
+  if (withBook !== NAMING.truth) {
+    wrong.push(
+      `手里揣着那册书，${NAMING.node} 却把人送去了 ${withBook} 而不是 ${NAMING.truth}——` +
+        '「他看的是你，不是你想让他看的东西」那一句没有落点',
+    )
+    return wrong
+  }
+
+  const said = scene?.nodes[NAMING.truth]
+  if (!said) {
+    wrong.push(`库里找不到 ${NAMING.scene}#${NAMING.truth}`)
+    return wrong
+  }
+  applyEffects(said.onEnter)
+  if (!world.hasFlag('knows-the-book')) {
+    wrong.push(
+      `${NAMING.truth} 演完了，knows-the-book 却没立起来——` +
+        '「多年以后才明白当年捡到的不是普通书」这句话没有留下痕迹',
+    )
+  } else {
+    console.log('  带着那册书：他说出了那册书的名字，`knows-the-book` 立住了')
+  }
+
+  // —— 对照：同一节，手里没书 ——
+  setActivePinia(createPinia())
+  useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale }).begin()
+  const without = namedNow()
+  console.log(`  没带那册书：站到同一个人面前，这一节把人送去 ${without}`)
+  if (without === NAMING.truth) {
+    wrong.push(
+      `手里什么也没有的人也被送去了 ${NAMING.truth}——` +
+        '那一节不是在看他身上揣着什么，这段对证也就什么都没验到',
+    )
+  }
+
+  return wrong
+}
 
 for (let i = 0; i < RUNS; i += 1) {
   setActivePinia(createPinia())
@@ -209,13 +331,17 @@ console.log(
     (shutOut === 0 ? '  ← 这一档一个人也没落到，跟「真正的筛子」那句话对不上' : ''),
 )
 
-console.log('\n  二、十六岁那年的渡口。这两格的分母是全体，不是上一段的出口：\n')
+console.log('\n  二、渡口那一卷（十六到二十八岁间的某一年）。这两格的分母是全体：\n')
 for (const [label, count] of Object.entries(river)) {
   const ofAll = ((count / RUNS) * 100).toFixed(1)
   console.log(`  ${label.padEnd(20)} ${String(count).padStart(5)}   占全体 ${ofAll.padStart(5)}%`)
 }
+console.log(
+  '\n  「有人点破」这一格只报数不判——它是上面两件稀事的乘积，期望不到一个人。\n' +
+    '  那句话本身由底下第五条构造着验。',
+)
 
-console.log('\n  三、山道那一卷各个出口（人数，不是占比——三百世下每格都是个位数）：\n')
+console.log('\n  三、山道那一卷各个出口（人数，不是占比——最稀那几格是个位数）：\n')
 for (const [id, n] of [...outcomes.entries()].sort((a, b) => b[1] - a[1])) {
   console.log(`  ${id.padEnd(22)} ${String(n).padStart(4)}`)
 }
@@ -279,9 +405,17 @@ console.log()
     bad += 1
   }
 
-  // 四、点破那一句，得有人听见过。它是整个凡人阶段的落点
-  if (river.有人点破 === 0) {
-    console.log('  ✗ 一个人也没被点破——「多年以后才明白」这句话没有落地。')
+  /**
+   * 四、走上前搭话这件事，得有人做过。
+   *
+   * 这一格量的是渡口那一卷有没有人真的走进去——一千二百世里二十几个，
+   * 期望到了两位数，`> 0` 判得稳。
+   *
+   * 它顶替的是从前那条「有人被点破」：那一条量的是这一格再乘上
+   * 「手里有书」，期望不到一个人，判不了。见文件头。
+   */
+  if (river.在渡口走上前 === 0) {
+    console.log('  ✗ 一个人也没在渡口走上前——那一卷现在没人走得进去，底下几节全是死的。')
     bad += 1
   }
   // 被点破的人不可能多过拿到书的人：渡口那一节认的就是手里那册书
@@ -290,10 +424,23 @@ console.log()
     bad += 1
   }
 
+  /**
+   * 五、赶上了的人，那句话到底会不会出现。
+   *
+   * 抽样答不了这一问（期望 0.8 个人），所以这一条是构造出来的：
+   * 把书发到手里，站到那个人面前，看库里那一节怎么分流。
+   */
+  console.log()
+  const named = namesTheBook()
+  for (const one of named) console.log(`  ✗ ${one}`)
+  bad += named.length
+
   if (bad > 0) {
     console.log(`\n  ✗ ${bad} 项不成立。\n`)
     process.exitCode = 1
   } else {
-    console.log('  一环比一环窄，两边对得上账，而最后那一句总有人听见。\n')
+    console.log(
+      '\n  一环比一环窄，两边对得上账。而那句话——赶上的人少了，' + '可只要赶上，它一定会说出口。\n',
+    )
   }
 }

@@ -204,10 +204,22 @@ export function beBorn(id: OriginId, home: string): Birth {
  *
  * 跟出生那一刻定姓的规矩是同一条：有生父就随生父，没有就随收留你的人。
  * 抄一遍是因为那一段算完就丢了——`beBorn` 只把姓拼进玩家的名字里返回，
- * 没有留在任何地方。**规矩相同，所以两处得一起改**，
- * 而不是让这里去猜玩家名字的头一个字。
+ * 没有留在任何地方。
+ *
+ * ## 家里添的人一律走这里
+ *
+ * 弟弟妹妹走这里，成年后自己生的孩子也走这里（`engine/effects.ts`
+ * 的 `meet`：`who` 不写 surname 就是「跟本家同姓」）。
+ *
+ * 那一头从前另有一份写法，问的是 `personOf('me')?.surname`——
+ * 可**「我」从来不在人口册上**：`'me'` 只是关系图上的一个节点名，
+ * 没有任何地方 `enroll` 过它。于是那一问恒为 undefined，
+ * 家里添的孩子全都姓「某」。它甚至老老实实报了错，
+ * 只是报在一支没人盯着的走查脚本的标准错误里。
+ *
+ * **同一条规矩写第三遍的时候，第三遍是错的。** 现在只有这一份。
  */
-function houseSurname(people: ReturnType<typeof usePeopleStore>): string {
+export function houseSurname(people: ReturnType<typeof usePeopleStore>): string {
   const father = people.personOf('father')
   if (father) return father.surname
   for (const relation of people.relations) {
