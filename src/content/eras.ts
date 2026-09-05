@@ -149,4 +149,16 @@ export const REAL_MING_ERAS: readonly string[] = [
  * 「天劫」那一路的零件。「神」「皇」史上是有的（神龙、皇祐），
  * 这里一并挡掉——气象太大，不是嘉靖—万历那种年头会取的字。
  */
-export const NOT_ERA_CHARS: readonly string[] = ['仙', '帝', '魔', '恒', '霸', '敌', '劫', '尊', '神', '皇', '无']
+export const NOT_ERA_CHARS: readonly string[] = [
+  '仙',
+  '帝',
+  '魔',
+  '恒',
+  '霸',
+  '敌',
+  '劫',
+  '尊',
+  '神',
+  '皇',
+  '无',
+]

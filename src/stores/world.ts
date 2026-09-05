@@ -3,25 +3,20 @@ import { computed, ref } from 'vue'
 
 import { createId } from '@/engine/id'
 import {
+  deathAfter,
   endReign,
   eraAt,
   extendReigns,
   foundDynasty,
   isBefore,
   yearMonth,
+  yearsLeft,
   type YearMonth,
 } from '@/engine/dynasty'
 import { ERA_NAMES } from '@/content/eras'
 import { randomBetween } from '@/engine/random'
 import { newRegion, tickRegion, type Region } from '@/engine/worldclock'
-import type {
-  ChronicleEntry,
-  FlagValue,
-  GameTime,
-  InkTone,
-  RegionState,
-  Reign,
-} from '@/types/game'
+import type { ChronicleEntry, FlagValue, GameTime, InkTone, RegionState, Reign } from '@/types/game'
 
 import { useHouseholdStore } from './household'
 
@@ -236,18 +231,19 @@ export const useWorldStore = defineStore(
     /**
      * 宫里那一支：父亲的死一直悬着，到十六岁那卷窗口过了还没崩，就替世界定一个。
      *
-     * 再活一到二十年——【抽象】不照在位表抽，因为他已经在位十几年了，
-     * 表上抽的是整段生涯。哪天写宫里那一卷（宫里与王府分开）再回头看这个数。
+     * 不抽「还在位几年」——头一版抽的是一到二十年，那是一个没有依据的分布，
+     * 几年之后会露出游戏数学。现在问的是**这个人此刻几岁、还能活多久**
+     * （`yearsLeft`：寿数照明代抽，减去他现在的岁数），剩余在位年数由此推出。
+     * 他四十二岁即位、在位十四年、今年五十六，抽到寿数六十三，就还剩七年。
      */
     function settleThrone(): void {
       const pending = reigns.value.findIndex((r) => r.death === null)
       if (pending < 0 || time.value.year - bornYear.value < 16) return
-      const death = {
-        year: time.value.year + randomBetween(1, 20),
-        month: randomBetween(1, 12),
-      }
+      const reign = reigns.value[pending]!
+      const now = yearMonth(time.value)
+      const death = deathAfter(now, yearsLeft(reign.born, now))
       reigns.value = extendReigns(
-        [...reigns.value.slice(0, pending), { ...reigns.value[pending]!, death }],
+        [...reigns.value.slice(0, pending), { ...reign, death }],
         time.value.year + DYNASTY_HORIZON,
         ERA_NAMES.map((one) => one.text),
       )
@@ -294,7 +290,9 @@ export const useWorldStore = defineStore(
         ERA_NAMES.map((one) => one.text),
       )
       if (quiet) return
-      const i = reigns.value.findIndex((r) => r.death && !isBefore(at, r.death) && !isBefore(r.death, at))
+      const i = reigns.value.findIndex(
+        (r) => r.death && !isBefore(at, r.death) && !isBefore(r.death, at),
+      )
       const next = reigns.value[i + 1]
       record(next ? `先帝崩。皇太子即位，诏明年改元${next.era}。` : '先帝崩。', 'deep')
     }

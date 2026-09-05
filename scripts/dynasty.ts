@@ -14,6 +14,8 @@
  *   四、纪年连续——每个月都有年号，正月加一，改元归元年，永远不出「〇年」
  *   五、真人生——每一世出生那一刻就有年号；跨过皇帝的死会记一笔；
  *       宫里那一支的「父皇大行」和世界的改元对得上，且编年上不挨着两行
+ *   六、皇帝是人——即位时至少一岁，崩时不比即位时小，继任者比先帝年轻；
+ *       寿数的形状是明代的（多半死在三四十岁上下）
  *
  * ## 跟别的走查不一样的地方
  *
@@ -151,6 +153,33 @@ function reignYears(reign: Reign): number | null {
   return reign.death ? reign.death.year - reign.accession.year : null
 }
 
+/**
+ * 六、皇帝是人。
+ *
+ * 在位年数不是抽的，是寿数减即位年龄推出来的（用户定的模型）。那么三件事必须成立：
+ * 即位时至少一岁；崩时不比即位时小；**继任者比先帝年轻**——儿子、弟弟、堂弟、侄子，
+ * 没有一种接法会让一个比死去的皇帝还老的人坐上去。
+ */
+function faultsOfPersons(reigns: readonly Reign[]): string[] {
+  const faults: string[] = []
+  reigns.forEach((reign, i) => {
+    const accessionAge = reign.accession.year - reign.born
+    if (accessionAge < 1) faults.push(`${reign.era}即位时 ${accessionAge} 岁`)
+    if (reign.death) {
+      const deathAge = reign.death.year - reign.born
+      if (deathAge < accessionAge) faults.push(`${reign.era}崩时 ${deathAge} 岁，比即位时还小`)
+      if (deathAge > 95) faults.push(`${reign.era}活到 ${deathAge} 岁`)
+    }
+    if (i > 0) {
+      const prev = reigns[i - 1]!
+      if (reign.born <= prev.born) {
+        faults.push(`${reign.era}生于 ${reign.born}，比先帝${prev.era}（生于 ${prev.born}）还年长`)
+      }
+    }
+  })
+  return faults
+}
+
 function median(values: readonly number[]): number {
   const sorted = [...values].sort((a, b) => a - b)
   return sorted[Math.floor(sorted.length / 2)] ?? 0
@@ -159,13 +188,18 @@ function median(values: readonly number[]): number {
 // ============================================================
 // 一到四：三百个王朝
 // ============================================================
-console.log(`\n=== 年号与王朝史（${DYNASTIES} 个王朝 / ${LIVES} 世 / 宫里坠落 ${COURT_FALLS} 世）===\n`)
+console.log(
+  `\n=== 年号与王朝史（${DYNASTIES} 个王朝 / ${LIVES} 世 / 宫里坠落 ${COURT_FALLS} 世）===\n`,
+)
 
 let bad = 0
 const lengths: number[] = []
+const accessionAges: number[] = []
+const deathAges: number[] = []
 const structural: string[] = []
 const nameFaults: string[] = []
 const continuityFaults: string[] = []
+const personFaults: string[] = []
 let reignsSeen = 0
 
 for (let i = 0; i < DYNASTIES; i += 1) {
@@ -173,11 +207,19 @@ for (let i = 0; i < DYNASTIES; i += 1) {
   const reigns = foundDynasty(founding, 200, NAMES)
   reignsSeen += reigns.length
   structural.push(...faultsOfSuccession(reigns))
-  nameFaults.push(...faultsOfNames(reigns.map((r) => r.era), REAL_MING_ERAS))
+  personFaults.push(...faultsOfPersons(reigns))
+  nameFaults.push(
+    ...faultsOfNames(
+      reigns.map((r) => r.era),
+      REAL_MING_ERAS,
+    ),
+  )
   if (i < 30) continuityFaults.push(...faultsOfContinuity(reigns, founding, 200))
   for (const reign of reigns) {
     const years = reignYears(reign)
     if (years !== null) lengths.push(years)
+    accessionAges.push(reign.accession.year - reign.born)
+    if (reign.death) deathAges.push(reign.death.year - reign.born)
   }
 }
 
@@ -189,7 +231,9 @@ if (structural.length > 0) {
   for (const one of structural.slice(0, 4)) console.log(`      ${one}`)
   bad += 1
 } else {
-  console.log(`  ✓ 一、${reignsSeen} 位皇帝，即位在先帝崩的那个月，改元在次年正月；即位当年就没了的追称。`)
+  console.log(
+    `  ✓ 一、${reignsSeen} 位皇帝，即位在先帝崩的那个月，改元在次年正月；即位当年就没了的追称。`,
+  )
 }
 
 if (nameFaults.length > 0) {
@@ -222,7 +266,9 @@ if (nameFaults.length > 0) {
     console.log(`  ✗ 三、最长只有 ${longest} 年——嘉靖四十五、万历四十八，这个尾巴没长出来。`)
     bad += 1
   } else if (shortRate === 0 || shortRate > 0.12) {
-    console.log(`  ✗ 三、即位当年就没了的占 ${(shortRate * 100).toFixed(1)}%——泰昌那种要有，但不能常有。`)
+    console.log(
+      `  ✗ 三、即位当年就没了的占 ${(shortRate * 100).toFixed(1)}%——泰昌那种要有，但不能常有。`,
+    )
     bad += 1
   } else {
     console.log(`  ✓ 三、中位十几年、长尾过四十、偶有不满一年——是明代那张表的形状。`)
@@ -235,6 +281,35 @@ if (continuityFaults.length > 0) {
   bad += 1
 } else {
   console.log(`  ✓ 四、逐月走了 30 个王朝各 350 年，每个月都有年号，正月加一，改元归元年。`)
+}
+
+/**
+ * 六、皇帝是人。
+ *
+ * 三条硬的（`faultsOfPersons`），加两条形状的：即位年龄和寿数的中位。
+ * 阈值照明代那两张表的形状定——即位多在少年到壮年（中位二十上下），
+ * 寿数多半三四十岁（中位三十七）——不照实测数定。
+ */
+{
+  const accMid = median(accessionAges)
+  const deathMid = median(deathAges)
+  console.log(
+    `  皇帝其人：即位年龄中位 ${accMid} 岁，寿数中位 ${deathMid} 岁，` +
+      `幼主（十岁以下即位）${accessionAges.filter((a) => a <= 10).length} 位`,
+  )
+  if (personFaults.length > 0) {
+    console.log(`  ✗ 六、皇帝不像一个人，${personFaults.length} 处，例如：`)
+    for (const one of personFaults.slice(0, 4)) console.log(`      ${one}`)
+    bad += 1
+  } else if (accMid < 8 || accMid > 35) {
+    console.log(`  ✗ 六、即位年龄中位 ${accMid} 岁——明代十七帝多在少年到壮年之间接位。`)
+    bad += 1
+  } else if (deathMid < 28 || deathMid > 55) {
+    console.log(`  ✗ 六、寿数中位 ${deathMid} 岁——明代皇帝多半死在三四十岁上下。`)
+    bad += 1
+  } else {
+    console.log(`  ✓ 六、即位至少一岁，崩不早于即位，继任者比先帝年轻；即位年龄和寿数是明代的形状。`)
+  }
 }
 
 // ============================================================
@@ -261,7 +336,8 @@ function live(): Lived {
   })
   story.begin()
 
-  const bornEra = world.eraOf({ year: world.bornYear, month: world.bornMonth, day: 1 })?.name ?? null
+  const bornEra =
+    world.eraOf({ year: world.bornYear, month: world.bornMonth, day: 1 })?.name ?? null
 
   let turns = 0
   while (!narrative.ended && turns < 200) {
@@ -323,7 +399,9 @@ for (let tries = 0; tries < 20000 && fellSeen < COURT_FALLS; tries += 1) {
     console.log(`  ✗ 五、${lives.length} 世里没有一世跨过皇帝的死——「先帝崩」那一笔从来没记过。`)
     bad += 1
   } else if (doubled.length > 0) {
-    console.log(`  ✗ 五、${doubled.length} 世的编年上「父皇大行」和「先帝崩」挨在同一年——一件事记了两笔。`)
+    console.log(
+      `  ✗ 五、${doubled.length} 世的编年上「父皇大行」和「先帝崩」挨在同一年——一件事记了两笔。`,
+    )
     bad += 1
   } else if (fell.length < COURT_FALLS) {
     console.log(
@@ -332,7 +410,9 @@ for (let tries = 0; tries < 20000 && fellSeen < COURT_FALLS; tries += 1) {
     )
     bad += 1
   } else if (unlinked.length > 0) {
-    console.log(`  ✗ 五、${unlinked.length} 世父皇大行之后第二年年号没换——royal.ts 和王朝史各说各的。`)
+    console.log(
+      `  ✗ 五、${unlinked.length} 世父皇大行之后第二年年号没换——royal.ts 和王朝史各说各的。`,
+    )
     bad += 1
   } else {
     console.log(
@@ -364,15 +444,21 @@ for (let tries = 0; tries < 20000 && fellSeen < COURT_FALLS; tries += 1) {
     return era ? { ...era, year: era.year - 1 } : null
   }
   const caughtFour = faultsOfContinuity(sample, -150, 100, offByOne).length > 0
+  // 让第三位比先帝还年长（生年挪到先帝之前）——第六条必须红
+  const elder: Reign[] = sample.map((r, i) => (i === 2 ? { ...r, born: sample[1]!.born - 5 } : r))
+  const caughtSix = faultsOfPersons(elder).length > 0
 
-  if (!caughtOne || !caughtTwo || !caughtFour) {
+  if (!caughtOne || !caughtTwo || !caughtFour || !caughtSix) {
     console.log(
       `  ✗ 尺子自检没通过：当年改元${caughtOne ? '抓到了' : '没抓到'}，` +
-        `明代年号${caughtTwo ? '抓到了' : '没抓到'}，元年算成〇年${caughtFour ? '抓到了' : '没抓到'}。`,
+        `明代年号${caughtTwo ? '抓到了' : '没抓到'}，元年算成〇年${caughtFour ? '抓到了' : '没抓到'}，` +
+        `继任者比先帝老${caughtSix ? '抓到了' : '没抓到'}。`,
     )
     bad += 1
   } else {
-    console.log(`  ✓ 尺子自检：当年改元、词库混进万历、元年算成〇年，三样掰坏的都红在该红的那一条。`)
+    console.log(
+      `  ✓ 尺子自检：当年改元、词库混进万历、元年算成〇年、继任者比先帝老，四样掰坏的都红在该红的那一条。`,
+    )
   }
 }
 
@@ -382,15 +468,20 @@ for (let tries = 0; tries < 20000 && fellSeen < COURT_FALLS; tries += 1) {
   console.log(`\n  一个随机王朝的样子（立国于绝对年 -150）：`)
   for (const r of sample.slice(0, 8)) {
     const years = reignYears(r)
+    const deathAge = r.death ? r.death.year - r.born : null
     console.log(
-      `    ${r.era}　即位 ${r.accession.year}·${r.accession.month}　元年 ${r.eraFrom.year}·${r.eraFrom.month}　` +
-        `在位 ${years === null ? '—' : years === 0 ? '不满一年' : `${years} 年`}`,
+      `    ${r.era}　${r.accession.year - r.born} 岁即位（${r.accession.year}·${r.accession.month}）　` +
+        `元年 ${r.eraFrom.year}·${r.eraFrom.month}　` +
+        `在位 ${years === null ? '—' : years === 0 ? '不满一年' : `${years} 年`}` +
+        `${deathAge === null ? '' : `，${deathAge} 岁崩`}`,
     )
   }
   const now = { year: 0, month: 6 }
   const era = eraAt(sample, now)
   console.log(`    绝对年 0 年六月印出来是：${era ? describeEra(era) : '（无）'}`)
-  console.log(`    先后：${isBefore({ year: -1, month: 12 }, now) ? '去年腊月在今年六月之前' : '？'}`)
+  console.log(
+    `    先后：${isBefore({ year: -1, month: 12 }, now) ? '去年腊月在今年六月之前' : '？'}`,
+  )
 }
 
 console.log()
