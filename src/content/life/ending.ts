@@ -45,6 +45,9 @@ export const endingScenes: SceneLibrary = {
         blocks: [
           { kind: 'heading', title: '最后' },
           { kind: 'narration', text: '这一年冬天格外长。' },
+          // 年号进了记忆：他记得自己生在哪个年头，那个年号多半早换过了。
+          // 这是「旧年号不因改元消失」在正文里的第一处
+          { kind: 'narration', text: '你是{bornEra}年间生的人。', tone: 'faint' },
           {
             kind: 'narration',
             text: '你躺着的时候比坐着的时候多了。屋外的声音听得见，但懒得去分辨是谁。',

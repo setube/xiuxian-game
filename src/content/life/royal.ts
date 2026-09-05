@@ -227,6 +227,10 @@ export const royalScenes: SceneLibrary = {
           // 于是从这天起他是「宗室籍的寻常人家」，两格头一回劈开
           { type: 'household', standing: -60, station: '寻常' },
           { type: 'family', id: 'father', alive: false, note: '大行皇帝。你没有见到最后一面。' },
+          // 父皇大行不只是这一家的事，是天下换了年号。这一笔把它接进王朝史：
+          // 他的死从前只写在这一卷里，世界层不知道换了皇帝，别的出身也听不见。
+          // 现在他崩在这一刻，次年正月改元，标题上的年号会跟着换
+          { type: 'succession' },
           { type: 'family', id: 'mother', note: '随你迁出京城。头发白了一半。' },
           { type: 'identity', identity: '庶人' },
           // 身份改了不等于日子改了：削了封号他仍然可能住在宫里。

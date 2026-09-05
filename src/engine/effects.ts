@@ -913,6 +913,12 @@ function applyOne(
       const renamed = character.reveal(effect.item, effect.name, effect.note)
       return renamed ? record(`原来是 · ${effect.name}`, 'cinnabar') : null
     }
+    case 'succession': {
+      // 皇帝换了人。宫里那一支的「父皇大行」从这儿接进王朝史——
+      // 正文自己把这件事说了，这里不再记一笔（quiet）
+      world.succeed(true)
+      return null
+    }
     default: {
       // 新增 Effect 类型却忘了在此处理时，此行会编译报错
       const unreachable: never = effect
@@ -1032,6 +1038,7 @@ const PHASE = {
   daily: '事实',
   diary: '事实',
   reading: '事实',
+  succession: '事实',
 } satisfies { [K in Effect['type']]: '上下文' | '事实' }
 
 /**

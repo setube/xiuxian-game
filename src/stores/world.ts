@@ -2,9 +2,26 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { createId } from '@/engine/id'
+import {
+  endReign,
+  eraAt,
+  extendReigns,
+  foundDynasty,
+  isBefore,
+  yearMonth,
+  type YearMonth,
+} from '@/engine/dynasty'
+import { ERA_NAMES } from '@/content/eras'
 import { randomBetween } from '@/engine/random'
 import { newRegion, tickRegion, type Region } from '@/engine/worldclock'
-import type { ChronicleEntry, FlagValue, GameTime, InkTone, RegionState } from '@/types/game'
+import type {
+  ChronicleEntry,
+  FlagValue,
+  GameTime,
+  InkTone,
+  RegionState,
+  Reign,
+} from '@/types/game'
 
 import { useHouseholdStore } from './household'
 
@@ -94,6 +111,15 @@ export const useWorldStore = defineStore(
      */
     const bornMonth = ref(1)
     const chronicle = ref<ChronicleEntry[]>([])
+    /**
+     * 王朝史。规则在 `engine/dynasty.ts`，词库在 `content/eras.ts`。
+     *
+     * 立基时往前生成一两百年、往后生成一百多年，整段存档。
+     * 年号只管给人看和给人说；判定一律照旧读绝对年。
+     */
+    const reigns = ref<Reign[]>([])
+    /** 王朝史要生成到哪一年。玩家活不过一百二十岁，往后留够就行 */
+    const DYNASTY_HORIZON = 130
 
     const isNewGame = computed(() => chronicle.value.length === 0)
 
@@ -103,6 +129,7 @@ export const useWorldStore = defineStore(
      */
     function advanceTime(delta: TimeDelta): number {
       const previousYear = time.value.year
+      const previousMonth = time.value.month
 
       const monthIndex =
         (time.value.year - 1) * MONTHS_PER_YEAR +
@@ -120,6 +147,9 @@ export const useWorldStore = defineStore(
       // 时序一走，世界跟着走。玩家在私塾念书的那几年，
       // 外头的年景也在变——他多半只从米价上感觉得到
       if (years > 0) runWorld(years)
+      // 皇帝也在老。先看宫里那一位该不该定下来，再看这一步有没有跨过谁的死
+      settleThrone()
+      announceSuccessions({ year: previousYear, month: previousMonth }, yearMonth(time.value))
       return years
     }
 
@@ -170,7 +200,103 @@ export const useWorldStore = defineStore(
     function seedHistory(): void {
       bornYear.value = time.value.year
       bornMonth.value = time.value.month
+      seedDynasty()
       runWorld(Math.max(0, time.value.year - 1), true)
+    }
+
+    /**
+     * 立一个王朝，玩家生在它的中后段。
+     *
+     * 立国在出生前一百二十到两百年——参照的是嘉靖—万历，那正是一个王朝
+     * 一百五十到两百五十年上的光景。往前生这么多，老人口中才有
+     * 「那是承和年间的事了」可说；往后生一百三十年，玩家怎么活也活不出去。
+     *
+     * ## 宫里那一支的父亲不掷
+     *
+     * 生在宫里的孩子，龙椅上坐着的是他爹。他爹什么时候崩，`royal.ts` 说了算
+     * （十三到十五岁那一卷，掷出「倾」的才崩）——所以这里把那一位的 `death`
+     * 抹成 null，把他之后生成好的几位都删掉，等 `succession` 那一笔来填。
+     * 到十六岁那卷窗口过了他还没崩，`settleThrone` 再替世界掷一个。
+     */
+    function seedDynasty(): void {
+      const names = ERA_NAMES.map((one) => one.text)
+      const founding = time.value.year - randomBetween(120, 200)
+      let history = foundDynasty(founding, time.value.year + DYNASTY_HORIZON, names)
+
+      if (household.origin === 'court') {
+        const birth = yearMonth(time.value)
+        const i = history.findIndex(
+          (r) => !isBefore(birth, r.accession) && (!r.death || isBefore(birth, r.death)),
+        )
+        if (i >= 0) history = [...history.slice(0, i), { ...history[i]!, death: null }]
+      }
+      reigns.value = history
+    }
+
+    /**
+     * 宫里那一支：父亲的死一直悬着，到十六岁那卷窗口过了还没崩，就替世界定一个。
+     *
+     * 再活一到二十年——【抽象】不照在位表抽，因为他已经在位十几年了，
+     * 表上抽的是整段生涯。哪天写宫里那一卷（宫里与王府分开）再回头看这个数。
+     */
+    function settleThrone(): void {
+      const pending = reigns.value.findIndex((r) => r.death === null)
+      if (pending < 0 || time.value.year - bornYear.value < 16) return
+      const death = {
+        year: time.value.year + randomBetween(1, 20),
+        month: randomBetween(1, 12),
+      }
+      reigns.value = extendReigns(
+        [...reigns.value.slice(0, pending), { ...reigns.value[pending]!, death }],
+        time.value.year + DYNASTY_HORIZON,
+        ERA_NAMES.map((one) => one.text),
+      )
+    }
+
+    /**
+     * 这一步跨过了谁的死，就记一笔。所有出身都听得见——国丧是天下的事。
+     *
+     * 逾年改元的那一句是「诏明年改元某某」；即位当年就没了的（泰昌那种），
+     * 说的是「诏以本年为某某元年」。
+     */
+    function announceSuccessions(before: YearMonth, after: YearMonth): void {
+      reigns.value.forEach((reign, i) => {
+        if (!reign.death) return
+        if (!isBefore(before, reign.death)) return
+        if (isBefore(after, reign.death)) return
+        const next = reigns.value[i + 1]
+        if (!next) return record('先帝崩。', 'deep')
+        const decree =
+          next.eraFrom.year === reign.death.year
+            ? `诏以本年为${next.era}元年。`
+            : `诏明年改元${next.era}。`
+        record(`先帝崩。皇太子即位，${decree}`, 'deep')
+      })
+    }
+
+    /** 那一刻用的年号和第几年。给标题、编年、对话用；判定不读它 */
+    function eraOf(at: GameTime): { name: string; year: number } | null {
+      return eraAt(reigns.value, yearMonth(at))
+    }
+
+    /**
+     * 在位的这一位此刻崩了。宫里那一支的「父皇大行」从这儿接进王朝史。
+     *
+     * `quiet` 是给内容用的：`royal.ts` 自己把这件事说了，这里不再记一笔，
+     * 否则编年上会挨着两行「父皇大行」「先帝崩」。
+     */
+    function succeed(quiet = false): void {
+      const at = yearMonth(time.value)
+      reigns.value = endReign(
+        reigns.value,
+        at,
+        time.value.year + DYNASTY_HORIZON,
+        ERA_NAMES.map((one) => one.text),
+      )
+      if (quiet) return
+      const i = reigns.value.findIndex((r) => r.death && !isBefore(at, r.death) && !isBefore(r.death, at))
+      const next = reigns.value[i + 1]
+      record(next ? `先帝崩。皇太子即位，诏明年改元${next.era}。` : '先帝崩。', 'deep')
     }
 
     function moveTo(next: string): void {
@@ -232,6 +358,7 @@ export const useWorldStore = defineStore(
       bornYear.value = 0
       bornMonth.value = 1
       chronicle.value = []
+      reigns.value = []
     }
 
     return {
@@ -243,6 +370,9 @@ export const useWorldStore = defineStore(
       bornYear,
       bornMonth,
       chronicle,
+      reigns,
+      eraOf,
+      succeed,
       isNewGame,
       advanceTime,
       moveTo,

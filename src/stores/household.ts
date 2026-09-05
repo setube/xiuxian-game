@@ -100,7 +100,7 @@ export const useHouseholdStore = defineStore(
     const prefecture = ref(seat.name)
     /** 街巷村名这一级 */
     const locale = ref(pick(rolled.locales) ?? rolled.locales[0]!)
-    /** 家不在州府而在京城的（只有皇室），这里存「天启 · 皇城」 */
+    /** 家不在州府而在京城的（只有皇室），这里存「京师 · 皇城」 */
     const capital = ref<string | null>(rolled.capital ?? null)
 
     /** 完整门牌。三段拼出来，不再各处写死「云州 · 临江府」 */

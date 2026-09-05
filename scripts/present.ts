@@ -60,6 +60,25 @@ const TOO_COMMON: readonly string[] = ['孩子', '徒弟', '老人', '家里人'
 const TALKING_ABOUT_DEATH = /不在了|没了|殁|走了|下葬|坟|丧|头七|再没有消息/
 
 /**
+ * 一个字的称呼是别的词的零件，撞上不算数。
+ *
+ * 娘没了之后，正文里出现「姑娘」「新娘」「娘娘」，或者一枚回执
+ * 「原来他叫 · 秦娘」（一个叫秦娘的妇人，「娘」是她名字的后缀），
+ * 判据按子串找「娘」都会撞上——头一版就是在这儿闪红的，一百世里两三世。
+ * 一道会无故红的门禁比没有门禁更坏：它训练人无视它。
+ *
+ * 只挡这几个词，不把「娘」整个放进 `TOO_COMMON`：娘是这条判据存在的理由
+ * （那个 bug 原本就是娘没了之后「整日跟在母亲身后」），整个放掉就是拆了尺子。
+ */
+const INNOCENT_CONTEXTS: readonly string[] = ['姑娘', '新娘', '娘娘', '原来他叫']
+
+/** 这一句里的「娘」是不是别的词的零件 */
+function innocent(text: string, calls: string): boolean {
+  if (calls.length > 1) return false
+  return INNOCENT_CONTEXTS.some((word) => text.includes(word))
+}
+
+/**
  * 整卷都是回想的那几卷，不算数。
  *
  * **一个人可以想起死去的人**——「你逃过好几回学，那条河边的日头，
@@ -131,11 +150,13 @@ for (let i = 0; i < RUNS; i += 1) {
         const text = item.block.text
         if (!text || !text.includes(calls)) continue
         if (TALKING_ABOUT_DEATH.test(text)) continue
+        if (innocent(text, calls)) continue
         ghosts.push({ who: id, calls, where: '正文', text })
       }
       for (const option of narrative.options) {
         const label = option.choice.label
         if (!label.includes(calls)) continue
+        if (innocent(label, calls)) continue
         ghosts.push({ who: id, calls, where: '选项', text: label })
       }
     }

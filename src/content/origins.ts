@@ -409,7 +409,7 @@ export const ORIGINS: readonly Origin[] = [
     father: '当今天子。你一年见他的次数，数得过来。',
     mother: '你的生母。位分不高不低，在宫里说话轻。',
     opening: [
-      { kind: 'narration', text: '你生在天启皇城，{here}。' },
+      { kind: 'narration', text: '你生在京师，皇城{here}。' },
       { kind: 'narration', text: '{elder}是当今天子。你上头有七个兄姐，下头还会有更多。' },
       {
         kind: 'narration',

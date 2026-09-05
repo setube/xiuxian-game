@@ -5,6 +5,9 @@
  * 把内部刻度翻译成程度词再列成一栏，仍然是一块传统 RPG 数值面板，
  * 只是把数字换成了词。角色对自己的认知由 Aspect 承担（见 engine/aspects.ts）。
  */
+import { getActivePinia } from 'pinia'
+
+import { useWorldStore } from '@/stores/world'
 import type { GameTime } from '@/types/game'
 
 const DIGITS = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九'] as const
@@ -67,8 +70,31 @@ export function describeDate(time: GameTime): string {
 }
 
 /** 「第十六年 · 三月初七」 —— 状态栏与编年逐条用。 */
+/**
+ * 年号纪年的那一句：「景和元年」「承宁十二年」。
+ *
+ * 头一年说「元年」不说「一年」——那是这套纪年法的固定说法，不是修辞。
+ */
+export function describeEra(era: { name: string; year: number }): string {
+  return era.year === 1 ? `${era.name}元年` : `${era.name}${toChineseNumber(era.year)}年`
+}
+
+/**
+ * 「景和十六年 · 三月初七」——时序的完整说法。
+ *
+ * ## 这一行从前印的是「第十六年 · 三月初七」
+ *
+ * 一个明代人不会这么说时间。「第十六年」是绝对年，那是给引擎判定用的刻度，
+ * 跟 `standing`、`root` 一样不该上界面——而它上了，还上在每一节的标题上。
+ * 现在它退回去只当尺子，年号是给人读的那一层（`engine/dynasty.ts`）。
+ *
+ * 王朝史还没立起来的时候（存档恢复的间隙、没有 pinia 的走查）退回绝对年，
+ * 不报错：这一行不该因为拿不到年号就让整个标题炸掉。
+ */
 export function describeStamp(time: GameTime): string {
-  return `第${toChineseNumber(time.year)}年 · ${describeDate(time)}`
+  const era = getActivePinia() ? useWorldStore().eraOf(time) : null
+  const year = era ? describeEra(era) : `第${toChineseNumber(time.year)}年`
+  return `${year} · ${describeDate(time)}`
 }
 
 /** 「人间 · 第十六年 · 三月初七」 —— 场景标题的完整时序。 */

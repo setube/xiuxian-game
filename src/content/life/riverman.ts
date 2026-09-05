@@ -98,7 +98,7 @@ export const rivermanScenes: SceneLibrary = {
         id: 'as-highborn',
         onEnter: [
           { type: 'time', days: 2 },
-          // 王府开在藩地，皇城在天启。渡口这一卷落在他家那个府，
+          // 王府开在藩地，皇城在京师。渡口这一卷落在他家那个府，
           // 所以得先把人挪过来——别业是暂住，不改「家在哪」
           { type: 'place', place: '{province} · {prefecture} · 别业' },
           // 这一步留下的旗标，是下面那条选项唯一的入场券。

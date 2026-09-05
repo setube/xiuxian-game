@@ -1,6 +1,7 @@
 import { useCharacterStore } from '@/stores/character'
 import { useHouseholdStore } from '@/stores/household'
 import { usePeopleStore } from '@/stores/people'
+import { useWorldStore } from '@/stores/world'
 import type { Bond, Manner, NarrativeBlock } from '@/types/game'
 
 import { kinCall, titleNow } from './address'
@@ -49,7 +50,7 @@ import { isNearby } from './nearby'
  * 而「此刻在不在行礼」根本不是一种状态，它是一句话的属性。
  */
 const TOKENS =
-  /\{(name|home|province|prefecture|here|livelihood|elder|elders|dam|chore|putsAway|title)\}/g
+  /\{(name|home|province|prefecture|here|livelihood|elder|elders|dam|chore|putsAway|title|era|bornEra)\}/g
 
 /**
  * 挑一个还在身边的关系人，按给定的优先次序。
@@ -184,6 +185,7 @@ export function fillString(text: string, manner: Manner = '家常'): string {
 
   const character = useCharacterStore()
   const household = useHouseholdStore()
+  const world = useWorldStore()
 
   return text.replace(TOKENS, (_, token: string) => {
     if (token === 'elder') return elderCall(manner)
@@ -197,8 +199,20 @@ export function fillString(text: string, manner: Manner = '家常'): string {
     if (token === 'province') return household.province
     if (token === 'prefecture') return household.prefecture
     if (token === 'here') return household.locale
+    // 年号：`{era}` 是此刻的，`{bornEra}` 是他生下来那年的。
+    // 老人说「那是承和年间的事了」靠的是后者——旧年号不因改元消失。
+    // 王朝史还没立起来时给「本朝」，别让一句话里露出空白
+    if (token === 'era') return eraCall(world.time)
+    if (token === 'bornEra') {
+      return eraCall({ year: world.bornYear, month: world.bornMonth, day: 1 })
+    }
     return household.livelihood
   })
+}
+
+/** 那一刻的年号。拿不到就说「本朝」，一句话里不能空一块 */
+function eraCall(at: { year: number; month: number; day: number }): string {
+  return useWorldStore().eraOf(at)?.name ?? '本朝'
 }
 
 /** 把一段正文里的占位符换成这一世的实情。没有占位符的原样返回。 */
