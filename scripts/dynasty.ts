@@ -308,7 +308,9 @@ if (continuityFaults.length > 0) {
     console.log(`  ✗ 六、寿数中位 ${deathMid} 岁——明代皇帝多半死在三四十岁上下。`)
     bad += 1
   } else {
-    console.log(`  ✓ 六、即位至少一岁，崩不早于即位，继任者比先帝年轻；即位年龄和寿数是明代的形状。`)
+    console.log(
+      `  ✓ 六、即位至少一岁，崩不早于即位，继任者比先帝年轻；即位年龄和寿数是明代的形状。`,
+    )
   }
 }
 

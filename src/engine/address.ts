@@ -99,3 +99,58 @@ export function kinCall(bond: Bond, rank?: string, manner: Manner = '家常'): s
 export function titleNow(): string {
   return titleFor(useCharacterStore().identity, useHouseholdStore().gender)
 }
+
+// ============================================================
+// 社会称谓：人怎么叫人
+// ============================================================
+
+/**
+ * 邻里的称呼。
+ *
+ * ## 这是称谓的第三层，跟前两层并列
+ *
+ * 血亲走 `kinCall`（教养决定「爹」还是「父亲」），爵位走 `RANK_CALLS`
+ * （对方是不是亲王）。邻居两边都不是：她不是你的什么人，也没有封号，
+ * 可你每天都要叫她。这一层回答的是**「人怎么叫人」**，不是「NPC 头顶显示什么」。
+ *
+ * ## 决策维度（用户 2026-09-06 定），不是一张查表
+ *
+ *     说话的是谁　　　　九岁的孩子，还是三十岁的人
+ *     对方是谁　　　　　姓什么、男女、多大年纪
+ *     两人什么关系　　　邻户（眼下只有这一种）
+ *     场合　　　　　　　家常，还是文书里
+ *
+ * 同一个王氏：孩子叫「王婶」，他娘叫「王嫂」，官府文书写「王氏」。
+ * 「王婶」不是因为 `gender === '女'`，是因为**一个孩子在叫一个年长的妇人**——
+ * 那孩子三十岁了再叫「王婶」就不对了，该叫「王嫂」；她七十岁了该叫「王婆婆」。
+ * 所以这一层**不存结果，每次现算**（`people.callOf`），维度里的年纪是活的。
+ *
+ * ## 这张表只有第一批邻居内容用到的几格
+ *
+ * 用户明令：不要现在就把「王婶」「老周」这类规则全部编码死。明代同一称谓
+ * 受地域、亲疏、年龄、身份、语境影响，眼下写的是第一批真实邻居内容
+ * （荒年借粮那一句）逼出来的几格，别的等内容来逼。查不到的落回「姓 + 家的」——
+ * 那正是不熟的邻居在口语里的叫法，不是一句占位的空话。
+ */
+export function neighbourCall(
+  target: { surname: string; gender: '男' | '女' },
+  targetAge: number,
+  speakerAge: number,
+  manner: '家常' | '礼上',
+): string {
+  const { surname, gender } = target
+  // 文书体：官府的册子上没有「婶」，只有「氏」
+  if (manner === '礼上') return gender === '女' ? `${surname}氏` : `${surname}某`
+
+  const elderly = targetAge >= 55
+  const grown = targetAge >= 16
+  const childSpeaking = speakerAge < 16
+
+  if (elderly) return gender === '女' ? `${surname}婆婆` : `${surname}老爹`
+  if (grown) {
+    if (childSpeaking) return gender === '女' ? `${surname}婶` : `${surname}叔`
+    return gender === '女' ? `${surname}嫂` : `老${surname}`
+  }
+  // 对方还是个孩子：谁叫都叫「王家的」——名字要玩过才知道，那是另一格
+  return `${surname}家的`
+}

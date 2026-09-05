@@ -1,15 +1,17 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import { kinCall } from '@/engine/address'
+import { kinCall, neighbourCall } from '@/engine/address'
 import { createId } from '@/engine/id'
 import { pick, randomBetween } from '@/engine/random'
 import type {
   Acquaintance,
+  Adjacency,
   Bond,
   Chapter,
   Fate,
   Gender,
+  House,
   Person,
   Relation,
   Temper,
@@ -60,6 +62,13 @@ export const usePeopleStore = defineStore(
      * 不因为他死了就没发生过。**
      */
     const relations = ref<Relation[]>([])
+    /**
+     * 世界上别的人家。玩家自家不在这里（它在 `household` 那个仓库），
+     * 邻接边里用 `'home'` 指它。见 `types/game.ts` 的 `House`。
+     */
+    const houses = ref<Record<string, House>>({})
+    /** 户与户相邻。独立事实，不从「同村」推 */
+    const adjacent = ref<Adjacency[]>([])
 
     /** 玩家认识几个人。人际面板的角标 */
     const acquaintedCount = computed(() => Object.keys(known.value).length)
@@ -119,7 +128,50 @@ export const usePeopleStore = defineStore(
         const learnt = kinCall(bond, roster.value[id]?.rank, '家常')
         if (learnt) return learnt
       }
+      /*
+       * 邻居的称呼不存，现算。
+       *
+       * 「王婶」是一个九岁孩子叫的；他三十岁了还这么叫就不对了，该叫「王嫂」；
+       * 她七十岁了该叫「王婆婆」。存一个字符串就是又一个「28岁。还在襁褓里」——
+       * 写死的字段活得比事实久。所以每次问都重新算，算的维度见 `neighbourCall`。
+       */
+      const neighbour = roster.value[id]
+      if (neighbour && isNeighbour(id)) {
+        return neighbourCall(neighbour, ageOf(id), world.time.year - world.bornYear, '家常')
+      }
       return acquaintance.calls
+    }
+
+    /** 把一户人家记进世界。已在册的不动 */
+    function enrollHouse(house: House): void {
+      if (houses.value[house.id]) return
+      houses.value = { ...houses.value, [house.id]: house }
+    }
+
+    /** 声明两户相邻。同一对不重复记 */
+    function adjoin(a: string, b: string): void {
+      if (adjacent.value.some((edge) => (edge.a === a && edge.b === b) || (edge.a === b && edge.b === a))) {
+        return
+      }
+      adjacent.value = [...adjacent.value, { a, b, since: world.time.year }]
+    }
+
+    /** 这个人是哪一户的。玩家自家的人不在任何一户里（自家在 `household` 仓库） */
+    function houseOf(personId: string): House | undefined {
+      return Object.values(houses.value).find((house) => house.members.includes(personId))
+    }
+
+    /** 跟玩家自家相邻的那几户 */
+    function neighbourHouses(): House[] {
+      return adjacent.value
+        .filter((edge) => edge.a === 'home' || edge.b === 'home')
+        .map((edge) => houses.value[edge.a === 'home' ? edge.b : edge.a])
+        .filter((house): house is House => house !== undefined)
+    }
+
+    /** 这个人是不是邻居家的人 */
+    function isNeighbour(personId: string): boolean {
+      return neighbourHouses().some((house) => house.members.includes(personId))
     }
 
     /** 把一个人记进世界。已经在册的不动——同一个人不该被造两次 */
@@ -316,12 +368,21 @@ export const usePeopleStore = defineStore(
       roster.value = {}
       known.value = {}
       relations.value = []
+      houses.value = {}
+      adjacent.value = []
     }
 
     return {
       roster,
       known,
       relations,
+      houses,
+      adjacent,
+      enrollHouse,
+      adjoin,
+      houseOf,
+      neighbourHouses,
+      isNeighbour,
       guardians,
       acquaintedCount,
       personOf,
@@ -344,7 +405,7 @@ export const usePeopleStore = defineStore(
       reset,
     }
   },
-  { persist: { key: 'xiuxian:people', pick: ['roster', 'known', 'relations'] } },
+  { persist: { key: 'xiuxian:people', pick: ['roster', 'known', 'relations', 'houses', 'adjacent'] } },
 )
 
 /** 掷一个脾性 */

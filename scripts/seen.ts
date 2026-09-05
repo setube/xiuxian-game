@@ -85,8 +85,8 @@ const ENOUGH = 60
 /** 全库所有写了「所见」的节点 */
 interface Watched {
   where: string
-  /** 到过这一节的证据：正文里的头一句 */
-  arrival: string
+  /** 到过这一节的证据：这一节（或它分流去的那几节）正文里的头一句，任一句落纸就算到过 */
+  arrivals: string[]
   lines: { text: string; requires: string }[]
 }
 
@@ -109,14 +109,40 @@ function describe(requires: readonly Condition[]): string {
     .join(' 且 ')
 }
 
+/**
+ * 一句正文有没有落在这一世的纸上。
+ *
+ * 正文里可能带占位符（`{dam}`、`{call:east-wife}`），落纸时换成了「娘」「方婶」，
+ * 拿原文整句去比永远比不上。所以按占位符把原文切成几段字面，
+ * 一段一段都在同一句里就算这一句出现过。
+ */
+function landed(life: readonly string[], pattern: string): boolean {
+  const segments = pattern.split(/\{[^}]+\}/).filter((s) => s.length > 0)
+  return life.some((text) => segments.every((s) => text.includes(s)))
+}
+
 const watched: Watched[] = []
 for (const [sceneId, scene] of Object.entries(lifeScenes)) {
   for (const [nodeId, node] of Object.entries(scene.nodes)) {
     if (!node.seen?.length) continue
-    const first = node.blocks.find((block) => 'text' in block && !block.text.includes('{'))
+    /*
+     * 「走到了这一节」拿什么认：这一节自己的头一句正文。
+     *
+     * 没有正文的节（开场交给征象、然后按条件分流的那种，`dearth:price#open`）
+     * 拿它分流去的那几节的头一句认——走到它就一定走到了其中一节。
+     * 头一版这儿留空，而空串在 `string[]` 上 `includes` 恒为 false，
+     * 于是那一节永远「没人走到」，底下的话被判成白写的。
+     */
+    const firstText = (n: { blocks: readonly { text?: string }[] } | undefined): string | null =>
+      n?.blocks.find((block) => typeof block.text === 'string')?.text ?? null
+    const own = firstText(node)
+    const onward = [...(node.branches ?? []).map((b) => b.next), node.next ?? '']
+      .filter((id): id is string => id.length > 0)
+      .map((id) => firstText(scene.nodes[id]))
+      .filter((text): text is string => text !== null)
     watched.push({
       where: `${sceneId}#${nodeId}`,
-      arrival: first && 'text' in first ? first.text : '',
+      arrivals: own ? [own] : onward,
       lines: node.seen.map((one) => ({ text: one.text, requires: describe(one.requires) })),
     })
   }
@@ -142,7 +168,7 @@ const lives = (
 ).flat()
 
 for (const node of watched) {
-  const arrived = lives.filter((text) => text.includes(node.arrival))
+  const arrived = lives.filter((life) => node.arrivals.some((a) => landed(life, a)))
   console.log(`\n  【${node.where}】${arrived.length} / ${RUNS} 世走到了这一节\n`)
 
   if (arrived.length === 0) {
@@ -152,8 +178,8 @@ for (const node of watched) {
   }
 
   const shapes = new Map<string, number>()
-  for (const text of arrived) {
-    const got = node.lines.filter((line) => text.includes(line.text)).map((line) => line.text)
+  for (const life of arrived) {
+    const got = node.lines.filter((line) => landed(life, line.text)).map((line) => line.text)
     const key = got.length === 0 ? '（白板）' : got.join(' ｜ ')
     shapes.set(key, (shapes.get(key) ?? 0) + 1)
   }
@@ -161,7 +187,7 @@ for (const node of watched) {
   const thin = arrived.length < ENOUGH
   const pct = (n: number) => ((n / arrived.length) * 100).toFixed(1).padStart(5)
   for (const line of node.lines) {
-    const hit = arrived.filter((text) => text.includes(line.text)).length
+    const hit = arrived.filter((life) => landed(life, line.text)).length
     const bad = !thin && (hit === 0 || hit === arrived.length)
     const flag = !bad ? '  ' : hit === 0 ? '✗ 没人读到' : '✗ 人人都读到'
     console.log(`    ${pct(hit)}%  ${flag}  ${line.text}`)

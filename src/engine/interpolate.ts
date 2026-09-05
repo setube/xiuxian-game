@@ -50,7 +50,7 @@ import { isNearby } from './nearby'
  * 而「此刻在不在行礼」根本不是一种状态，它是一句话的属性。
  */
 const TOKENS =
-  /\{(name|home|province|prefecture|here|livelihood|elder|elders|dam|chore|putsAway|title|era|bornEra)\}/g
+  /\{(name|home|province|prefecture|here|livelihood|elder|elders|dam|chore|putsAway|title|era|bornEra|call|house)(?::([\w-]+))?\}/g
 
 /**
  * 挑一个还在身边的关系人，按给定的优先次序。
@@ -187,7 +187,7 @@ export function fillString(text: string, manner: Manner = '家常'): string {
   const household = useHouseholdStore()
   const world = useWorldStore()
 
-  return text.replace(TOKENS, (_, token: string) => {
+  return text.replace(TOKENS, (_, token: string, arg: string | undefined) => {
     if (token === 'elder') return elderCall(manner)
     if (token === 'dam') return damCall(manner)
     if (token === 'elders') return eldersCall(manner)
@@ -199,6 +199,15 @@ export function fillString(text: string, manner: Manner = '家常'): string {
     if (token === 'province') return household.province
     if (token === 'prefecture') return household.prefecture
     if (token === 'here') return household.locale
+    /*
+     * `{call:east-wife}`——玩家此刻怎么称呼这个人；`{house:east}`——那一户叫什么（王家）。
+     *
+     * 带参数的记号是给**生成出来的人**用的：邻居的姓是立基时掷的，正文写不出
+     * 「王婶」三个字，只能写「叫她的那个词」。称呼每次现算（`people.callOf`），
+     * 九岁时是「王婶」，三十岁时是「王嫂」——同一句正文，落纸的字跟着人一起变老。
+     */
+    if (token === 'call') return usePeopleStore().callOf(arg ?? '')
+    if (token === 'house') return houseCall(arg ?? '')
     // 年号：`{era}` 是此刻的，`{bornEra}` 是他生下来那年的。
     // 老人说「那是承和年间的事了」靠的是后者——旧年号不因改元消失。
     // 王朝史还没立起来时给「本朝」，别让一句话里露出空白
@@ -213,6 +222,12 @@ export function fillString(text: string, manner: Manner = '家常'): string {
 /** 那一刻的年号。拿不到就说「本朝」，一句话里不能空一块 */
 function eraCall(at: { year: number; month: number; day: number }): string {
   return useWorldStore().eraOf(at)?.name ?? '本朝'
+}
+
+/** 那一户叫什么：「王家」。查不到就是「邻家」——一句话里不能空一块 */
+function houseCall(id: string): string {
+  const house = usePeopleStore().houses[id]
+  return house ? `${house.surname}家` : '邻家'
 }
 
 /** 把一段正文里的占位符换成这一世的实情。没有占位符的原样返回。 */

@@ -8,7 +8,7 @@ import {
 import { pick, randomBetween } from '@/engine/random'
 import { makePerson, rollTemper, usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
-import type { Bond, Chapter, Gender, OriginId } from '@/types/game'
+import type { Bond, Chapter, Gender, Livelihood, OriginId } from '@/types/game'
 
 /**
  * 出生。
@@ -198,10 +198,146 @@ export function beBorn(id: OriginId, home: string): Birth {
       ? father.surname
       : (people.personOf(circumstance.kin[0]?.id ?? '')?.surname ?? surname)
 
+  // 东邻西舍。姓定下来了才能立——邻居不能跟自家同姓
+  settleNeighbours({
+    people,
+    id,
+    origin,
+    home,
+    bornYear,
+    surname: finalSurname,
+    flags: circumstance.flags ?? [],
+  })
+
   return {
     name: `${finalSurname}${pick(origin.given) ?? '生'}`,
     circumstance,
   }
+}
+
+/**
+ * 住的是什么样的地方。
+ *
+ * **这是在替还没建的地域层说话。** 邻接该由真实居所决定（地域三层：
+ * 府／县；城／镇／村；脚下那一处），眼下那一层没有，只能从出身和境况里
+ * 读出「他住在什么样的地方」：皇城里没有邻户，王府占一整片，寺里的邻居是
+ * 僧人，讨饭和逃难的没有固定居所。
+ *
+ * 读的是**住处**，不是过什么日子——`living` 是生活方式，不是空间位置，
+ * 拿它判「人在村里」正是 `signs.ts` 从前的毛病。地域三层落地后这个函数整个删掉。
+ */
+function residenceKind(
+  origin: { capital?: string; station: string },
+  flags: readonly string[],
+): 'house' | 'palace' | 'manor' | 'temple' | 'none' {
+  if (origin.capital) return 'palace'
+  if (origin.station === '宗室') return 'manor'
+  if (flags.includes('in-temple')) return 'temple'
+  if (flags.includes('begging') || flags.includes('separated')) return 'none'
+  return 'house'
+}
+
+/** 东邻、西邻。两户，不多不少——第一批内容只用得着这两户 */
+const NEIGHBOUR_SIDES = ['east', 'west'] as const
+
+/**
+ * 立东邻西舍。
+ *
+ * ## 邻接属于户，关系属于人
+ *
+ * 这里造的是**两户人家**（`House`），各有户主、多半有主妇、零到三个孩子，
+ * 全都进人口册，跟玩家自家一样会老、会死（`people.live`）。
+ * 户与户相邻是一条独立的事实（`adjoin`），**不从「同村」推出来**——
+ * 同村不等于两家宅子挨着；这里是立基时明确声明「这两户挨着你家」。
+ * 人与人的边一条也不牵：王二是不是你的朋友，得等真发生过什么。
+ *
+ * ## 一出生就「认识」，跟爹娘一样
+ *
+ * `meet` 进玩家的册子，好感零。称呼不存——`people.callOf` 每次现算
+ * （九岁叫「王婶」，三十岁叫「王嫂」），这儿填的那句只是查不到时的兜底。
+ *
+ * ## 邻居的营生跟这条巷子走
+ *
+ * 村里的邻居种地，铁匠巷的邻居打铁，布庄隔壁多半也是铺子。
+ * 「东邻是个屠户」那种分别，等有内容要它的时候再掷。
+ */
+function settleNeighbours(input: {
+  people: ReturnType<typeof usePeopleStore>
+  id: OriginId
+  origin: { capital?: string; station: string; livelihood: Livelihood }
+  home: string
+  bornYear: number
+  surname: string
+  flags: readonly string[]
+}): void {
+  const { people, id, origin, home, bornYear, surname, flags } = input
+  if (residenceKind(origin, flags) !== 'house') return
+
+  const taken = new Set([surname])
+  for (const side of NEIGHBOUR_SIDES) {
+    let family = pick(SURNAMES) ?? '王'
+    for (let guard = 0; taken.has(family) && guard < 20; guard += 1) family = pick(SURNAMES) ?? '王'
+    taken.add(family)
+
+    const headBorn = bornYear - randomBetween(24, 50)
+    const head = makePerson({
+      id: `${side}-head`,
+      surname: family,
+      given: pick(MALE_GIVEN[id]) ?? '大有',
+      gender: '男',
+      bornYear: headBorn,
+      doing: origin.livelihood,
+      place: home,
+    })
+    people.enroll(head)
+    people.meet(head.id, '邻家的人', 0)
+    const members = [head.id]
+
+    if (Math.random() < 0.8) {
+      // 她姓自己的姓——「王家的」是夫家，「刘氏」是她自己
+      const wife = makePerson({
+        id: `${side}-wife`,
+        surname: pick(SURNAMES) ?? '刘',
+        given: pick(FEMALE_GIVEN) ?? '巧云',
+        gender: '女',
+        bornYear: headBorn + randomBetween(-2, 6),
+        place: home,
+      })
+      people.enroll(wife)
+      people.meet(wife.id, '邻家的妇人', 0)
+      members.push(wife.id)
+    }
+
+    // 比玩家大零到十二岁：能一起玩的年纪。不生在玩家之后——那是以后的事，到时再添
+    const children = randomBetween(0, 3)
+    for (let n = 1; n <= children; n += 1) {
+      const gender: Gender = Math.random() < 0.5 ? '男' : '女'
+      const child = makePerson({
+        id: `${side}-child-${n}`,
+        surname: family,
+        given:
+          gender === '女' ? (pick(FEMALE_GIVEN) ?? '小满') : (pick(MALE_GIVEN[id]) ?? '二牛'),
+        gender,
+        bornYear: bornYear - randomBetween(0, 12),
+        place: home,
+      })
+      people.enroll(child)
+      people.meet(child.id, '邻家的孩子', 0)
+      members.push(child.id)
+    }
+
+    people.enrollHouse({
+      id: side,
+      surname: family,
+      head: head.id,
+      members,
+      residence: home,
+      livelihood: origin.livelihood,
+    })
+    people.adjoin('home', side)
+  }
+  // 东邻和西邻也挨着——三家在同一条巷子上
+  people.adjoin('east', 'west')
 }
 
 /**
