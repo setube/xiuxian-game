@@ -2,7 +2,7 @@
 /**
  * 正文里不许无条件假定出身。
  *
- * 跑法：`npx vite-node scripts/upbringing.ts`
+ * 跑法：`bun scripts/upbringing.ts`
  *
  * ## 这一道是被一段穿帮逼出来的
  *
@@ -42,7 +42,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { BEATS, DOINGS } from '../src/content/days'
 import { DAMPERS, LEANINGS, SPARKS } from '../src/content/leanings'
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
-import { ALL_LIVINGS, LIVINGS, livingOfKeeper, livingOfOrigin } from '../src/content/living'
+import { ALL_LIVINGS, LIVINGS, livingOfOrigin } from '../src/content/living'
 import { CIRCUMSTANCES } from '../src/content/circumstances'
 import { meetsAll } from '../src/engine/conditions'
 import { fillString } from '../src/engine/interpolate'
@@ -219,7 +219,7 @@ const FROM_ORIGIN: readonly string[] = [...new Set(Object.values(LIVINGS).map((o
 const FROM_KEEPER: readonly string[] = [
   ...new Set(
     CIRCUMSTANCES.flatMap((one) => one.kin)
-      .map((kin) => livingOfKeeper(kin.doing ?? '')?.id)
+      .map((kin) => kin.living)
       .filter((id): id is string => id !== undefined),
   ),
 ]
@@ -267,10 +267,10 @@ const MIDLIFE_IDS: readonly string[] = ALL_IDS.filter((id) => !BORN_IDS.includes
  */
 function livingsOfCircumstance(one: (typeof CIRCUMSTANCES)[number]): readonly string[] {
   const keeper = one.kin
-    .filter((kin) => kin.bond === '抚养' && kin.doing !== undefined)
-    .map((kin) => livingOfKeeper(kin.doing ?? ''))
+    .filter((kin) => kin.bond === '抚养')
+    .map((kin) => kin.living)
     .find((living) => living !== undefined)
-  return keeper === undefined ? FROM_ORIGIN : [keeper.id, ...FROM_ORIGIN]
+  return keeper === undefined ? FROM_ORIGIN : [keeper, ...FROM_ORIGIN]
 }
 
 /**
@@ -390,19 +390,30 @@ function linesOf(node: SceneNode): string[] {
 interface Fixture {
   label: string
   origin: OriginId
-  /** 指望被什么人养大。空着就是自家大人带 */
-  keeper?: string
+  /**
+   * 指望被外人养大。空着就是自家大人带。
+   *
+   * 从前这一格存的是那个人的**营生**（「讨饭的」），因为当时
+   * 「他过什么日子」正是拿营生当键查出来的。两件事拆开之后
+   * （见 `types/game.ts` 的 `Person.living`），这一格只剩一个意思：
+   * 该不该有一个自带日子的抚养人。是哪一种日子，`living` 那一格说了算。
+   */
+  keeper?: true
   /** 该解析出哪一种日子。这一格是给尺子自检用的 */
   living: string
 }
 
 /**
- * 用户点名的那七种人家。
+ * 用户点名的那几种人家，加上后来补的一行。
  *
- * 前五种走出身，后两种走抚养——**后两种才是这套东西真正的考题**：
- * 家里的籍还是民户、业还是务农，日子过的却是讨饭和寺里，正文得听后者的。
- * 所以后两种的 `origin` 一律写 `farm`：**那正是它们该出的丑**——
- * 出身那一行一个字没变，而日子整个换了。
+ * 走出身的那几行（`keeper` 空着）跟走抚养的那几行（`keeper: true`）
+ * 是两类，而**走抚养的才是这套东西真正的考题**：
+ * 家里的籍还是民户、业还是务农，日子过的却是讨饭、寺里、没有落脚的地方，
+ * 正文得听后者的。所以它们的 `origin` 一律写 `farm`：
+ * **那正是它们该出的丑**——出身那一行一个字没变，而日子整个换了。
+ *
+ * 这里不写各有几行：数一数 `FIXTURES.length` 就知道，而写进散文里的数
+ * 会随着补行漂掉，且没有任何一次跑会提醒你回头看它。
  */
 const FIXTURES: readonly Fixture[] = [
   { label: '农户', origin: 'farm', living: 'farm' },
@@ -410,8 +421,18 @@ const FIXTURES: readonly Fixture[] = [
   { label: '布庄', origin: 'cloth', living: 'shop' },
   { label: '当差', origin: 'office', living: 'office' },
   { label: '宫里', origin: 'court', living: 'palace' },
-  { label: '寺中孤儿', origin: 'farm', keeper: '寺中的老僧', living: 'temple' },
-  { label: '乞丐收养', origin: 'farm', keeper: '讨饭的', living: 'begging' },
+  { label: '寺中孤儿', origin: 'farm', keeper: true, living: 'temple' },
+  { label: '乞丐收养', origin: 'farm', keeper: true, living: 'begging' },
+  /*
+   * 战乱失散这一行是补进来的。
+   *
+   * 从前七行里没有它，于是 `adrift` 那种日子**没有任何一条判据钉着**。
+   * 差点因此丢掉：那个抚养人的日子从前是拿他的营生当键查出来的，
+   * 而那句营生（「逃难路上的人」）是一句会过期的话，为了不让它
+   * 二十年后还挂在面板上而删掉时，`adrift` 会跟着一起没了——
+   * 七行 FIXTURES 全绿，界面上什么也看不出来。
+   */
+  { label: '战乱失散', origin: 'farm', keeper: true, living: 'adrift' },
 ]
 
 const CALM = { rain: 55, harvest: 58, grain: 112, order: 66, plague: 0 }
@@ -437,10 +458,10 @@ function bear(fixture: Fixture): boolean {
 
     const keepers = people.guardians
       .filter((id) => people.isAlive(id))
-      .map((id) => people.personOf(id)?.doing ?? '')
-      .filter((doing) => livingOfKeeper(doing) !== undefined)
+      .map((id) => people.personOf(id)?.living)
+      .filter((living): living is string => living !== undefined)
     const hit =
-      fixture.keeper === undefined ? keepers.length === 0 : keepers.includes(fixture.keeper)
+      fixture.keeper === undefined ? keepers.length === 0 : keepers.includes(fixture.living)
     if (hit) return true
   }
   return false

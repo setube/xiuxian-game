@@ -2,7 +2,7 @@
 /**
  * 一个人管家里人叫什么，取决于他是在哪儿学会说话的。
  *
- * 跑法：`npx vite-node scripts/address.ts`
+ * 跑法：`bun scripts/address.ts`
  *
  * ## 这一道守的是什么
  *
@@ -68,7 +68,6 @@ import {
 } from '../src/content/address'
 import { lifeScenes } from '../src/content/life'
 import { birthSceneId } from '../src/content/life/birth'
-import { livingOfKeeper } from '../src/content/living'
 import { ORIGINS } from '../src/content/origins'
 import { kinCall } from '../src/engine/address'
 import { applyEffects } from '../src/engine/effects'
@@ -390,7 +389,7 @@ function born(id: OriginId, gender: Gender): boolean {
 
     const adopted = people.guardians
       .filter((id) => people.isAlive(id))
-      .some((id) => livingOfKeeper(people.personOf(id)?.doing ?? '') !== undefined)
+      .some((id) => people.personOf(id)?.living !== undefined)
     if (adopted) continue
     if (!people.kinOf('生父').some(isNearby)) continue
     if (!people.kinOf('生母').some(isNearby)) continue

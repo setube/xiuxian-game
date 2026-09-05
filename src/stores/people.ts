@@ -343,6 +343,8 @@ export function makePerson(input: {
   gender: Gender
   bornYear: number
   doing?: string
+  /** 他过的是什么日子。绝大多数人不写——他们过的就是这个家的日子 */
+  living?: string
   temper?: Temper
   health?: number
   place: string
@@ -355,6 +357,7 @@ export function makePerson(input: {
     gender: input.gender,
     bornYear: input.bornYear,
     doing: input.doing,
+    living: input.living,
     temper: input.temper ?? rollTemper(),
     health: input.health ?? randomBetween(40, 80),
     place: input.place,

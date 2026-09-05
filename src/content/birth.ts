@@ -167,6 +167,9 @@ export function beBorn(id: OriginId, home: string): Birth {
         // 兄姐弟妹这一格**空着**：小孩子说不上营生，而「还没成人」
         // 是年龄的另一种说法，它旁边就写着岁数（见 `types/game.ts`）
         doing: kin.doing ?? (gap > 15 ? origin.livelihood : undefined),
+        // 他过的是什么日子。绝大多数人不写这一格，自然落回这个家；
+        // 写了的抚养人（老僧、老乞丐、战乱里收留你的人）的日子盖过这个家
+        living: kin.living,
         temper: rollTemper(),
         health: randomBetween(40, 85),
         place: home,

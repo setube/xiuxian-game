@@ -264,16 +264,20 @@ export const LIVINGS: Record<OriginId, Living> = {
  * 姐姐、兄长、叔父把你拉扯大都走这一条，**而那是对的**：
  * 家还是那个家，只是当家的人换了。
  */
-const KEEPER_LIVINGS: Readonly<Record<string, Living>> = {
-  讨饭的: BEGGING,
-  寺中的老僧: TEMPLE,
-  逃难路上的人: ADRIFT,
-}
-
-/** 把你养大的那个人过的是什么日子。他的营生对不上任何一种，就返回 undefined */
-export function livingOfKeeper(doing: string): Living | undefined {
-  return KEEPER_LIVINGS[doing]
-}
+/*
+ * 这里从前有一张 `KEEPER_LIVINGS`：拿抚养人的**营生**当键，
+ * 查他过的是什么日子（`讨饭的 → BEGGING`、`逃难路上的人 → ADRIFT`）。
+ *
+ * 那张表让 `Person.doing` 一格说了两件事——面板上给人读的一句话，
+ * 和一个判定用的键。它的注释里写着「这里改一个字，那边就查不到，
+ * 静默落回这个家」，而**没有任何机器看着那句警告**。
+ *
+ * 后来真踩中了：「逃难路上的人」是一句会过期的话（逃难会结束），
+ * 为了不让它二十年后还挂在面板上而删掉，`adrift` 那种日子就跟着没了。
+ *
+ * 现在「他过什么日子」有自己的一格（`Person.living`），
+ * 存的是这份内容里的 id，由 `livingById` 换回来。
+ */
 
 /** 这一行出身对应哪一种日子 */
 export function livingOfOrigin(id: OriginId): Living {

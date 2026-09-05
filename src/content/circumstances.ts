@@ -48,13 +48,25 @@ export interface Kin {
   /**
    * 他做什么营生。留空就跟着这家人的**业**走。
    *
-   * 填了的这三个（讨饭的、寺中的老僧、逃难路上的人）不只是一句显示文字：
-   * `living.ts` 拿它们当键查「这个人过的是什么日子」，
-   * 而那一查会盖过这个家——**你生在哪一家已经不重要了，
-   * 你过的是把你养大的那个人的日子。**所以这里改一个字，
-   * 那边就查不到，静默落回这个家。改动前先看 `KEEPER_LIVINGS`。
+   * 这一格只管**面板上给人读的那句话**。它从前还兼着一个差事：
+   * `living.ts` 拿它当键查「这个人过的是什么日子」，于是改一个字
+   * 那边就静默落回这个家。那个差事现在归 `living` 那一格。
+   *
+   * 填之前问一句：**这句话十年后还成立吗？**「寺中的老僧」成立，
+   * 「讨饭的」成立，「逃难路上的人」不成立——逃难会结束，
+   * 而这一格出生那天写下就再也不动（见 `types/game.ts` 的 `Person.doing`）。
    */
   doing?: string
+  /**
+   * 他过的是什么日子（`content/living.ts` 里那一格的 id）。
+   *
+   * 写了这一格的抚养人，他的日子**盖过这个家**：老乞丐捡去养大的孩子，
+   * 籍和业仍然是他生在的那一家的，可他过的是讨饭的日子。
+   *
+   * 留空是常态——姐姐把你拉扯大的，她身上没有单独的日子，
+   * 自然落回这个家，而那正是对的：家还是那个家。
+   */
+  living?: string
 }
 
 export interface Circumstance {
@@ -185,7 +197,9 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
     id: 'temple-foundling',
     summary: '生下来就被丢在庙门口，寺里收留了',
     weight: 6,
-    kin: [{ id: 'monk', bond: '抚养', calls: '师父', older: 40, doing: '寺中的老僧' }],
+    kin: [
+      { id: 'monk', bond: '抚养', calls: '师父', older: 40, doing: '寺中的老僧', living: 'temple' },
+    ],
     standing: -18,
     flags: ['foundling', 'no-parents', 'in-temple'],
   },
@@ -193,7 +207,9 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
     id: 'beggar-foundling',
     summary: '幼年被遗弃，老乞丐把你捡了回去',
     weight: 5,
-    kin: [{ id: 'beggar', bond: '抚养', calls: '老丈', older: 46, doing: '讨饭的' }],
+    kin: [
+      { id: 'beggar', bond: '抚养', calls: '老丈', older: 46, doing: '讨饭的', living: 'begging' },
+    ],
     standing: -28,
     flags: ['foundling', 'no-parents', 'begging'],
   },
@@ -208,7 +224,14 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
     id: 'war-separated',
     summary: '战乱中出生，与父母失散，被陌生人带走',
     weight: 4,
-    kin: [{ id: 'keeper', bond: '抚养', calls: '收留你的人', older: 38, doing: '逃难路上的人' }],
+    // 营生那一格空着，日子那一格写着。他从前只有一格，写的是
+    // 「逃难路上的人」——那一个字符串同时干着两件事：面板上给人读，
+    // 和当键去查这个孩子过什么日子。而**逃难会结束**，
+    // 那句话二十年后还挂在面板上就跟「28岁。还在襁褓里」一样荒唐，
+    // 可删掉它，`adrift` 那种日子会跟着一起没了，界面上什么也看不出来。
+    // 拆成两格之后：营生说不上就空着（面板落回这家的业），
+    // 日子明写着 adrift——它是**开局**的日子，往后允许被内容改掉
+    kin: [{ id: 'keeper', bond: '抚养', calls: '收留你的人', older: 38, living: 'adrift' }],
     standing: -24,
     flags: ['separated', 'unknown-origin'],
   },

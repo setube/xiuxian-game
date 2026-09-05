@@ -2,7 +2,7 @@
 /**
  * 一个人离开原来的生活以后，原来的人际关系怎么办。
  *
- * 跑法：`npx vite-node scripts/apart.ts`
+ * 跑法：`bun scripts/apart.ts`
  *
  * ## 这一道守的是一条界线
  *
@@ -61,7 +61,6 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import { BEATS, DOINGS } from '../src/content/days'
 import { lifeScenes } from '../src/content/life'
-import { livingOfKeeper } from '../src/content/living'
 import { originById } from '../src/content/origins'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
@@ -375,7 +374,7 @@ function born(id: OriginId): boolean {
 
     const adopted = people.guardians
       .filter((id) => people.isAlive(id))
-      .some((id) => livingOfKeeper(people.personOf(id)?.doing ?? '') !== undefined)
+      .some((id) => people.personOf(id)?.living !== undefined)
     if (adopted) continue
     if (people.kinOf('生父').length === 0) continue
     if (!people.isAlive('mother')) continue

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import { type Living, livingOfKeeper, livingOfOrigin } from '@/content/living'
+import { type Living, livingById, livingOfOrigin } from '@/content/living'
 import { ORIGINS, SURNAMES, originById, type Origin } from '@/content/origins'
 import { PREFECTURES, type Prefecture } from '@/content/geography'
 import { pick, pickWeighted, randomBetween } from '@/engine/random'
@@ -163,12 +163,27 @@ export const useHouseholdStore = defineStore(
      *
      * 这跟 `interpolate.ts` 的 `callByBond(['生父','抚养','生母'])`
      * 是同一条纪律：**先问关系网，再落笔。**
+     *
+     * ## 「那个人过的是什么日子」从前是拿营生当键查出来的
+     *
+     * 从前这里查的是一张 `doing → Living` 的表
+     * （`讨饭的 → BEGGING`、`逃难路上的人 → ADRIFT`）。
+     * 那让 `doing` 一格说了两件事：面板上给人读的一句话，和一个判定用的键。
+     * 当时的注释里写着「这里改一个字，那边就查不到，静默落回这个家」——
+     * 一句写给人的警告，而没有任何机器看着它。
+     *
+     * 后来真踩中了：「逃难路上的人」是一句会过期的话（逃难会结束），
+     * 删掉它的那一刻 `adrift` 那种日子跟着一起没了，界面上什么也看不出来。
+     * 现在读的是 `Person.living` 那一格，两件事各归各的。
      */
     const living = computed<Living>(() => {
       const people = usePeopleStore()
       for (const id of people.guardians) {
         if (!people.isAlive(id)) continue
-        const keeper = livingOfKeeper(people.personOf(id)?.doing ?? '')
+        const id_ = people.personOf(id)?.living
+        // 拼错的 id 在这里静默落回这个家，跟 `livingById` 那边同一种降级。
+        // 拦它的是 `scripts/verify.ts`：全库的 living id 都得解析得到
+        const keeper = id_ ? livingById(id_) : undefined
         if (keeper) return keeper
       }
       return livingOfOrigin(origin.value)

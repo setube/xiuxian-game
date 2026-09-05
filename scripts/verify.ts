@@ -82,7 +82,7 @@
  *
  * 它跟第五道搭同一趟车——那三百世跑完，人还在，顺手扫一眼人际面板就够了。
  *
- * 跑法：npx vite-node scripts/verify.ts
+ * 跑法：bun scripts/verify.ts
  * 失败会以非零码退出，可以直接挂进 CI。
  */
 import { readFileSync } from 'node:fs'
@@ -95,7 +95,7 @@ import { ERRANDS } from '../src/content/errands'
 import { HINDSIGHTS } from '../src/content/hindsight'
 import { INFORMANTS } from '../src/content/informants'
 import { DAMPERS, SPARKS } from '../src/content/leanings'
-import { LIVINGS, livingOfKeeper } from '../src/content/living'
+import { LIVINGS } from '../src/content/living'
 import { OPENINGS } from '../src/content/openings'
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { CHAPTERS } from '../src/content/life/chapters'
@@ -731,8 +731,7 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
   for (const living of Object.values(LIVINGS)) madeLivings.add(living.id)
   for (const one of CIRCUMSTANCES) {
     for (const kin of one.kin) {
-      const keeper = livingOfKeeper(kin.doing ?? '')
-      if (keeper) madeLivings.add(keeper.id)
+      if (kin.living) madeLivings.add(kin.living)
     }
   }
 

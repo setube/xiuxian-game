@@ -23,7 +23,7 @@
  * 这一支跑**真的人生**，守的是「那一行字到死都还成立」——
  * 这个坏法只在活过几十年之后才显形，构造数据量不到。
  *
- * 跑法：npx vite-node scripts/note.ts
+ * 跑法：bun scripts/note.ts
  */
 import { createPinia, setActivePinia } from 'pinia'
 
@@ -46,16 +46,22 @@ const RUNS = 300
 /**
  * 这一格里不该出现的话。
  *
- * **这是一本登记簿，不是一张完备的表。** 它登记的是这一格真的犯过的错：
- * 往「他做什么营生」里填了「他多大」。判据靠它是有局限的——
- * 换一句没登记过的年龄话（「尚在总角」），这一条照样绿。
+ * **这是一本登记簿，不是一张完备的表。** 它登记的是这一格真的犯过的错，
+ * 两类：
  *
- * 之所以还是要它，是因为**这一格是自由字符串，故意不枚举**
+ *     年龄话　　「还在襁褓里」「还没成人」——他多大写在这一行左边了
+ *     会过去的事　「逃难路上的人」——逃难会结束，而这一格不会跟着改
+ *
+ * 两类是同一个毛病：往「他做什么营生」里填了**一个当时的状态**。
+ * 状态会过去，营生不会，而这一格出生那天写下就再也不动——
+ * 从前人生到十六岁为止，写什么都还没来得及过期。
+ *
+ * 判据靠它是有局限的：换一句没登记过的话（「尚在总角」「路上的人」），
+ * 这一条照样绿。之所以还是要它，是因为**这一格是自由字符串，故意不枚举**
  * （世上的营生数不完，见 `types/game.ts`）。没有一个「什么算营生」的集合
- * 可以照着判，能判的只有「什么明显不是」。
- * 再往这儿填年龄话的时候，加一行到这里来。
+ * 可以照着判，能判的只有「什么明显不是」。再犯一次就加一行到这里来。
  */
-const NOT_A_LIVELIHOOD: readonly string[] = ['襁褓', '成人', '岁']
+const NOT_A_LIVELIHOOD: readonly string[] = ['襁褓', '成人', '岁', '逃难', '路上']
 
 /** 一个人的那一行字，连同他当时多大 */
 interface Line {
@@ -69,6 +75,8 @@ const grown: Line[] = []
 const offenders: Line[] = []
 /** 落回了家业的外人。一个也不该有 */
 const strangersWorkingTheFarm: Line[] = []
+/** 这一批里这一格出现过哪些话。第一条查的就是它们，印出来才知道查过了什么 */
+const everyDoing = new Map<string, number>()
 let people_seen = 0
 
 for (let i = 0; i < RUNS; i += 1) {
@@ -114,6 +122,7 @@ for (let i = 0; i < RUNS; i += 1) {
     if (person.doing && NOT_A_LIVELIHOOD.some((word) => person.doing!.includes(word))) {
       offenders.push(line)
     }
+    if (person.doing) everyDoing.set(person.doing, (everyDoing.get(person.doing) ?? 0) + 1)
     // 外人身上不许出现这家的营生。他自己写着「教你认字」的不算——
     // 那是他自己的，落回来的才算
     if (!athome && !person.doing && line.text.includes(household.livelihood)) {
@@ -191,6 +200,19 @@ console.log(
     `其中长到成年的自家孩子 ${grown.length} 个`,
 )
 
+/*
+ * 这一格出现过哪些话，全印出来。
+ *
+ * 第一条查的就是这张单子，**不印出来就不知道它查过了什么**：
+ * 「逃难路上的人」是境遇自带的一句，掷不中那个境遇，第一条对它就是空的，
+ * 而空着跟查过了长得一模一样。单子短，直接全列。
+ */
+console.log(`\n  这一格这一批里出现过 ${everyDoing.size} 种说法：`)
+for (const [doing, n] of [...everyDoing.entries()].sort((a, b) => b[1] - a[1])) {
+  console.log(`    ${String(n).padStart(5)}  ${doing}`)
+}
+console.log()
+
 /**
  * 四、尺子自检：把改前那句话放回去，第一条必须红。
  *
@@ -198,13 +220,17 @@ console.log(
  * `person.doing` 因为改成可空而永远取不到值，它都会一声不吭地绿着。
  */
 {
-  const wrong = { id: 'son', doing: '还在襁褓里' }
-  const caught = NOT_A_LIVELIHOOD.some((word) => wrong.doing.includes(word))
-  if (!caught) {
-    console.log(`  ✗ 尺子自检没通过：把「${wrong.doing}」摆到跟前，这把尺子没认出来。`)
+  const wrong = ['还在襁褓里', '逃难路上的人']
+  const missed = wrong.filter((one) => !NOT_A_LIVELIHOOD.some((word) => one.includes(word)))
+  if (missed.length > 0) {
+    console.log(
+      `  ✗ 尺子自检没通过：${missed.map((m) => `「${m}」`).join('、')}摆到跟前，认不出来。`,
+    )
     bad += 1
   } else {
-    console.log(`  ✓ 尺子自检：「${wrong.doing}」摆到跟前，认得出来。`)
+    console.log(
+      `  ✓ 尺子自检：${wrong.map((w) => `「${w}」`).join('、')}摆到跟前，两句都认得出来。`,
+    )
   }
 }
 

@@ -2,7 +2,7 @@
 /**
  * 一个人现在过什么日子，是会变的；而他从前过过的日子，一段也不许丢。
  *
- * 跑法：`npx vite-node scripts/living.ts`
+ * 跑法：`bun scripts/living.ts`
  *
  * ## 这一道守的是什么
  *
@@ -46,7 +46,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { BEATS, DOINGS } from '../src/content/days'
 import { lifeScenes } from '../src/content/life'
 import { SPARKS } from '../src/content/leanings'
-import { livingById, livingOfKeeper } from '../src/content/living'
+import { livingById } from '../src/content/living'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
 import { fillString } from '../src/engine/interpolate'
@@ -276,7 +276,7 @@ function born(id: OriginId): boolean {
 
     const adopted = people.guardians
       .filter((one) => people.isAlive(one))
-      .some((one) => livingOfKeeper(people.personOf(one)?.doing ?? '') !== undefined)
+      .some((one) => people.personOf(one)?.living !== undefined)
     if (!adopted) return true
   }
   return false
