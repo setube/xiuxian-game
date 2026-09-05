@@ -64,7 +64,7 @@ export const encounterScenes: SceneLibrary = {
           { type: 'attend' },
         ],
         blocks: [
-          { kind: 'narration', text: '那天你走山道去邻村。' },
+          { kind: 'narration', text: '那天你走山道去{nearbyVillage}。' },
           {
             kind: 'narration',
             text: '路很长，走了大半日。日头偏西的时候，你在下坡那一段歇了歇脚。',
@@ -104,7 +104,7 @@ export const encounterScenes: SceneLibrary = {
         onEnter: [{ type: 'time', days: 1 }],
         blocks: [
           { kind: 'narration', text: '歇够了，你接着赶路。' },
-          { kind: 'narration', text: '天黑前到了邻村，事情办完，第二天就回去了。' },
+          { kind: 'narration', text: '天黑前到了{nearbyVillage}，事情办完，第二天就回去了。' },
           { kind: 'narration', text: '这一趟没有什么可说的。', tone: 'faint' },
         ],
       },
@@ -176,7 +176,7 @@ export const encounterScenes: SceneLibrary = {
         onEnter: [{ type: 'time', days: 1 }],
         blocks: [
           { kind: 'narration', text: '你绕开那片草丛，接着赶路。' },
-          { kind: 'narration', text: '天黑前到了邻村，事情办完，第二天就回去了。' },
+          { kind: 'narration', text: '天黑前到了{nearbyVillage}，事情办完，第二天就回去了。' },
           { kind: 'narration', text: '路上你没再想起这件事。', tone: 'faint' },
         ],
       },
@@ -258,7 +258,7 @@ export const encounterScenes: SceneLibrary = {
         onEnter: [{ type: 'time', days: 1 }],
         blocks: [
           { kind: 'divider', variant: 'dots' },
-          { kind: 'narration', text: '你接着赶路。天黑前到了邻村。', tone: 'faint' },
+          { kind: 'narration', text: '你接着赶路。天黑前到了{nearbyVillage}。', tone: 'faint' },
         ],
       },
 
@@ -267,7 +267,7 @@ export const encounterScenes: SceneLibrary = {
         onEnter: [{ type: 'time', days: 1 }],
         blocks: [
           { kind: 'narration', text: '你贴着路的另一边走过去，没有回头。' },
-          { kind: 'narration', text: '天黑前到了邻村，事情办完，第二天就回去了。' },
+          { kind: 'narration', text: '天黑前到了{nearbyVillage}，事情办完，第二天就回去了。' },
           { kind: 'narration', text: '回程时你特意看了那一段路。草丛压平了一片，人不在了。' },
           {
             kind: 'narration',

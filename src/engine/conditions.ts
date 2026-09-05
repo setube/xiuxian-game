@@ -176,6 +176,22 @@ const CHECKS = {
 
   gender: (gender, { household }) => household.gender === gender,
 
+  /**
+   * 住在什么样的地方、归在哪一级聚落。
+   *
+   * 「谁看得见村口」从前拿 `living` 猜——一个住在府城的木匠也被算成村里人。
+   * 生活方式不是空间位置：这一格读 `world.residence` 那一处是宅还是宫，
+   * 和它归的是村、镇、城还是京师。
+   */
+  dwelling: (dwelling, { world }) => {
+    if (dwelling.kind !== undefined && !dwelling.kind.includes(world.residenceKind())) return false
+    if (dwelling.settlement !== undefined) {
+      const here = world.settlementKind()
+      if (here === null || !dwelling.settlement.includes(here)) return false
+    }
+    return true
+  },
+
   stage: (stage, { character }) => stageOf(character.age) === stage,
 } satisfies { [K in keyof Condition]-?: Check<K> }
 

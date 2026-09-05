@@ -7,9 +7,8 @@
  * 用户 2026-09-06 定的：**邻接属于户，关系属于人，空间是独立事实。**
  * 三条线各有各的坏法，这一支分头守：
  *
- *   一、谁家有邻居——住在皇城、王府、寺里、路上的孩子没有东邻；住在户里的有两户。
- *       这一条眼下是从出身和境况里读的（`birth.ts` 的 `residenceKind`），
- *       在替还没建的地域层说话；地域三层落地后它换成真实居所，这一条跟着改
+ *   一、谁家有邻居——住在宫、王府、寺里、没有居所的孩子没有东邻；住在宅里的有两户。
+ *       这一条读的是 `world.residence`（地域层立的那一处），不是出身也不是日子
  *   二、户是户——邻接边两头都是真的户，户主在成员里，成员都在人口册上，
  *       邻居不跟自家同姓，东邻西邻不同姓
  *   三、称呼是算出来的——九岁叫「王婶」，三十岁叫「王嫂」，七十岁的她是「王婆婆」；
@@ -28,12 +27,19 @@ import { useStory } from '../src/engine/story'
 import { useHouseholdStore } from '../src/stores/household'
 import { useNarrativeStore } from '../src/stores/narrative'
 import { usePeopleStore } from '../src/stores/people'
-import type { Adjacency, House } from '../src/types/game'
+import { useWorldStore } from '../src/stores/world'
+import type { Adjacency, House, ResidenceKind } from '../src/types/game'
 
 /** 只立基不活下去。一次几毫秒，一千五百次把十一种出身、十种境况都掷到 */
 const BIRTHS = 1500
-/** 活完整世的。荒年那一句要等粮价涨到那一步，一百二十世够采几十回 */
+/**
+ * 活完整世的至少这么多。荒年那一句要等粮价涨到那一步、东邻主妇还在，
+ * 一百二十世里只落两三回——固定一百二十世判「零世读到」，四十次会无故红一次。
+ * 所以再往下掷，掷到读到两回为止，封顶四百世。
+ */
 const LIVES = 120
+const LIVES_CAP = 400
+const BORROWINGS_WANTED = 2
 
 // ============================================================
 // 判据本体
@@ -73,7 +79,7 @@ console.log(`\n=== 东邻西舍（立基 ${BIRTHS} 次 / 活完 ${LIVES} 世）=
 
 let bad = 0
 
-type Kind = 'house' | 'palace' | 'manor' | 'temple' | 'none'
+type Kind = ResidenceKind
 const byKind = new Map<Kind, { lives: number; wrong: number }>()
 const houseFaults: string[] = []
 
@@ -81,25 +87,20 @@ for (let i = 0; i < BIRTHS; i += 1) {
   setActivePinia(createPinia())
   const household = useHouseholdStore()
   const people = usePeopleStore()
+  const world = useWorldStore()
   useNarrativeStore()
-  const story = useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale })
+  const story = useStory(lifeScenes, {
+    events: lifeEvents,
+    routine: lifeRoutine,
+    finale: lifeFinale,
+  })
   story.begin()
 
-  // 照 birth.ts 那把尺子分类——读的是住处（皇城／王府／寺／无定所），不是日子。
-  // 寺里、讨饭、逃难这三种从抚养人认：`monk` / `beggar` / `keeper` 是境况表里写死的 id，
-  // 比旗标可靠——境况的 flags 眼下没有任何一处立成世界旗标（见下面那条注）
-  const guardians = people.guardians
-  const kind: Kind = household.capital
-    ? 'palace'
-    : household.station === '宗室'
-      ? 'manor'
-      : guardians.includes('monk')
-        ? 'temple'
-        : guardians.includes('beggar') || guardians.includes('keeper')
-          ? 'none'
-          : 'house'
+  // 照住处分：脚下那一处是宅、宫、王府、寺，还是没有居所。
+  // 这一格现在是世界里的真事（`world.residence`），不再从出身境况猜
+  const kind = world.residenceKind()
   const count = people.neighbourHouses().length
-  const expected = kind === 'house' ? 2 : 0
+  const expected = kind === '宅' ? 2 : 0
   const slot = byKind.get(kind) ?? { lives: 0, wrong: 0 }
   slot.lives += 1
   if (count !== expected) slot.wrong += 1
@@ -118,23 +119,27 @@ for (let i = 0; i < BIRTHS; i += 1) {
 {
   console.log('  住处　　　　立基次数　邻户数不对的')
   const missing: Kind[] = []
-  for (const kind of ['house', 'palace', 'manor', 'temple', 'none'] as const) {
+  for (const kind of ['宅', '宫', '王府', '寺', '无'] as const) {
     const slot = byKind.get(kind)
     if (!slot) {
       missing.push(kind)
       continue
     }
-    console.log(`    ${kind.padEnd(10)}${String(slot.lives).padStart(6)}${String(slot.wrong).padStart(10)}`)
+    console.log(
+      `    ${kind.padEnd(10)}${String(slot.lives).padStart(6)}${String(slot.wrong).padStart(10)}`,
+    )
   }
   const wrong = [...byKind.values()].reduce((sum, slot) => sum + slot.wrong, 0)
   if (missing.length > 0) {
     console.log(`  ✗ 一、${BIRTHS} 次立基没掷到 ${missing.join('、')}，这一条没验全。`)
     bad += 1
   } else if (wrong > 0) {
-    console.log(`  ✗ 一、${wrong} 次立基的邻户数不对——住在户里的该有两户，皇城／王府／寺／路上该一户没有。`)
+    console.log(
+      `  ✗ 一、${wrong} 次立基的邻户数不对——住在户里的该有两户，皇城／王府／寺／路上该一户没有。`,
+    )
     bad += 1
   } else {
-    console.log(`  ✓ 一、住在户里的两户邻居，皇城、王府、寺里、路上一户也没有。`)
+    console.log(`  ✓ 一、住在宅里的两户邻居，宫、王府、寺里、没有居所的一户也没有。`)
   }
 }
 
@@ -168,7 +173,9 @@ if (houseFaults.length > 0) {
     for (const c of wrong) console.log(`      ${c.why}：得到「${c.got}」，该是「${c.want}」`)
     bad += 1
   } else {
-    console.log(`  ✓ 三、${cases.length} 种叫法各归各：谁在叫、叫谁、多大、什么场合，四维都在起作用。`)
+    console.log(
+      `  ✓ 三、${cases.length} 种叫法各归各：谁在叫、叫谁、多大、什么场合，四维都在起作用。`,
+    )
   }
 }
 
@@ -186,11 +193,16 @@ interface Lived {
 }
 
 const lives: Lived[] = []
-for (let i = 0; i < LIVES; i += 1) {
+const borrowingsSoFar = (): number => lives.filter((l) => l.borrowing !== null).length
+while (lives.length < LIVES || (borrowingsSoFar() < BORROWINGS_WANTED && lives.length < LIVES_CAP)) {
   setActivePinia(createPinia())
   const narrative = useNarrativeStore()
   const people = usePeopleStore()
-  const story = useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale })
+  const story = useStory(lifeScenes, {
+    events: lifeEvents,
+    routine: lifeRoutine,
+    finale: lifeFinale,
+  })
   story.begin()
 
   const hasEastWife = people.personOf('east-wife') !== undefined
@@ -222,8 +234,7 @@ for (let i = 0; i < LIVES; i += 1) {
   lives.push({
     hasEastWife,
     callAtBirth,
-    callAtDeath:
-      hasEastWife && people.isAlive('east-wife') ? people.callOf('east-wife') : null,
+    callAtDeath: hasEastWife && people.isAlive('east-wife') ? people.callOf('east-wife') : null,
     borrowing,
     leaked,
   })
@@ -231,24 +242,29 @@ for (let i = 0; i < LIVES; i += 1) {
 
 {
   const withWife = lives.filter((l) => l.hasEastWife)
-  const birthWrong = withWife.filter((l) => !(l.callAtBirth?.endsWith('婶') || l.callAtBirth?.endsWith('婆婆')))
+  const birthWrong = withWife.filter(
+    (l) => !(l.callAtBirth?.endsWith('婶') || l.callAtBirth?.endsWith('婆婆')),
+  )
   const deathWrong = withWife.filter(
-    (l) => l.callAtDeath !== null && !(l.callAtDeath.endsWith('嫂') || l.callAtDeath.endsWith('婆婆')),
+    (l) =>
+      l.callAtDeath !== null && !(l.callAtDeath.endsWith('嫂') || l.callAtDeath.endsWith('婆婆')),
   )
   const borrowed = lives.filter((l) => l.borrowing !== null)
   const rawInText = borrowed.filter((l) => /[{}A-Za-z]/.test(l.borrowing ?? ''))
   const leaked = lives.flatMap((l) => l.leaked)
 
   console.log(
-    `\n  覆盖：${LIVES} 世 / 有东邻主妇的 ${withWife.length} 世 / 荒年那一句读到 ${borrowed.length} 世`,
+    `\n  覆盖：${lives.length} 世 / 有东邻主妇的 ${withWife.length} 世 / 荒年那一句读到 ${borrowed.length} 世`,
   )
   if (borrowed.length > 0) console.log(`  那一句落纸的样子：${borrowed[0]!.borrowing}`)
 
   if (withWife.length === 0) {
-    console.log(`  ✗ 四、${LIVES} 世里没有一世有东邻主妇——后面几条根本没被验过。`)
+    console.log(`  ✗ 四、${lives.length} 世里没有一世有东邻主妇——后面几条根本没被验过。`)
     bad += 1
   } else if (leaked.length > 0) {
-    console.log(`  ✗ 四、邻居的称呼里露出了英文或 id：${[...new Set(leaked)].slice(0, 3).join('；')}`)
+    console.log(
+      `  ✗ 四、邻居的称呼里露出了英文或 id：${[...new Set(leaked)].slice(0, 3).join('；')}`,
+    )
     bad += 1
   } else if (birthWrong.length > 0) {
     console.log(
@@ -262,7 +278,7 @@ for (let i = 0; i < LIVES; i += 1) {
     )
     bad += 1
   } else if (borrowed.length === 0) {
-    console.log(`  ✗ 四、${LIVES} 世没有一世读到荒年借粮那一句——邻居系统的第一个使用者没人读到。`)
+    console.log(`  ✗ 四、${lives.length} 世没有一世读到荒年借粮那一句——邻居系统的第一个使用者没人读到。`)
     bad += 1
   } else if (rawInText.length > 0) {
     console.log(`  ✗ 四、荒年那一句落纸时没换干净：${rawInText[0]!.borrowing}`)
@@ -287,7 +303,16 @@ for (let i = 0; i < LIVES; i += 1) {
   // 邻居跟自家同姓——第二条必须红
   const caughtSame =
     faultsOfHouses(
-      { east: { id: 'east', surname: '沈', head: 'h', members: ['h'], residence: '村', livelihood: '务农' } },
+      {
+        east: {
+          id: 'east',
+          surname: '沈',
+          head: 'h',
+          members: ['h'],
+          residence: '村',
+          livelihood: '务农',
+        },
+      },
       [],
       new Set(['h']),
       '沈',

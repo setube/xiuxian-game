@@ -14,9 +14,21 @@ import {
   type YearMonth,
 } from '@/engine/dynasty'
 import { ERA_NAMES } from '@/content/eras'
-import { randomBetween } from '@/engine/random'
+import { COUNTY_NAMES } from '@/content/geography'
+import { pick, randomBetween } from '@/engine/random'
+import { residenceKindOf, settlementOf, siblingsOf } from '@/engine/places'
 import { newRegion, tickRegion, type Region } from '@/engine/worldclock'
-import type { ChronicleEntry, FlagValue, GameTime, InkTone, RegionState, Reign } from '@/types/game'
+import type {
+  ChronicleEntry,
+  FlagValue,
+  GameTime,
+  InkTone,
+  Place,
+  RegionState,
+  Reign,
+  ResidenceKind,
+  SettlementKind,
+} from '@/types/game'
 
 import { useHouseholdStore } from './household'
 
@@ -115,6 +127,15 @@ export const useWorldStore = defineStore(
     const reigns = ref<Reign[]>([])
     /** 王朝史要生成到哪一年。玩家活不过一百二十岁，往后留够就行 */
     const DYNASTY_HORIZON = 130
+    /**
+     * 地域。只有玩家身边那几处：他的府、县、镇或城、村或街、宅，邻村，邻县。
+     * 不是整个天下——一个人一辈子也走不了几个地方。规矩见 `types/game.ts` 的 `Place`。
+     */
+    const places = ref<Record<string, Place>>({})
+    /** 脚下那一处宅、寺、宫。讨饭的、逃难的没有，是 null */
+    const residence = ref<string | null>(null)
+    /** 归在哪一级聚落。没有居所的人也有聚落——他在哪个镇上讨饭 */
+    const settlement = ref<string | null>(null)
 
     const isNewGame = computed(() => chronicle.value.length === 0)
 
@@ -346,6 +367,70 @@ export const useWorldStore = defineStore(
       chronicle.value = [...chronicle.value, entry]
     }
 
+    /** 记一处地方。已在册的不动 */
+    function enrollPlace(place: Place): void {
+      if (places.value[place.id]) return
+      places.value = { ...places.value, [place.id]: place }
+    }
+
+    function placeOf(id: string): Place | undefined {
+      return places.value[id]
+    }
+
+    /** 住下来。`home` 是脚下那一处（可以没有），`at` 是归的聚落 */
+    function settle(home: string | null, at: string): void {
+      residence.value = home
+      settlement.value = at
+    }
+
+    /** 脚下这一处是什么样的地方 */
+    function residenceKind(): ResidenceKind {
+      return residenceKindOf(residence.value ? places.value[residence.value] : null)
+    }
+
+    /** 归在哪一级聚落。立基之前是 null */
+    function settlementKind(): SettlementKind | null {
+      if (!settlement.value) return null
+      const found = settlementOf(places.value, settlement.value)
+      return found ? (found.kind as SettlementKind) : null
+    }
+
+    /** 邻村：同一个镇底下的别的村。住在城里的人没有邻村 */
+    function nearbyVillages(): Place[] {
+      if (!settlement.value) return []
+      const here = places.value[settlement.value]
+      if (!here || here.kind !== '村') return []
+      return siblingsOf(places.value, here.id, '村')
+    }
+
+    /**
+     * 搬到府城里的一处宅子。抄家、削爵、逃荒之后走这里。
+     *
+     * 宫里出来的人原本那棵树是京师的，府这一棵还没立——所以府、县、城
+     * 缺哪一级就立哪一级。原来那处宫、王府还在册上：他从那儿搬走了，
+     * 那地方没有消失。
+     */
+    function resettle(prefectureName: string, locale: string): void {
+      const household = useHouseholdStore()
+      if (!places.value['prefecture']) {
+        enrollPlace({ id: 'prefecture', name: prefectureName, kind: '府', within: null })
+      }
+      if (!places.value['county']) {
+        enrollPlace({
+          id: 'county',
+          name: pick(COUNTY_NAMES) ?? '清平县',
+          kind: '县',
+          within: 'prefecture',
+        })
+      }
+      if (!places.value['city']) {
+        enrollPlace({ id: 'city', name: `${household.prefecture}城`, kind: '城', within: 'county' })
+      }
+      const id = `home-${Object.keys(places.value).length}`
+      enrollPlace({ id, name: locale, kind: '宅', within: 'city' })
+      settle(id, 'city')
+    }
+
     /** setup store 不自带 $reset，须自行定义。家世已由 household 先行重掷。 */
     function reset(): void {
       time.value = birthTime()
@@ -357,6 +442,9 @@ export const useWorldStore = defineStore(
       bornMonth.value = 1
       chronicle.value = []
       reigns.value = []
+      places.value = {}
+      residence.value = null
+      settlement.value = null
     }
 
     return {
@@ -371,6 +459,16 @@ export const useWorldStore = defineStore(
       reigns,
       eraOf,
       succeed,
+      places,
+      residence,
+      settlement,
+      enrollPlace,
+      placeOf,
+      settle,
+      residenceKind,
+      settlementKind,
+      nearbyVillages,
+      resettle,
       isNewGame,
       advanceTime,
       moveTo,

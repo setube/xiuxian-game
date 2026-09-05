@@ -7,6 +7,7 @@ import { PREFECTURES, type Prefecture } from '@/content/geography'
 import { pick, pickWeighted, randomBetween } from '@/engine/random'
 
 import { usePeopleStore } from './people'
+import { useWorldStore } from './world'
 import type {
   Attributes,
   Business,
@@ -226,10 +227,13 @@ export const useHouseholdStore = defineStore(
         province.value = parts[0]!
         prefecture.value = parts[1]!
         locale.value = parts.slice(2).join(' · ')
-        return
+      } else {
+        // 段数不够就只当换了门牌，州府不动
+        locale.value = parts[parts.length - 1] ?? place
       }
-      // 段数不够就只当换了门牌，州府不动
-      locale.value = parts[parts.length - 1] ?? place
+      // 门牌是给人读的字，居所是世界里的一处地方——两边一起搬。
+      // 抄家、削爵、逃荒之后落的脚都在府城里的一处宅子；原来那处宫、王府还在册上
+      useWorldStore().resettle(prefecture.value, locale.value)
     }
 
     function isAlive(id: string): boolean {

@@ -624,6 +624,70 @@ export interface Adjacency {
   since: number
 }
 
+// ============================================================
+// 地域
+// ============================================================
+
+/**
+ * 空间里的一处地方。
+ *
+ * ## 两棵树，不强行统一成一棵
+ *
+ *     京师 → 皇城 → 宫城 → 宫　　　　　　（宫里那一支）
+ *     京师 → 坊 → 街 → 宅　　　　　　　（京师的寻常人家，眼下还没有这种出身）
+ *     府 → 县 → 城 → 街 → 宅／寺　　　（府城里的人家）
+ *     府 → 县 → 城 → 王府　　　　　　　（藩王）
+ *     府 → 县 → 镇 → 村 → 宅／寺　　　（乡下）
+ *
+ * 「坊」不是「县」，「街」不是「镇」，「宅」也不是「村里的某户」的同义词。
+ * 哪一级能挂在哪一级底下，写在 `engine/places.ts` 的 `PLACE_PARENTS` 里，走查照它查。
+ *
+ * ## 这一层是从两处使用者逼出来的，不是「地图系统该做了」
+ *
+ * `birth.ts` 从前有一把 `residenceKind` 的临时尺子，从出身和境况里猜「他住在什么样
+ * 的地方」；`encounters` 五处「邻村」说的是一个世界里不存在的地方。
+ * 现在**我住在哪里**是一件真实的事（`world.residence`），邻村是真的另一个村。
+ *
+ * ## 四件事不混
+ *
+ *     行政归属　　　　`household.province / prefecture` + 县——原籍，官府认你是哪儿的人
+ *     实际居所　　　　`world.residence`——脚下那一处宅、寺、宫
+ *     日常活动范围　　眼下没有格。「去镇上」「上街」那一层内容来要的时候再长
+ *     曾经去过的地方　`world.visited`
+ *
+ * 一个人可以属于某县、住在某村、常去某镇、去过某府。流放之后原籍不变、居所变了、
+ * 活动范围变了、关系还在——只改一个 `location = 某地` 是写不出这件事的。
+ */
+export interface Place {
+  id: string
+  name: string
+  kind: PlaceKind
+  /** 上一级。只有京师和府没有上一级 */
+  within: string | null
+}
+
+export type PlaceKind =
+  | '京师'
+  | '皇城'
+  | '宫城'
+  | '坊'
+  | '府'
+  | '县'
+  | '城'
+  | '镇'
+  | '村'
+  | '街'
+  | '宅'
+  | '寺'
+  | '王府'
+  | '宫'
+
+/** 脚下那一处是什么。「无」是讨饭的、逃难的——他们有聚落，没有居所 */
+export type ResidenceKind = '宅' | '寺' | '王府' | '宫' | '无'
+
+/** 归在哪一级聚落。条件层问「谁看得见村口」问的是这一格，不问他过什么日子 */
+export type SettlementKind = '村' | '镇' | '城' | '京师'
+
 export interface Acquaintance {
   person: string
   /** 玩家此刻怎么称呼他：「爹」「周先生」「渡口的青衫人」 */
@@ -1221,6 +1285,13 @@ export interface Condition {
    * 加一种出身就得回来改，而且没有任何机器会提醒——那正是这次要拆掉的东西。
    */
   living?: { is?: string; in?: readonly string[]; notIn?: readonly string[]; hasChore?: boolean }
+  /**
+   * 住在什么样的地方、归在哪一级聚落。
+   *
+   * 「谁看得见村口」从前问的是 `living`——一个住在府城的木匠也被算成村里人。
+   * **生活方式不是空间位置。** 这一格读的是 `world.residence` 和它归的聚落。
+   */
+  dwelling?: { kind?: readonly ResidenceKind[]; settlement?: readonly SettlementKind[] }
   gender?: Gender
   stage?: LifeStage
 }

@@ -1,3 +1,4 @@
+import { COUNTY_NAMES, TOWN_NAMES, VILLAGE_NAMES } from '@/content/geography'
 import { SURNAMES, originById } from '@/content/origins'
 import {
   type Circumstance,
@@ -6,6 +7,7 @@ import {
   siblingGap,
 } from '@/content/circumstances'
 import { pick, randomBetween } from '@/engine/random'
+import { useHouseholdStore } from '@/stores/household'
 import { makePerson, rollTemper, usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
 import type { Bond, Chapter, Gender, Livelihood, OriginId } from '@/types/game'
@@ -198,6 +200,9 @@ export function beBorn(id: OriginId, home: string): Birth {
       ? father.surname
       : (people.personOf(circumstance.kin[0]?.id ?? '')?.surname ?? surname)
 
+  // 先立地方，再立邻居：邻居住在哪一处宅，得先有村或街可挂
+  settlePlaces({ id, origin, circumstance })
+
   // 东邻西舍。姓定下来了才能立——邻居不能跟自家同姓
   settleNeighbours({
     people,
@@ -206,7 +211,6 @@ export function beBorn(id: OriginId, home: string): Birth {
     home,
     bornYear,
     surname: finalSurname,
-    flags: circumstance.flags ?? [],
   })
 
   return {
@@ -216,25 +220,91 @@ export function beBorn(id: OriginId, home: string): Birth {
 }
 
 /**
- * 住的是什么样的地方。
+ * 立他身边那几处地方。
  *
- * **这是在替还没建的地域层说话。** 邻接该由真实居所决定（地域三层：
- * 府／县；城／镇／村；脚下那一处），眼下那一层没有，只能从出身和境况里
- * 读出「他住在什么样的地方」：皇城里没有邻户，王府占一整片，寺里的邻居是
- * 僧人，讨饭和逃难的没有固定居所。
+ * ## 两棵树，各走各的
  *
- * 读的是**住处**，不是过什么日子——`living` 是生活方式，不是空间位置，
- * 拿它判「人在村里」正是 `signs.ts` 从前的毛病。地域三层落地后这个函数整个删掉。
+ *     宫里　　　京师 → 皇城 → 宫城 → 宫
+ *     藩王　　　府 → 县 → 城 → 王府
+ *     府城里　　府 → 县 → 城 → 街 → 宅／寺
+ *     乡下　　　府 → 县 → 镇 → 村 → 宅／寺，外加一两个邻村
+ *
+ * 只立他身边的：一个县、一个邻县、一个镇或城、一个村或街、一处居所。
+ * 不是整个天下——一个人一辈子也走不了几个地方，天下等他走到再立。
+ *
+ * ## 从前这儿有一把临时尺子
+ *
+ * `residenceKind` 从出身和境况里猜「他住在什么样的地方」，替还没建的地域层说话。
+ * 现在住处是一件真实的事（`world.residence`），那把尺子删了，
+ * 邻居那一支改问 `world.residenceKind()`。
+ *
+ * 寺里、讨饭、逃难这三种从抚养人认：`monk`／`beggar`／`keeper` 是境况表里写死的 id。
+ * 境况表从前每条写了一串 `flags`（orphan、in-temple……），没有任何一处立成旗标，
+ * 也没有任何一条 requires 读——用户明令：**没有真实使用者，就删**，不为它找读者。
  */
-function residenceKind(
-  origin: { capital?: string; station: string },
-  flags: readonly string[],
-): 'house' | 'palace' | 'manor' | 'temple' | 'none' {
-  if (origin.capital) return 'palace'
-  if (origin.station === '宗室') return 'manor'
-  if (flags.includes('in-temple')) return 'temple'
-  if (flags.includes('begging') || flags.includes('separated')) return 'none'
-  return 'house'
+function settlePlaces(input: {
+  id: OriginId
+  origin: { capital?: string; station: string }
+  circumstance: Circumstance
+}): void {
+  const { id, origin, circumstance } = input
+  const world = useWorldStore()
+  const household = useHouseholdStore()
+  const guardians = circumstance.kin.filter((k) => k.bond === '抚养').map((k) => k.id)
+  const inTemple = guardians.includes('monk')
+  const roofless = guardians.includes('beggar') || guardians.includes('keeper')
+
+  if (origin.capital) {
+    world.enrollPlace({ id: 'capital', name: '京师', kind: '京师', within: null })
+    world.enrollPlace({ id: 'imperial-city', name: '皇城', kind: '皇城', within: 'capital' })
+    world.enrollPlace({ id: 'palace-city', name: '宫城', kind: '宫城', within: 'imperial-city' })
+    world.enrollPlace({ id: 'home', name: household.locale, kind: '宫', within: 'palace-city' })
+    world.settle('home', 'capital')
+    return
+  }
+
+  world.enrollPlace({ id: 'prefecture', name: household.prefecture, kind: '府', within: null })
+  const counties = [...COUNTY_NAMES].sort(() => Math.random() - 0.5)
+  world.enrollPlace({ id: 'county', name: counties[0] ?? '清平县', kind: '县', within: 'prefecture' })
+  // 邻县：修河堤的活在那儿，父亲死在那儿——它得是一个真的地方
+  world.enrollPlace({ id: 'county-2', name: counties[1] ?? '安化县', kind: '县', within: 'prefecture' })
+
+  const rural = id === 'farm' || id === 'hunt'
+  let parent: string
+  if (rural) {
+    world.enrollPlace({ id: 'town', name: pick(TOWN_NAMES) ?? '石桥镇', kind: '镇', within: 'county' })
+    world.enrollPlace({ id: 'village', name: household.locale, kind: '村', within: 'town' })
+    // 邻村一到两个：走山道去的那个村，托人来问亲事的那个村
+    const names = VILLAGE_NAMES.filter((name) => name !== household.locale).sort(() => Math.random() - 0.5)
+    for (let n = 0; n < randomBetween(1, 2); n += 1) {
+      world.enrollPlace({ id: `village-${n + 2}`, name: names[n] ?? '南坡', kind: '村', within: 'town' })
+    }
+    parent = 'village'
+  } else {
+    world.enrollPlace({ id: 'city', name: `${household.prefecture}城`, kind: '城', within: 'county' })
+    if (origin.station === '宗室') {
+      // 王府占一整片，不挂在哪条街下
+      world.enrollPlace({ id: 'home', name: household.locale, kind: '王府', within: 'city' })
+      world.settle('home', 'city')
+      return
+    }
+    world.enrollPlace({ id: 'street', name: household.locale, kind: '街', within: 'city' })
+    parent = 'street'
+  }
+
+  const at = rural ? 'village' : 'city'
+  if (roofless) {
+    // 讨饭的、逃难的：有聚落，没有居所
+    world.settle(null, at)
+    return
+  }
+  if (inTemple) {
+    world.enrollPlace({ id: 'home', name: '寺', kind: '寺', within: parent })
+    world.settle('home', at)
+    return
+  }
+  world.enrollPlace({ id: 'home', name: '家', kind: '宅', within: parent })
+  world.settle('home', at)
 }
 
 /** 东邻、西邻。两户，不多不少——第一批内容只用得着这两户 */
@@ -256,22 +326,27 @@ const NEIGHBOUR_SIDES = ['east', 'west'] as const
  * `meet` 进玩家的册子，好感零。称呼不存——`people.callOf` 每次现算
  * （九岁叫「王婶」，三十岁叫「王嫂」），这儿填的那句只是查不到时的兜底。
  *
- * ## 邻居的营生跟这条巷子走
+ * ## 邻居的营生跟这条巷子走——这是采样偏好，不是世界规则
  *
- * 村里的邻居种地，铁匠巷的邻居打铁，布庄隔壁多半也是铺子。
- * 「东邻是个屠户」那种分别，等有内容要它的时候再掷。
+ * 村里的邻居种地，铁匠巷的邻居打铁，布庄隔壁多半也是铺子：聚落会产生职业聚集，
+ * 作为第一批内容的分布合理。**但它不能升级成「住在铁匠巷 = 铁匠」**，
+ * 否则又从随机标签变成了空间标签。以后完全该出现铁匠巷里住着一个卖布的、
+ * 铁匠破产搬走、铁匠的儿子去读书、一家人只是因为租得起才住进来。
+ * 那些分别等有内容要它的时候再掷（用户 2026-09-06 划的警戒线）。
  */
 function settleNeighbours(input: {
   people: ReturnType<typeof usePeopleStore>
   id: OriginId
-  origin: { capital?: string; station: string; livelihood: Livelihood }
+  origin: { livelihood: Livelihood }
   home: string
   bornYear: number
   surname: string
-  flags: readonly string[]
 }): void {
-  const { people, id, origin, home, bornYear, surname, flags } = input
-  if (residenceKind(origin, flags) !== 'house') return
+  const { people, id, origin, home, bornYear, surname } = input
+  const world = useWorldStore()
+  // 住在宅里的才有东邻西舍。宫、王府、寺、没有居所的，一户也没有
+  if (world.residenceKind() !== '宅' || !world.residence) return
+  const lane = world.placeOf(world.residence)?.within ?? null
 
   const taken = new Set([surname])
   for (const side of NEIGHBOUR_SIDES) {
@@ -315,8 +390,7 @@ function settleNeighbours(input: {
       const child = makePerson({
         id: `${side}-child-${n}`,
         surname: family,
-        given:
-          gender === '女' ? (pick(FEMALE_GIVEN) ?? '小满') : (pick(MALE_GIVEN[id]) ?? '二牛'),
+        given: gender === '女' ? (pick(FEMALE_GIVEN) ?? '小满') : (pick(MALE_GIVEN[id]) ?? '二牛'),
         gender,
         bornYear: bornYear - randomBetween(0, 12),
         place: home,
@@ -326,12 +400,14 @@ function settleNeighbours(input: {
       members.push(child.id)
     }
 
+    // 他们家那处宅，挂在跟你家同一条街、同一个村下
+    world.enrollPlace({ id: `${side}-house`, name: `${family}家`, kind: '宅', within: lane })
     people.enrollHouse({
       id: side,
       surname: family,
       head: head.id,
       members,
-      residence: home,
+      residence: `${side}-house`,
       livelihood: origin.livelihood,
     })
     people.adjoin('home', side)

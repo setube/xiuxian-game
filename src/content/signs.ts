@@ -43,27 +43,23 @@ export interface SignRule {
  * 抬头看得见村口的人。
  *
  * 「村里排了守夜的」「村口常有陌生人过」——这些是村子的事。
- * 王府的孩子院墙有两丈高，他看不见村口，他看见的是别的东西。
+ *
+ * 从前这一组写的是 `living in [farm, hunt]`——**生活方式不是空间位置**：
+ * 一个住在府城的木匠被算成了村里人，一个住在村里的寺没被算进去。
+ * 现在问的是他归在哪一级聚落（`dwelling.settlement`），住在宅里还是没有居所
+ * （讨饭的比谁都在村口）。寺里的孩子另有一组征象。
  */
-const IN_VILLAGE = ['farm', 'hunt'] as const
+const IN_VILLAGE: Condition = { dwelling: { settlement: ['村'], kind: ['宅', '无'] } }
 
 /**
  * 日子过在街面上的人。铺子、集市、行人都在眼前。
  *
  * 讨饭的和路上逃难的也在里头——**他们比谁都在街上**。
- * 不在里头的是宫里（`palace`）和寺里（`temple`）：
- * 一个隔着宫墙，一个隔着山门。
+ * 不在里头的是宫和王府（隔着一道墙）和寺（隔着山门）——`kind` 那一格挡的。
  */
-const ON_THE_STREET = [
-  'craft',
-  'shop',
-  'clinic',
-  'office',
-  'market',
-  'fallen',
-  'begging',
-  'adrift',
-] as const
+const ON_THE_STREET: Condition = {
+  dwelling: { settlement: ['镇', '城', '京师'], kind: ['宅', '无'] },
+}
 
 /**
  * 村里街上都算。
@@ -71,7 +67,7 @@ const ON_THE_STREET = [
  * 瘟疫、兵祸这类事没有谁躲得开，**除了高墙里头那些人**——
  * 而那不是因为他们没事，是因为消息到不了他们眼前。
  */
-const OUTSIDE = [...IN_VILLAGE, ...ON_THE_STREET] as const
+const OUTSIDE: Condition = { dwelling: { kind: ['宅', '无'] } }
 
 export const SIGNS: readonly SignRule[] = [
   // ============================================================
@@ -81,7 +77,7 @@ export const SIGNS: readonly SignRule[] = [
     id: 'grain-cheap',
     when: { grain: { atMost: 82 } },
     // 粮铺门口那一堆，得日子过在街面上才看得见
-    who: [{ living: { in: ON_THE_STREET } }],
+    who: [ON_THE_STREET],
     says: '今年的米便宜。粮铺门口堆到了街上。',
     from: 'grain',
     tone: 'faint',
@@ -115,7 +111,7 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'grain-high',
     when: { grain: { atLeast: 150 } },
-    who: [{ living: { in: ON_THE_STREET } }],
+    who: [ON_THE_STREET],
     says: '米价比往年贵了许多。买米的人排到了巷口。',
     from: 'grain',
     weight: 35,
@@ -123,7 +119,7 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'grain-shut',
     when: { grain: { atLeast: 178 } },
-    who: [{ living: { in: ON_THE_STREET } }],
+    who: [ON_THE_STREET],
     says: '米铺白天也上着门板。',
     reading: '有人说是没货了，也有人说是不肯卖。',
     from: 'grain',
@@ -177,7 +173,7 @@ export const SIGNS: readonly SignRule[] = [
     id: 'order-strangers',
     when: { order: { atMost: 44 } },
     // 村口是村子的事。院墙两丈高的人家看不见村口
-    who: [{ living: { in: IN_VILLAGE } }],
+    who: [IN_VILLAGE],
     says: '村口这阵子常有陌生人过。',
     // 这一条是全册最要紧的一处误读：他看见的是人，不是原因
     reading: '你以为是过路的客商。',
@@ -198,7 +194,7 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'order-watch',
     when: { order: { atMost: 36 } },
-    who: [{ living: { in: IN_VILLAGE } }],
+    who: [IN_VILLAGE],
     says: '入夜以后没什么人出门了。村里排了守夜的。',
     from: 'order',
     tone: 'deep',
@@ -234,7 +230,7 @@ export const SIGNS: readonly SignRule[] = [
     id: 'order-good',
     when: { order: { atLeast: 66 } },
     // 更夫的梆子是街面上的东西。村里没有更夫
-    who: [{ living: { in: ON_THE_STREET } }],
+    who: [ON_THE_STREET],
     says: '这两年外头太平。夜里也听得见更夫的梆子。',
     from: 'order',
     tone: 'faint',
@@ -252,7 +248,7 @@ export const SIGNS: readonly SignRule[] = [
     id: 'calm-market',
     when: { grain: { atLeast: 84, atMost: 122 }, order: { atLeast: 48 } },
     // 「镇上的集照常开」从前是人人可见的，于是王府的世子也逛集市
-    who: [{ living: { in: ON_THE_STREET } }],
+    who: [ON_THE_STREET],
     says: '镇上的集照常开。米价跟去年差不多。',
     from: 'grain',
     tone: 'faint',
@@ -271,7 +267,7 @@ export const SIGNS: readonly SignRule[] = [
     id: 'calm-road',
     when: { order: { atLeast: 50 } },
     // 官道从村边过，也从镇上过。高墙里头那些人看不见它
-    who: [{ living: { in: OUTSIDE } }],
+    who: [OUTSIDE],
     says: '官道上照常有车马过。',
     from: 'order',
     tone: 'faint',
@@ -293,7 +289,7 @@ export const SIGNS: readonly SignRule[] = [
   {
     id: 'plague-coffins',
     when: { plague: { atLeast: 28 } },
-    who: [{ living: { in: OUTSIDE } }],
+    who: [OUTSIDE],
     says: '街上开始有人抬棺。抬的时候不敢走大路。',
     from: 'plague',
     tone: 'cinnabar',

@@ -50,7 +50,7 @@ import { isNearby } from './nearby'
  * 而「此刻在不在行礼」根本不是一种状态，它是一句话的属性。
  */
 const TOKENS =
-  /\{(name|home|province|prefecture|here|livelihood|elder|elders|dam|chore|putsAway|title|era|bornEra|call|house)(?::([\w-]+))?\}/g
+  /\{(name|home|province|prefecture|here|livelihood|elder|elders|dam|chore|putsAway|title|era|bornEra|call|house|place|nearbyVillage|nearbyCounty)(?::([\w-]+))?\}/g
 
 /**
  * 挑一个还在身边的关系人，按给定的优先次序。
@@ -208,6 +208,15 @@ export function fillString(text: string, manner: Manner = '家常'): string {
      */
     if (token === 'call') return usePeopleStore().callOf(arg ?? '')
     if (token === 'house') return houseCall(arg ?? '')
+    /*
+     * 地方。`{place:county}` 是他家归的那个县；`{nearbyVillage}` 是同一个镇底下
+     * 的别的村，`{nearbyCounty}` 是同一个府底下的别的县——正文里那五处「邻村」
+     * 从前说的是一个世界里不存在的地方，现在它有名字。
+     * 住在城里的人没有邻村，落回「邻村」两个字：那一句本来就该另写，不在这儿改。
+     */
+    if (token === 'place') return world.placeOf(arg ?? '')?.name ?? '那地方'
+    if (token === 'nearbyVillage') return world.nearbyVillages()[0]?.name ?? '邻村'
+    if (token === 'nearbyCounty') return world.placeOf('county-2')?.name ?? '邻县'
     // 年号：`{era}` 是此刻的，`{bornEra}` 是他生下来那年的。
     // 老人说「那是承和年间的事了」靠的是后者——旧年号不因改元消失。
     // 王朝史还没立起来时给「本朝」，别让一句话里露出空白

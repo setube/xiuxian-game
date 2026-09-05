@@ -152,7 +152,7 @@ export const hardshipScenes: SceneLibrary = {
         ],
         blocks: [
           { kind: 'narration', text: '债还不上。' },
-          { kind: 'narration', text: '有人说邻县在修河堤，管饭，工钱也高些。' },
+          { kind: 'narration', text: '有人说{nearbyCounty}在修河堤，管饭，工钱也高些。' },
           { kind: 'event', text: '父亲决定去。' },
           { kind: 'narration', text: '走的那天天没亮。他背了一个包袱，母亲送到村口。' },
           { kind: 'dialogue', speaker: '父亲', text: '过年就回来。' },
@@ -285,7 +285,7 @@ export const hardshipScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '第三年过年，父亲没有回来。' },
           { kind: 'narration', text: '钱也不捎了。' },
-          { kind: 'narration', text: '母亲托人去邻县打听过一次。回话说，工早就散了，人都走光了。' },
+          { kind: 'narration', text: '母亲托人去{nearbyCounty}打听过一次。回话说，工早就散了，人都走光了。' },
           { kind: 'event', text: '没有人知道他去了哪里。' },
           { kind: 'narration', text: '家里没有办丧事。人没了消息，不算死。' },
           { kind: 'divider', variant: 'ink' },

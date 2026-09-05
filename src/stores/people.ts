@@ -150,7 +150,11 @@ export const usePeopleStore = defineStore(
 
     /** 声明两户相邻。同一对不重复记 */
     function adjoin(a: string, b: string): void {
-      if (adjacent.value.some((edge) => (edge.a === a && edge.b === b) || (edge.a === b && edge.b === a))) {
+      if (
+        adjacent.value.some(
+          (edge) => (edge.a === a && edge.b === b) || (edge.a === b && edge.b === a),
+        )
+      ) {
         return
       }
       adjacent.value = [...adjacent.value, { a, b, since: world.time.year }]
@@ -405,7 +409,12 @@ export const usePeopleStore = defineStore(
       reset,
     }
   },
-  { persist: { key: 'xiuxian:people', pick: ['roster', 'known', 'relations', 'houses', 'adjacent'] } },
+  {
+    persist: {
+      key: 'xiuxian:people',
+      pick: ['roster', 'known', 'relations', 'houses', 'adjacent'],
+    },
+  },
 )
 
 /** 掷一个脾性 */

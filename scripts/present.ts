@@ -214,7 +214,9 @@ let bad = 0
     const household = useHouseholdStore()
     useWorldStore()
     usePeopleStore()
-    // 直接把这一世的日子钉成这一种，别的一概不动
+    // 先立基：征象现在还看住处（村口是村里的事），住处要立基才有
+    useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale }).begin()
+    // 再把这一世的日子钉成这一种，别的一概不动
     character.liveAs(living.id)
 
     const mine = SIGNS.filter((sign) => !sign.who || meetsAll(sign.who))

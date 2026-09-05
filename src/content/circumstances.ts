@@ -78,8 +78,6 @@ export interface Circumstance {
   kin: readonly Kin[]
   /** 家境的加减。孤儿没有家底，但也没有债 */
   standing?: number
-  /** 开局就有的旗标，供剧本分流 */
-  flags?: readonly string[]
 }
 
 /**
@@ -113,7 +111,6 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
       { id: 'elder', bond: '兄', calls: '哥', older: 5 },
     ],
     standing: -4,
-    flags: ['has-elder'],
   },
   {
     id: 'mother-died-birthing',
@@ -126,7 +123,6 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
       { id: 'mother', bond: '生母', calls: '娘', older: 24, goneAtBirth: true },
     ],
     standing: -6,
-    flags: ['motherless'],
   },
   {
     id: 'father-died-early',
@@ -138,7 +134,6 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
       { id: 'mother', bond: '抚养', calls: '娘', older: 25 },
     ],
     standing: -14,
-    flags: ['fatherless'],
   },
   {
     /**
@@ -158,7 +153,6 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
       { id: 'sister', bond: '抚养', calls: '姐', older: 9 },
     ],
     standing: -22,
-    flags: ['orphan', 'raised-by-kin'],
   },
   {
     id: 'raised-by-brother',
@@ -171,7 +165,6 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
       { id: 'brother', bond: '抚养', calls: '哥', older: 11 },
     ],
     standing: -20,
-    flags: ['orphan', 'raised-by-kin'],
   },
   {
     id: 'raised-by-uncle',
@@ -184,7 +177,6 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
       { id: 'uncle', bond: '抚养', calls: '叔父', older: 33 },
     ],
     standing: -12,
-    flags: ['orphan', 'raised-by-kin', 'fostered'],
   },
   {
     /**
@@ -201,7 +193,6 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
       { id: 'monk', bond: '抚养', calls: '师父', older: 40, doing: '寺中的老僧', living: 'temple' },
     ],
     standing: -18,
-    flags: ['foundling', 'no-parents', 'in-temple'],
   },
   {
     id: 'beggar-foundling',
@@ -211,7 +202,6 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
       { id: 'beggar', bond: '抚养', calls: '老丈', older: 46, doing: '讨饭的', living: 'begging' },
     ],
     standing: -28,
-    flags: ['foundling', 'no-parents', 'begging'],
   },
   {
     /**
@@ -233,7 +223,6 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
     // 日子明写着 adrift——它是**开局**的日子，往后允许被内容改掉
     kin: [{ id: 'keeper', bond: '抚养', calls: '收留你的人', older: 38, living: 'adrift' }],
     standing: -24,
-    flags: ['separated', 'unknown-origin'],
   },
 ]
 

@@ -82,7 +82,7 @@ function monthIndex(t: YearMonth): number {
 
 /** 绝对年可以是负数（王朝在玩家出生前一两百年就立了），取模要防负 */
 function fromMonthIndex(i: number): YearMonth {
-  return { year: Math.floor(i / 12), month: ((i % 12) + 12) % 12 + 1 }
+  return { year: Math.floor(i / 12), month: (((i % 12) + 12) % 12) + 1 }
 }
 
 /** 抽一个人的寿数。抖三年，最少十六——这是「他会活到几岁」，还没问他几岁即位 */
@@ -142,7 +142,13 @@ export function successor(prev: Reign, names: readonly string[], used: ReadonlyS
     : Math.max(1, prevDeathAge - randomBetween(18, 30))
   const born = accession.year - accessionAge
   const death = deathAfter(accession, yearsLeft(born, accession))
-  return { era: pickEra(names, used), born, accession, eraFrom: eraFromFor(accession, death), death }
+  return {
+    era: pickEra(names, used),
+    born,
+    accession,
+    eraFrom: eraFromFor(accession, death),
+    death,
+  }
 }
 
 /**
@@ -195,7 +201,10 @@ export function foundDynasty(founding: number, until: number, names: readonly st
  * 取最后一个 `eraFrom` 不晚于那一刻的。王朝立国之前的日子返回 null——
  * 立国在玩家出生前一两百年，正常不会碰到。
  */
-export function eraAt(reigns: readonly Reign[], at: YearMonth): { name: string; year: number } | null {
+export function eraAt(
+  reigns: readonly Reign[],
+  at: YearMonth,
+): { name: string; year: number } | null {
   let current: Reign | null = null
   for (const reign of reigns) {
     if (isBefore(at, reign.eraFrom)) break
