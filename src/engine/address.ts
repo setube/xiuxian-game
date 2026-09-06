@@ -137,20 +137,47 @@ export function neighbourCall(
   targetAge: number,
   speakerAge: number,
   manner: '家常' | '礼上',
+  /**
+   * 他家在哪一头。传了就缀进称呼里：「东头方婶」。
+   *
+   * ## 为什么非有这一格不可
+   *
+   * 邻居只有两户（`content/birth.ts` 的东邻西舍），而**它们可以同姓**——
+   * 立基时只保证了邻居不跟自家同姓，没保证两户邻居彼此不同姓。
+   * 于是东邻方桂英和西舍方兰香在人际面板里并排成两行「方婶」，
+   * **玩家分不出哪个是哪个**，而这两个人在荒年那一卷里会做不同的事。
+   *
+   * 这不是显示层能修的：面板拿到的就是两个一模一样的字符串。
+   * 分辨得在称呼产出的这一刻做。
+   *
+   * ## 为什么用方位，不新造一格
+   *
+   * 「他家在哪一头」是**已经存在的事实**——`people.adjoin('east', 'west')`
+   * 把三户排在同一条巷子上，东西是户的 id 本身。不必为了区分两个人
+   * 再给人物加一个「绰号」或者「小名」字段，那才是拿新数据补旧洞。
+   *
+   * 而且它本来就是这么叫的：一条巷子上两个同姓的婶子，
+   * 乡里人本来就说「东头那个」「西头那个」。
+   *
+   * 不传就不缀。没有方位信息的人（半路认识的、镇上的）照旧只有姓和辈分——
+   * **宁可少一个字，不可编一个方位出来。**
+   */
+  side?: '东' | '西',
 ): string {
   const { surname, gender } = target
-  // 文书体：官府的册子上没有「婶」，只有「氏」
+  // 文书体：官府的册子上没有「婶」，只有「氏」；也不写谁家在哪一头
   if (manner === '礼上') return gender === '女' ? `${surname}氏` : `${surname}某`
 
   const elderly = targetAge >= 55
   const grown = targetAge >= 16
   const childSpeaking = speakerAge < 16
+  const where = side === undefined ? '' : `${side}头`
 
-  if (elderly) return gender === '女' ? `${surname}婆婆` : `${surname}老爹`
+  if (elderly) return gender === '女' ? `${where}${surname}婆婆` : `${where}${surname}老爹`
   if (grown) {
-    if (childSpeaking) return gender === '女' ? `${surname}婶` : `${surname}叔`
-    return gender === '女' ? `${surname}嫂` : `老${surname}`
+    if (childSpeaking) return gender === '女' ? `${where}${surname}婶` : `${where}${surname}叔`
+    return gender === '女' ? `${where}${surname}嫂` : `${where}老${surname}`
   }
   // 对方还是个孩子：谁叫都叫「王家的」——名字要玩过才知道，那是另一格
-  return `${surname}家的`
+  return `${where}${surname}家的`
 }

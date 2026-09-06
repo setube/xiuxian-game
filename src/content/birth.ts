@@ -183,7 +183,7 @@ export function beBorn(id: OriginId, home: string): Birth {
 
       if (kin.goneAtBirth) {
         // 他存在过。玩家没见过他，但这条血缘永远成立
-        people.amend(kin.id, { fate: '殁' })
+        people.amend(kin.id, { fate: '殁', death: { cause: '在你出生前' } })
       } else {
         // 一出生就认得，但那时还不知道他叫什么——
         // 「爹」是称呼，「沈怀山」是名字，那是两回事
