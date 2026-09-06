@@ -240,7 +240,7 @@ export const tradeScenes: SceneLibrary = {
           { kind: 'narration', text: '此后你再没见过他。' },
           {
             kind: 'narration',
-            text: '你问过父亲山里有没有这样的人。{elder}说别听酒话。',
+            text: '你问过{elder}山里有没有这样的人。{elder}说别听酒话。',
             tone: 'faint',
           },
         ],
