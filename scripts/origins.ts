@@ -113,9 +113,29 @@ for (const [id, flag] of Object.entries(OWN_EVENT) as [OriginId, string][]) {
   }
   setActivePinia(createPinia())
   beOf(id)
-  if (!meetsAll(event.requires)) {
+  /**
+   * 只量出身那几格，关系类的条件跳过。
+   *
+   * 这一条量的是**「出身 → 卷」的映射对不对**，而它摆出来的世界只有出身那五格
+   * （`beOf` 就那五行赋值），没有爹娘、没有关系网。于是卷上但凡加一条
+   * `family: { id: 'father', alive: true }`，这里必然量不过——
+   * 而那说明不了映射有问题，只说明**这把尺子够不着那一格**。
+   *
+   * 跳过不等于放过：爹在不在，由 `present` 和 `verify` 两支在完整人生里量，
+   * 那才是它该被量的地方。这一条继续守它守得住的那件事——
+   * 年表把 `{ business: '布庄' }` 改成 `{ livelihood: '经商' }`，这里照样当场红。
+   */
+  // `requires` 是可选的：没有条件的卷谁都进得去，那也是一种合法的映射
+  const wanted = event.requires ?? []
+  const byOrigin = wanted.filter((one) => one.family === undefined && one.bond === undefined)
+  if (!meetsAll(byOrigin)) {
     console.log(`  ✗ 「${id}」这一行人走不进 ${eventId}——那一卷要的条件他们不满足。`)
     nameErrors += 1
+  } else if (byOrigin.length < wanted.length) {
+    // 跳过了几条要说出来。不说的话，「这把尺够不着」和「量过了」长得一模一样
+    console.log(
+      `    「${id}」→ ${eventId}：出身那几格对得上；另有 ${wanted.length - byOrigin.length} 条问的是关系网，这把尺够不着，交给 present／verify。`,
+    )
   }
 }
 if (nameErrors > 0) {
