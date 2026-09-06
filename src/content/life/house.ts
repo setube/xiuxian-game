@@ -70,7 +70,35 @@ export const houseScenes: SceneLibrary = {
         ],
         blocks: [],
         branches: [
-          { requires: [{ flag: { key: 'head-passed-how', equals: '交' } }], next: 'handed' },
+          /**
+           * 「交」这条路还得问一句：交家的那个人此刻还在不在。
+           *
+           * 旗是 `keepHeads` 在**交接那一刻**打的（`stores/people.ts`），
+           * 而这一卷是年表排期演的，两者之间隔着年。寡母把家交出来，
+           * 几年后她没了，这一卷才轮到——于是正文说「交给你那天，她什么也没说」，
+           * 而说这话的时候她已经不在了。**旗记得那一刻，人却会往下活。**
+           *
+           * 问 `family` 不问 `bond`：正文点名说的是娘、是姐，条件就得问那一个人，
+           * 不能问「这层关系里还有没有活人」——娘没了而姨母还在，那不是同一件事。
+           *
+           * 交家的人不在了就落到 `bereaved`：玩家此刻经历的确实是「当家的人没了」。
+           */
+          {
+            requires: [
+              { flag: { key: 'head-passed-how', equals: '交' } },
+              { flag: { key: 'head-passed-from', equals: 'mother' } },
+              { family: { id: 'mother', alive: true } },
+            ],
+            next: 'handed',
+          },
+          {
+            requires: [
+              { flag: { key: 'head-passed-how', equals: '交' } },
+              { flag: { key: 'head-passed-from', equals: 'sister' } },
+              { family: { id: 'sister', alive: true } },
+            ],
+            next: 'handed',
+          },
         ],
         next: 'bereaved',
       },
@@ -100,6 +128,16 @@ export const houseScenes: SceneLibrary = {
       },
       handed: {
         id: 'handed',
+        /**
+         * 打一面旗说「交家那一幕真的演了」。
+         *
+         * `head-passed-how` 记的是**当年那一刻**是交还是殁，它不会变；
+         * 可这一卷什么时候演由年表定，中间隔着年。于是「旗上写着交」
+         * 和「玩家此刻正在读交家这一幕」是两件事，从前门禁只问得到前一件，
+         * 于是娘交完家又过世的那种人生，被判成了「旗在撒谎」——
+         * **旗没撒谎，是判据问错了问题。**
+         */
+        onEnter: [{ type: 'flag', key: 'head-handed-over', value: true }],
         blocks: [
           { kind: 'narration', text: '你成人那年，当家的把钥匙交给了你。' },
           { kind: 'event', text: '这一户从此是你的了。' },

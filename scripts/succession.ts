@@ -167,9 +167,30 @@ function live(): Lived {
       } else if (typeof from === 'string' && how === '殁' && people.isAlive(from)) {
         out.succeededOk = false
         out.succeedNote = `旗上写着上一任 ${from} 殁了，可他还活着`
-      } else if (typeof from === 'string' && how === '交' && !people.isAlive(from)) {
+      } else if (
+        world.hasFlag('head-handed-over') &&
+        typeof from === 'string' &&
+        !people.isAlive(from)
+      ) {
+        /**
+         * 问的是「交家那一幕演了没有」，不是「旗上写着交没交」。
+         *
+         * 这两问从前是同一问，而它们在有时间差的地方会分开：
+         * `head-passed-how` 记的是**当年那一刻**（`keepHeads` 在人殁或寡母交家时写死），
+         * 承户这一卷却由年表排期演（`window: 16..70`）——中间隔着年。
+         * 娘把家交出来，几年后她没了，这一卷才轮到：旗上仍写着「交」，
+         * 而那是真的，她当年确实是交的。**旗没撒谎，是判据从前问错了问题。**
+         *
+         * 两头不对称，这也是为什么上一条不能照搬下来：
+         * 「殁」之后人不会再活过来，所以旗写殁而人还在，铁定是错；
+         * 「交」之后人还会往下活、也会死，旗写交而人不在，什么也证明不了。
+         *
+         * 现在问的是内容层：`head-handed-over` 由 `house:succeed` 的 `handed` 那一节打
+         * （`content/life/house.ts`），有它就说明玩家正在读「当家的把钥匙交给了你」。
+         * 那一幕演的时候人必须还在——**死者不能把家交出来**。
+         */
         out.succeededOk = false
-        out.succeedNote = `旗上写着上一任 ${from} 把家交出来了，可他已经不在了`
+        out.succeedNote = `交家那一幕演了，可交家的 ${from} 已经不在了`
       }
     }
 
@@ -285,7 +306,7 @@ console.log(
     bad += 1
   } else
     console.log(
-      `  ✓ 二、${succeeded.length} 世承户，讲完户主都是我；殁了的确实殁了，交出来的确实还在。`,
+      `  ✓ 二、${succeeded.length} 世承户，讲完户主都是我；殁了的确实殁了，交家那一幕演的时候人还在。`,
     )
 }
 

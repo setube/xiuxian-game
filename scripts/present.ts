@@ -61,7 +61,7 @@ const TOO_COMMON: readonly string[] = ['孩子', '徒弟', '老人', '家里人'
  * 而它恰恰是这套东西**做对了**的样子。判据要是不放过它，
  * 每一处讣告都会被判成穿帮。
  */
-const TALKING_ABOUT_DEATH = /不在了|没了|殁|走了|下葬|坟|丧|头七|再没有消息|留下的|留下来/
+const TALKING_ABOUT_DEATH = /不在了|没了|殁|走了|下葬|坟|埋骨|丧|头七|再没有消息|留下的|留下来/
 
 /**
  * 一个字的称呼是别的词的零件，撞上不算数。
@@ -81,6 +81,38 @@ const INNOCENT_CONTEXTS: readonly string[] = ['姑娘', '新娘', '娘娘', '老
 function innocent(text: string, calls: string): boolean {
   if (calls.length > 1) return false
   return INNOCENT_CONTEXTS.some((word) => text.includes(word))
+}
+
+/**
+ * 同一个人，正文里还可能被叫成什么。
+ *
+ * ## 尺子从前只量了两种叫法里的一种
+ *
+ * `calls` 是境况表钉下的那个称呼——查遍全库，爹永远是「爹」，娘永远是「娘」
+ * （`content/circumstances.ts`，各十处，没有第二种写法）。
+ * 可正文不用它：库里「父亲」一百五十一处、「爹」一百一十三处，
+ * 两个词指着同一个人。判据只拿 `calls` 去找，
+ * **于是「父亲」那一百五十一处，一处也够不着。**
+ *
+ * 这不是内容写错了词。教养不同，这家的孩子就是管爹叫「父亲」
+ * （见 `content/address.ts` 的 `kin`），两种叫法都对。
+ * 错的是尺子只量了其中一种，而**量不到的那一半看着跟没问题一模一样**。
+ *
+ * 这正是上面第一条注释里那句话的后半截：占位符防住的那一层，
+ * 硬写的字绕过去了——`{elder}` 会按教养解析成「爹」或「父亲」，
+ * 硬写的「父亲」却哪一层都不过，从前也没有任何一把尺子量它。
+ *
+ * 不列「爹爹」「娘娘」：它们各自含着「爹」「娘」，`calls` 那一路已经罩住了；
+ * 而「娘娘」还在 `INNOCENT_CONTEXTS` 里另有用处，列进来会打架。
+ */
+const ALSO_CALLED: Readonly<Record<string, readonly string[]>> = {
+  爹: ['父亲'],
+  娘: ['母亲'],
+}
+
+/** 这个人可能被写成的所有叫法：境况表那个，加上正文惯用的书面词 */
+function namesOf(calls: string): readonly string[] {
+  return [calls, ...(ALSO_CALLED[calls] ?? [])]
 }
 
 /**
@@ -151,18 +183,24 @@ for (let i = 0; i < RUNS; i += 1) {
     if (REMEMBERING.some((id) => (narrative.sceneId ?? '').startsWith(id))) continue
 
     for (const [id, calls] of gone) {
+      const names = namesOf(calls)
       for (const item of fresh) {
         const text = 'text' in item.block ? item.block.text : null
-        if (!text || !text.includes(calls)) continue
+        if (!text) continue
+        // 撞上哪个词要记住：底下 `innocent` 和报错那行说的都得是撞上的那一个
+        const hit = names.find((name) => text.includes(name))
+        if (hit === undefined) continue
         if (TALKING_ABOUT_DEATH.test(text)) continue
-        if (innocent(text, calls)) continue
-        ghosts.push({ who: id, calls, where: '正文', text })
+        if (innocent(text, hit)) continue
+        ghosts.push({ who: id, calls: hit, where: '正文', text })
       }
       for (const option of narrative.options) {
         const label = option.choice.label
-        if (!label.includes(calls)) continue
-        if (innocent(label, calls)) continue
-        ghosts.push({ who: id, calls, where: '选项', text: label })
+        const hit = names.find((name) => label.includes(name))
+        if (hit === undefined) continue
+        if (TALKING_ABOUT_DEATH.test(label)) continue
+        if (innocent(label, hit)) continue
+        ghosts.push({ who: id, calls: hit, where: '选项', text: label })
       }
     }
   }

@@ -435,7 +435,7 @@ export const childhoodScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '这一年雨水匀，虫也少。' },
           { kind: 'event', text: '秋后收成比往年好。' },
-          { kind: 'narration', text: '交完租还有余，父亲挑了两担去镇上卖，换回来一口新锅。' },
+          { kind: 'narration', text: '交完租还有余，{elder}挑了两担去镇上卖，换回来一口新锅。' },
           { kind: 'narration', text: '{dam}给你和自己各扯了一块布。' },
           { kind: 'narration', text: '那年过年，桌上有肉。', tone: 'faint' },
         ],

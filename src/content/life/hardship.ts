@@ -154,7 +154,7 @@ export const hardshipScenes: SceneLibrary = {
           { kind: 'narration', text: '债还不上。' },
           { kind: 'narration', text: '有人说{nearbyCounty}在修河堤，管饭，工钱也高些。' },
           { kind: 'event', text: '父亲决定去。' },
-          { kind: 'narration', text: '走的那天天没亮。他背了一个包袱，母亲送到村口。' },
+          { kind: 'narration', text: '走的那天天没亮。他背了一个包袱，{dam}送到村口。' },
           { kind: 'dialogue', speaker: '父亲', text: '过年就回来。' },
         ],
         choices: [
@@ -201,8 +201,8 @@ export const hardshipScenes: SceneLibrary = {
           { type: 'household', standing: -4 },
         ],
         blocks: [
-          { kind: 'narration', text: '你站在门口，看着他和母亲往村口去。' },
-          { kind: 'narration', text: '后来母亲一个人回来了。' },
+          { kind: 'narration', text: '你站在门口，看着他和{dam}往村口去。' },
+          { kind: 'narration', text: '后来{dam}一个人回来了。' },
           { kind: 'divider', variant: 'dots' },
           { kind: 'narration', text: '那一年他没回来。捎回来过两次钱。' },
         ],
@@ -285,13 +285,16 @@ export const hardshipScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '第三年过年，父亲没有回来。' },
           { kind: 'narration', text: '钱也不捎了。' },
-          { kind: 'narration', text: '母亲托人去{nearbyCounty}打听过一次。回话说，工早就散了，人都走光了。' },
+          {
+            kind: 'narration',
+            text: '{dam}托人去{nearbyCounty}打听过一次。回话说，工早就散了，人都走光了。',
+          },
           { kind: 'event', text: '没有人知道他去了哪里。' },
           { kind: 'narration', text: '家里没有办丧事。人没了消息，不算死。' },
           { kind: 'divider', variant: 'ink' },
           {
             kind: 'narration',
-            text: '此后很多年，母亲还是习惯在年三十多摆一副碗筷。',
+            text: '此后很多年，{dam}还是习惯在年三十多摆一副碗筷。',
             tone: 'faint',
           },
         ],
@@ -364,7 +367,7 @@ export const hardshipScenes: SceneLibrary = {
           { kind: 'narration', text: '债还欠着。' },
           {
             kind: 'narration',
-            text: '母亲一个人下地。她的腰弯得比从前更低了。',
+            text: '{dam}一个人下地。腰弯得比从前更低了。',
             tone: 'faint',
           },
         ],
@@ -381,7 +384,7 @@ export const hardshipScenes: SceneLibrary = {
         id: 'open',
         blocks: [
           { kind: 'narration', text: '开春该交束脩了。' },
-          { kind: 'narration', text: '母亲把家里能凑的都凑了一遍，还是差着。' },
+          { kind: 'narration', text: '{dam}把家里能凑的都凑了一遍，还是差着。' },
           { kind: 'narration', text: '她坐在灶前算了很久，然后叫你过去。' },
           { kind: 'dialogue', speaker: '母亲', text: '今年……先不去了。' },
           { kind: 'narration', text: '她说完就低下头去拨灶里的火。' },
@@ -414,7 +417,7 @@ export const hardshipScenes: SceneLibrary = {
       begged: {
         id: 'begged',
         blocks: [
-          { kind: 'narration', text: '母亲没有抬头。' },
+          { kind: 'narration', text: '{dam}没有抬头。' },
           { kind: 'narration', text: '过了很久她说：我知道。' },
           { kind: 'narration', text: '再往后就没有话了。灶里的火噼啪响。' },
           { kind: 'narration', text: '你自己站起来，出去了。' },
@@ -461,7 +464,7 @@ export const hardshipScenes: SceneLibrary = {
           { type: 'chronicle', text: '你没有再去私塾。这一年你在地里。', tone: 'deep' },
         ],
         blocks: [
-          { kind: 'narration', text: '这一年你跟着母亲下地。挑水、除草、收割，一样一样学会。' },
+          { kind: 'narration', text: '这一年你跟着{dam}下地。挑水、除草、收割，一样一样学会。' },
           { kind: 'narration', text: '手上磨出了茧，破了又长。' },
           { kind: 'event', text: '年底照镜子，你发现自己比去年壮了一圈。' },
           {

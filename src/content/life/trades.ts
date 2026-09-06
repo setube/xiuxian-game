@@ -39,7 +39,7 @@ export const tradeScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '那天夜里下大雨，店里早就上了门板。' },
           { kind: 'narration', text: '三更时分有人叫门。' },
-          { kind: 'narration', text: '父亲披衣下去开了门。你从楼上探头看。' },
+          { kind: 'narration', text: '{elder}披衣下去开了门。你从楼上探头看。' },
           { kind: 'narration', text: '进来的人一身黑衣，从头到脚都是干的。' },
           { kind: 'event', text: '外面雨那么大，他身上一点没湿。' },
         ],
@@ -99,7 +99,7 @@ export const tradeScenes: SceneLibrary = {
           { kind: 'narration', text: '他抬眼看了你一下，你就退出去了。' },
           { kind: 'divider', variant: 'dots' },
           { kind: 'narration', text: '第二天天没亮他就走了，房钱压在桌上。' },
-          { kind: 'narration', text: '母亲进去收拾，出来的时候脸色不太对。' },
+          { kind: 'narration', text: '{dam}进去收拾，出来的时候脸色不太对。' },
           { kind: 'dialogue', speaker: '{dam}', text: '被褥是平的。' },
           { kind: 'narration', text: '像是没有人在那张床上躺过。' },
           { kind: 'narration', text: '{elder}说，往后这种客人来了，收钱，别多问。' },
@@ -267,7 +267,7 @@ export const tradeScenes: SceneLibrary = {
         onEnter: [{ type: 'time', days: 2 }],
         blocks: [
           { kind: 'narration', text: '有个采药人挑着担子来卖货。' },
-          { kind: 'narration', text: '父亲一样一样验，验到最底下停住了。' },
+          { kind: 'narration', text: '{elder}一样一样验，验到最底下停住了。' },
           { kind: 'narration', text: '那是一小截根，不长，断口是白的，隔了这么久还没干。' },
           { kind: 'dialogue', speaker: '{elder}', text: '这个哪来的？' },
           { kind: 'dialogue', text: '北边山里。石头缝里长的。' },
@@ -339,7 +339,7 @@ export const tradeScenes: SceneLibrary = {
         id: 'kept',
         onEnter: [{ type: 'time', months: 6 }],
         blocks: [
-          { kind: 'narration', text: '父亲用油纸包了三层，收进了柜子最上一格。' },
+          { kind: 'narration', text: '{elder}用油纸包了三层，收进了柜子最上一格。' },
           { kind: 'dialogue', speaker: '{elder}', text: '认不出的东西，不能用在人身上。' },
           { kind: 'narration', text: '过了半年，{dam}拿出来看过一次。' },
           { kind: 'event', text: '断口还是白的。' },
@@ -605,7 +605,7 @@ export const tradeScenes: SceneLibrary = {
           { kind: 'divider', variant: 'dots' },
           {
             kind: 'narration',
-            text: '第二天早饭桌上一切如常。父亲照旧出门，母亲照旧盛粥。',
+            text: '第二天早饭桌上一切如常。父亲照旧出门，{dam}照旧盛粥。',
             tone: 'faint',
           },
           { kind: 'narration', text: '这件事你谁也没说过。', tone: 'faint' },
@@ -655,16 +655,22 @@ export const tradeEvents: readonly LifeEvent[] = [
   {
     // 镖局丢人这件事不是年年有。它得等到孩子大到能听懂那句话
     // 问的是业不是产：护送人家没有铺面
+    //
+    // 还得问爹在不在。业是户的，不因当家的人没了就变——爹死在半道上，
+    // 这家仍旧是护送人家，于是这一卷照样落下来，而卷里从头到尾是他：
+    // 他讲车队遇上了什么，他的刀挂回架子上。**正文点名说谁，条件就得问谁。**
+    // 这一处不改成 `{elder}`：娘顶得上灶间和铺面，顶不上镖行那把刀。
     id: 'trade-road',
     window: { from: 10, to: 16 },
-    requires: [{ livelihood: '护送' }],
+    requires: [{ livelihood: '护送' }, { family: { id: 'father', alive: true } }],
     scene: 'trade:road',
     weight: 9,
   },
   {
+    // 同上：仕宦是家世，爹没了这家仍是官宦人家，可烧卷宗的是他本人
     id: 'trade-archive',
     window: { from: 11, to: 16 },
-    requires: [{ station: '仕宦' }],
+    requires: [{ station: '仕宦' }, { family: { id: 'father', alive: true } }],
     scene: 'trade:archive',
     weight: 9,
   },
