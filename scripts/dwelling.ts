@@ -19,6 +19,8 @@
  *
  * 跑法：bun scripts/dwelling.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'

@@ -49,6 +49,8 @@
  *
  * 跑法：bun scripts/mastery.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { THE_ONE_AT_THE_HERB_SHED } from '../src/content/cultivators'

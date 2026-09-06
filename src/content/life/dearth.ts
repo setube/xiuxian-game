@@ -253,7 +253,7 @@ export const dearthScenes: SceneLibrary = {
    * 路上不太平。
    *
    * 旱灾链走到后段才会有的事。跟米价那一卷一样，
-   * 它对不同的人是不同的东西——镖局的孩子看见父亲往刀上抹油，
+   * 它对不同的人是不同的东西——护送人家的孩子看见父亲往刀上抹油，
    * 客栈的孩子看见店里空了一半。
    */
   'dearth:unrest': {
@@ -271,7 +271,7 @@ export const dearthScenes: SceneLibrary = {
         ],
         blocks: [],
         branches: [
-          { requires: [{ business: '镖局' }], next: 'escort' },
+          { requires: [{ livelihood: '护送' }], next: 'escort' },
           { requires: [{ business: '客栈' }], next: 'inn' },
           { requires: [{ business: '布庄' }], next: 'shop' },
         ],
@@ -286,7 +286,7 @@ export const dearthScenes: SceneLibrary = {
           { type: 'attribute', key: 'will', delta: 4 },
         ],
         blocks: [
-          { kind: 'narration', text: '局里的生意反倒好了。要押的货多，肯走的人少。' },
+          { kind: 'narration', text: '要人护送的货反倒多了。肯走的人少。' },
           { kind: 'narration', text: '{elder}那阵子每天都在磨刀。' },
           { kind: 'narration', text: '走一趟的价钱翻了一倍。他还是接了。' },
           { kind: 'narration', text: '你后来才明白，那一年他为什么总是很晚才睡。', tone: 'faint' },

@@ -54,6 +54,7 @@ const MALE_GIVEN: Record<OriginId, readonly string[]> = {
   herb: ['济仁', '和甫', '济安', '慎之', '存德'],
   escort: ['震山', '威远', '镇江', '雄飞', '定邦'],
   office: ['文渊', '希圣', '承宗', '维桢', '敬修'],
+  yamen: ['大牛', '来福', '有财', '得贵', '顺子'],
   manor: ['载德', '崇礼', '守正', '恪勤', '慎行'],
   court: ['明煦', '承乾', '昭宁', '景元', '嘉佑'],
 }
@@ -213,16 +214,52 @@ export function beBorn(id: OriginId, home: string): Birth {
     surname: finalSurname,
   })
 
+  // 自家这一户：一出生就在的那些人。头是爹，没有爹就是养你的那个人
+  settleOwnHouse({ people, id, circumstance, surname: finalSurname })
+
   // 王府里的人。乳母、管事、门房、婢女、小厮——他们是真人，不是一个 servantCount
   // 住在王府里才有：被寺里收留的那个孩子身边是老僧，不是乳母
   if (id === 'manor' && useWorldStore().residenceKind() === '王府') {
-    settleManorHousehold({ people, id, home, bornYear, surname: finalSurname })
+    settleManorHousehold({ people, home, bornYear })
   }
 
   return {
     name: `${finalSurname}${pick(origin.given) ?? '生'}`,
     circumstance,
   }
+}
+
+/**
+ * 立自家这一户。
+ *
+ * `House.members` 是**住在这一户里的人**，不是亲属名单（见 `types/game.ts`）。
+ * 出生那一刻住在这儿的是境况表给的那几个人：爹娘兄姐，或是收留你的老僧、老乞丐。
+ * 生下来就没了的不算——他没住在这儿。户主是爹；没有爹，就是养你的那个人。
+ *
+ * 住处照抄 `world.residence`：讨饭的没有居所，这一户照样是一户（`'无'`）——
+ * 户是「谁跟谁一起过日子」，不是「有没有一处房子」。
+ */
+function settleOwnHouse(input: {
+  people: ReturnType<typeof usePeopleStore>
+  id: OriginId
+  circumstance: Circumstance
+  surname: string
+}): void {
+  const { people, id, circumstance, surname } = input
+  const members = [...new Set(circumstance.kin.filter((k) => !k.goneAtBirth).map((k) => k.id))]
+  const head =
+    members.find((one) => one === 'father') ??
+    circumstance.kin.find((k) => k.bond === '抚养' && !k.goneAtBirth)?.id ??
+    members[0] ??
+    'me'
+  people.enrollHouse({
+    id: 'home',
+    surname,
+    head,
+    members,
+    residence: useWorldStore().residence ?? '无',
+    livelihood: originById(id).livelihood,
+  })
 }
 
 /**
@@ -233,17 +270,16 @@ export function beBorn(id: OriginId, home: string): Birth {
  * 管事服侍这个家三十年，小厮出身城外的农家。他们进人口册，会老会死，
  * 也会被逐出府（`royal:dismissal`）——身份会变，那正是这一层要说的话。
  *
- * 他们记在 `houses['home']` 里：玩家自家这一户除了亲人还有谁。
+ * 他们进 `houses['home']`：玩家自家这一户除了亲人还有谁。**成员不等于亲人**——
+ * 举家迁出王府时乳母跟着走，靠的就是她在这一户里，不是靠正文点名。
  * 脾气是掷的，跟别人一样——**宗室身份和具体人物分开**，在王府里不体面的人照样有。
  */
 function settleManorHousehold(input: {
   people: ReturnType<typeof usePeopleStore>
-  id: OriginId
   home: string
   bornYear: number
-  surname: string
 }): void {
-  const { people, id, home, bornYear, surname } = input
+  const { people, home, bornYear } = input
   const staff: {
     pid: string
     gender: Gender
@@ -289,7 +325,6 @@ function settleManorHousehold(input: {
       },
     },
   ]
-  const members: string[] = []
   for (const one of staff) {
     const person = makePerson({
       id: one.pid,
@@ -304,16 +339,8 @@ function settleManorHousehold(input: {
     })
     people.enroll(person)
     people.meet(person.id, one.calls, 0)
-    members.push(person.id)
+    people.joinHouse('home', person.id)
   }
-  people.enrollHouse({
-    id: 'home',
-    surname,
-    head: 'father',
-    members,
-    residence: 'home',
-    livelihood: originById(id).livelihood,
-  })
 }
 
 /**
@@ -630,6 +657,8 @@ export function bearKin(id: string, origin: OriginId, home: string): { calls: st
     }),
   )
   people.bind('me', id, bond)
+  // 生在这一户里，就是这一户的人
+  people.joinHouse('home', id)
 
   return { calls: gender === '女' ? '妹妹' : '弟弟', bond }
 }

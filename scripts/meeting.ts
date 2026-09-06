@@ -28,6 +28,8 @@
  *
  * 跑法：bun scripts/meeting.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { CULTIVATORS, THE_ONE_AT_THE_TEMPLE, THE_ONE_ON_THE_PATH } from '../src/content/cultivators'

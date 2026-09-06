@@ -39,6 +39,8 @@ import { constants, cpus, setPriority } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { deriveSeed, freshSeed } from './lib/seed'
+
 const ROOT = fileURLToPath(new URL('../', import.meta.url))
 const TIMES = join(ROOT, 'node_modules', '.tmp', 'gate-times.json')
 
@@ -131,6 +133,30 @@ function saveTimes(times: Record<string, number>): void {
   }
 }
 
+/**
+ * 主种子。`SEED=…` 指定就用指定的，不然现掷一颗——**掷出来的那颗会打印在最前面**。
+ * 每一支门禁拿到的是从它派生的一颗（主种子 + 门禁名），所以：
+ *
+ *     SEED=<主种子> bun scripts/gates.ts                          整套复现
+ *     SEED=<门禁种子> GATE_SHARDS=<n> bun scripts/<name>.ts      单支复现（红了的那支下面会打印这一行）
+ *
+ * 分片数也是复现的一部分（片数变了，每一片拿到的种子就变了），所以这儿把它钉死在环境里传下去。
+ */
+const MASTER_SEED =
+  process.env.SEED !== undefined && process.env.SEED !== '' ? process.env.SEED : freshSeed()
+const SHARDS =
+  process.env.GATE_SHARDS !== undefined && process.env.GATE_SHARDS !== ''
+    ? process.env.GATE_SHARDS
+    : String(Math.max(1, cpus().length - 1))
+
+function seedOf(name: string): string {
+  return deriveSeed(MASTER_SEED, name)
+}
+
+function replayCommand(name: string): string {
+  return `SEED=${seedOf(name)} GATE_SHARDS=${SHARDS} bun scripts/${name}.ts`
+}
+
 function runGate(name: string): Promise<Result> {
   return new Promise((fulfil) => {
     const started = Date.now()
@@ -139,7 +165,7 @@ function runGate(name: string): Promise<Result> {
       cwd: ROOT,
       stdio: ['ignore', 'pipe', 'pipe'],
       // 生产版构建。pinia 和 vue 都是运行时读这一格分开发/生产版的
-      env: { ...process.env, NODE_ENV: 'production' },
+      env: { ...process.env, NODE_ENV: 'production', SEED: seedOf(name), GATE_SHARDS: SHARDS },
     })
 
     /**
@@ -193,7 +219,12 @@ if (missing.length > 0) {
 const times = loadTimes()
 const queue = [...wanted].sort((a, b) => (times[b] ?? 0) - (times[a] ?? 0))
 
-console.log(`\n${queue.length} 支门禁，${JOBS} 个同时跑${asked.length > 0 ? '（指定）' : ''}\n`)
+console.log(`
+${queue.length} 支门禁，${JOBS} 个同时跑${asked.length > 0 ? '（指定）' : ''}`)
+console.log(
+  `主种子 ${MASTER_SEED}（整套复现：SEED=${MASTER_SEED} GATE_SHARDS=${SHARDS} bun scripts/gates.ts）
+`,
+)
 
 const started = Date.now()
 const done: Result[] = []
@@ -231,8 +262,13 @@ if (failed.length > 0) {
     console.log(`\n${'─'.repeat(60)}\n✗ ${one.name}\n${'─'.repeat(60)}`)
     // 只印尾巴：判据不成立的那几行都落在末尾，整篇打出来会把别的失败冲掉
     console.log(one.out.split('\n').slice(-25).join('\n'))
+    console.log(`
+  复现：${replayCommand(one.name)}`)
   }
-  console.log(`\n${failed.length} 支不成立：${failed.map((one) => one.name).join('、')}\n`)
+  console.log(`
+${failed.length} 支不成立：${failed.map((one) => one.name).join('、')}`)
+  console.log(`主种子 ${MASTER_SEED}；修完拿同一颗种子重跑，绿了才算修好。
+`)
   process.exit(1)
 }
 

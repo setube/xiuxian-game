@@ -25,6 +25,8 @@
  *
  * 跑法：bun scripts/leanings.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { LEANINGS, SPARKS } from '../src/content/leanings'

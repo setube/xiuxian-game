@@ -19,6 +19,8 @@
  * **稀有的是机会，不是那句话本身**——机会有多稀由内容决定，
  * 这一支只报数；而机会一旦落到谁头上，那句话必须出现，这一条判死。
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'

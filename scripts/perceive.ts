@@ -16,6 +16,8 @@
  *
  * 跑法：bun scripts/perceive.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { SIGNS } from '../src/content/signs'
@@ -43,7 +45,16 @@ function droughtWorld(): RegionState {
  * 这两类条件才能在同一张表里各自现形。挑单格摆的话，
  * 「开客栈的」会摆成一个没有业的人，而那种人不存在。
  */
-const PROBED: readonly OriginId[] = ['farm', 'hunt', 'cloth', 'inn', 'herb', 'escort', 'office']
+const PROBED: readonly OriginId[] = [
+  'farm',
+  'hunt',
+  'cloth',
+  'inn',
+  'herb',
+  'escort',
+  'office',
+  'yamen',
+]
 
 /** 这一行人家怎么称呼。有铺面的说铺面，没有的说靠什么过活 */
 function nameOf(id: OriginId): string {
@@ -52,7 +63,7 @@ function nameOf(id: OriginId): string {
 }
 
 // —— 一、同一年，同一个世界，七种人看见什么 ——
-console.log('\n=== 同一场旱灾，七个人各看见什么 ===\n')
+console.log(`\n=== 同一场旱灾，${PROBED.length} 个人各看见什么 ===\n`)
 console.log('  （世界真实状态：雨水 26　收成 30　米价 162　治安 38）')
 console.log('  （玩家永远看不到上面这一行）\n')
 

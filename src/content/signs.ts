@@ -201,10 +201,20 @@ export const SIGNS: readonly SignRule[] = [
     weight: 40,
   },
   {
+    // 治安坏了，官府先催的是役。役家的孩子看见的不是街上乱，是爹夜里也出去
+    id: 'order-yamen-pressed',
+    when: { order: { atMost: 40 } },
+    who: [{ living: { is: 'yamen' } }],
+    says: '这阵子{elder}夜里也出去。班头说，上头催得紧。',
+    reading: '你只知道他回来得晚。',
+    from: 'order',
+    weight: 45,
+  },
+  {
     id: 'order-escort-busy',
     when: { order: { atMost: 40 } },
-    who: [{ business: '镖局' }],
-    says: '局里的活多了。走一趟的价钱涨了一倍。',
+    who: [{ livelihood: '护送' }],
+    says: '要人护送的货多了。走一趟的价钱涨了一倍。',
     reading: '你那时候只觉得高兴。',
     from: 'order',
     weight: 50,

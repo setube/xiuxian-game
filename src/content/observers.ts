@@ -146,7 +146,7 @@ export const PHYSICIAN: Observer = {
 /** 乡间武者。也看身子骨，但他的话糙，档位也粗 */
 export const FIGHTER: Observer = {
   id: 'fighter',
-  name: '走镖的把式',
+  name: '护送行商的把式',
   readings: [
     {
       lens: PHYSIQUE,

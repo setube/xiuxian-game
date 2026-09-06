@@ -13,6 +13,8 @@
  *
  * 跑法：bun scripts/portrait.ts
  */
+import './lib/seeded'
+
 import type { AspectKey } from '../src/types/game'
 import { mapShards } from './lib/parallel'
 // 本地仍叫 Character：这一支通篇都这么称呼它，改名只会让 diff 变大

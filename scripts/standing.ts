@@ -37,6 +37,8 @@
  *
  * 跑法：bun scripts/standing.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { ORIGINS, originById } from '../src/content/origins'

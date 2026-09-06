@@ -46,6 +46,8 @@
  *
  * 跑法：bun scripts/tutelage.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import {

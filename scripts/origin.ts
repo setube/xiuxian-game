@@ -6,6 +6,8 @@
  * 放一处是同一个理由——**它们各自都曾经被抄过第二份**，
  * 而抄错的那一份不会喊，只会安静地少命中几行。
  */
+import './lib/seeded'
+
 import { ORIGINS, originById, type Origin } from '../src/content/origins'
 import { useHouseholdStore } from '../src/stores/household'
 import type { Condition, OriginId } from '../src/types/game'

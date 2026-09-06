@@ -27,6 +27,8 @@
  *
  * 跑法：bun scripts/seeking.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { LEADS, PLACES } from '../src/content/leads'

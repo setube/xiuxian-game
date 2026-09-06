@@ -41,6 +41,8 @@
  * 具体的数照样打印出来给人读——**给人读的数和用来判的数是两回事**，
  * 前者越细越好，后者一细就会在某次无关的改动里假红。
  */
+import './lib/seeded'
+
 import { lifeFinale, lifeRoutine } from '../src/content/life'
 import { mapShards, sumTallies } from './lib/parallel'
 import { CULTIVATION_CHAPTER, partings, TURN_CEILING, type Tally } from './tasks/lifelong-lives'

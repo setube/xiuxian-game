@@ -14,11 +14,13 @@
  * 拆几片、每片多少世，都不影响总数——除了比例的分母要用总世数，
  * 别拿分片的世数去除。
  *
- * ## 随机数不必操心
+ * ## 随机数要播种，而且每一片一颗
  *
- * 每个 worker 是一个独立的 V8 isolate，`Math.random` 各有各的种子。
- * 十二个线程拿到的是十二条互不相干的随机流，
- * 这恰好就是蒙特卡洛想要的——不需要额外播种。
+ * 每个 worker 是一个独立的 V8 isolate，`Math.random` 各有各的种子——从前这儿写着
+ * 「不需要额外播种」，那是对的，直到全套偶尔一支红、单跑又绿开始出现。
+ * 现在主线程那颗种子（`lib/seeded`）派生出每一片的种子（`deriveSeed(主, 第几次调用, 片序号)`），
+ * 由 `worker.ts` 在加载任务之前装上：同一颗主种子、同样的片数，每一片长出同一批人生。
+ * 片数是复现的一部分——`gates.ts` 打印复现命令时连 `GATE_SHARDS` 一起写。
  *
  * ## 这里只提供「摊开再收回」这一种模式
  *
@@ -31,6 +33,8 @@ import { cpus } from 'node:os'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Worker } from 'node:worker_threads'
+
+import { currentSeed, deriveSeed, installSeed, seedFromEnv } from './seed'
 
 /**
  * 默认开几个线程。
@@ -139,19 +143,32 @@ export function shardsOf(runs: number, workers = DEFAULT_WORKERS): number[] {
  * 任务模块要导出 `runShard(runs, payload, index)`，返回值必须能结构化克隆
  * （数字、字符串、数组、普通对象、`Map`、`Set` 都行；函数和类实例不行）。
  */
+/** 这个进程第几次摊开。同一支门禁摊两回，两回的片种子不能一样 */
+let calls = 0
+
 export async function mapShards<Shard, Payload = undefined>(
   options: ShardOptions<Payload>,
 ): Promise<Shard[]> {
   const workerFile = new URL('./worker.ts', import.meta.url)
   const task = pathToFileURL(resolve(process.cwd(), options.task)).href
   const chunks = splitRuns(options.runs, options.workers ?? DEFAULT_WORKERS)
+  // 没装过种子的调用方（该在第一行 `import './lib/seeded'`）这儿补装，至少让分片可复现
+  const seed = currentSeed() ?? installSeed(seedFromEnv())
+  const call = calls
+  calls += 1
 
   return Promise.all(
     chunks.map(
       (runs, index) =>
         new Promise<Shard>((fulfil, reject) => {
           const worker = new Worker(workerFile, {
-            workerData: { task, runs, payload: options.payload, index },
+            workerData: {
+              task,
+              runs,
+              payload: options.payload,
+              index,
+              seed: deriveSeed(seed, call, index),
+            },
           })
           let reported = false
           worker.once('message', (shard: Shard) => {

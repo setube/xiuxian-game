@@ -55,6 +55,8 @@
  * 第一段上、敬称不看身份、`kinCall` 自己兜底、场合那一维根本不存在、
  * 爵位那一层不查表见爵位就换词。**六种必须全被拒绝。**
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import {
@@ -243,7 +245,7 @@ const PATHS: readonly Path[] = [
     label: '官宦人家的孩子：跟王府学的是同一套话',
     origin: 'office',
     gender: '男',
-    steps: [{ scene: 'child:memory', node: 'yamen' }],
+    steps: [{ scene: 'child:memory', node: 'official' }],
   },
   {
     id: 'farm',
@@ -536,10 +538,47 @@ function walk(path: Path): Walked | string {
   }
 }
 
+/**
+ * 这条路上剧本自己有没有写死他爹。写了的（削爵那一卷「大行皇帝」），
+ * 爹不在是内容，不是意外。
+ */
+function pathKillsFather(path: Path): boolean {
+  return path.steps.some((step) => {
+    const site = resolve(step)
+    return (
+      typeof site !== 'string' &&
+      site.effects.some((one) => one.type === 'family' && one.id === 'father' && one.alive === false)
+    )
+  })
+}
+
+/**
+ * 走到够数为止。
+ *
+ * 剧本里有跳年（出生那卷醒来跳三年，削爵那卷前后一年），跳年会掷骰子让人殁——
+ * 娘在那三年里没了，`{dam}` 就落回「家里的大人」，判据于是报「搬一次家就改了口音」。
+ * 那不是称谓层的错，是这一世的判据前提没了：判据问的是「同一个人三个称呼」，
+ * 人都不在了就没有可问的。所以这一世作废，重掷，掷到爹娘都走完为止。
+ * 种子 hunt-211 抓到的正是这一种（`bun scripts/replay.ts` 那一支立的规矩）。
+ */
+function walkAlive(path: Path): Walked | string {
+  const killsFather = pathKillsFather(path)
+  let last: Walked | string = '一回也没走'
+  for (let tries = 0; tries < 200; tries += 1) {
+    last = walk(path)
+    if (typeof last === 'string') return last
+    const people = usePeopleStore()
+    const motherAlive = people.kinOf('生母').some((id) => people.isAlive(id))
+    const fatherAlive = people.kinOf('生父').some((id) => people.isAlive(id))
+    if (motherAlive && (fatherAlive || killsFather)) return last
+  }
+  return `掷了两百回，回回都有人在路上殁了——${typeof last === 'string' ? last : '判据前提立不住'}`
+}
+
 const walked = new Map<string, Walked>()
 const broken: string[] = []
 for (const path of PATHS) {
-  const one = walk(path)
+  const one = walkAlive(path)
   if (typeof one === 'string') broken.push(`${path.label}：${one}`)
   else walked.set(path.id, one)
 }
@@ -891,7 +930,7 @@ function inText(): string[] {
   }
 
   for (const one of walked.values()) {
-    const sample = one.lines.find((line) => line.includes(one.kin.生母 ?? ' '))
+    const sample = one.lines.find((line) => line.includes(one.kin.生母 ?? '\u0000'))
     console.log(`  【${one.label}】${sample ?? '（这一路没有一句提到娘）'}`)
   }
   for (const line of heard) console.log(`  削爵之后仍旧：${line}`)

@@ -31,6 +31,8 @@
  *
  * 跑法：bun scripts/settle.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { applyEffects } from '../src/engine/effects'

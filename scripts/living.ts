@@ -41,6 +41,8 @@
  * 走不到的那一处会红——以后谁在别的卷里写下第四处，
  * 这道门禁会开口要求把那条路也走一遍。
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { BEATS, DOINGS } from '../src/content/days'

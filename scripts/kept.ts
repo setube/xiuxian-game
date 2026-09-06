@@ -55,6 +55,8 @@
  * 第六节把四种坏实现摆出来喂给同一把尺子，全被拒绝了，前五节的绿才作数。
  * 末尾报覆盖率——全库几处在问「认识了多久」、几处在往人身边搬，这一支走到了几处。
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { BEATS } from '../src/content/days'
@@ -314,10 +316,30 @@ function walk(path: Path): Walked | string {
   return { id: path.id, label: path.label, before, away, home, where }
 }
 
+/**
+ * 走到够数为止。
+ *
+ * 「去镇上做工三年」那一步真的跳三年，跳年会掷骰子让人殁。抚养人在那三年里没了，
+ * 回来那一卷的前提就没了——年表上 `reunion-homecoming` 本来就要求
+ * `{ bond: { kind: '抚养', alive: true } }`，人不在了走的是「人不在了」那一卷。
+ * 门禁硬把他领进「人还在」那一卷，再报「回到家了可一个抚养人也不在身边」，那是诬告。
+ * 所以这一世作废，重掷。种子 hunt-206 抓到的正是这一种。
+ */
+function walkAlive(path: Path): Walked | string {
+  let last: Walked | string = '一回也没走'
+  for (let tries = 0; tries < 200; tries += 1) {
+    last = walk(path)
+    if (typeof last === 'string') return last
+    const people = usePeopleStore()
+    if (people.kinOf('抚养').some((id) => people.isAlive(id))) return last
+  }
+  return '掷了两百回，回回抚养人都在路上殁了——判据前提立不住'
+}
+
 const walked = new Map<string, Walked>()
 const bootFailures: string[] = []
 for (const path of PATHS) {
-  const one = walk(path)
+  const one = walkAlive(path)
   if (typeof one === 'string') bootFailures.push(`【${path.label}】${one}`)
   else walked.set(path.id, one)
 }

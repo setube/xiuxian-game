@@ -12,7 +12,7 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  * - 客栈：一个半夜投宿、天亮就走的客人。
  * - 酒楼：一个喝多了说自己见过神仙、被满座哄笑的人。
  * - 药铺：一味谁也认不出的药材。
- * - 镖局：一条镖队再也不走的道。
+ * - 护送：一条车队再也不走的道。
  * - 官宦：一桩不许记档的案子。
  *
  * 五条路通向的不是同一个答案。有的让你知道「这世上有修士」，
@@ -20,10 +20,11 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  *
  * ## 这里说的「行当」是哪一格
  *
- * 前四卷问的是**产**（`business`）——有没有那一处铺面。
+ * 前三卷问的是**产**（`business`）——有没有那一处铺面。
  * 撞见半夜投宿的客人，前提是家里有个客栈可投；
  * 认不出的那味药材，得先有个药柜摆在那儿。
- * 只有末一卷问的是**家世**（`station`）：不许记档的案子进不了民宅，
+ * 护送那一卷问的是**业**（`livelihood`）：这一家没有铺面，有的是一队人和一张路图。
+ * 末一卷问的是**家世**（`station`）：不许记档的案子进不了民宅，
  * 它要的不是一间铺子，是这家人够得着那份卷宗。
  */
 export const tradeScenes: SceneLibrary = {
@@ -382,10 +383,10 @@ export const tradeScenes: SceneLibrary = {
           { type: 'household', standing: -5 },
         ],
         blocks: [
-          { kind: 'narration', text: '那一趟镖走了两个月才回来，回来的人比去的时候少了两个。' },
+          { kind: 'narration', text: '那一趟走了两个月才回来，回来的人比去的时候少了两个。' },
           { kind: 'narration', text: '货没丢。人丢了。' },
-          { kind: 'narration', text: '镖局赔了钱，也办了两场丧事。' },
-          { kind: 'narration', text: '此后总镖头在墙上那张舆图上，用朱笔圈掉了一条道。' },
+          { kind: 'narration', text: '东家赔了钱，队里办了两场丧事。' },
+          { kind: 'narration', text: '此后领队的老把头在墙上那张舆图上，用朱笔圈掉了一条道。' },
         ],
         choices: [
           {
@@ -412,7 +413,7 @@ export const tradeScenes: SceneLibrary = {
                 id: 'places-not-to-go',
                 title: '不能走的路',
                 summary:
-                  '总镖头在舆图上用朱笔圈掉了几处。最新的一处在北边山里。圈了的道，镖队再也不走。',
+                  '老把头在舆图上用朱笔圈掉了几处。最新的一处在北边山里。圈了的道，车队再也不走。',
                 category: '地理',
               },
               { type: 'flag', key: 'knows-the-marked-roads', value: true },
@@ -448,7 +449,7 @@ export const tradeScenes: SceneLibrary = {
           { type: 'relation', id: 'father', name: '父亲', delta: 10 },
           {
             type: 'chronicle',
-            text: '父亲告诉你，镖队在山里遇上了不该遇上的人。',
+            text: '父亲告诉你，车队在山里遇上了不该遇上的人。',
             tone: 'cinnabar',
           },
         ],
@@ -476,7 +477,7 @@ export const tradeScenes: SceneLibrary = {
           { kind: 'narration', text: '舆图上圈了朱笔的地方一共四处。' },
           { kind: 'narration', text: '三处已经很旧了，墨都发暗。最新的那一处在北岭深处。' },
           { kind: 'narration', text: '旁边没有注字。什么也没写。' },
-          { kind: 'narration', text: '你看的时候总镖头进来了。他看了你一眼，没赶你。' },
+          { kind: 'narration', text: '你看的时候老把头进来了。他看了你一眼，没赶你。' },
           { kind: 'dialogue', text: '记住就行。别问。' },
         ],
       },
@@ -653,9 +654,10 @@ export const tradeEvents: readonly LifeEvent[] = [
   },
   {
     // 镖局丢人这件事不是年年有。它得等到孩子大到能听懂那句话
+    // 问的是业不是产：护送人家没有铺面
     id: 'trade-road',
     window: { from: 10, to: 16 },
-    requires: [{ business: '镖局' }],
+    requires: [{ livelihood: '护送' }],
     scene: 'trade:road',
     weight: 9,
   },

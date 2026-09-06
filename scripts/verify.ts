@@ -85,6 +85,8 @@
  * 跑法：bun scripts/verify.ts
  * 失败会以非零码退出，可以直接挂进 CI。
  */
+import './lib/seeded'
+
 import { readFileSync } from 'node:fs'
 
 import { createPinia, setActivePinia } from 'pinia'

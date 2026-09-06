@@ -14,6 +14,8 @@
  *
  * 跑法：bun scripts/observe.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import {

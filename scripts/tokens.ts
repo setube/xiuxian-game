@@ -8,6 +8,8 @@
  * 这里跑完一整世之后，把所有会上界面的字符串翻一遍，
  * 只要还剩一个 `{`，就是漏了一处出口。
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { ORIGINS } from '../src/content/origins'

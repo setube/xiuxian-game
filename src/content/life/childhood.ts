@@ -27,7 +27,8 @@ export const childhoodScenes: SceneLibrary = {
           { requires: [{ origin: 'tavern' }], next: 'tavern' },
           { requires: [{ origin: 'herb' }], next: 'herbs' },
           { requires: [{ origin: 'escort' }], next: 'escort' },
-          { requires: [{ origin: 'office' }], next: 'yamen' },
+          { requires: [{ origin: 'office' }], next: 'official' },
+          { requires: [{ origin: 'yamen' }], next: 'runner' },
           { requires: [{ origin: 'manor' }], next: 'palace' },
           { requires: [{ origin: 'court' }], next: 'court' },
         ],
@@ -155,12 +156,12 @@ export const childhoodScenes: SceneLibrary = {
             type: 'knowledge',
             id: 'places-not-to-go',
             title: '不能走的路',
-            summary: '走镖的人说，有几个地方是不走的。问为什么，没人答。',
+            summary: '护送行商的人说，有几个地方是不走的。问为什么，没人答。',
             category: '地理',
           },
         ],
         blocks: [
-          { kind: 'narration', text: '{elder}那趟镖回来得很晚。' },
+          { kind: 'narration', text: '{elder}那一趟回来得很晚。' },
           { kind: 'narration', text: '他坐在院里脱衣裳，背上一道口子，{dam}正在给他上药。' },
           { kind: 'narration', text: '你站在门槛上看。他回头看见你，把衣裳拉了上去。' },
           { kind: 'dialogue', speaker: '{elder}', text: '没事。进去。' },
@@ -170,8 +171,8 @@ export const childhoodScenes: SceneLibrary = {
         next: 'close',
       },
 
-      yamen: {
-        id: 'yamen',
+      official: {
+        id: 'official',
         onEnter: [
           { type: 'attribute', key: 'insight', delta: 2 },
           {
@@ -188,6 +189,36 @@ export const childhoodScenes: SceneLibrary = {
           { kind: 'event', text: '父亲弯着腰，一直没有直起来。' },
           { kind: 'narration', text: '你从来没见过他那样。' },
           { kind: 'narration', text: '客人走后，{elder}回书房去了，一晚上没出来。' },
+        ],
+        next: 'close',
+      },
+
+      /**
+       * 衙役人家的孩子记得住的第一件事：腰牌说收就收。
+       *
+       * 官家的孩子看见的是父亲对着别人弯腰（上头还有上头）；役家的孩子看见的是
+       * 父亲的差是上头派的——今年有，明年不一定有。两件事都是「人在一个制度组织里
+       * 受约束」，可约束的样子不一样：官弯的是腰，役丢的是饭碗。
+       * 这一节是官／役拆开之后的第一片内容，只写腰牌这一件事。
+       */
+      runner: {
+        id: 'runner',
+        onEnter: [
+          { type: 'attribute', key: 'insight', delta: 2 },
+          {
+            type: 'knowledge',
+            id: 'the-errand',
+            title: '差是上头派的',
+            summary: '{elder}在衙门当差。差是上头派的，说收就收，今年有明年不一定有。',
+            category: '世事',
+          },
+        ],
+        blocks: [
+          { kind: 'narration', text: '那天{elder}带你去衙门，让你在照壁底下等着。' },
+          { kind: 'narration', text: '他进去点卯。出来的时候，腰牌不在腰上了。' },
+          { kind: 'narration', text: '回家的路上他没说话。' },
+          { kind: 'event', text: '晚上{dam}问起，他说：班头收了。' },
+          { kind: 'narration', text: '过了三天，腰牌又挂回了门后。他没说为什么。' },
         ],
         next: 'close',
       },

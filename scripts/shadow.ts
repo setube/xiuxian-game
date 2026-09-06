@@ -43,6 +43,8 @@
  *
  * 跑法：bun scripts/shadow.ts
  */
+import './lib/seeded'
+
 import { lifeScenes } from '../src/content/life'
 import type { Condition, SceneNode } from '../src/types/game'
 

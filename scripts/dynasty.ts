@@ -25,6 +25,8 @@
  *
  * 跑法：bun scripts/dynasty.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { ERA_NAMES, NOT_ERA_CHARS, REAL_MING_ERAS } from '../src/content/eras'

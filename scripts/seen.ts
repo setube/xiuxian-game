@@ -41,6 +41,8 @@
  *
  * 跑法：bun scripts/seen.ts
  */
+import './lib/seeded'
+
 import { lifeScenes } from '../src/content/life'
 import type { Condition } from '../src/types/game'
 import { mapShards } from './lib/parallel'

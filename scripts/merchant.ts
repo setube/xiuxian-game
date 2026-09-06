@@ -18,6 +18,8 @@
  *
  * 跑法：bun scripts/merchant.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { applyEffects } from '../src/engine/effects'

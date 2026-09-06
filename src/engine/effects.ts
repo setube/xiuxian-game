@@ -153,9 +153,22 @@ function applyOne(
       household.moveHome(target)
       world.moveTo(target)
       const to = household.home
+      /**
+       * 「举家」带的是**这一户里的人**，不只是亲人。
+       *
+       * 亲人从关系图上来（`household.members`：生父、生母、兄姐、配偶、子女），
+       * 同住的人从户上来（`houses['home'].members`：王府的乳母，将来的学徒、寄居的亲戚）。
+       * 两份并起来，再看谁此刻真在这个家里——爹在外县修河堤，搬家带不走他。
+       * 从前只有前一份，于是乳母得正文点名才跟得上（用户 2026-09-06：`members ≠ 亲人`）。
+       */
       const followers =
         effect.takes === '举家'
-          ? household.members.map((member) => member.person)
+          ? [
+              ...new Set([
+                ...household.members.map((member) => member.person),
+                ...(people.houses['home']?.members ?? []),
+              ]),
+            ]
           : (effect.takes ?? [])
       for (const id of followers) {
         // 只挪本来就跟你同住的那些。爹已经在外县做工，你搬家跟他没关系
@@ -319,6 +332,7 @@ function applyOne(
         ...(effect.fate === undefined ? {} : { fate: effect.fate }),
         ...(effect.health === undefined ? {} : { health: effect.health }),
       })
+      if (effect.leavesHouse === true) people.leaveHouse(effect.id)
       return null
     }
     case 'meet': {

@@ -28,6 +28,8 @@
  *
  * 跑法：bun scripts/errand.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { ERRANDS } from '../src/content/errands'

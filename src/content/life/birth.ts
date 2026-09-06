@@ -72,9 +72,9 @@ const NAMING: Record<OriginId, readonly NarrativeBlock[]> = {
     { kind: 'narration', text: '那张纸夹进了药书里。你后来自己翻到过。' },
   ],
   escort: [
-    { kind: 'narration', text: '你出生时父亲不在。名字是总镖头取的。' },
+    { kind: 'narration', text: '你出生时父亲不在。名字是领队的老把头取的。' },
     { kind: 'narration', text: '老爷子提笔就写，一点没犹豫：{name}。' },
-    { kind: 'dialogue', text: '走镖的人家，名字硬气些好。' },
+    { kind: 'dialogue', text: '在道上走的人家，名字硬气些好。' },
     { kind: 'narration', text: '父亲回来听说了，也没改。' },
   ],
   office: [
@@ -83,6 +83,12 @@ const NAMING: Record<OriginId, readonly NarrativeBlock[]> = {
     { kind: 'narration', text: '最后定下来的是：{name}。' },
     { kind: 'dialogue', speaker: '父亲', text: '这个字，往上数三代都没人用过。' },
     { kind: 'narration', text: '他把名字写进族谱那天，还特意换了身衣裳。' },
+  ],
+  yamen: [
+    { kind: 'narration', text: '名字是父亲托衙门里的书吏取的。' },
+    { kind: 'narration', text: '书吏顺手写了两个字，没收钱：{name}。' },
+    { kind: 'narration', text: '父亲说，人家是识字的，给面子。' },
+    { kind: 'narration', text: '那张纸后来不知道哪儿去了。' },
   ],
   manor: [
     { kind: 'narration', text: '取名这件事，家里一个人也做不了主。' },

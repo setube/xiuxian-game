@@ -18,6 +18,8 @@
  *
  * 跑法：bun scripts/wounded.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import {

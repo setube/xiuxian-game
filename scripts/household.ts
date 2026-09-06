@@ -41,6 +41,8 @@
  * 跑法：bun scripts/household.ts
  * 失败会以非零码退出，可以直接挂进 CI。
  */
+import './lib/seeded'
+
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -413,7 +415,7 @@ for (const [a, b, why] of INDEPENDENT) {
     `    四格合起来还剩 ${collided} 行分不开，所以 origin 这个主键得留着（藩府和宫里四格全同）`,
   )
   if (collided === 0) {
-    bad('四格已经能把十一行分完了——origin 这个主键失去了它现在写着的那条理由')
+    bad(`四格已经能把 ${ORIGINS.length} 行分完了——origin 这个主键失去了它现在写着的那条理由`)
   }
 }
 {

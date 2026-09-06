@@ -231,7 +231,7 @@ export const hardshipScenes: SceneLibrary = {
             type: 'person',
             id: 'father',
             place: '{home}',
-            // 换出来的是这一家的**业**（务农、经商、走镖），
+            // 换出来的是这一家的**业**（务农、经商、护送），
             // 不是从前那个混装的行当词——「客栈，腰不太好」不是一句人话
             doing: '{livelihood}，腰不太好',
             health: 42,

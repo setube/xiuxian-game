@@ -12,6 +12,8 @@
  *
  * 跑法：bun scripts/inquire.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { INFORMANTS } from '../src/content/informants'

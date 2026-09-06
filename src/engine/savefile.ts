@@ -45,7 +45,7 @@
  * 新加一个 `persist` 的 store。拿不准就 +1——重开一局的代价，
  * 远小于一个半新半旧的世界。
  */
-export const SAVE_VERSION = 8
+export const SAVE_VERSION = 9
 
 /** 版本号存在哪。它自己不属于任何 store，所以不走 pinia */
 const VERSION_KEY = 'xiuxian:version'

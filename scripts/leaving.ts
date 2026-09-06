@@ -22,6 +22,8 @@
  *
  * 跑法：bun scripts/leaving.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { lifeEvents } from '../src/content/life'
@@ -137,9 +139,37 @@ console.log('\n=== 二、同一个机会，两个人读到的不一样 ===\n')
 // —— 三、四种人生 ——
 console.log('\n=== 三、四种人生 ===\n')
 
-const lives = (
-  await mapShards<Lived[]>({ task: 'scripts/tasks/leaving-lives.ts', runs: RUNS })
-).flat()
+/**
+ * 掷到够数为止。
+ *
+ * 上面那段算过：一千五百世里 A/D 的期望个数刚过三——**贴着线**。贴着线的意思是
+ * 二十回里有一回它掷出零，走查报「这几种人生跑不出来」，看上去像是功能坏了。
+ * 全套门禁里偶尔一支红、单跑又绿，`leaving` 就是其中一支（种子 hunt-7 那一批抓的）。
+ *
+ * 固定世数判零世会闪红，要掷到够数的事件为止：第一批不够，再摊一批，最多四批。
+ * 种子照样钉得住——`mapShards` 每摊一回派的片种子不一样。
+ */
+const ENOUGH_OF_EACH = 3
+const BATCHES_AT_MOST = 4
+let lives: Lived[] = []
+let batches = 0
+const enough = (): boolean => {
+  const wanted = lives.filter((life) => life.everWanted)
+  const went = wanted.filter((life) => life.went || life.cameBack).length
+  const stayed = wanted.filter((life) => life.wantsNow && !life.went).length
+  const cooled = wanted.filter((life) => !life.went && !life.wantsNow).length
+  return went >= ENOUGH_OF_EACH && stayed >= ENOUGH_OF_EACH && cooled >= ENOUGH_OF_EACH
+}
+while (batches < BATCHES_AT_MOST && (batches === 0 || !enough())) {
+  lives = [
+    ...lives,
+    ...(await mapShards<Lived[]>({ task: 'scripts/tasks/leaving-lives.ts', runs: RUNS })).flat(),
+  ]
+  batches += 1
+}
+const SAMPLED = lives.length
+if (batches > 1) console.log(`  （第一批 ${RUNS} 世最稀的那格没掷够，摊了 ${batches} 批，共 ${SAMPLED} 世）
+`)
 
 {
   const wanted = lives.filter((life) => life.everWanted)
@@ -170,7 +200,7 @@ const lives = (
   const wentOut = wanted.filter((life) => life.went || life.cameBack)
 
   const pct = (n: number) => ((n / Math.max(1, wanted.length)) * 100).toFixed(1).padStart(5)
-  console.log(`  ${RUNS} 世里，${wanted.length} 世动过「想离开」的念头。其中：\n`)
+  console.log(`  ${SAMPLED} 世里，${wanted.length} 世动过「想离开」的念头。其中：\n`)
   console.log(`  A　越来越主动，最后真的走了　${pct(a.length)}%`)
   console.log(`  B　一直没动，留在原地　　　　${pct(b.length)}%`)
   console.log(`  C　念头后来退下去了　　　　　${pct(c.length)}%`)
@@ -211,13 +241,13 @@ console.log('\n=== 四、念头不是一条经验条 ===\n')
   }
 
   if (tally.size === 0) {
-    console.log(`  ✗ ${RUNS} 世里没有一个念头退过——那它就只是一条经验条。`)
+    console.log(`  ✗ ${SAMPLED} 世里没有一个念头退过——那它就只是一条经验条。`)
     failed += 1
   } else {
     for (const [id, n] of [...tally.entries()].sort((a, b) => b[1] - a[1])) {
       const says = LEANINGS.find((item) => item.id === id)?.says ?? id
       console.log(
-        `  ${String(((n / RUNS) * 100).toFixed(1)).padStart(5)}% 的人生里，这个念头被压过：${says}`,
+        `  ${String(((n / SAMPLED) * 100).toFixed(1)).padStart(5)}% 的人生里，这个念头被压过：${says}`,
       )
     }
     console.log('\n  他没有改主意，他只是走不开——而年复一年地走不开，')

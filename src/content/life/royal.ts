@@ -480,7 +480,14 @@ export const royalScenes: SceneLibrary = {
       gone: {
         id: 'gone',
         onEnter: [
-          { type: 'person', id: 'page', place: '城里 · 街上', doing: '在城里给人做事' },
+          // 人还在册上，跟你的边也还在——只是不再是这一户的人
+          {
+            type: 'person',
+            id: 'page',
+            place: '城里 · 街上',
+            doing: '在城里给人做事',
+            leavesHouse: true,
+          },
           { type: 'flag', key: 'page-dismissed', value: true },
           { type: 'chronicle', text: '府里逐了一个小厮。' },
         ],
@@ -553,16 +560,15 @@ export const royalScenes: SceneLibrary = {
            * 他们从「府里的人」变回城里的人；只有乳母跟着走。
            * 这几笔落在 `home` 之前：「举家」带的是这时候还在府里的人。
            */
-          { type: 'person', id: 'steward', place: '城外 · 乡下', doing: '回乡下去了' },
-          { type: 'person', id: 'gatekeeper', place: '城里 · 街上', doing: '在城里给人看门' },
-          { type: 'person', id: 'maid', place: '城里 · 街上', doing: '被人家雇了去' },
-          { type: 'person', id: 'page', place: '城里 · 街上', doing: '在城里给人做事' },
+          { type: 'person', id: 'steward', place: '城外 · 乡下', doing: '回乡下去了', leavesHouse: true },
+          { type: 'person', id: 'gatekeeper', place: '城里 · 街上', doing: '在城里给人看门', leavesHouse: true },
+          { type: 'person', id: 'maid', place: '城里 · 街上', doing: '被人家雇了去', leavesHouse: true },
+          { type: 'person', id: 'page', place: '城里 · 街上', doing: '在城里给人做事', leavesHouse: true },
           // 「全家迁出王府」——正文明写的，所以这里是举家。
-          // 跟隔壁那一卷的分别正在这里：那边只有母子二人走
+          // 跟隔壁那一卷的分别正在这里：那边只有母子二人走。
+          // 乳母跟着走，不用点名：她在这一户里（`House.members` 是住在这儿的人，不是亲人），
+          // 举家带的就是这一户里此刻还在府里的人
           { type: 'home', place: '{province} · {prefecture} · 城西旧宅', takes: '举家' },
-          // 乳母跟着走。「举家」带的是户里的亲人（`household.members`），她不在那份名单上，
-          // 得正文点名——她跟这个家的关系本来就是正文给的
-          { type: 'person', id: 'nurse', place: '{province} · {prefecture} · 城西旧宅' },
         ],
         blocks: [
           { kind: 'divider', variant: 'dots' },

@@ -50,6 +50,8 @@
  *
  * 跑法：bun scripts/founding.ts
  */
+import './lib/seeded'
+
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createPinia, setActivePinia } from 'pinia'

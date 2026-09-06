@@ -37,6 +37,8 @@
  * 不是这些词不能写，是**出现这种生活细节时，必须有对应的人生环境来源。**
  * 想写「割了半晌草」，就先写上 `requires: [{ living: { is: 'farm' } }]`。
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { BEATS, DOINGS } from '../src/content/days'
@@ -100,6 +102,7 @@ const SETTLED = [
   'shop',
   'clinic',
   'office',
+  'yamen',
   'palace',
   'manor',
   'temple',
@@ -136,7 +139,7 @@ const FACTS: readonly Fact[] = [
   { word: '猎弓', livings: ['hunt'], why: '弓是打猎人家的家什' },
   { word: '账本', livings: ['shop'], why: '账本是做买卖的人家才有的' },
   { word: '柜台', livings: ['shop', 'clinic'], why: '柜台得有个铺面' },
-  { word: '府衙', livings: ['office'], why: '衙门是当差人家的去处' },
+  { word: '府衙', livings: ['office', 'yamen'], why: '衙门是做官人家、当差人家的去处' },
   { word: '宫门', livings: ['palace'], why: '宫门只有宫里的人天天进出' },
   { word: '内侍', livings: ['palace'], why: '内侍是宫里的人事' },
 
@@ -420,7 +423,8 @@ const FIXTURES: readonly Fixture[] = [
   { label: '农户', origin: 'farm', living: 'farm' },
   { label: '猎户', origin: 'hunt', living: 'hunt' },
   { label: '布庄', origin: 'cloth', living: 'shop' },
-  { label: '当差', origin: 'office', living: 'office' },
+  { label: '做官', origin: 'office', living: 'office' },
+  { label: '衙役', origin: 'yamen', living: 'yamen' },
   { label: '宫里', origin: 'court', living: 'palace' },
   { label: '寺中孤儿', origin: 'farm', keeper: true, living: 'temple' },
   { label: '乞丐收养', origin: 'farm', keeper: true, living: 'begging' },
@@ -559,14 +563,14 @@ function sameDay(): string[] {
   // 输入得能区分对错：七种人家要是解析出同一种日子，上面那一圈等于没跑
   const kinds = new Set(seenLivings.values())
   if (kinds.size < FIXTURES.length) {
-    wrong.push(`七种人家只解析出 ${kinds.size} 种日子，这批输入分不开出身`)
+    wrong.push(`${FIXTURES.length} 种人家只解析出 ${kinds.size} 种日子，这批输入分不开出身`)
   }
   const counts = new Set(beatCounts.values())
   if (counts.size < 2) {
-    wrong.push('七种人家抽得到的段数完全一样，说明分流条件一条也没生效')
+    wrong.push(`${FIXTURES.length} 种人家抽得到的段数完全一样，说明分流条件一条也没生效`)
   }
 
-  console.log('  七种人家各自的日子与可抽段数：')
+  console.log(`  ${FIXTURES.length} 种人家各自的日子与可抽段数：`)
   for (const fixture of FIXTURES) {
     const living = seenLivings.get(fixture.label) ?? '?'
     console.log(

@@ -91,7 +91,8 @@ export const routineScenes: SceneLibrary = {
           {
             id: 'run',
             label: '在外面疯跑',
-            // 宫里和王府的孩子出不了那道门——不是不许跑，是门房不放
+            // 宫里和王府的孩子出不了那道门——不是不许跑，是门房不放。
+            // 第一批内容的事实，不是规则：成年、获准、陪同、溜出去，都出得了（见 `days.ts`）
             requires: [{ dwelling: { kind: ['宅', '寺', '无'] } }],
             echo: '你成天在外面跑。',
             effects: [

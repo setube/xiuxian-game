@@ -31,6 +31,8 @@
  *
  * 跑法：bun scripts/savefile.ts
  */
+import './lib/seeded'
+
 import { SAVE_VERSION, guardSaveFile } from '../src/engine/savefile'
 import { noteOf } from '../src/engine/note'
 import type { Person } from '../src/types/game'

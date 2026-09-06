@@ -165,6 +165,27 @@ export const usePeopleStore = defineStore(
       return Object.values(houses.value).find((house) => house.members.includes(personId))
     }
 
+    /** 他住进这一户。已经在了就不动 */
+    function joinHouse(houseId: string, personId: string): void {
+      const house = houses.value[houseId]
+      if (!house || house.members.includes(personId)) return
+      houses.value = {
+        ...houses.value,
+        [houseId]: { ...house, members: [...house.members, personId] },
+      }
+    }
+
+    /** 他不再是任何一户的人。人还在册上，边也还在——只是不住在那儿了 */
+    function leaveHouse(personId: string): void {
+      const next: Record<string, House> = {}
+      for (const [id, house] of Object.entries(houses.value)) {
+        next[id] = house.members.includes(personId)
+          ? { ...house, members: house.members.filter((member) => member !== personId) }
+          : house
+      }
+      houses.value = next
+    }
+
     /** 跟玩家自家相邻的那几户 */
     function neighbourHouses(): House[] {
       return adjacent.value
@@ -383,6 +404,8 @@ export const usePeopleStore = defineStore(
       houses,
       adjacent,
       enrollHouse,
+      joinHouse,
+      leaveHouse,
       adjoin,
       houseOf,
       neighbourHouses,

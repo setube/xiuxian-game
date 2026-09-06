@@ -19,6 +19,8 @@
  *
  * 跑法：bun scripts/book.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { lifeScenes } from '../src/content/life'

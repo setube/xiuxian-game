@@ -25,6 +25,8 @@
  *
  * 跑法：bun scripts/wishes.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { LEANINGS } from '../src/content/leanings'

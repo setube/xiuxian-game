@@ -11,6 +11,8 @@
  *
  * 跑法：bun scripts/people.ts
  */
+import './lib/seeded'
+
 import { mapShards } from './lib/parallel'
 import { live, type Observed } from './tasks/people-lives'
 

@@ -40,7 +40,7 @@ export const rivermanScenes: SceneLibrary = {
         blocks: [{ kind: 'heading', title: '江上' }],
         // 进城的理由各不相同。这些年怎么过的、生在哪一家，
         // 决定你为什么会在那个下午站到那个渡口上。
-        // 铺面先于门第：镖局的孩子就算念过书，那一年也是跟着车队去的
+        // 营生先于门第：护送人家的孩子就算念过书，那一年也是跟着车队去的
         branches: [
           // 墙塌过的人排在最前：他现在什么也不是，来渡口不需要理由。
           //
@@ -49,7 +49,7 @@ export const rivermanScenes: SceneLibrary = {
           // 旗标记的是「他身上出过那件事」，家世记的是「他现在是什么人家」
           { requires: [{ flag: { key: 'the-fall' } }], next: 'as-nobody' },
           { requires: [{ station: '宗室' }], next: 'as-highborn' },
-          { requires: [{ business: '镖局' }], next: 'as-escort' },
+          { requires: [{ livelihood: '护送' }], next: 'as-escort' },
           { requires: [{ business: '药铺' }], next: 'as-healer' },
           { requires: [{ business: '客栈' }], next: 'as-innkeep' },
           { requires: [{ business: '酒楼' }], next: 'as-taverner' },
@@ -65,7 +65,7 @@ export const rivermanScenes: SceneLibrary = {
         id: 'as-escort',
         onEnter: [{ type: 'time', days: 2 }],
         blocks: [
-          { kind: 'narration', text: '入秋那几日，局里有趟短镖走水路，{elder}带上了你。' },
+          { kind: 'narration', text: '入秋那几日，有一趟短活走水路，{elder}带上了你。' },
           { kind: 'narration', text: '货交上船，众人在渡口等回程的车。' },
         ],
         next: 'river',
@@ -306,11 +306,11 @@ export const rivermanScenes: SceneLibrary = {
             next: 'recognized',
           },
           {
-            // 镖局的孩子不是「想起」，是身体先反应过来——
+            // 护送人家的孩子不是「想起」，是身体先反应过来——
             // 父亲交代过：别动手，也别跑，站着让他过去
             id: 'recall-warning',
             label: '你想起父亲交代过的那句话',
-            requires: [{ flag: { key: 'heard-of-cultivators' } }, { business: '镖局' }],
+            requires: [{ flag: { key: 'heard-of-cultivators' } }, { livelihood: '护送' }],
             echo: '你站住了，两只手都松开着。',
             effects: [
               { type: 'time', days: 1 },

@@ -55,6 +55,8 @@
  * 全库几处在搬家、几处在领新人进门，这一支走到了几处，
  * 又有几处明写着移交给了别的门禁（见 `HANDED_OVER`）。
  */
+import './lib/seeded'
+
 import { readFileSync } from 'node:fs'
 
 import { createPinia, setActivePinia } from 'pinia'

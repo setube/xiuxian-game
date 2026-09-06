@@ -19,6 +19,8 @@
  *
  * 跑法：bun scripts/day.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { DOINGS } from '../src/content/days'

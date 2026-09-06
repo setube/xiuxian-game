@@ -6,6 +6,8 @@
  * 府名和村名绑成一条字符串。现在两边分开掷，这里确认它真的散开了：
  * 每个府都有人生在那里，同一种出身也会落在不同的府。
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { PREFECTURES } from '../src/content/geography'

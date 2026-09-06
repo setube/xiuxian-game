@@ -18,6 +18,8 @@
  *
  * 跑法：bun scripts/neighbours.ts
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { houseSurname } from '../src/content/birth'
@@ -56,15 +58,14 @@ function faultsOfHouses(
   for (const edge of adjacent) {
     if (edge.a === edge.b) faults.push(`${edge.a} 跟自己相邻`)
     for (const end of [edge.a, edge.b]) {
-      if (end !== 'home' && !houses[end]) faults.push(`邻接边指着一户不存在的「${end}」`)
+      if (!houses[end]) faults.push(`邻接边指着一户不存在的「${end}」`)
     }
   }
   const surnames = new Set<string>()
   for (const house of Object.values(houses)) {
-    // 自家那一户（`home`）记的是亲人之外还有谁——王府的乳母、管事、门房。
-    // 户主是爹，他在关系图上不在这份名单里；姓当然跟自家同。这两条只量邻居
+    // 自家那一户（`home`）姓当然跟自家同；户主在成员里这一条对它也成立
     const own = house.id === 'home'
-    if (!own && !house.members.includes(house.head)) faults.push(`${house.id} 的户主不在自家成员里`)
+    if (!house.members.includes(house.head)) faults.push(`${house.id} 的户主不在自家成员里`)
     for (const id of house.members) {
       if (!roster.has(id)) faults.push(`${house.id} 的成员 ${id} 不在人口册上`)
     }

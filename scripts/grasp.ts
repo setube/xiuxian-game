@@ -25,6 +25,8 @@
  * 跑法：bun scripts/grasp.ts
  * 失败以非零码退出，可以直接挂进 CI。
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { useCharacterStore } from '../src/stores/character'

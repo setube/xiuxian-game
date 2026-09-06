@@ -5,6 +5,8 @@
  * 生在宫里那一行四千世里只掷出三十来次，样本太薄，看不出坠落链有没有真的走完。
  * 这里绕开权重，直接把出身钉死，各跑一千世。
  */
+import './lib/seeded'
+
 import { createPinia, setActivePinia } from 'pinia'
 
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'

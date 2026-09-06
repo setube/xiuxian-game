@@ -56,7 +56,7 @@ import type { OriginId } from '@/types/game'
  * ## 怎么用
  *
  * 剧本里写 `{ living: 'farm' }` 做条件，不写 `if origin === 'court'`。
- * 十一种出身摊到七种日子上，往后加一种出身只是往这张表里添一行，
+ * 十二种出身摊到九种日子上，往后加一种出身只是往这张表里添一行，
  * 不是往全库添几百个 if。
  */
 export interface Living {
@@ -81,7 +81,7 @@ export interface Living {
 /**
  * 出身能给的七种日子。
  *
- * 十一种出身摊在这七种上，是有意合并的——
+ * 十二种出身摊在这九种上，是有意合并的——
  * 匠户和农户不是同一种人家，可就「大人闲下来手上有件活」这一点上，
  * 他们确实是一样的。**合并的依据是这一格问的那个问题，不是身份高低。**
  * 哪天有一卷正文分得出匠户和农户，那时再拆，不是现在。
@@ -119,7 +119,20 @@ const CLINIC: Living = {
 const OFFICE: Living = {
   id: 'office',
   chore: { holds: '一沓看了一半的公文', putsAway: '把公文收进匣子' },
-  summary: '在衙门当差。回家还有回家的事，多半在书房',
+  summary: '在衙门做官。回家还有回家的事，多半在书房',
+}
+
+/**
+ * 衙役人家。
+ *
+ * 跟上面那一格从前是一格——官与役拆开之后（`origins.ts`），日子也得拆开：
+ * 官回家进书房，役回家磕靴子上的土。役的活在街上，不在家里；
+ * 他闲下来摆弄的是那双快靴，孩子搭得上手的也是它。
+ */
+const YAMEN: Living = {
+  id: 'yamen',
+  chore: { holds: '一双沾了土的快靴，正往鞋帮上抹油', putsAway: '把靴子放回门后' },
+  summary: '在衙门当差。早晚点卯，其余时候在街上跑腿',
 }
 
 /**
@@ -259,8 +272,8 @@ const MARKET: Living = {
  *
  * 键从前是那个混装的行当名，现在是出身主键。这里**故意不改成按业或按产查**：
  * 「过什么日子」是那一整家的样子决定的，不是某一格决定的——
- * 镖局那一家的业是走镖，可孩子看见的是院里的兵器架和满墙镖旗，
- * 那更接近手艺人家的日子（`CRAFT`），不是「走镖」这个词能推出来的。
+ * 护送那一家的业是护送，可孩子看见的是院里的兵器架和墙上的路图，
+ * 那更接近手艺人家的日子（`CRAFT`），不是「护送」这个词能推出来的。
  */
 export const LIVINGS: Record<OriginId, Living> = {
   farm: HOMESTEAD,
@@ -272,6 +285,7 @@ export const LIVINGS: Record<OriginId, Living> = {
   herb: CLINIC,
   escort: CRAFT,
   office: OFFICE,
+  yamen: YAMEN,
   manor: MANOR,
   court: PALACE,
 }
@@ -327,6 +341,7 @@ export const ALL_LIVINGS: readonly Living[] = [
   SHOP,
   CLINIC,
   OFFICE,
+  YAMEN,
   PALACE,
   BEGGING,
   TEMPLE,
