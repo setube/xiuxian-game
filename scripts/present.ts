@@ -60,8 +60,24 @@ const TOO_COMMON: readonly string[] = ['孩子', '徒弟', '老人', '家里人'
  * 「爹娘都不在了。有些事情从此没有人可以问。」——这一句里当然有「爹娘」，
  * 而它恰恰是这套东西**做对了**的样子。判据要是不放过它，
  * 每一处讣告都会被判成穿帮。
+ *
+ * 「埋」不写成「埋骨」：知识条目叫「父亲埋骨之处」，而问路那条选项写的是
+ * 「问那人，父亲埋在哪里」——**同一件事两种说法，写死其中一种就漏掉另一种**。
+ * 这跟底下 `ALSO_CALLED` 是同一个毛病的两次发作。
  */
-const TALKING_ABOUT_DEATH = /不在了|没了|殁|走了|下葬|坟|埋骨|丧|头七|再没有消息|留下的|留下来/
+const TALKING_ABOUT_DEATH = /不在了|没了|殁|走了|下葬|坟|埋|丧|头七|再没有消息|留下的|留下来/
+
+/**
+ * 明说在回想的那些话，撞上不算数。
+ *
+ * `REMEMBERING` 是按卷豁免的，可回忆不只出现在整卷回想的地方：
+ * 渡口那一节「你想起父亲交代过的那句话」是一条**选项**，而它所在的卷通篇是现实。
+ *
+ * 只收「想起」「记得」这种**明写着在回想**的词，不收「那年」「从前」——
+ * 后者是叙述时间，不是回想动作。收进来的话，「那年父亲从山里回来」也会被放过，
+ * 而那正是这条判据要抓的东西。
+ */
+const REMEMBERING_ALOUD = /想起|记得|想到|梦见|梦里/
 
 /**
  * 一个字的称呼是别的词的零件，撞上不算数。
@@ -191,6 +207,7 @@ for (let i = 0; i < RUNS; i += 1) {
         const hit = names.find((name) => text.includes(name))
         if (hit === undefined) continue
         if (TALKING_ABOUT_DEATH.test(text)) continue
+        if (REMEMBERING_ALOUD.test(text)) continue
         if (innocent(text, hit)) continue
         ghosts.push({ who: id, calls: hit, where: '正文', text })
       }
@@ -199,6 +216,7 @@ for (let i = 0; i < RUNS; i += 1) {
         const hit = names.find((name) => label.includes(name))
         if (hit === undefined) continue
         if (TALKING_ABOUT_DEATH.test(label)) continue
+        if (REMEMBERING_ALOUD.test(label)) continue
         if (innocent(label, hit)) continue
         ghosts.push({ who: id, calls: hit, where: '选项', text: label })
       }

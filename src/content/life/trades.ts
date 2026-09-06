@@ -276,7 +276,7 @@ export const tradeScenes: SceneLibrary = {
         choices: [
           {
             id: 'buy',
-            label: '劝父亲买下来',
+            label: '劝{elder}买下来',
             hint: '要花不少钱',
             echo: '你说：留着吧。',
             effects: [

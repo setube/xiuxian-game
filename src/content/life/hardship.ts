@@ -535,7 +535,9 @@ export const hardshipEvents: readonly LifeEvent[] = [
     window: { from: 5, to: 10 },
     requires: [
       { livelihood: '务农' },
-      { bond: { kind: '生父', alive: true } },
+      // 正文点名说的是父亲（「父亲每天傍晚都去地里站一会儿」），条件就得问这一个人。
+      // `bond: { kind: '生父' }` 问的是「这层关系里还有没有活人」，不是同一句话
+      { family: { id: 'father', alive: true } },
       { standing: { atMost: 46 } },
     ],
     chain: CHAIN,
@@ -547,7 +549,9 @@ export const hardshipEvents: readonly LifeEvent[] = [
     window: { from: 8, to: 12 },
     requires: [
       { flag: { key: 'drought' } },
-      { bond: { kind: '生父', alive: true } },
+      // 同上：这一卷通篇是他——他去镇上借钱、夜里坐在门槛上，选项是「陪父亲坐一会儿」，
+      // 效果还给 `id: 'father'` 记了一笔「欠着一笔债」
+      { family: { id: 'father', alive: true } },
       { standing: { atMost: 40 } },
     ],
     chain: CHAIN,

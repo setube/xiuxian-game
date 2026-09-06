@@ -569,7 +569,10 @@ export const routineScenes: SceneLibrary = {
           {
             id: 'elders',
             label: '把老人接过来照看',
-            requires: [{ bond: { kind: '生母', alive: true } }],
+            // 底下的效果点名 `id: 'mother'`，条件就得问这一个人。
+            // `bond: { kind: '生母' }` 问的是「这层关系里还有没有活人」，
+            // 那跟「娘还在不在」不是同一句话——**正文点名说谁，条件就问谁。**
+            requires: [{ family: { id: 'mother', alive: true } }],
             hint: '她一个人在那边，你不太放心',
             echo: '这几年你把老人接过来照看。',
             effects: [
