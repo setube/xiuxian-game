@@ -185,8 +185,9 @@ const CHECKS = {
    */
   house: (house) => {
     const people = usePeopleStore()
-    const home = people.houses['home']
+    const home = people.houses[house.id ?? 'home']
     if (!home) return false
+    if (house.livelihood !== undefined && home.livelihood !== house.livelihood) return false
     if (house.head === 'me' && home.head !== 'me') return false
     if (house.head === 'other' && home.head === 'me') return false
     if (house.head !== undefined && house.head !== 'me' && house.head !== 'other') {
@@ -209,6 +210,19 @@ const CHECKS = {
     const person = usePeopleStore().personOf(temper.id)
     return person !== undefined && temper.in.includes(person.temper)
   },
+
+  tie: (tie) => {
+    const terms = usePeopleStore().termsBetween(tie.from, tie.to)
+    return terms !== undefined && tie.terms.includes(terms)
+  },
+
+  owed: (owed) =>
+    usePeopleStore().ious.some(
+      (one) =>
+        (owed.debtor === undefined || one.debtor === owed.debtor) &&
+        (owed.creditor === undefined || one.creditor === owed.creditor) &&
+        (one.settled !== null) === owed.settled,
+    ),
 
   dwelling: (dwelling, { world }) => {
     if (dwelling.kind !== undefined && !dwelling.kind.includes(world.residenceKind())) return false

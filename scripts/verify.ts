@@ -87,7 +87,7 @@
  */
 import './lib/seeded'
 
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 
 import { createPinia, setActivePinia } from 'pinia'
 
@@ -101,6 +101,7 @@ import { LIVINGS } from '../src/content/living'
 import { OPENINGS } from '../src/content/openings'
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { CHAPTERS } from '../src/content/life/chapters'
+import { ROLE_IDS } from '../src/engine/interpolate'
 import { stageOf } from '../src/engine/stages'
 import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
@@ -636,6 +637,9 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     diary: null,
     reading: null,
     divide: null,
+    tie: null,
+    owe: null,
+    repay: null,
   } satisfies {
     [K in Effect['type']]: ((effect: Extract<Effect, { type: K }>) => [Set<string>, string]) | null
   }
@@ -955,7 +959,19 @@ console.log('=== 可观测路径验收（人生里真走得到吗）===\n')
    * **但重新量的十批是拆节落地之后跑的，不是拿 61 那一批倒推的**——
    * 跟第二次换的做法是同一条。
    */
-  const UNVISITED_CEILING = 69
+  /**
+   * ## 第四次换，是因为承户分家和老屋两册进来了
+   *
+   * 两册加起来五十多个节点，而且天生稀：老屋那一册要先分了家、哥又娶了亲才走得到，
+   * 荒年借粮再撞上还粮那一年更稀。上限 69 当场红（70、74、73）。落地之后重新跑十批：
+   *
+   *     74　51　54　67　45　73　53　60　59　68
+   *     均值 60.4　标准差 9.3
+   *
+   * 均值涨的 14 个正对得上两册里那些稀节；σ 涨到 9.3 是稀卷按卷跳（一卷五节连在 `next` 上）
+   * 的老账。上限 = 60.4 + 3 × 9.3 ≈ 88。**是落地之后量的十批，不是拿那三次红倒推的。**
+   */
+  const UNVISITED_CEILING = 88
 
   const visits = new Map<string, number>()
   for (let index = 0; index < RUNS; index += 1) {
@@ -1776,6 +1792,104 @@ console.log('=== 称呼验收（玩家读到的字里有英文吗）===\n')
         '\n  玩家是唯一会发现这件事的人。要么把落到认知层那一步补上称呼，' +
         '\n  要么这个值本来就不该上界面。\n',
     )
+    process.exitCode = 1
+  }
+}
+
+/**
+ * ==============================================================
+ * 四个名字各归各；历史不封顶
+ * ==============================================================
+ *
+ * 用户 2026-09-06 立的规矩，起因是 `meet id: 'elder'` 那个幽灵熟人：
+ *
+ *     人物 id（brother）≠ 角色语义名（elder：家里的大人）≠ 玩家称呼（哥）≠ 正文代称（{elder}）
+ *
+ * 效果里写的 `id` 只能是两种东西：人口册上会立起来的人（境况表、`meet.who`、
+ * `family.born`、引擎立的邻居和府里人），或者角色名（`ROLE_IDS`，结算前换成真人）。
+ * 别的都是拿称呼当人名——「老爷」「婆婆」「掌柜」「师父」「班头」「东家」迟早重蹈覆辙。
+ * 角色名也不能同时是某个人的人名（从前 `elder` 两头都是）。
+ *
+ * 另一条：**界面的流可以封顶，历史不能。** `narrative.stream` 封四百块是给 localStorage
+ * 让路；编年、日录、人口册的往事、关系边、债，一条也不能因为「界面想显示二十条」
+ * 就丢掉后面三百条。stores 里凡是「留最后 N 个」的写法，只许出现在 narrative.ts。
+ */
+{
+  console.log('\n=== 四个名字各归各；历史不封顶（静态穷举全库）===\n')
+
+  const ENGINE_IDS = [
+    'east-head',
+    'east-wife',
+    'west-head',
+    'west-wife',
+    ...[1, 2, 3].flatMap((n) => [`east-child-${n}`, `west-child-${n}`]),
+    'nurse',
+    'steward',
+    'gatekeeper',
+    'maid',
+    'page',
+    'me',
+  ]
+  const enrolled = new Set<string>(ENGINE_IDS)
+  for (const one of CIRCUMSTANCES) for (const kin of one.kin) enrolled.add(kin.id)
+  const referenced = new Map<string, string[]>()
+  const note = (where: string, effects: readonly Effect[]): void => {
+    for (const one of effects) {
+      if (one.type === 'meet' && one.who !== undefined) enrolled.add(one.id)
+      if (one.type === 'family' && one.born === true) enrolled.add(one.id)
+      const ids: string[] = []
+      if (one.type === 'meet' || one.type === 'relation' || one.type === 'person' || one.type === 'family') {
+        ids.push(one.id)
+      }
+      if (one.type === 'tie') ids.push(one.from, one.to)
+      if (one.type === 'owe' || one.type === 'repay') ids.push(one.debtor, one.creditor)
+      for (const id of ids) referenced.set(id, [...(referenced.get(id) ?? []), where])
+    }
+  }
+  for (const [sceneId, scene] of Object.entries(lifeScenes)) {
+    for (const [nodeId, node] of Object.entries(scene.nodes)) note(`${sceneId}#${nodeId}`, effectsOf(node))
+  }
+  for (const beat of BEATS) note(`一天 · ${beat.doing}`, beat.effects ?? [])
+  const roles = new Set<string>(ROLE_IDS)
+  const strangers = [...referenced].filter(([id]) => !enrolled.has(id) && !roles.has(id))
+  const twoFaced = [...roles].filter((role) => enrolled.has(role))
+
+  const stores = readdirSync(new URL('../src/stores/', import.meta.url))
+    .filter((file) => file.endsWith('.ts'))
+    .map((file) => ({ file, text: readFileSync(new URL(`../src/stores/${file}`, import.meta.url), 'utf8') }))
+  const TRUNCATES = /\.slice\(\s*-\d|\.slice\([^)]*\.length\s*-|MAX_[A-Z_]*LENGTH|\.splice\(\s*0\s*,/
+  const capped = stores
+    .filter(({ file, text }) => file !== 'narrative.ts' && TRUNCATES.test(text))
+    .map(({ file }) => file)
+
+  const claims: readonly { holds: boolean; text: string }[] = [
+    {
+      holds: strangers.length === 0,
+      text: `效果里写到的 ${referenced.size} 个人名，个个是人口册上会立起来的人或角色名`,
+    },
+    {
+      holds: twoFaced.length === 0,
+      text: `${roles.size} 个角色名（${[...roles].join('、')}）没有一个同时是某个人的人名`,
+    },
+    {
+      holds: capped.length === 0,
+      text: `${stores.length} 个 store 里「留最后 N 个」的写法只在 narrative.ts——历史各簿不封顶`,
+    },
+  ]
+  const broken = claims.filter((claim) => !claim.holds)
+  if (broken.length === 0) {
+    console.log('  三项都在：\n')
+    for (const claim of claims) console.log(`    · ${claim.text}`)
+    console.log('')
+  } else {
+    console.log(`  ✗ ${broken.length} 项不成立：\n`)
+    for (const claim of broken) console.log(`    ${claim.text}`)
+    for (const [id, where] of strangers) {
+      console.log(`      「${id}」不是人口册上的人，也不是角色名——${where.slice(0, 3).join('、')}`)
+    }
+    for (const role of twoFaced) console.log(`      「${role}」既是角色名又是人名`)
+    for (const file of capped) console.log(`      ${file} 里在截历史`)
+    console.log('')
     process.exitCode = 1
   }
 }

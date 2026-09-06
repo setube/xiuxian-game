@@ -12,9 +12,11 @@ import type {
   Fate,
   Gender,
   House,
+  IOU,
   Person,
   Relation,
   Temper,
+  Terms,
 } from '@/types/game'
 
 import { useWorldStore } from './world'
@@ -69,6 +71,8 @@ export const usePeopleStore = defineStore(
     const houses = ref<Record<string, House>>({})
     /** 户与户相邻。独立事实，不从「同村」推 */
     const adjacent = ref<Adjacency[]>([])
+    /** 债：谁欠谁什么。见 `types/game.ts` 的 `IOU` */
+    const ious = ref<IOU[]>([])
 
     /** 玩家认识几个人。人际面板的角标 */
     const acquaintedCount = computed(() => Object.keys(known.value).length)
@@ -456,6 +460,59 @@ export const usePeopleStore = defineStore(
     }
 
     /** 牵一条边。同样的一条不重复牵 */
+    /**
+     * 两个人之间牵一条边，或改它的处法。`bind` 只往后添、不改；这里可以改 `terms`，
+     * 因为处法是会变的（为一副镯子翻了脸），而边本身还在。
+     */
+    function tie(from: string, to: string, bond: Bond, terms?: Terms): void {
+      const open = relations.value.find(
+        (r) => r.from === from && r.to === to && r.bond === bond && r.until === null,
+      )
+      if (open) {
+        if (terms !== undefined && open.terms !== terms) {
+          relations.value = relations.value.map((r) => (r.id === open.id ? { ...r, terms } : r))
+        }
+        return
+      }
+      relations.value = [
+        ...relations.value,
+        {
+          id: createId('rel'),
+          from,
+          to,
+          bond,
+          since: world.time.year,
+          until: null,
+          ...(terms !== undefined ? { terms } : {}),
+        },
+      ]
+    }
+
+    /** 两个人之间处得怎样。没有边、边上没写，都是 undefined */
+    function termsBetween(from: string, to: string): Terms | undefined {
+      return relations.value.find((r) => r.from === from && r.to === to && r.until === null)?.terms
+    }
+
+    /** 记一笔债 */
+    function owe(input: { debtor: string; creditor: string; what: string; terms: string }): void {
+      ious.value = [
+        ...ious.value,
+        { id: createId('iou'), ...input, year: world.time.year, settled: null },
+      ]
+    }
+
+    /** 还清最早那一笔还没还的债。没有欠着的就什么也不做 */
+    function repay(debtor: string, creditor: string): boolean {
+      const open = ious.value.find(
+        (one) => one.debtor === debtor && one.creditor === creditor && one.settled === null,
+      )
+      if (!open) return false
+      ious.value = ious.value.map((one) =>
+        one.id === open.id ? { ...one, settled: world.time.year } : one,
+      )
+      return true
+    }
+
     function bind(from: string, to: string, bond: Bond): void {
       if (
         relations.value.some(
@@ -554,6 +611,7 @@ export const usePeopleStore = defineStore(
       relations.value = []
       houses.value = {}
       adjacent.value = []
+      ious.value = []
     }
 
     return {
@@ -562,6 +620,11 @@ export const usePeopleStore = defineStore(
       relations,
       houses,
       adjacent,
+      ious,
+      tie,
+      termsBetween,
+      owe,
+      repay,
       enrollHouse,
       joinHouse,
       leaveHouse,
@@ -596,7 +659,7 @@ export const usePeopleStore = defineStore(
   {
     persist: {
       key: 'xiuxian:people',
-      pick: ['roster', 'known', 'relations', 'houses', 'adjacent'],
+      pick: ['roster', 'known', 'relations', 'houses', 'adjacent', 'ious'],
     },
   },
 )

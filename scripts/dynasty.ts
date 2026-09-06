@@ -323,7 +323,13 @@ interface Lived {
   origin: string
   bornEra: string | null
   successions: number
-  /** 同一年里既有「父皇大行」又有「先帝崩」——编年上挨着两行 */
+  /**
+   * 同一个月里既有「父皇大行」又有「先帝崩」——一件事记了两笔。
+   *
+   * 头一版按「同一年」判，诬告过一回（种子 15fefnbs37u2）：父皇七月大行，即位的兄长
+   * 九月就崩了——继任者当年就没了是模型明写允许的（泰昌那种，`dynasty.ts` 的 `yearsLeft`），
+   * 那是两个皇帝两笔账，不是一件事记了两回。
+   */
   doubled: boolean
   /** 宫里那一支：父皇大行那年之后一年，年号换了没有 */
   fallLinked: boolean | null
@@ -353,7 +359,9 @@ function live(): Lived {
 
   const deaths = world.chronicle.filter((e) => e.text.startsWith('先帝崩'))
   const fall = world.chronicle.find((e) => e.text.startsWith('父皇大行'))
-  const doubled = fall !== undefined && deaths.some((e) => e.time.year === fall.time.year)
+  const doubled =
+    fall !== undefined &&
+    deaths.some((e) => e.time.year === fall.time.year && e.time.month === fall.time.month)
 
   let fallLinked: boolean | null = null
   if (fall) {
@@ -404,7 +412,7 @@ for (let tries = 0; tries < 20000 && fellSeen < COURT_FALLS; tries += 1) {
     bad += 1
   } else if (doubled.length > 0) {
     console.log(
-      `  ✗ 五、${doubled.length} 世的编年上「父皇大行」和「先帝崩」挨在同一年——一件事记了两笔。`,
+      `  ✗ 五、${doubled.length} 世的编年上「父皇大行」和「先帝崩」挨在同一个月——一件事记了两笔。`,
     )
     bad += 1
   } else if (fell.length < COURT_FALLS) {

@@ -407,7 +407,13 @@ export const BEATS: readonly Beat[] = [
       '他让你别跟家里说见过他。',
     ],
     effects: [
-      { type: 'meet', id: 'villager-hand', calls: '在镇上做工的同村人', delta: 6 },
+      {
+        type: 'meet',
+        id: 'villager-hand',
+        calls: '在镇上做工的同村人',
+        delta: 6,
+        who: { surname: '孙', given: '二', gender: '男', age: 24, doing: '在镇上给人做工，按天算' },
+      },
       {
         type: 'knowledge',
         id: 'day-labour',

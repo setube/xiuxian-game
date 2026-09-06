@@ -81,7 +81,15 @@ export const reunionScenes: SceneLibrary = {
               { type: 'attribute', key: 'body', delta: 3 },
               { type: 'attribute', key: 'insight', delta: 4 },
               { type: 'attribute', key: 'will', delta: 3 },
-              { type: 'meet', id: 'shop-keeper', calls: '货栈的管事', delta: 6 },
+              // 跟叩活那天（`leave:hiring`）见的是同一个人。从前这儿另起了一个 id `shop-keeper`——
+              // 同一个人两个 id，正是「拿称呼当人名」那一类 bug
+              {
+                type: 'meet',
+                id: 'caravan-boss',
+                calls: '货栈的管事',
+                delta: 6,
+                who: { surname: '沈', given: '大有', gender: '男', age: 41, doing: '管着镇上的货栈' },
+              },
               {
                 type: 'aspect',
                 key: 'body',

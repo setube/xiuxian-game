@@ -392,6 +392,40 @@ export interface Relation {
    * 答案仍然是他。
    */
   until: number | null
+  /**
+   * 两个人之间处得怎样。三档，不是数。
+   *
+   * 第一个使用者是嫂子跟你娘（`life/kindred.ts`）——**全库第一条 NPC↔NPC 的边**。
+   * 从你出发的边不用它（那边是 `known.affinity`，早就有）。它从两个人的性情里出，
+   * 由具体的事改（为一副镯子翻了脸），不随日历翻页变。
+   */
+  terms?: Terms
+}
+
+/** 处得来、平常、不对付。是词不是数：这一格永远只有三种说法 */
+export type Terms = '亲厚' | '平常' | '不睦'
+
+/**
+ * 一笔债。首先是**两个人之间的一件历史事实**，不是一个数（用户 2026-09-06）：
+ * 谁欠谁、欠什么、哪一年、约定了什么、还了没有。谁记得、谁忘了、谁以为已经还过——
+ * 那几格等第二笔债来要。粮、银钱、物件、劳役、人情未必是同一种债，等它们各自出现再分。
+ *
+ * 第一个使用者是荒年哥来借粮那一卷。`household.debt` 那个数（家里欠外头的）另是一回事，
+ * 它不知道欠谁——这里的债知道。
+ */
+export interface IOU {
+  id: string
+  /** 欠的人 */
+  debtor: string
+  /** 被欠的人。`'me'` 也可以 */
+  creditor: string
+  year: number
+  /** 欠什么。写成人说的话：「半年的粮」 */
+  what: string
+  /** 约定。写成人说的话：「开春还」 */
+  terms: string
+  /** 哪一年还清的。null 是还没还 */
+  settled: number | null
 }
 
 /**
@@ -1371,7 +1405,15 @@ export interface Condition {
    * 问的必须是哥当家而不是「不是我当家」。`with` 问户里有没有我的这种人：弟弟分出去之后
    * 就不在我这一户里了，再分一回没有对象。
    */
-  house?: { head?: 'me' | 'other' | Bond; with?: Bond; divided?: boolean }
+  house?: {
+    /** 问哪一户，不写是自家。老屋是 `'old-home'` */
+    id?: string
+    head?: 'me' | 'other' | Bond
+    with?: Bond
+    divided?: boolean
+    /** 这一户靠什么过活。`House.livelihood` 的第一个读者：哥家收成不好才来借粮 */
+    livelihood?: Livelihood
+  }
   /**
    * 这个人的性情是不是这几种。
    *
@@ -1380,6 +1422,10 @@ export interface Condition {
    * 行为从这些里产生（用户 2026-09-06 立的原则）。
    */
   temper?: { id: string; in: readonly Temper[] }
+  /** 两个人之间处得怎样（`Relation.terms`）。嫂子跟你娘不睦，年节那顿饭就没人说话 */
+  tie?: { from: string; to: string; terms: readonly Terms[] }
+  /** 有没有这样一笔债还没还（或已还）。哥欠你的粮还没还，正月里谁也不提 */
+  owed?: { debtor?: string; creditor?: string; settled: boolean }
   gender?: Gender
   stage?: LifeStage
 }
@@ -1539,6 +1585,15 @@ export type Effect =
    * 一条邻接边立起来。
    */
   | { type: 'divide'; leaves: 'me' | Bond }
+  /**
+   * 两个人之间牵一条边，或改它的处法。**NPC↔NPC 的边从这儿写**——嫂子跟你娘。
+   * 写你自己的边仍用 `meet`。
+   */
+  | { type: 'tie'; from: string; to: string; bond: Bond; terms?: Terms }
+  /** 记一笔债：谁欠谁什么、约定了什么。年份由结算填 */
+  | { type: 'owe'; debtor: string; creditor: string; what: string; terms: string }
+  /** 还清最早那一笔还没还的债 */
+  | { type: 'repay'; debtor: string; creditor: string }
   /**
    * 家人境况改写。alive 转 false 即此人不在了。
    *

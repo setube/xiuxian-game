@@ -9,6 +9,11 @@ import type { ChoiceOption, NarrativeBlock, StreamItem } from '@/types/game'
  *
  * 正文是「一直往下写」的，长期游玩会无限增长，而 localStorage 只有数 MB。
  * 超出部分丢弃即可——长期记忆由编年（chronicle）承担。
+ *
+ * **这是界面的流，不是历史。** 能封顶的只有它：编年、日录、人口册上的往事、关系边、债，
+ * 一条也不因为界面只想显示几百块就丢掉（用户 2026-09-06；`scripts/verify.ts` 守着
+ * stores 里「留最后 N 个」的写法只在这一处）。门禁走查也不能拿 `stream.slice(seen)` 当
+ * 全部正文——四百块之后它返回的永远是空，得按块 id 收。
  */
 const MAX_STREAM_LENGTH = 400
 

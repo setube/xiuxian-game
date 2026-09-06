@@ -534,7 +534,11 @@ export const encounterScenes: SceneLibrary = {
             calls: '走北路的商旅',
             delta: 4,
             note: '收粗布往北边贩。每隔一两年从这儿过一趟。',
+            // 他是一个人，不是一句称呼。从前这儿没有 `who`，他在人际面板上有名无身
+            who: { surname: '贺', given: '三', gender: '男', age: 38, doing: '收粗布往北边贩' },
           },
+          // 见完就走了：他不住在这儿，`place` 留在你家门口就是「写死的字段活得比事实久」
+          { type: 'person', id: 'merchant', place: '北边的路上' },
           { type: 'flag', key: 'met-merchant', value: true },
         ],
         blocks: [

@@ -415,6 +415,20 @@ function applyOne(
       settleHeads(world, character, household, people)
       return null
     }
+    case 'tie':
+      people.tie(effect.from, effect.to, effect.bond, effect.terms)
+      return null
+    case 'owe':
+      people.owe({
+        debtor: effect.debtor,
+        creditor: effect.creditor,
+        what: effect.what,
+        terms: effect.terms,
+      })
+      return null
+    case 'repay':
+      people.repay(effect.debtor, effect.creditor)
+      return null
     case 'meet': {
       /**
        * 换了地方过日子，会遇见新的人。
@@ -1150,6 +1164,9 @@ const PHASE = {
   reading: '事实',
   succession: '事实',
   divide: '事实',
+  tie: '事实',
+  owe: '事实',
+  repay: '事实',
 } satisfies { [K in Effect['type']]: '上下文' | '事实' }
 
 /**

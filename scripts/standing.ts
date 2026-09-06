@@ -61,7 +61,12 @@ import type { OriginId } from '../src/types/game'
  *
  * 一世要走完一辈子，四百世四十秒上下。
  */
+/**
+ * 先掷这么多世；十二种出身没掷全就接着掷（宫里的只占 2/214，四百世里缺它的概率两个多点——
+ * 种子 15fefnbs37u2 抓到过一回）。固定世数判「零世」会闪红，判据前提被掷掉了就掷到它成立为止。
+ */
 const RUNS = 400
+const RUNS_AT_MOST = 2000
 
 /** 后半生从哪一岁算起。十六岁是人生阶段的变化点，不是检测线 */
 const LATER_LIFE_FROM = 17
@@ -80,7 +85,7 @@ const lives: Life[] = []
 let downSteps = 0
 let allSteps = 0
 
-for (let i = 0; i < RUNS; i += 1) {
+function live(): void {
   setActivePinia(createPinia())
   const narrative = useNarrativeStore()
   const household = useHouseholdStore()
@@ -121,6 +126,16 @@ for (let i = 0; i < RUNS; i += 1) {
   })
 }
 
+for (let i = 0; i < RUNS; i += 1) live()
+for (
+  let tries = 0;
+  tries < RUNS_AT_MOST - RUNS && new Set(lives.map((life) => life.origin)).size < ORIGINS.length;
+  tries += 1
+)
+  live()
+/** 实际掷了多少世。判据里的分母是它，不是 RUNS */
+const SAMPLED = lives.length
+
 function median(v: readonly number[]): number {
   const s = [...v].sort((a, b) => a - b)
   return s[Math.floor(s.length / 2)] ?? 0
@@ -130,7 +145,7 @@ const pct = (part: number, whole: number) =>
   whole === 0 ? '  —  ' : `${((part / whole) * 100).toFixed(0)}%`.padStart(5)
 
 // —— 表一：立基那一刻 vs 咽气那年，按出身 ——
-console.log(`\n=== 家业这一辈子（${RUNS} 世）===\n`)
+console.log(`\n=== 家业这一辈子（${SAMPLED} 世）===\n`)
 console.log('  出身      出身表    立基中位  咽气中位   人数')
 console.log('  ' + '─'.repeat(48))
 for (const origin of ORIGINS) {
@@ -153,7 +168,7 @@ for (const life of lives)
 
 console.log(`\n  咽气那年，人物面板上那一句：`)
 for (const [line, n] of [...byOutlook.entries()].sort((a, b) => b[1] - a[1])) {
-  console.log(`    ${pct(n, RUNS)}  ${line}`)
+  console.log(`    ${pct(n, SAMPLED)}  ${line}`)
 }
 
 console.log(
@@ -235,9 +250,9 @@ console.log()
   const counts = new Map<number, number>()
   for (const life of lives) counts.set(life.final, (counts.get(life.final) ?? 0) + 1)
   const [crowdedValue, crowdedCount] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]!
-  if (crowdedCount / RUNS > 0.25) {
+  if (crowdedCount / SAMPLED > 0.25) {
     console.log(
-      `  ✗ ${pct(crowdedCount, RUNS).trim()} 的人咽气那年家境都正好是 ${crowdedValue}。` +
+      `  ✗ ${pct(crowdedCount, SAMPLED).trim()} 的人咽气那年家境都正好是 ${crowdedValue}。` +
         `\n    这把刻度此刻分不出这些人。`,
     )
     bad += 1
@@ -258,9 +273,9 @@ console.log()
    * 这种坏法在界面上看不出异样——每个人的人物面板都好好地写着一句通顺的话。
    */
   const [commonLine, commonCount] = [...byOutlook.entries()].sort((a, b) => b[1] - a[1])[0]!
-  if (commonCount / RUNS > 0.7) {
+  if (commonCount / SAMPLED > 0.7) {
     console.log(
-      `  ✗ ${pct(commonCount, RUNS).trim()} 的人咽气那年读到的是同一句：「${commonLine}」。` +
+      `  ✗ ${pct(commonCount, SAMPLED).trim()} 的人咽气那年读到的是同一句：「${commonLine}」。` +
         `\n    这一句此刻说的不是他家的光景，是一句旁白。`,
     )
     bad += 1
@@ -275,11 +290,11 @@ console.log()
    */
   const originsSeen = new Set(lives.map((life) => life.origin)).size
   console.log(
-    `  覆盖：${RUNS} 世 / ${originsSeen} 种出身 / ` +
+    `  覆盖：${SAMPLED} 世 / ${originsSeen} 种出身 / ` +
       `十七岁以后采到 ${allSteps} 步家境变动 / 面板上那句话出现过 ${byOutlook.size} 种`,
   )
   if (originsSeen < ORIGINS.length) {
-    console.log(`  ✗ 十一种出身只掷到 ${originsSeen} 种，这一批的表是缺行的。`)
+    console.log(`  ✗ ${ORIGINS.length} 种出身掷了 ${SAMPLED} 世只掷到 ${originsSeen} 种，这一批的表是缺行的。`)
     bad += 1
   }
 

@@ -128,7 +128,7 @@ export function beBorn(id: OriginId, home: string): Birth {
   // 是前面十几年一年一年变成的——那些年跟他没有关系，但确实发生过
   useWorldStore().seedHistory()
   const origin = originById(id)
-  const circumstance = rollCircumstance()
+  const circumstance = rollCircumstance(origin.census)
   // 爹娘生在玩家出生之前多少年——按世界纪年算，不是按玩家的年龄算
   const bornYear = useWorldStore().time.year
 

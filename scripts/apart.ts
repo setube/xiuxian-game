@@ -93,12 +93,15 @@ const ELDER_DOING = DOINGS.find((doing) => doing.id === 'elder')
 // ============================================================
 
 /** 库里的一处效果。**不写效果本身，只写它在库里的门牌号** */
-interface Step {
-  scene: string
-  node: string
-  /** 不填就是这一节的 `onEnter`；填了就是这一节某个选择的 `effects` */
-  choice?: string
-}
+type Step =
+  | {
+      scene: string
+      node: string
+      /** 不填就是这一节的 `onEnter`；填了就是这一节某个选择的 `effects` */
+      choice?: string
+    }
+  /** 一天里的一段（`content/days.ts` 的 BEATS）：按去处和正文里的一句认 */
+  | { beat: { doing: string; includes: string } }
 
 interface Site {
   where: string
@@ -106,6 +109,13 @@ interface Site {
 }
 
 function resolve(step: Step): Site | string {
+  if ('beat' in step) {
+    const beat = BEATS.find(
+      (one) => one.doing === step.beat.doing && one.text.some((t) => t.includes(step.beat.includes)),
+    )
+    if (!beat) return `一天里没有这一段：${step.beat.doing} · ${step.beat.includes}`
+    return { where: `一天 · ${beat.doing}:w${beat.weight}`, effects: beat.effects ?? [] }
+  }
   const scene = lifeScenes[step.scene]
   if (!scene) return `库里没有这一卷：${step.scene}`
   const node = scene.nodes[step.node]
@@ -248,6 +258,33 @@ const PATHS: readonly Path[] = [
     label: '家里添的人：嫁人',
     origin: 'farm',
     steps: [{ scene: 'routine:adult', node: 'husband' }],
+  },
+
+  /**
+   * 撞见的人也是人。这三个从前只有称呼没有身子（`meet` 不带 `who`），
+   * 「四个名字各归各」那条规矩立了之后才给了身子——走北路的商旅见完就走了，
+   * 货栈的管事住在镇上，同村人在镇上做工。领他们进门不该动出生时的任何一条边。
+   */
+  {
+    id: 'merchant',
+    label: '撞见的人：走北路的商旅',
+    origin: 'farm',
+    steps: [{ scene: 'omen:merchant', node: 'first' }],
+  },
+  {
+    id: 'hiring',
+    label: '撞见的人：货栈的管事',
+    origin: 'farm',
+    steps: [
+      { scene: 'leave:hiring', node: 'open', choice: 'ask' },
+      { scene: 'leave:hiring', node: 'open', choice: 'work' },
+    ],
+  },
+  {
+    id: 'villager',
+    label: '撞见的人：在镇上做工的同村人',
+    origin: 'farm',
+    steps: [{ beat: { doing: 'town', includes: '同村的人' } }],
   },
 ]
 

@@ -19,13 +19,30 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  * 嫂子跟你处不处得来从她的性情里出（`temper` 条件，`Person.temper` 的第一个读者），
  * 不从骰子里出：NPC 没有好人／坏人标签，有的是性情、处境、关系。
  *
+ * ## 嫂子跟你娘：全库第一条 NPC↔NPC 的边
+ *
+ * 用户点名要先追的一条。从前所有的边都从「我」出发，世界是围着主角转的。
+ * 嫂子进门那天，她跟你娘之间牵了一条边（`tie`），处法（`terms`）从两个人的性情里出：
+ * 两个都是刚硬、暴躁的，不睦；有一个温和的，亲厚；不然平常。它由具体的事改——
+ * 为一副娘陪嫁的镯子翻了脸——而且**跟你没关系**：那条边上的事一格也不动你跟谁的好感。
+ * 你只是看见：正月里那顿饭有没有人说话，娘最后那两年是谁在跟前。
+ *
+ * ## 第一笔债
+ *
+ * 荒年你匀了一半粮给哥，那是一笔债：谁欠谁、欠什么、哪一年、约定了什么（`owe`）。
+ * 还没还，是老屋那边收成不好；还了，是秋后他把粮送了回来（`repay`）。还着的那些年，
+ * 正月里谁也不提。**它是两个人之间的一件历史事实，不是一个数**——`household.debt`
+ * 那个数不知道欠谁，这里的债知道。
+ *
+ * ## 老屋的营生
+ *
+ * 老屋是哥的户，`House.livelihood` 分家时抄了一份，到这儿才有第一个读者：
+ * 种地的，还的是粮，收成不好就还不上；开铺子的，折的是银子，粮价回落了才还得起。
+ *
  * ## 关系变化只来自具体的事
  *
- * 这一册里改动好感的只有三件事：嫂子头一回见你、荒年借粮你借不借、娘没了你回去守孝。
+ * 这一册里改动你的好感的只有三件事：嫂子头一回见你、荒年借粮你借不借、娘没了你回去守孝。
  * 年节走动本身一格也不改——见面不加分，不见面也不减分。
- *
- * 老屋的日子怎么过（哥种的还是那几亩地，铺子的账还是他记）这一片不写：那是他的户，
- * `House.livelihood` 分家时抄了一份，等有内容要问「哥家今年收成怎样」再动。
  */
 
 /** 分了家、哥还在，这一册才有得说 */
@@ -33,10 +50,21 @@ const TWO_HOUSES = [{ house: { divided: true } }, { bond: { kind: '兄', alive: 
 
 /** 嫂子处不处得来：从她的性情里出。刚硬、暴躁的跟你不对付，别的处得来 */
 const COLD_SISTER_IN_LAW = { temper: { id: 'brother-wife', in: ['暴躁', '刚硬'] } } as const
+/** 婆媳两个都是硬脾气 */
+const HARD_MOTHER = { temper: { id: 'mother', in: ['暴躁', '刚硬'] } } as const
+const SOFT_WIFE = { temper: { id: 'brother-wife', in: ['温和'] } } as const
+const SOFT_MOTHER = { temper: { id: 'mother', in: ['温和'] } } as const
+
+const INLAWS_SOUR = { tie: { from: 'brother-wife', to: 'mother', terms: ['不睦'] } } as const
+const INLAWS_FOND = { tie: { from: 'brother-wife', to: 'mother', terms: ['亲厚'] } } as const
+
+const OWES_ME = { owed: { debtor: 'brother', creditor: 'me', settled: false } } as const
+const OLD_HOME_FARMS = { house: { id: 'old-home', livelihood: '务农' } } as const
 
 export const kindredScenes: SceneLibrary = {
   /**
    * 哥娶亲。你回老屋吃了喜酒。嫂子从这一天起是老屋的人，不是你这一户的。
+   * 她跟你怎样，看她的性情；她跟你娘怎样，看两个人的性情——两条边，各是各的。
    */
   'kindred:wedding': {
     id: 'kindred:wedding',
@@ -52,7 +80,14 @@ export const kindredScenes: SceneLibrary = {
             id: 'brother-wife',
             calls: '嫂子',
             delta: 0,
-            who: { surname: '吴', given: '氏', gender: '女', age: 19, doing: '操持家务', house: 'old-home' },
+            who: {
+              surname: '吴',
+              given: '氏',
+              gender: '女',
+              age: 19,
+              doing: '操持家务',
+              house: 'old-home',
+            },
             bond: '亲戚',
           },
           { type: 'chronicle', text: '哥娶了亲。' },
@@ -68,16 +103,57 @@ export const kindredScenes: SceneLibrary = {
         id: 'cold',
         onEnter: [{ type: 'meet', id: 'brother-wife', delta: -4, note: '头一回见你就没什么话。' }],
         blocks: [
-          { kind: 'narration', text: '{call:brother-wife}跟你没说几句话。收拾碗筷的时候，她把你那只碗放在最后。' },
+          {
+            kind: 'narration',
+            text: '{call:brother-wife}跟你没说几句话。收拾碗筷的时候，她把你那只碗放在最后。',
+          },
           { kind: 'narration', text: '哥没看见。你也没提。', tone: 'faint' },
         ],
+        next: 'inlaws',
       },
       warm: {
         id: 'warm',
         onEnter: [{ type: 'meet', id: 'brother-wife', delta: 6, note: '头一回见你就留你吃饭。' }],
         blocks: [
-          { kind: 'narration', text: '{call:brother-wife}话不多，可是留你吃了晚饭，临走又给你装了一包点心。' },
+          {
+            kind: 'narration',
+            text: '{call:brother-wife}话不多，可是留你吃了晚饭，临走又给你装了一包点心。',
+          },
         ],
+        next: 'inlaws',
+      },
+      /** 婆媳。娘不在了就没有这条边 */
+      inlaws: {
+        id: 'inlaws',
+        blocks: [],
+        branches: [
+          { requires: [{ bond: { kind: '生母', alive: false } }], next: 'done' },
+          { requires: [COLD_SISTER_IN_LAW, HARD_MOTHER], next: 'inlaws-sour' },
+          { requires: [SOFT_WIFE], next: 'inlaws-fond' },
+          { requires: [SOFT_MOTHER], next: 'inlaws-fond' },
+        ],
+        next: 'inlaws-plain',
+      },
+      'inlaws-sour': {
+        id: 'inlaws-sour',
+        onEnter: [{ type: 'tie', from: 'brother-wife', to: 'mother', bond: '亲戚', terms: '不睦' }],
+        blocks: [
+          { kind: 'narration', text: '娘跟她头一天就没说上话。哥站在当中，不知道该先招呼谁。' },
+        ],
+      },
+      'inlaws-fond': {
+        id: 'inlaws-fond',
+        onEnter: [{ type: 'tie', from: 'brother-wife', to: 'mother', bond: '亲戚', terms: '亲厚' }],
+        blocks: [{ kind: 'narration', text: '娘拉着她的手不放。她叫了一声娘，声音不大。' }],
+      },
+      'inlaws-plain': {
+        id: 'inlaws-plain',
+        onEnter: [{ type: 'tie', from: 'brother-wife', to: 'mother', bond: '亲戚', terms: '平常' }],
+        blocks: [{ kind: 'narration', text: '娘跟她客客气气的。' }],
+      },
+      done: {
+        id: 'done',
+        blocks: [],
       },
     },
   },
@@ -114,9 +190,7 @@ export const kindredScenes: SceneLibrary = {
       },
       granny: {
         id: 'granny',
-        blocks: [
-          { kind: 'narration', text: '娘抱着孩子不撒手。她比你上回见她的时候又老了些。' },
-        ],
+        blocks: [{ kind: 'narration', text: '娘抱着孩子不撒手。她比你上回见她的时候又老了些。' }],
       },
       done: {
         id: 'done',
@@ -127,7 +201,8 @@ export const kindredScenes: SceneLibrary = {
 
   /**
    * 年节走动。这一卷**一格好感也不改**：见面不加分，不见面也不减分。
-   * 变的只有人——侄儿长了几岁，娘更老了，嫂子照旧那个样子。
+   * 变的只有人——侄儿长了几岁，娘更老了，嫂子照旧那个样子；
+   * 娘跟嫂子那顿饭有没有人说话；那笔粮谁也不提。
    */
   'kindred:newyear': {
     id: 'kindred:newyear',
@@ -139,17 +214,36 @@ export const kindredScenes: SceneLibrary = {
         onEnter: [{ type: 'time', days: 2 }],
         blocks: [
           { kind: 'narration', text: '正月里你回了一趟老屋。' },
-          { kind: 'narration', text: '{call:nephew}已经{age:nephew}了，见了你先躲到{call:brother-wife}身后，过一会儿才出来。' },
+          {
+            kind: 'narration',
+            text: '{call:nephew}已经{age:nephew}了，见了你先躲到{call:brother-wife}身后，过一会儿才出来。',
+          },
         ],
-        branches: [
-          { requires: [{ bond: { kind: '生母', alive: true } }], next: 'mother' },
-          { requires: [COLD_SISTER_IN_LAW], next: 'cold' },
-        ],
-        next: 'warm',
+        branches: [{ requires: [{ bond: { kind: '生母', alive: true } }], next: 'mother' }],
+        next: 'sister-in-law',
       },
       mother: {
         id: 'mother',
         blocks: [{ kind: 'narration', text: '娘坐在灶边，问你那边过得怎么样。你说都好。' }],
+        branches: [
+          { requires: [INLAWS_SOUR], next: 'mother-sour' },
+          { requires: [INLAWS_FOND], next: 'mother-fond' },
+        ],
+        next: 'sister-in-law',
+      },
+      'mother-sour': {
+        id: 'mother-sour',
+        blocks: [{ kind: 'narration', text: '娘跟嫂子一顿饭没说一句话。哥低着头吃。' }],
+        next: 'sister-in-law',
+      },
+      'mother-fond': {
+        id: 'mother-fond',
+        blocks: [{ kind: 'narration', text: '嫂子给娘添饭，娘拉着她的手说话。' }],
+        next: 'sister-in-law',
+      },
+      'sister-in-law': {
+        id: 'sister-in-law',
+        blocks: [],
         branches: [{ requires: [COLD_SISTER_IN_LAW], next: 'cold' }],
         next: 'warm',
       },
@@ -159,18 +253,39 @@ export const kindredScenes: SceneLibrary = {
           { kind: 'narration', text: '{call:brother-wife}照旧没多话。你坐了一顿饭的工夫就走了。' },
           { kind: 'narration', text: '哥送你到巷口。他说，她就那个脾气。', tone: 'faint' },
         ],
+        next: 'debt',
       },
       warm: {
         id: 'warm',
         blocks: [
-          { kind: 'narration', text: '{call:brother-wife}留你住了一夜。第二天走的时候，哥送你到巷口。' },
+          {
+            kind: 'narration',
+            text: '{call:brother-wife}留你住了一夜。第二天走的时候，哥送你到巷口。',
+          },
         ],
+        next: 'debt',
+      },
+      /** 那笔粮还欠着，谁也不提 */
+      debt: {
+        id: 'debt',
+        blocks: [],
+        branches: [{ requires: [OWES_ME], next: 'debt-open' }],
+        next: 'done',
+      },
+      'debt-open': {
+        id: 'debt-open',
+        blocks: [{ kind: 'narration', text: '那笔粮，谁也没提。', tone: 'faint' }],
+      },
+      done: {
+        id: 'done',
+        blocks: [],
       },
     },
   },
 
   /**
    * 荒年借粮。关系变化来自具体的事：你借了，他记着；你没借，他也记着。
+   * 借了的那一半是一笔债（`owe`）——还不还，看老屋那边的年景（`kindred:repay`）。
    */
   'kindred:borrow': {
     id: 'kindred:borrow',
@@ -193,6 +308,7 @@ export const kindredScenes: SceneLibrary = {
               { type: 'time', days: 1 },
               { type: 'household', standing: -6 },
               { type: 'meet', id: 'brother', delta: 8, note: '荒年你匀了一半粮给他。' },
+              { type: 'owe', debtor: 'brother', creditor: 'me', what: '半年的粮', terms: '开春还' },
               { type: 'attribute', key: 'will', delta: 2 },
               { type: 'chronicle', text: '荒年，你匀了一半粮给老屋。' },
             ],
@@ -216,7 +332,7 @@ export const kindredScenes: SceneLibrary = {
         id: 'lent',
         blocks: [
           { kind: 'narration', text: '他没说谢。扛着走的时候，背比从前弯了些。' },
-          { kind: 'narration', text: '开春他还了一半，剩下的没提。你也没提。', tone: 'faint' },
+          { kind: 'narration', text: '他说开春还。', tone: 'faint' },
         ],
       },
       refused: {
@@ -230,8 +346,88 @@ export const kindredScenes: SceneLibrary = {
   },
 
   /**
+   * 还粮。还不还看老屋那边的营生：种地的看收成，开铺子的看粮价回没回落。
+   * 还不上不是赖账——是那年老屋也紧。债还在，正月里谁也不提。
+   */
+  'kindred:repay': {
+    id: 'kindred:repay',
+    title: '还粮',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [{ type: 'time', days: 1 }],
+        blocks: [],
+        branches: [
+          { requires: [OLD_HOME_FARMS, { region: { harvest: { atLeast: 50 } } }], next: 'grain-back' },
+          { requires: [OLD_HOME_FARMS], next: 'grain-short' },
+          { requires: [{ region: { grain: { atMost: 110 } } }], next: 'silver-back' },
+        ],
+        next: 'silver-short',
+      },
+      'grain-back': {
+        id: 'grain-back',
+        onEnter: [
+          { type: 'repay', debtor: 'brother', creditor: 'me' },
+          { type: 'chronicle', text: '哥把粮还了。' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '秋后哥把粮送了回来，一斗不少。他没进屋，放下就走了。' },
+        ],
+      },
+      'grain-short': {
+        id: 'grain-short',
+        blocks: [
+          { kind: 'narration', text: '秋后他没来。老屋那边也没打下多少，你没去问。' },
+        ],
+      },
+      'silver-back': {
+        id: 'silver-back',
+        onEnter: [
+          { type: 'repay', debtor: 'brother', creditor: 'me' },
+          { type: 'chronicle', text: '哥折了银子把粮还了。' },
+        ],
+        blocks: [{ kind: 'narration', text: '年底哥折了银子送来。他说，粮价下来了，铺子里缓过来了。' }],
+      },
+      'silver-short': {
+        id: 'silver-short',
+        blocks: [{ kind: 'narration', text: '年底他没来。粮价还没下来，你知道那边也紧。' }],
+      },
+    },
+  },
+
+  /**
+   * 婆媳翻脸。为一副娘陪嫁的镯子——这件事在老屋那条边上，**跟你没关系**：
+   * 你去劝，谁也没听你的；你跟娘、跟嫂子的好感一格不动。哥夹在中间。
+   */
+  'kindred:quarrel': {
+    id: 'kindred:quarrel',
+    title: '老屋的镯子',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [
+          { type: 'time', days: 2 },
+          { type: 'tie', from: 'brother-wife', to: 'mother', bond: '亲戚', terms: '不睦' },
+          { type: 'chronicle', text: '老屋婆媳为一副镯子翻了脸。' },
+        ],
+        blocks: [
+          {
+            kind: 'narration',
+            text: '老屋那边闹了一场。为一副娘陪嫁的银镯子——娘说给孙子留着，嫂子说早该当了买粮。',
+          },
+          { kind: 'narration', text: '哥夹在中间，两头不是人。你去劝，谁也没听你的。' },
+          { kind: 'narration', text: '从那以后，娘跟嫂子说话都是隔着哥说。', tone: 'faint' },
+        ],
+      },
+    },
+  },
+
+  /**
    * 娘在老屋没了。你回去守了七天。
    * 问的是「娘留在了老屋」那面旗加上她不在了——不是「娘殁了」：分家前殁的娘另有一卷。
+   * 她最后那两年是谁在跟前，看她跟嫂子那条边。
    */
   'kindred:mourning': {
     id: 'kindred:mourning',
@@ -249,14 +445,40 @@ export const kindredScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '老屋捎话来，娘没了。' },
           { kind: 'narration', text: '你回去守了七天。哥跪在前头，你跪在他后头。' },
-          { kind: 'narration', text: '出殡那天下着雨。回来的路上，你和哥一句话也没说。', tone: 'faint' },
+          {
+            kind: 'narration',
+            text: '出殡那天下着雨。回来的路上，你和哥一句话也没说。',
+            tone: 'faint',
+          },
         ],
-        branches: [{ requires: [COLD_SISTER_IN_LAW], next: 'cold' }],
+        branches: [
+          { requires: [INLAWS_FOND], next: 'fond' },
+          { requires: [INLAWS_SOUR], next: 'sour' },
+          { requires: [COLD_SISTER_IN_LAW], next: 'cold' },
+        ],
         next: 'done',
+      },
+      fond: {
+        id: 'fond',
+        blocks: [
+          { kind: 'narration', text: '老人家没了的时候，是嫂子在跟前。她跟你说，没受罪。', tone: 'faint' },
+        ],
+      },
+      sour: {
+        id: 'sour',
+        blocks: [
+          { kind: 'narration', text: '老人家最后那两年，饭是自己烧的。你没问，哥也没说。', tone: 'faint' },
+        ],
       },
       cold: {
         id: 'cold',
-        blocks: [{ kind: 'narration', text: '那几天{call:brother-wife}倒是没说什么难听的。', tone: 'faint' }],
+        blocks: [
+          {
+            kind: 'narration',
+            text: '那几天{call:brother-wife}倒是没说什么难听的。',
+            tone: 'faint',
+          },
+        ],
       },
       done: {
         id: 'done',
@@ -305,6 +527,27 @@ export const kindredEvents: readonly LifeEvent[] = [
     requires: [...TWO_HOUSES, { region: { grain: { atLeast: 126 } } }],
     scene: 'kindred:borrow',
     weight: 12,
+  },
+  {
+    // 借了粮的第二年起，他还不还看老屋的年景。一次：还不上就一直欠着
+    id: 'kindred-repay',
+    window: { from: 19, to: 70 },
+    requires: [...TWO_HOUSES, OWES_ME],
+    scene: 'kindred:repay',
+    weight: 30,
+  },
+  {
+    // 婆媳翻脸：处得来或平常的才有得翻；不睦的早就不说话了
+    id: 'kindred-quarrel',
+    window: { from: 20, to: 70 },
+    requires: [
+      ...TWO_HOUSES,
+      { bond: { kind: '生母', alive: true } },
+      { family: { id: 'brother-wife', alive: true } },
+      { tie: { from: 'brother-wife', to: 'mother', terms: ['亲厚', '平常'] } },
+    ],
+    scene: 'kindred:quarrel',
+    weight: 6,
   },
   {
     id: 'kindred-mourning',

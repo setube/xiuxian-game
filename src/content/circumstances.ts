@@ -1,5 +1,5 @@
 import { pick, pickWeighted, randomBetween } from '@/engine/random'
-import type { Bond, Constitution } from '@/types/game'
+import type { Bond, Census, Constitution } from '@/types/game'
 
 /**
  * 出生境况。
@@ -78,6 +78,15 @@ export interface Circumstance {
   kin: readonly Kin[]
   /** 家境的加减。孤儿没有家底，但也没有债 */
   standing?: number
+  /**
+   * 哪几种籍的人家不会有这种境况。
+   *
+   * 宗室的孩子不会被丢在庙门口、不会被老乞丐捡去、不会在战乱里被陌生人带走——
+   * 那三种是无名无姓的弃婴才有的开局。境况从前不看出身，一世里皇子过起了寺里的日子
+   * （`scripts/manor.ts` 种子 15fefnbs37u2 抓到的）。**这是三种境况各自的事实，不是一条
+   * 「宗室不能怎样」的规则**：过房、跟着叔父，宗室照样有。
+   */
+  notFor?: readonly Census[]
 }
 
 /**
@@ -191,6 +200,7 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
     id: 'temple-foundling',
     summary: '生下来就被丢在庙门口，寺里收留了',
     weight: 6,
+    notFor: ['宗室'],
     kin: [
       { id: 'monk', bond: '抚养', calls: '师父', older: 40, doing: '寺中的老僧', living: 'temple' },
     ],
@@ -200,6 +210,7 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
     id: 'beggar-foundling',
     summary: '幼年被遗弃，老乞丐把你捡了回去',
     weight: 5,
+    notFor: ['宗室'],
     kin: [
       { id: 'beggar', bond: '抚养', calls: '老丈', older: 46, doing: '讨饭的', living: 'begging' },
     ],
@@ -216,6 +227,7 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
     id: 'war-separated',
     summary: '战乱中出生，与父母失散，被陌生人带走',
     weight: 4,
+    notFor: ['宗室'],
     // 营生那一格空着，日子那一格写着。他从前只有一格，写的是
     // 「逃难路上的人」——那一个字符串同时干着两件事：面板上给人读，
     // 和当键去查这个孩子过什么日子。而**逃难会结束**，
@@ -283,9 +295,10 @@ export function constitutionShift(
   }
 }
 
-/** 掷这一世的出生境况 */
-export function rollCircumstance(): Circumstance {
-  return pickWeighted(CIRCUMSTANCES, (item) => item.weight) ?? CIRCUMSTANCES[0]!
+/** 掷这一世的出生境况。给了籍，就跳过那种籍不会有的境况 */
+export function rollCircumstance(census?: Census): Circumstance {
+  const pool = CIRCUMSTANCES.filter((one) => census === undefined || !one.notFor?.includes(census))
+  return pickWeighted(pool, (item) => item.weight) ?? CIRCUMSTANCES[0]!
 }
 
 /** 收养你的人叫什么。不跟你同姓——这也是一条信息 */
