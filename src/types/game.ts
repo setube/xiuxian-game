@@ -613,6 +613,22 @@ export interface Person {
    */
   living?: string
   /**
+   * 他自己靠什么谋生。**绝大多数人不写这一格**——他们做的就是这一户的营生。
+   *
+   * 写了的是那种自己的营生跟户的营生分开了的人：哥把地交给侄儿、自己去镇上做木匠，
+   * 老屋还是种地的人家（`House.livelihood` 仍是务农），哥自己却是木工。
+   * 一户作为过日子的单位靠什么维持，和这一户里某个人自己干什么，从此是两件事——
+   * 「父亲务农，母亲纺织，长子做木工，次子读书」的人家，外人照旧叫它农家。
+   *
+   * 问一个人靠什么谋生用 `people.livelihoodOf`：他自己有格就是他的，没有就是他那一户的；
+   * 死了的人问不出来。跟 `doing` 分开，因为那是给人读的一句话（「在镇上做木匠」），
+   * 不是判定的键；跟 `living` 分开，因为过什么日子和靠什么谋生也不是一回事——
+   * 讨饭的日子不是营生。
+   *
+   * 第一个使用者：`life/kindred.ts` 哥改行那一卷（用户 2026-09-06：等哥真改行了再让它逼出来）。
+   */
+  livelihood?: Livelihood
+  /**
    * 爵位。没有的人不写这一格——**绝大多数人没有**。
    *
    * 它跟 `doing` 分开，因为它们变的时机不一样：削爵那天这一格从
@@ -697,7 +713,13 @@ export interface House {
    * 只是不再当这个家。
    */
   head: string
-  /** 这一户的人，含户主。人口册里的 id */
+  /**
+   * 这一户的人，含户主。人口册里的 id。
+   *
+   * 「这一户的人」不等于「此刻睡在这屋里的人」：哥去镇上做木匠、住在铺子里、农忙才回来，
+   * 仍是老屋的人——他此刻在哪是 `Person.place` 的事，他是哪一户的人是这一格的事。
+   * **离家做工不是离户**（用户 2026-09-06）；离户是 `person.leavesHouse` 那种事：被逐出府、回乡。
+   */
   members: string[]
   /** 住在哪。临时占位，见上 */
   residence: string
@@ -1281,10 +1303,20 @@ export interface Condition {
   /** 家境刻度闭区间。隐藏刻度，只在这里露面 */
   standing?: { atLeast?: number; atMost?: number }
   /**
-   * 某个人在不在世、多大。`age` 的第一个读者是侄儿：三岁躲在嫂子身后，九岁凑过来问东问西，
-   * 十六岁跟哥一般高——同一句正文不能从三岁念到三十岁（写死的字段活得比事实久）。
+   * 某个人在不在世、多大、靠什么谋生。`age` 的第一个读者是侄儿：三岁躲在嫂子身后，
+   * 九岁凑过来问东问西，十六岁跟哥一般高——同一句正文不能从三岁念到三十岁（写死的字段
+   * 活得比事实久）。
+   *
+   * `livelihood` 问的是他自己的营生（`people.livelihoodOf`：自己有格就是他的，没有就是
+   * 他那一户的）。第一个读者是「老屋那几亩地，如今是他跟哥两个人种」这句话——它问的是
+   * 哥本人还种不种地，不是问老屋靠什么过活：哥去了镇上做木匠，老屋仍是务农的户，这句话就不成立了。
    */
-  family?: { id: string; alive?: boolean; age?: { atLeast?: number; atMost?: number } }
+  family?: {
+    id: string
+    alive?: boolean
+    age?: { atLeast?: number; atMost?: number }
+    livelihood?: readonly Livelihood[]
+  }
   /**
    * 有没有某一层关系，那个人还在不在，还在不在你身边。
    *
@@ -1647,6 +1679,11 @@ export type Effect =
       id: string
       place?: string
       doing?: string
+      /**
+       * 他自己的营生变了。哥去镇上做木匠：老屋还是务农的户，哥自己是木工。
+       * 只写人的这一格，不动 `House.livelihood`——户靠什么维持是另一件事。
+       */
+      livelihood?: Livelihood
       fate?: Fate
       health?: number
       /**

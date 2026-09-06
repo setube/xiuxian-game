@@ -13,6 +13,7 @@ import type {
   Gender,
   House,
   IOU,
+  Livelihood,
   Person,
   Relation,
   Temper,
@@ -172,6 +173,17 @@ export const usePeopleStore = defineStore(
     /** 这个人是哪一户的。玩家自家的人不在任何一户里（自家在 `household` 仓库） */
     function houseOf(personId: string): House | undefined {
       return Object.values(houses.value).find((house) => house.members.includes(personId))
+    }
+
+    /**
+     * 他靠什么谋生：自己有格就是他的，没有就是他那一户的。
+     *
+     * 死了的人问不出来（`undefined`）——他还在册上、他的营生还在他的历史里，
+     * 可「此刻靠什么谋生」这个问题对死人不成立。不在任何一户里的活人也问不出来。
+     */
+    function livelihoodOf(personId: string): Livelihood | undefined {
+      if (!isAlive(personId)) return undefined
+      return personOf(personId)?.livelihood ?? houseOf(personId)?.livelihood
     }
 
     /** 他住进这一户。已经在了就不动 */
@@ -632,6 +644,7 @@ export const usePeopleStore = defineStore(
       divideHouse,
       adjoin,
       houseOf,
+      livelihoodOf,
       neighbourHouses,
       isNeighbour,
       guardians,

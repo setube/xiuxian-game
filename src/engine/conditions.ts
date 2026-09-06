@@ -68,9 +68,13 @@ const CHECKS = {
   standing: (standing, { household }) => within(household.standing, standing),
 
   family: (family, { household }) => {
+    const people = usePeopleStore()
     if (family.alive !== undefined && household.isAlive(family.id) !== family.alive) return false
-    if (family.age !== undefined && !within(usePeopleStore().ageOf(family.id), family.age)) {
-      return false
+    if (family.age !== undefined && !within(people.ageOf(family.id), family.age)) return false
+    if (family.livelihood !== undefined) {
+      // 问的是他自己的营生；没有自己的就是他那一户的，死了的问不出来
+      const own = people.livelihoodOf(family.id)
+      if (own === undefined || !family.livelihood.includes(own)) return false
     }
     return true
   },

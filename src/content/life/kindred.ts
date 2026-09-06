@@ -62,6 +62,13 @@ const INLAWS_FOND = { tie: { from: 'brother-wife', to: 'mother', terms: ['亲厚
 
 const OWES_ME = { owed: { debtor: 'brother', creditor: 'me', settled: false } } as const
 const OLD_HOME_FARMS = { house: { id: 'old-home', livelihood: '务农' } } as const
+/**
+ * 哥自己还在种地。问的是人不是户：没有自己的营生就是老屋的营生；他去镇上做了木匠，
+ * 老屋仍是务农的户，这一条却不成立了。死了的人也不成立——死了的人不种地
+ */
+const BROTHER_FARMS = { family: { id: 'brother', alive: true, livelihood: ['务农'] } } as const
+/** 哥在镇上做木匠 */
+const BROTHER_CARPENTER = { family: { id: 'brother', alive: true, livelihood: ['木工'] } } as const
 
 export const kindredScenes: SceneLibrary = {
   /**
@@ -231,7 +238,7 @@ export const kindredScenes: SceneLibrary = {
             text: '{call:nephew}已经{age:nephew}了，见了你先躲到{call:brother-wife}身后，过一会儿才出来。',
           },
         ],
-        next: 'granny',
+        next: 'back',
       },
       boy: {
         id: 'boy',
@@ -241,13 +248,25 @@ export const kindredScenes: SceneLibrary = {
             text: '{call:nephew}已经{age:nephew}了，不躲了，凑过来看你腰上挂的东西，问东问西。',
           },
         ],
-        next: 'granny',
+        next: 'back',
       },
       tall: {
         id: 'tall',
         blocks: [
           { kind: 'narration', text: '{call:nephew}已经跟哥一般高了。见了你叫一声叔，接过你手里的东西。' },
         ],
+        next: 'back',
+      },
+      /** 哥在镇上做木匠的，正月里回来过年。人在别处，户在老屋 */
+      back: {
+        id: 'back',
+        blocks: [],
+        branches: [{ requires: [BROTHER_CARPENTER], next: 'from-town' }],
+        next: 'granny',
+      },
+      'from-town': {
+        id: 'from-town',
+        blocks: [{ kind: 'narration', text: '哥从镇上回来过年，手上多了几道口子。' }],
         next: 'granny',
       },
       granny: {
@@ -408,6 +427,9 @@ export const kindredScenes: SceneLibrary = {
    * 侄儿成人了。手上有了活（老屋靠什么过活，他就干什么）；
    * 小时候自己跑来过的，长大了跟你亲；没来过的，对你客客气气，像对一个远亲——
    * **哪怕哥跟你再好**。
+   *
+   * 「他跟哥两个人种」问的是哥本人还在不在地里，不是问老屋靠什么过活：哥去了镇上做木匠，
+   * 或者没了，都是他一个人种。头一版只问老屋，哥死了也照说「两个人种」——死了的人不种地。
    */
   'kindred:nephew-grown': {
     id: 'kindred:nephew-grown',
@@ -418,8 +440,12 @@ export const kindredScenes: SceneLibrary = {
         id: 'open',
         onEnter: [{ type: 'time', days: 1 }],
         blocks: [{ kind: 'narration', text: '{call:nephew}成人了，已经跟哥一般高。' }],
-        branches: [{ requires: [{ house: { id: 'old-home', livelihood: '务农' } }], next: 'fields' }],
-        next: 'shop',
+        branches: [
+          { requires: [OLD_HOME_FARMS, BROTHER_FARMS], next: 'fields' },
+          { requires: [OLD_HOME_FARMS], next: 'fields-alone' },
+          { requires: [{ bond: { kind: '兄', alive: true } }], next: 'shop' },
+        ],
+        next: 'shop-alone',
       },
       fields: {
         id: 'fields',
@@ -427,10 +453,22 @@ export const kindredScenes: SceneLibrary = {
         blocks: [{ kind: 'narration', text: '老屋那几亩地，如今是他跟哥两个人种。' }],
         next: 'how',
       },
+      'fields-alone': {
+        id: 'fields-alone',
+        onEnter: [{ type: 'person', id: 'nephew', doing: '种老屋那几亩地' }],
+        blocks: [{ kind: 'narration', text: '老屋那几亩地，如今是他一个人种。' }],
+        next: 'how',
+      },
       shop: {
         id: 'shop',
         onEnter: [{ type: 'person', id: 'nephew', doing: '在铺子里帮忙' }],
         blocks: [{ kind: 'narration', text: '铺子里的活，如今是他跟哥两个人做。' }],
+        next: 'how',
+      },
+      'shop-alone': {
+        id: 'shop-alone',
+        onEnter: [{ type: 'person', id: 'nephew', doing: '守着老屋的铺子' }],
+        blocks: [{ kind: 'narration', text: '铺子里的活，如今是他一个人撑着。' }],
         next: 'how',
       },
       how: {
@@ -570,6 +608,76 @@ export const kindredScenes: SceneLibrary = {
   },
 
   /**
+   * 哥改行。
+   *
+   * 老屋那几亩地，两个大男人种嫌少；侄儿成了人能顶地里的活，哥把地交给他，自己去镇上跟一个
+   * 木匠搭伙做活。从这一天起两件事分开了：**老屋还是种地的人家**（`House.livelihood` 仍是务农，
+   * 地是侄儿种着），**哥自己是木工**（`Person.livelihood`）。一户靠什么维持，和户里某个人自己
+   * 干什么，不是一回事——这是那一格的第一个使用者。
+   *
+   * 他住在铺子里，农忙和年节才回来：人在镇上（`Person.place`），户还是老屋（`House.members`），
+   * 当家的还是他。离家做工不是离户。
+   *
+   * 为什么走，两种缘由都来自世界里已经有的事实：地薄人多，或者欠你的那笔粮一直还不上。
+   * 木讷、谨慎的哥不走；侄儿没成人也不走——地总得有人种。
+   */
+  'kindred:brother-turns': {
+    id: 'kindred:brother-turns',
+    title: '哥去了镇上',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [{ type: 'time', days: 2 }],
+        blocks: [],
+        branches: [{ requires: [OWES_ME], next: 'why-debt' }],
+        next: 'why-land',
+      },
+      'why-land': {
+        id: 'why-land',
+        blocks: [
+          {
+            kind: 'narration',
+            text: '老屋那几亩地，两个大男人种嫌少。{call:nephew}成了人，哥把地交给了他。',
+          },
+        ],
+        next: 'goes',
+      },
+      'why-debt': {
+        id: 'why-debt',
+        blocks: [
+          {
+            kind: 'narration',
+            text: '老屋那几亩地打不出多少，欠你的那笔粮一直还不上。{call:nephew}成了人，哥把地交给了他。',
+          },
+        ],
+        next: 'goes',
+      },
+      goes: {
+        id: 'goes',
+        onEnter: [
+          {
+            type: 'person',
+            id: 'brother',
+            livelihood: '木工',
+            place: '{province} · {prefecture} · 镇上',
+            doing: '在镇上做木匠',
+          },
+          { type: 'person', id: 'nephew', doing: '种老屋那几亩地' },
+          { type: 'chronicle', text: '哥去镇上做木匠了。老屋的地交给了侄儿。' },
+        ],
+        blocks: [
+          {
+            kind: 'narration',
+            text: '哥手上有点木活的底子，自己去了镇上，跟一个木匠搭伙做活。住在铺子里，夏收秋收和年节才回来。',
+          },
+          { kind: 'narration', text: '老屋还是种地的人家。地是{call:nephew}种着，哥不种了。', tone: 'faint' },
+        ],
+      },
+    },
+  },
+
+  /**
    * 荒年借粮。关系变化来自具体的事：你借了，他记着；你没借，他也记着。
    * 借了的那一半是一笔债（`owe`）——还不还，看老屋那边的年景（`kindred:repay`）。
    */
@@ -632,7 +740,8 @@ export const kindredScenes: SceneLibrary = {
   },
 
   /**
-   * 还粮。还不还看老屋那边的营生：种地的看收成，开铺子的看粮价回没回落。
+   * 还粮。还不还看还债的人此刻靠什么过活：种地的看收成，开铺子的看粮价回没回落，
+   * 做了木匠的还的是一张桌子——债怎么还来自现实生活，不来自户。
    * 还不上不是赖账——是那年老屋也紧。债还在，正月里谁也不提。
    */
   'kindred:repay': {
@@ -645,6 +754,7 @@ export const kindredScenes: SceneLibrary = {
         onEnter: [{ type: 'time', days: 1 }],
         blocks: [],
         branches: [
+          { requires: [BROTHER_CARPENTER], next: 'work-back' },
           {
             requires: [OLD_HOME_FARMS, { region: { harvest: { atLeast: 50 } } }],
             next: 'grain-back',
@@ -667,6 +777,18 @@ export const kindredScenes: SceneLibrary = {
       'grain-short': {
         id: 'grain-short',
         blocks: [{ kind: 'narration', text: '秋后他没来。老屋那边也没打下多少，你没去问。' }],
+      },
+      /** 欠的是粮，还的是工。这是不是同一种债，等第二笔来分 */
+      'work-back': {
+        id: 'work-back',
+        onEnter: [
+          { type: 'repay', debtor: 'brother', creditor: 'me' },
+          { type: 'chronicle', text: '哥打了一张桌子送来，那笔粮算清了。' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '年底哥扛了一张桌子来，榆木的，说是铺子里下了工打的。' },
+          { kind: 'narration', text: '那笔粮，他说就算清了。你没说不。', tone: 'faint' },
+        ],
       },
       'silver-back': {
         id: 'silver-back',
@@ -852,6 +974,21 @@ export const kindredEvents: readonly LifeEvent[] = [
     requires: [...OLD_HOUSE, { family: { id: 'nephew', alive: true, age: { atLeast: 16 } } }],
     scene: 'kindred:nephew-grown',
     weight: 30,
+  },
+  {
+    // 哥改行：侄儿能顶地里的活了，哥把地交给他去镇上做木匠。年纪太大的不走，木讷谨慎的不走
+    id: 'kindred-brother-turns',
+    window: { from: 34, to: 60 },
+    requires: [
+      ...TWO_HOUSES,
+      OLD_HOME_FARMS,
+      BROTHER_FARMS,
+      { family: { id: 'brother', age: { atMost: 55 } } },
+      { family: { id: 'nephew', alive: true, age: { atLeast: 16 } } },
+      { temper: { id: 'brother', in: ['温和', '暴躁', '刚硬', '精明'] } },
+    ],
+    scene: 'kindred:brother-turns',
+    weight: 10,
   },
   {
     id: 'kindred-nephew-weds',
