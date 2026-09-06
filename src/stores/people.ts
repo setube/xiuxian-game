@@ -175,6 +175,160 @@ export const usePeopleStore = defineStore(
       }
     }
 
+    /** 算「这一家的人」的那几种边。户主只从这几种人里出，乳母、学徒、寄居的不算 */
+    const HEAD_BONDS: readonly Bond[] = [
+      '生父',
+      '生母',
+      '抚养',
+      '兄',
+      '姐',
+      '弟',
+      '妹',
+      '配偶',
+      '子',
+      '女',
+    ]
+
+    /**
+     * 户主不能是死人。
+     *
+     * 时序一推进就调它（`engine/effects.ts`）。两条规矩，都是【推断】的明代常情：
+     *
+     * 1. 户主殁了，长子承户；没有成年的儿子，寡母当家；再没有，谁最年长谁当。
+     * 2. 寡母当家到儿子成人（十六）为止——那一年把家交给他。
+     *
+     * 「我」不在人口册上，年纪和性别由调用方给。户主是「我」的一律不动：
+     * 玩家当了家，就不由引擎把家再交出去。
+     * 自家那一户只从亲人里挑（`HEAD_BONDS`）——王府的老管家再年长也不是户主。
+     *
+     * 殁了的人不住在这一户了——从 `members` 里去掉；一户人全殁了就是户绝，成员空着，
+     * 户主留着上一任的名字（那是史实，不是活人）。
+     *
+     * 邻居殁了，称呼冻在那一刻：「陈婶去年没了」——她不在户里了，`callOf` 算不出「陈婶」，
+     * 可你这辈子提起她都叫陈婶。所以去掉之前把当时算出来的那个字写回 `known`，
+     * 这一处的「写死」是对的：人不在了，这个字不会再变。
+     *
+     * @returns 换了户主的那几户：谁传给了谁，是殁了还是交出来的。
+     *   `home` 那一条由效果层记成旗标，正文按它说话
+     */
+    function keepHeads(me: { age: number; gender: Gender }): {
+      house: string
+      from: string
+      to: string
+      how: '殁' | '交'
+    }[] {
+      const passed: { house: string; from: string; to: string; how: '殁' | '交' }[] = []
+      const kin = new Set(
+        relations.value
+          .filter((r) => r.from === 'me' && r.until === null && HEAD_BONDS.includes(r.bond))
+          .map((r) => r.to),
+      )
+      const alive = (id: string): boolean => id === 'me' || roster.value[id]?.fate === '在'
+      const ageOfAny = (id: string): number => (id === 'me' ? me.age : ageOf(id))
+      const genderOf = (id: string): Gender | undefined =>
+        id === 'me' ? me.gender : roster.value[id]?.gender
+
+      const next: Record<string, House> = {}
+      for (const [id, entry] of Object.entries(houses.value)) {
+        const living = entry.members.filter(alive)
+        if (id !== 'home') {
+          for (const gone of entry.members.filter((m) => !alive(m))) {
+            const person = roster.value[gone]
+            const acquaintance = known.value[gone]
+            if (!person || !acquaintance) continue
+            known.value = {
+              ...known.value,
+              [gone]: { ...acquaintance, calls: neighbourCall(person, ageOf(gone), me.age, '家常') },
+            }
+          }
+        }
+        const house = living.length === entry.members.length ? entry : { ...entry, members: living }
+        const family = house.members.filter(
+          (member) => id !== 'home' || member === 'me' || kin.has(member),
+        )
+        const byAge = (a: string, b: string) => ageOfAny(b) - ageOfAny(a)
+        const grownSons = family
+          .filter((m) => m !== house.head && genderOf(m) === '男' && ageOfAny(m) >= 16)
+          .sort(byAge)
+        const headAlive = alive(house.head)
+        const widowHandsOver =
+          headAlive && house.head !== 'me' && genderOf(house.head) === '女' && grownSons.length > 0
+        if (headAlive && !widowHandsOver) {
+          next[id] = house
+          continue
+        }
+        const grownWomen = family
+          .filter((m) => m !== house.head && genderOf(m) === '女' && ageOfAny(m) >= 16)
+          .sort(byAge)
+        const anyone = family.filter((m) => m !== house.head).sort(byAge)
+        const heir = grownSons[0] ?? grownWomen[0] ?? anyone[0]
+        if (heir === undefined) {
+          next[id] = house
+          continue
+        }
+        next[id] = { ...house, head: heir }
+        passed.push({ house: id, from: house.head, to: heir, how: headAlive ? '交' : '殁' })
+      }
+      houses.value = next
+      return passed
+    }
+
+    /**
+     * 分家。
+     *
+     * `leaves === 'me'`：你带着 `takes` 里的人搬出去。老屋改叫 `old-home`，邻接边跟着改名
+     * （东邻西舍是老屋的邻居）；你这一户仍叫 `home`，住进 `residence`，跟老屋相邻。
+     * 别人分出去：老屋还是 `home`，他那一户叫 `<他>-home`，跟老屋相邻。
+     *
+     * 户主这儿不定——分完调 `keepHeads`，老屋的户主本来就该是活着的那个哥。
+     */
+    function divideHouse(input: {
+      leaves: string
+      takes: readonly string[]
+      residence: string
+    }): { newHouse: string; oldHouse: string } | undefined {
+      const home = houses.value['home']
+      if (!home) return undefined
+      const leavers = [input.leaves, ...input.takes].filter(
+        (id, i, all) => home.members.includes(id) && all.indexOf(id) === i,
+      )
+      const stayers = home.members.filter((id) => !leavers.includes(id))
+      const rest = Object.fromEntries(Object.entries(houses.value).filter(([id]) => id !== 'home'))
+
+      if (input.leaves === 'me') {
+        const old: House = { ...home, id: 'old-home', members: stayers }
+        const mine: House = {
+          id: 'home',
+          surname: home.surname,
+          head: 'me',
+          members: leavers,
+          residence: input.residence,
+          livelihood: home.livelihood,
+        }
+        houses.value = { ...rest, 'old-home': old, home: mine }
+        adjacent.value = adjacent.value.map((edge) => ({
+          ...edge,
+          a: edge.a === 'home' ? 'old-home' : edge.a,
+          b: edge.b === 'home' ? 'old-home' : edge.b,
+        }))
+        adjoin('home', 'old-home')
+        if (houses.value['east']) adjoin('home', 'east')
+        return { newHouse: 'home', oldHouse: 'old-home' }
+      }
+
+      const theirs: House = {
+        id: `${input.leaves}-home`,
+        surname: home.surname,
+        head: input.leaves,
+        members: leavers,
+        residence: input.residence,
+        livelihood: home.livelihood,
+      }
+      houses.value = { ...rest, home: { ...home, members: stayers }, [theirs.id]: theirs }
+      adjoin('home', theirs.id)
+      return { newHouse: theirs.id, oldHouse: 'home' }
+    }
+
     /** 他不再是任何一户的人。人还在册上，边也还在——只是不住在那儿了 */
     function leaveHouse(personId: string): void {
       const next: Record<string, House> = {}
@@ -406,6 +560,8 @@ export const usePeopleStore = defineStore(
       enrollHouse,
       joinHouse,
       leaveHouse,
+      keepHeads,
+      divideHouse,
       adjoin,
       houseOf,
       neighbourHouses,

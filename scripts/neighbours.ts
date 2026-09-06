@@ -65,9 +65,13 @@ function faultsOfHouses(
   for (const house of Object.values(houses)) {
     // 自家那一户（`home`）姓当然跟自家同；户主在成员里这一条对它也成立
     const own = house.id === 'home'
-    if (!house.members.includes(house.head)) faults.push(`${house.id} 的户主不在自家成员里`)
+    // 成员空着是户绝：一户人都殁了，户主留着最后那个名字，那是史实不是活人
+    if (house.members.length > 0 && !house.members.includes(house.head)) {
+      faults.push(`${house.id} 的户主不在自家成员里`)
+    }
     for (const id of house.members) {
-      if (!roster.has(id)) faults.push(`${house.id} 的成员 ${id} 不在人口册上`)
+      // 「我」不在人口册上，那是关系图上的节点名；自家这一户里有我
+      if (id !== 'me' && !roster.has(id)) faults.push(`${house.id} 的成员 ${id} 不在人口册上`)
     }
     if (!own && house.surname === ownSurname) faults.push(`${house.id} 跟自家同姓「${ownSurname}」`)
     if (surnames.has(house.surname)) faults.push(`两户邻居都姓「${house.surname}」`)

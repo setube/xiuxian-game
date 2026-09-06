@@ -29,6 +29,8 @@ import { useHouseholdStore } from '../src/stores/household'
 import { useNarrativeStore } from '../src/stores/narrative'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
+import type { OriginId } from '../src/types/game'
+import { beOf } from './origin'
 
 /**
  * 走多少世。
@@ -59,7 +61,7 @@ const TOO_COMMON: readonly string[] = ['孩子', '徒弟', '老人', '家里人'
  * 而它恰恰是这套东西**做对了**的样子。判据要是不放过它，
  * 每一处讣告都会被判成穿帮。
  */
-const TALKING_ABOUT_DEATH = /不在了|没了|殁|走了|下葬|坟|丧|头七|再没有消息/
+const TALKING_ABOUT_DEATH = /不在了|没了|殁|走了|下葬|坟|丧|头七|再没有消息|留下的|留下来/
 
 /**
  * 一个字的称呼是别的词的零件，撞上不算数。
@@ -72,7 +74,8 @@ const TALKING_ABOUT_DEATH = /不在了|没了|殁|走了|下葬|坟|丧|头七|�
  * 只挡这几个词，不把「娘」整个放进 `TOO_COMMON`：娘是这条判据存在的理由
  * （那个 bug 原本就是娘没了之后「整日跟在母亲身后」），整个放掉就是拆了尺子。
  */
-const INNOCENT_CONTEXTS: readonly string[] = ['姑娘', '新娘', '娘娘', '原来他叫']
+// 「老爹」是邻居的叫法（六十岁的许家户主叫「许老爹」），跟殁了的「爹」撞的是一个字
+const INNOCENT_CONTEXTS: readonly string[] = ['姑娘', '新娘', '娘娘', '老爹', '原来他叫']
 
 /** 这一句里的「娘」是不是别的词的零件 */
 function innocent(text: string, calls: string): boolean {
@@ -210,15 +213,45 @@ let bad = 0
   const barren: string[] = []
   const table: string[] = []
 
+  /**
+   * 每种日子摆在它**典型**的世界里问。
+   *
+   * 从前这儿随机掷一个出身再硬套 `liveAs(living)`：掷到一个被寺里收留的木匠家孩子，
+   * 套上铺子里的日子——住寺里（街面的征象看不见）、业是木工（田里的看不见）、
+   * 家境中等（穷富两句都不说），于是「shop 一条征象也看不见」。种子把这一世钉住了
+   * （SEED=h1），可它量的不是日子，是一个不存在的组合。
+   *
+   * 出身按日子选（`LIVINGS` 的反查）；半路才有的日子（给人做工、门第塌了）
+   * 摆在农户家里。住处要是典型的：宅、宫、王府各归各，掷到寺里、街上的重掷。
+   */
+  const ORIGIN_FOR: Partial<Record<string, OriginId>> = {
+    farm: 'farm',
+    hunt: 'hunt',
+    craft: 'craft',
+    shop: 'cloth',
+    clinic: 'herb',
+    office: 'office',
+    yamen: 'yamen',
+    palace: 'court',
+    manor: 'manor',
+  }
+  const TYPICAL_HOME: Record<string, string> = { palace: '宫', manor: '王府' }
   for (const living of ALL_LIVINGS) {
-    setActivePinia(createPinia())
-    const character = useCharacterStore()
-    const household = useHouseholdStore()
-    useWorldStore()
-    usePeopleStore()
-    // 先立基：征象现在还看住处（村口是村里的事），住处要立基才有
-    useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale }).begin()
-    // 再把这一世的日子钉成这一种，别的一概不动
+    const origin = ORIGIN_FOR[living.id] ?? 'farm'
+    const wantHome = TYPICAL_HOME[living.id] ?? '宅'
+    let world = useWorldStore()
+    let character = useCharacterStore()
+    let household = useHouseholdStore()
+    for (let tries = 0; tries < 200; tries += 1) {
+      setActivePinia(createPinia())
+      character = useCharacterStore()
+      household = useHouseholdStore()
+      world = useWorldStore()
+      usePeopleStore()
+      beOf(origin)
+      useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale }).begin()
+      if (world.residenceKind() === wantHome) break
+    }
     character.liveAs(living.id)
 
     const mine = SIGNS.filter((sign) => !sign.who || meetsAll(sign.who))

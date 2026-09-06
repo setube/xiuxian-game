@@ -769,20 +769,35 @@ function ruler(): string[] {
   const sites = livingSites()
   const walkedSites = new Set<string>()
   for (const one of walked.values()) for (const step of one.steps) walkedSites.add(step.where)
+  /**
+   * 承户与分家那几处不在这一支里走，`scripts/succession.ts` 守着：它按出身算出
+   * 分完家该过什么日子（铺子归了哥→给人做工；役不是家里的东西→给人做工；
+   * 进城→给人做工），再看 `character.living` 是不是。**移交不是豁免**——写在这儿，
+   * 覆盖率那一行才分得清「没人量过」和「另有人量过」。
+   */
+  const HANDED_OVER: Readonly<Record<string, string>> = {
+    'house:succeed#yamen': 'succession.ts',
+    'house:divide#shop-gone': 'succession.ts',
+    'house:divide#craft-hired': 'succession.ts',
+    'house:divide#yamen': 'succession.ts',
+    'house:divide#choose:town': 'succession.ts',
+  }
   const missed: string[] = []
+  const handed: string[] = []
   for (const where of sites.keys()) {
-    // 登记表那一份是同一处效果的另一个名字，不单独算一处
     if (where.endsWith(' · 登记表')) continue
-    if (!walkedSites.has(where)) missed.push(where)
+    if (walkedSites.has(where)) continue
+    if (HANDED_OVER[where] !== undefined) handed.push(where)
+    else missed.push(where)
   }
   const counted = [...sites.keys()].filter((where) => !where.endsWith(' · 登记表'))
   console.log(
-    `  覆盖率：全库 ${counted.length} 处效果在换日子，这一支走到 ${counted.length - missed.length} 处`,
+    `  覆盖率：全库 ${counted.length} 处效果在换日子，这一支走到 ${counted.length - missed.length - handed.length} 处，` +
+      `另有 ${handed.length} 处移交给别的门禁（${[...new Set(handed.map((w) => HANDED_OVER[w]))].join('、')}）`,
   )
   for (const where of missed) {
     wrong.push(`${where} 在换日子，可这一支一次也没走到那儿——那条路没人量过`)
   }
-
   return wrong
 }
 

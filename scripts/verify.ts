@@ -635,6 +635,7 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     daily: null,
     diary: null,
     reading: null,
+    divide: null,
   } satisfies {
     [K in Effect['type']]: ((effect: Extract<Effect, { type: K }>) => [Set<string>, string]) | null
   }

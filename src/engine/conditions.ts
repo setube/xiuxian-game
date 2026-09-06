@@ -183,6 +183,24 @@ const CHECKS = {
    * 生活方式不是空间位置：这一格读 `world.residence` 那一处是宅还是宫，
    * 和它归的是村、镇、城还是京师。
    */
+  house: (house) => {
+    const people = usePeopleStore()
+    const home = people.houses['home']
+    if (!home) return false
+    if (house.head === 'me' && home.head !== 'me') return false
+    if (house.head === 'other' && home.head === 'me') return false
+    if (house.head !== undefined && house.head !== 'me' && house.head !== 'other') {
+      if (!people.kinOf(house.head).includes(home.head)) return false
+    }
+    if (house.with !== undefined) {
+      const inHouse = people
+        .kinOf(house.with)
+        .some((id) => home.members.includes(id) && people.isAlive(id))
+      if (!inHouse) return false
+    }
+    return true
+  },
+
   dwelling: (dwelling, { world }) => {
     if (dwelling.kind !== undefined && !dwelling.kind.includes(world.residenceKind())) return false
     if (dwelling.settlement !== undefined) {

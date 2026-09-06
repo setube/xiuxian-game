@@ -113,7 +113,8 @@ console.log('\n=== 三、正文和引擎里没有挂钟 ===\n')
         const text = readFileSync(join(ROOT, rel), 'utf8')
         for (const [i, line] of text.split(/\r?\n/).entries()) {
           if (/^\s*(\/\/|\*)/.test(line)) continue
-          if (/\b(Date\.now|performance\.now)\s*\(|new Date\s*\(/.test(line)) clocks.push(`${rel}:${i + 1}`)
+          if (/\b(Date\.now|performance\.now)\s*\(|new Date\s*\(/.test(line))
+            clocks.push(`${rel}:${i + 1}`)
         }
       }
     }
@@ -122,7 +123,8 @@ console.log('\n=== 三、正文和引擎里没有挂钟 ===\n')
   if (clocks.length > 0) {
     console.log(`  ✗ ${clocks.length} 处读了挂钟——种子钉不住它：${clocks.join('、')}`)
     failed += 1
-  } else console.log('  ✓ src 里没有 Date.now / new Date / performance.now（id.ts 的降级路径除外）。')
+  } else
+    console.log('  ✓ src 里没有 Date.now / new Date / performance.now（id.ts 的降级路径除外）。')
 }
 
 console.log()

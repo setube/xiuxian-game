@@ -5,6 +5,7 @@ import { makePerson, usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
 import { observerById } from '@/content/observers'
 import { bearKin, houseSurname } from '@/content/birth'
+import { HOUSEHOLD_BONDS } from './note'
 import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 
 import { beatLines, spend } from './daily'
@@ -91,6 +92,26 @@ function record(text: string, tone?: InkTone): NarrativeBlock {
 }
 
 /**
+ * 户主不留死人。人殁了、时序推了，就让每一户的户主换成活人（`people.keepHeads`）。
+ * 自家那一户换了人，记两面旗：上一任是谁（正文按它说「爹留下的」还是「娘交的钥匙」），
+ * 换给了谁。承户那一卷问的是 `house.head`，不问这面旗。
+ */
+function settleHeads(
+  world: WorldStore,
+  character: CharacterStore,
+  household: HouseholdStore,
+  people: PeopleStore,
+): void {
+  const passed = people.keepHeads({ age: character.age, gender: household.gender })
+  for (const one of passed) {
+    if (one.house !== 'home') continue
+    world.setFlag('head-passed-from', one.from)
+    world.setFlag('head-passed-to', one.to)
+    world.setFlag('head-passed-how', one.how)
+  }
+}
+
+/**
  * @returns 需要报给玩家看的回执，没有就返回 null
  *
  * 只有「得到了什么」才出回执：见闻、人、物、境界。
@@ -112,6 +133,8 @@ function applyOne(
       // 玩家在私塾念书的那几年，在外地做工的父亲也在老去。
       // NPC 不因离开玩家视野而停止存在，就落实在这一行
       people.live(years)
+      // 这几年里殁了的户主，户里得有人接；寡母当家到儿子成人也在这儿交
+      if (years > 0) settleHeads(world, character, household, people)
       return null
     }
     case 'attribute':
@@ -154,22 +177,15 @@ function applyOne(
       world.moveTo(target)
       const to = household.home
       /**
-       * 「举家」带的是**这一户里的人**，不只是亲人。
+       * 「举家」带的是**这一户里的人**（`houses['home'].members`），不是关系图上的亲人。
        *
-       * 亲人从关系图上来（`household.members`：生父、生母、兄姐、配偶、子女），
-       * 同住的人从户上来（`houses['home'].members`：王府的乳母，将来的学徒、寄居的亲戚）。
-       * 两份并起来，再看谁此刻真在这个家里——爹在外县修河堤，搬家带不走他。
-       * 从前只有前一份，于是乳母得正文点名才跟得上（用户 2026-09-06：`members ≠ 亲人`）。
+       * 两份名单从前是并着的，分家把它们劈开了：分出去之后娘和哥仍是你的亲人，
+       * 可他们住在老屋，不在你这一户里——举家进城带的是妻儿，不是他们。
+       * 户里有谁由出生、娶进门、生下来、收进门、分家这几处写；再看谁此刻真在这个家里——
+       * 爹在外县修河堤，搬家带不走他（用户 2026-09-06：`members ≠ 亲人`）。
        */
       const followers =
-        effect.takes === '举家'
-          ? [
-              ...new Set([
-                ...household.members.map((member) => member.person),
-                ...(people.houses['home']?.members ?? []),
-              ]),
-            ]
-          : (effect.takes ?? [])
+        effect.takes === '举家' ? (people.houses['home']?.members ?? []) : (effect.takes ?? [])
       for (const id of followers) {
         // 只挪本来就跟你同住的那些。爹已经在外县做工，你搬家跟他没关系
         if (people.personOf(id)?.place === from) people.amend(id, { place: to })
@@ -285,6 +301,9 @@ function applyOne(
        * 这不是这里克制，是那一格至今没有写手（见 `types/game.ts` 那一段）。
        */
       if (effect.station !== undefined) household.station = effect.station
+      // 业与产。分家那一卷头一回写它们：铺子归了哥，你改去给人做工，产是 null
+      if (effect.livelihood !== undefined) household.livelihood = effect.livelihood
+      if (effect.business !== undefined) household.business = effect.business
       return null
     case 'family': {
       /**
@@ -320,7 +339,10 @@ function applyOne(
        * 不会凭空生出人来——那正是要的：`family` 里造人只有 `born` 一条路。
        */
       if (effect.rank !== undefined) people.amend(effect.id, { rank: effect.rank })
-      if (effect.alive === false) people.amend(effect.id, { fate: '殁' })
+      if (effect.alive === false) {
+        people.amend(effect.id, { fate: '殁' })
+        settleHeads(world, character, household, people)
+      }
       return null
     }
     case 'person': {
@@ -333,6 +355,38 @@ function applyOne(
         ...(effect.health === undefined ? {} : { health: effect.health }),
       })
       if (effect.leavesHouse === true) people.leaveHouse(effect.id)
+      if (effect.fate !== undefined) settleHeads(world, character, household, people)
+      return null
+    }
+    case 'divide': {
+      const leaver =
+        effect.leaves === 'me'
+          ? 'me'
+          : people
+              .kinOf(effect.leaves)
+              .find((id) => people.isAlive(id) && people.ageOf(id) >= 16)
+      const home = people.houses['home']
+      // 分出去的人得真在这一户里：弟弟早分出去了，就没有第二回
+      if (leaver === undefined || !home || !home.members.includes(leaver)) return null
+      // 新起的那处宅挂在跟老屋同一条街、同一个村下
+      const lane = world.residence ? (world.placeOf(world.residence)?.within ?? null) : null
+      const placeId = `home-${Object.keys(world.places).length}`
+      world.enrollPlace({
+        id: placeId,
+        name: leaver === 'me' ? '新起的两间屋' : '隔壁那两间屋',
+        kind: '宅',
+        within: lane,
+      })
+      // 跟你走的是此刻在户里的妻儿和徒弟；老屋里的人一个不动
+      const takes =
+        leaver === 'me'
+          ? (['配偶', '子', '女', '徒'] as const)
+              .flatMap((bond) => people.kinOf(bond))
+              .filter((id) => home.members.includes(id) && people.isAlive(id))
+          : []
+      people.divideHouse({ leaves: leaver, takes, residence: placeId })
+      if (leaver === 'me' && world.settlement) world.settle(placeId, world.settlement)
+      settleHeads(world, character, household, people)
       return null
     }
     case 'meet': {
@@ -389,6 +443,10 @@ function applyOne(
       const isNew = people.meet(effect.id, calls, effect.delta ?? 0, effect.note)
       // 关系图上添一条边。`bind` 只往后添，旧的边一条也不覆盖
       if (effect.bond !== undefined) people.bind('me', effect.id, effect.bond)
+      // 娶进门的、生下的、收进门的徒弟，从此住在这一户里。朋友不算，先生不算
+      if (effect.bond !== undefined && [...HOUSEHOLD_BONDS, '徒'].includes(effect.bond)) {
+        people.joinHouse('home', effect.id)
+      }
       // 「知道他叫什么」是单独一件事，值得单独报一句
       const learned = effect.name ? people.learnName(effect.id) : false
       if (learned) return record(`原来他叫 · ${people.callOf(effect.id)}`, 'deep')
@@ -1054,6 +1112,7 @@ const PHASE = {
   diary: '事实',
   reading: '事实',
   succession: '事实',
+  divide: '事实',
 } satisfies { [K in Effect['type']]: '上下文' | '事实' }
 
 /**

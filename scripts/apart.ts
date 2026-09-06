@@ -921,6 +921,8 @@ const HANDED_OVER: Readonly<Record<string, string>> = {
   'reunion:emptied#open:back-to-town': 'kept.ts',
   // 王府的孩子才走得到书房（两分之一百的出身）；manor.ts 掷够十世王府，量教授进没进门
   'school:threshold#study': 'manor.ts',
+  // 分家进城那一支：举家带的得是你自己这一户。succession.ts 量妻儿跟着、娘和哥没动
+  'house:divide#choose:town': 'succession.ts',
 }
 
 function handoverHolds(sites: Map<string, string[]>): string[] {

@@ -854,10 +854,14 @@ function coverage(): string[] {
   // 年表那几条不是走出来的，是上面第五条直接拿 requires 问过的
   for (const one of lifeEvents) {
     if (one.scene.startsWith('reunion:')) walkedSites.add(`年表 · ${one.id}`)
+    // 承户分家那一册问「弟弟牵够十六年」（他多大），`scripts/succession.ts` 走它并核对年纪。移交不是豁免
+    if (one.scene.startsWith('house:')) walkedSites.add(`年表 · ${one.id}（移交 succession.ts）`)
   }
 
   const all = [...sites.keys()]
-  const missed = all.filter((where) => !walkedSites.has(where))
+  const missed = all.filter(
+    (where) => !walkedSites.has(where) && !walkedSites.has(`${where}（移交 succession.ts）`),
+  )
   console.log(
     `  覆盖率：全库 ${all.length} 处在问相识年数或往人身边搬，这一支走到 ${all.length - missed.length} 处`,
   )

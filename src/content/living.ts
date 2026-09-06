@@ -265,6 +265,19 @@ const MARKET: Living = {
 }
 
 /**
+ * 给人做工。
+ *
+ * 分家之后没有铺面、没有手艺的那个人过的日子（`life/house.ts`）：铺子归了哥，
+ * 折了银子；或者衙役家的孩子承了户，发现差不是家里的东西。
+ * 活是别人的，力气是自己的——`chore` 是一副扁担，孩子搭得上手的也是它。
+ */
+const HIRED: Living = {
+  id: 'hired',
+  chore: { holds: '一副扁担', putsAway: '把扁担靠到墙根' },
+  summary: '给人做工。活是别人的，力气是自己的，明天有没有活要看今天',
+}
+
+/**
  * 出身 → 日子。
  *
  * `Record<OriginId, Living>` 是有意的：**加一种出身，这里不表态就编译不过。**
@@ -348,4 +361,5 @@ export const ALL_LIVINGS: readonly Living[] = [
   ADRIFT,
   FALLEN,
   MARKET,
+  HIRED,
 ]

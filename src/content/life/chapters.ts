@@ -7,6 +7,7 @@ import { dearthEvents, dearthScenes } from './dearth'
 import { encounterEvents, encounterScenes } from './encounters'
 import { endingEvents, endingScenes } from './ending'
 import { hardshipEvents, hardshipScenes } from './hardship'
+import { houseEvents, houseScenes } from './house'
 import { illnessEvents, illnessScenes } from './illness'
 import { inquiryEvents, inquiryScenes } from './inquiry'
 import { kinEvents, kinScenes } from './kin'
@@ -193,6 +194,22 @@ export const CHAPTERS: readonly Chapter[] = [
     age: [9, 15],
     purpose: ['同样一个世界，从宫墙里头看是另一个'],
     marks: ['family', 'home'],
+  },
+
+  /** 承户与分家。当家的人没了，兄弟分产，分出去的那个自立门户 */
+  {
+    id: 'house',
+    scenes: houseScenes,
+    events: houseEvents,
+    called: ['年表'],
+    to: [],
+    age: [16, 70],
+    purpose: [
+      '户主不能是死人——人殁了那一刻户里就得有人接，这一卷只是把它讲出来',
+      '分家分的是户：妻儿跟你，娘和哥留在老屋；铺子分不开，归一人余人折银',
+      '差不是家里的东西——役是制度与当前人生的关系，不是家世',
+    ],
+    marks: ['divide', 'household', 'chronicle'],
   },
 
   /**

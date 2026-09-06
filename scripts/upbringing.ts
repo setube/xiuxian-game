@@ -108,6 +108,7 @@ const SETTLED = [
   'temple',
   'fallen',
   'market',
+  'hired',
 ] as const
 
 const FACTS: readonly Fact[] = [

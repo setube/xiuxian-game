@@ -246,11 +246,13 @@ function settleOwnHouse(input: {
   surname: string
 }): void {
   const { people, id, circumstance, surname } = input
-  const members = [...new Set(circumstance.kin.filter((k) => !k.goneAtBirth).map((k) => k.id))]
+  // 「我」也是这一户的人。人口册上没有「我」（那是关系图上的一个节点名），户里有
+  const kinHere = [...new Set(circumstance.kin.filter((k) => !k.goneAtBirth).map((k) => k.id))]
+  const members = ['me', ...kinHere]
   const head =
-    members.find((one) => one === 'father') ??
+    kinHere.find((one) => one === 'father') ??
     circumstance.kin.find((k) => k.bond === '抚养' && !k.goneAtBirth)?.id ??
-    members[0] ??
+    kinHere[0] ??
     'me'
   people.enrollHouse({
     id: 'home',

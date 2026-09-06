@@ -68,7 +68,11 @@ function live(origin: OriginId): Lived | null {
   const narrative = useNarrativeStore()
   const world = useWorldStore()
   const character = useCharacterStore()
-  const story = useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale })
+  const story = useStory(lifeScenes, {
+    events: lifeEvents,
+    routine: lifeRoutine,
+    finale: lifeFinale,
+  })
   story.begin()
   // 采样点：立基之后、一次也没选之前——削爵、投寺都是后来的事
   const living = character.living.id
@@ -86,7 +90,11 @@ function live(origin: OriginId): Lived | null {
   return { origin, living, male, schooled: world.hasFlag('schooled'), text }
 }
 
-function sample(origin: OriginId, want: number, keep: (one: Lived) => boolean = () => true): Lived[] {
+function sample(
+  origin: OriginId,
+  want: number,
+  keep: (one: Lived) => boolean = () => true,
+): Lived[] {
   const out: Lived[] = []
   for (let tries = 0; tries < CAP && out.length < want; tries += 1) {
     const one = live(origin)
@@ -114,14 +122,20 @@ function memoriesWrong(
   const officialLeaked = officials.filter((l) => l.text.includes(expect.runner))
   const runnerRead = runners.filter((l) => l.text.includes(expect.runner))
   const runnerLeaked = runners.filter((l) => l.text.includes(expect.official))
-  if (officialRead.length === 0) wrong.push(`${officials.length} 世官家的孩子没有一个读到「${expect.official}」`)
-  if (officialLeaked.length > 0) wrong.push(`${officialLeaked.length} 世官家的孩子读到了役家那一节「${expect.runner}」`)
-  if (runnerRead.length === 0) wrong.push(`${runners.length} 世役家的孩子没有一个读到「${expect.runner}」`)
-  if (runnerLeaked.length > 0) wrong.push(`${runnerLeaked.length} 世役家的孩子读到了官家那一节「${expect.official}」`)
+  if (officialRead.length === 0)
+    wrong.push(`${officials.length} 世官家的孩子没有一个读到「${expect.official}」`)
+  if (officialLeaked.length > 0)
+    wrong.push(`${officialLeaked.length} 世官家的孩子读到了役家那一节「${expect.runner}」`)
+  if (runnerRead.length === 0)
+    wrong.push(`${runners.length} 世役家的孩子没有一个读到「${expect.runner}」`)
+  if (runnerLeaked.length > 0)
+    wrong.push(`${runnerLeaked.length} 世役家的孩子读到了官家那一节「${expect.official}」`)
   return wrong
 }
 
-console.log(`\n=== 官与役分开、护送不叫镖局（役 ${YAMEN_LIVES} 世 / 官 ${OTHER_LIVES} 世 / 护送 ${OTHER_LIVES} 世）===\n`)
+console.log(
+  `\n=== 官与役分开、护送不叫镖局（役 ${YAMEN_LIVES} 世 / 官 ${OTHER_LIVES} 世 / 护送 ${OTHER_LIVES} 世）===\n`,
+)
 let bad = 0
 
 /**
@@ -138,7 +152,11 @@ const runners = sample('yamen', YAMEN_LIVES, ownDay('yamen'))
 const officials = sample('office', OTHER_LIVES, ownDay('office'))
 const escorts = sample('escort', OTHER_LIVES, ownDay('escort'))
 console.log(`  （另有 ${adopted} 世被人收养，过的是抚养人的日子，不算在内）`)
-if (runners.length < YAMEN_LIVES || officials.length < OTHER_LIVES || escorts.length < OTHER_LIVES) {
+if (
+  runners.length < YAMEN_LIVES ||
+  officials.length < OTHER_LIVES ||
+  escorts.length < OTHER_LIVES
+) {
   console.log(`  ✗ 掷不够：役 ${runners.length}，官 ${officials.length}，护送 ${escorts.length}。`)
   bad += 1
 }
@@ -148,7 +166,10 @@ if (runners.length < YAMEN_LIVES || officials.length < OTHER_LIVES || escorts.le
   const rows = ORIGINS.filter((o) => o.id === 'office' || o.id === 'yamen')
   const sameWord = rows.length === 2 && rows[0]!.livelihood === rows[1]!.livelihood
   const sameDay = LIVINGS.office.id === LIVINGS.yamen.id
-  const wrong = memoriesWrong(officials, runners, { official: OFFICIAL_MEMORY, runner: RUNNER_MEMORY })
+  const wrong = memoriesWrong(officials, runners, {
+    official: OFFICIAL_MEMORY,
+    runner: RUNNER_MEMORY,
+  })
   if (sameWord) {
     console.log(`  ✗ 一、官与役的业写的是同一个词「${rows[0]!.livelihood}」——两行没拆开。`)
     bad += 1
@@ -160,7 +181,9 @@ if (runners.length < YAMEN_LIVES || officials.length < OTHER_LIVES || escorts.le
     bad += 1
   } else {
     const readOwn = runners.filter((l) => l.text.includes(RUNNER_MEMORY)).length
-    console.log(`  ✓ 一、官家过 office，役家过 yamen；${readOwn} / ${runners.length} 世役家的孩子看见腰牌被收，官家的看见父亲弯腰，谁也读不到对方那一节。`)
+    console.log(
+      `  ✓ 一、官家过 office，役家过 yamen；${readOwn} / ${runners.length} 世役家的孩子看见腰牌被收，官家的看见父亲弯腰，谁也读不到对方那一节。`,
+    )
   }
 }
 
@@ -176,7 +199,9 @@ if (runners.length < YAMEN_LIVES || officials.length < OTHER_LIVES || escorts.le
     console.log(`  ✗ 二、役家念得起书的男孩掷不够（${examined.length}），这一条判不了。`)
     bad += 1
   } else if (sat.length === 0) {
-    console.log(`  ✗ 二、${examined.length} 世役家念了书的男孩没有一个走到院试——像是有人把「役户子孙不得应试」写进去了。`)
+    console.log(
+      `  ✗ 二、${examined.length} 世役家念了书的男孩没有一个走到院试——像是有人把「役户子孙不得应试」写进去了。`,
+    )
     bad += 1
   } else {
     console.log(`  ✓ 二、役家的孩子念得起书就能去考院试。那条禁令没有被写进去。`)
@@ -203,16 +228,22 @@ if (runners.length < YAMEN_LIVES || officials.length < OTHER_LIVES || escorts.le
   const readMemory = escorts.filter((l) => l.text.includes(ESCORT_MEMORY))
   const readBanned = escorts.filter((l) => l.text.includes('镖'))
   if (hits.length > 0) {
-    console.log(`  ✗ 三、库里 ${hits.length} 处正文还写着「镖」：${hits.slice(0, 6).join('、')}${hits.length > 6 ? '…' : ''}`)
+    console.log(
+      `  ✗ 三、库里 ${hits.length} 处正文还写着「镖」：${hits.slice(0, 6).join('、')}${hits.length > 6 ? '…' : ''}`,
+    )
     bad += 1
   } else if (readBanned.length > 0) {
     console.log(`  ✗ 三、${readBanned.length} 世护送人家的孩子读到了「镖」。`)
     bad += 1
   } else if (readMemory.length === 0) {
-    console.log(`  ✗ 三、${escorts.length} 世护送人家的孩子没有一个读到记事那一节「${ESCORT_MEMORY}」。`)
+    console.log(
+      `  ✗ 三、${escorts.length} 世护送人家的孩子没有一个读到记事那一节「${ESCORT_MEMORY}」。`,
+    )
     bad += 1
   } else {
-    console.log(`  ✓ 三、库里没有「镖」字；${readMemory.length} / ${escorts.length} 世护送人家的孩子读到的是车队和老把头。`)
+    console.log(
+      `  ✓ 三、库里没有「镖」字；${readMemory.length} / ${escorts.length} 世护送人家的孩子读到的是车队和老把头。`,
+    )
   }
 }
 
@@ -220,9 +251,14 @@ if (runners.length < YAMEN_LIVES || officials.length < OTHER_LIVES || escorts.le
 {
   const caughtBanned = hasBannedWord("  { kind: 'narration', text: '那一趟镖走了两个月' },", '镖')
   const sparedComment = !hasBannedWord('  // 从前这一行叫镖局', '镖')
-  const swapped = memoriesWrong(officials, runners, { official: RUNNER_MEMORY, runner: OFFICIAL_MEMORY })
+  const swapped = memoriesWrong(officials, runners, {
+    official: RUNNER_MEMORY,
+    runner: OFFICIAL_MEMORY,
+  })
   if (!caughtBanned || !sparedComment) {
-    console.log(`  ✗ 四、尺子自检：带镖的正文${caughtBanned ? '抓到了' : '没抓到'}，注释里的镖${sparedComment ? '放过了' : '也被抓了'}。`)
+    console.log(
+      `  ✗ 四、尺子自检：带镖的正文${caughtBanned ? '抓到了' : '没抓到'}，注释里的镖${sparedComment ? '放过了' : '也被抓了'}。`,
+    )
     bad += 1
   } else if (swapped.length === 0) {
     console.log(`  ✗ 四、尺子自检：把官役两家的期望对调，判据照样绿——它量的不是那两节。`)
@@ -237,5 +273,7 @@ if (bad > 0) {
   console.log(`  ✗ ${bad} 项不成立。\n`)
   process.exitCode = 1
 } else {
-  console.log('  八品是官，皂隶是役，两家不共用一个词；役家的孩子照样能去考。护送的人跟车队走，不叫镖局。\n')
+  console.log(
+    '  八品是官，皂隶是役，两家不共用一个词；役家的孩子照样能去考。护送的人跟车队走，不叫镖局。\n',
+  )
 }
