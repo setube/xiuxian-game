@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, shallowRef } from 'vue'
 
 import { kinCall, neighbourCall } from '@/engine/address'
 import { createId } from '@/engine/id'
@@ -52,9 +52,9 @@ export const usePeopleStore = defineStore(
     const world = useWorldStore()
 
     /** 世界记得的所有人 */
-    const roster = ref<Record<string, Person>>({})
+    const roster = shallowRef<Record<string, Person>>({})
     /** 玩家认识的那些人。键同 person id */
-    const known = ref<Record<string, Acquaintance>>({})
+    const known = shallowRef<Record<string, Acquaintance>>({})
     /**
      * 关系网。
      *
@@ -64,16 +64,16 @@ export const usePeopleStore = defineStore(
      * 断了的关系不删，只置 until：**老乞丐养过你这件事，
      * 不因为他死了就没发生过。**
      */
-    const relations = ref<Relation[]>([])
+    const relations = shallowRef<Relation[]>([])
     /**
      * 世界上别的人家。玩家自家不在这里（它在 `household` 那个仓库），
      * 邻接边里用 `'home'` 指它。见 `types/game.ts` 的 `House`。
      */
-    const houses = ref<Record<string, House>>({})
+    const houses = shallowRef<Record<string, House>>({})
     /** 户与户相邻。独立事实，不从「同村」推 */
-    const adjacent = ref<Adjacency[]>([])
+    const adjacent = shallowRef<Adjacency[]>([])
     /** 债：谁欠谁什么。见 `types/game.ts` 的 `IOU` */
-    const ious = ref<IOU[]>([])
+    const ious = shallowRef<IOU[]>([])
 
     /** 玩家认识几个人。人际面板的角标 */
     const acquaintedCount = computed(() => Object.keys(known.value).length)

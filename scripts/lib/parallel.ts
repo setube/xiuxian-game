@@ -185,6 +185,29 @@ export async function mapShards<Shard, Payload = undefined>(
   const call = calls
   calls += 1
 
+  /**
+   * 只给采样用的旁路：在主线程里直接跑，不开 worker。
+   *
+   * ## 为什么需要它
+   *
+   * `bun --cpu-prof` 只采主线程。而摊开跑之后，重活全在 worker 里，
+   * 主线程剩下的是事件循环空转——实测 `leaving` 采出来
+   * 95% 是 `processTicksAndRejections` / `shift` / `isEmpty`，
+   * **一帧游戏逻辑也看不见**。要给全套门禁画热点图，就得有一条不进 worker 的路。
+   *
+   * ## 它不能用来跑门禁
+   *
+   * worker 那条路每片装的是从主种子**派生**出来的种子，这里装的是主线程自己那颗。
+   * 随机流不同，判据的抽样结果就可能不同——**同一份内容，两条路可能一红一绿**。
+   * 所以这个开关只用于「时间花在哪儿」，绝不用于「判据成不成立」。
+   */
+  if (process.env.GATE_INLINE === '1') {
+    const module = (await import(task)) as {
+      runShard: (runs: number, payload: unknown, index: number) => Shard
+    }
+    return chunks.map((runs, index) => module.runShard(runs, options.payload, index))
+  }
+
   return Promise.all(
     chunks.map(
       (runs, index) =>

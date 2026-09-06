@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 
 import { createId } from '@/engine/id'
 import { rollSpan } from '@/engine/lifespan'
@@ -192,9 +192,9 @@ export const useCharacterStore = defineStore(
      * 那时候这个列表一条也没有，解析链自然落到下一级去。
      * 只有人生中途真的换了一种活法，这里才会长出第一段。
      */
-    const livings = ref<LivingSpan[]>([])
+    const livings = shallowRef<LivingSpan[]>([])
     const realm = ref<Realm>(INITIAL_REALM)
-    const attributes = ref<Attributes>(withConstitution(rollAttributes(), constitution.value))
+    const attributes = shallowRef<Attributes>(withConstitution(rollAttributes(), constitution.value))
     /**
      * 天年：这一世能活多少年。
      *
@@ -206,10 +206,10 @@ export const useCharacterStore = defineStore(
      * 为什么下限不是三岁、为什么修行能改它，都写在 `engine/lifespan.ts`。
      */
     const span = ref(rollSpan(attributes.value.body))
-    const aspects = ref<Aspects>(blankAspects())
+    const aspects = shallowRef<Aspects>(blankAspects())
     /** 出生时一无所知，一条见闻也没有。此后每一条都是学来的 */
-    const knowledge = ref<KnowledgeEntry[]>([])
-    const inventory = ref<InventoryItem[]>([])
+    const knowledge = shallowRef<KnowledgeEntry[]>([])
+    const inventory = shallowRef<InventoryItem[]>([])
 
     /**
      * 年龄不是独立字段，也不是点一下「下一年」加上去的。

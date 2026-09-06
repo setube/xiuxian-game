@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, shallowRef } from 'vue'
 
 import { createId } from '@/engine/id'
 import type { DayEntry, GameTime } from '@/types/game'
@@ -29,7 +29,7 @@ export const useDiaryStore = defineStore(
   'diary',
   () => {
     /** 一天一条，按时序排。**原文永远不改** */
-    const days = ref<DayEntry[]>([])
+    const days = shallowRef<DayEntry[]>([])
 
     /**
      * 今天还没过完的那几句。
@@ -37,7 +37,7 @@ export const useDiaryStore = defineStore(
      * 一天分三段，每段各写一句，到夜里才合成一条日录——
      * 否则一天会在日录里裂成三天。
      */
-    const pending = ref<{ lines: string[]; tags: string[] }>({ lines: [], tags: [] })
+    const pending = shallowRef<{ lines: string[]; tags: string[] }>({ lines: [], tags: [] })
 
     const dayCount = computed(() => days.value.length)
 

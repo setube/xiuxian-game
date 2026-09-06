@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 
 import { createId } from '@/engine/id'
 import type { ChoiceOption, NarrativeBlock, StreamItem } from '@/types/game'
@@ -24,10 +24,10 @@ const MAX_STREAM_LENGTH = 400
 export const useNarrativeStore = defineStore(
   'narrative',
   () => {
-    const stream = ref<StreamItem[]>([])
+    const stream = shallowRef<StreamItem[]>([])
     const sceneId = ref<string | null>(null)
     const nodeId = ref<string | null>(null)
-    const options = ref<ChoiceOption[]>([])
+    const options = shallowRef<ChoiceOption[]>([])
     const ended = ref(false)
 
     const hasStarted = computed(() => stream.value.length > 0)

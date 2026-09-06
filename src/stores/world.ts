@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 
 import { createId } from '@/engine/id'
 import {
@@ -96,7 +96,7 @@ export const useWorldStore = defineStore(
     const time = ref<GameTime>(birthTime())
     const place = ref(household.home)
     /** 到过的地方，按先后排列。世界面板据此呈现「你走过哪里」 */
-    const visited = ref<string[]>([household.home])
+    const visited = shallowRef<string[]>([household.home])
     const flags = ref<Record<string, FlagValue>>({})
     /**
      * 各个府此刻的光景。
@@ -104,7 +104,7 @@ export const useWorldStore = defineStore(
      * 只有玩家待过的府才在这里——没必要给整个天下记账，
      * 一个人一辈子也走不了几个地方。
      */
-    const regions = ref<Record<string, Region>>({})
+    const regions = shallowRef<Record<string, Region>>({})
     /** 玩家出生那一年。年龄由它和当下时序算出来 */
     const bornYear = ref(0)
     /**
@@ -117,21 +117,21 @@ export const useWorldStore = defineStore(
      * 只有第一年用得着它。往后年龄按整年算，跟从前一样。
      */
     const bornMonth = ref(1)
-    const chronicle = ref<ChronicleEntry[]>([])
+    const chronicle = shallowRef<ChronicleEntry[]>([])
     /**
      * 王朝史。规则在 `engine/dynasty.ts`，词库在 `content/eras.ts`。
      *
      * 立基时往前生成一两百年、往后生成一百多年，整段存档。
      * 年号只管给人看和给人说；判定一律照旧读绝对年。
      */
-    const reigns = ref<Reign[]>([])
+    const reigns = shallowRef<Reign[]>([])
     /** 王朝史要生成到哪一年。玩家活不过一百二十岁，往后留够就行 */
     const DYNASTY_HORIZON = 130
     /**
      * 地域。只有玩家身边那几处：他的府、县、镇或城、村或街、宅，邻村，邻县。
      * 不是整个天下——一个人一辈子也走不了几个地方。规矩见 `types/game.ts` 的 `Place`。
      */
-    const places = ref<Record<string, Place>>({})
+    const places = shallowRef<Record<string, Place>>({})
     /** 脚下那一处宅、寺、宫。讨饭的、逃难的没有，是 null */
     const residence = ref<string | null>(null)
     /** 归在哪一级聚落。没有居所的人也有聚落——他在哪个镇上讨饭 */

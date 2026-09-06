@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, shallowRef } from 'vue'
 
 import { useWorldStore } from './world'
 import { flagKey } from '@/engine/facts'
@@ -54,7 +54,7 @@ const NAMED_AT = 21
 export const useLeaningStore = defineStore(
   'leanings',
   () => {
-    const leanings = ref<Record<string, LeaningState>>({})
+    const leanings = shallowRef<Record<string, LeaningState>>({})
 
     /** 他心里正在长的那些念头，重的在前 */
     const growing = computed(() =>
