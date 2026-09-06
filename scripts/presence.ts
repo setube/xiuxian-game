@@ -94,6 +94,7 @@ const SUBJECTS: readonly Subject[] = [
   { id: 'nephew', label: '侄儿', world: 'old-home' },
   { id: 'nurse', label: '乳母', world: 'manor-child' },
   { id: 'steward', label: '老管家', world: 'manor-child' },
+  { id: 'tutor', label: '教授', world: 'manor-child' },
 ]
 
 // ============================================================
@@ -141,7 +142,32 @@ function farmChild(): Staged | null {
 }
 
 function manorChild(): Staged | null {
-  return born('manor', 9, ['nurse', 'steward'])
+  const s = born('manor', 9, ['nurse', 'steward'])
+  if (!s) return null
+  applyEffects([
+    {
+      type: 'meet',
+      id: 'tutor',
+      calls: '教授',
+      delta: 12,
+      who: { surname: '周', given: '敬之', gender: '男', age: 48, doing: '王府教授' },
+      bond: '师',
+    },
+  ])
+  return s
+}
+
+/**
+ * 这一卷自己把他立起来（`meet` 带 `who`）：你去见他，他当然在。
+ *
+ * 死了的也一并放过：这一卷是他在世上出现的那一刻，他不可能在被立起来之前就殁了——
+ * 矩阵把人先摆死再走这一卷，摆出来的是一个真人生里到不了的局。那一卷能不能在他殁了
+ * **之后再进一次**，是入口条件的事（`exists: false`、一次性事件），不归这一格量。
+ */
+function broughtBy(scene: Scene, id: string): boolean {
+  return Object.values(scene.nodes).some((node) =>
+    (node.onEnter ?? []).some((effect) => effect.type === 'meet' && effect.id === id && effect.who !== undefined),
+  )
 }
 
 function stageFor(world: Subject['world']): Staged | null {
@@ -163,8 +189,8 @@ const SPEAKER_BONDS: Readonly<Record<string, Bond>> = {
 }
 const SPEAKER_IDS: Readonly<Record<string, string>> = {
   周先生: 'teacher',
-  周教授: 'teacher',
-  周侍讲: 'teacher',
+  周教授: 'tutor',
+  周侍讲: 'tutor',
 }
 /** 不是世上的某个人：你自己、书场里的说书人 */
 const NOBODY_IN_PARTICULAR: readonly string[] = ['你', '说书人']
@@ -358,15 +384,12 @@ let bitten = 0
  * 记账不是放过——新的会红，修掉了的也会红（那一行就该从这里删掉）。
  * 每一行是 `卷#节　人物　表面`，状态不记：同一处对四种不在场都红，记一次就够。
  */
-// 这五处都是「不在场还开口」，不是死了：爹去外县做工、先生迁走了、孩子落地时爹在外头。
-// `alive` 拦不住它们——这一批正是 `present` 那一格的第一批使用者，等它进了主干由内容层接上。
-const KNOWN: readonly string[] = [
-  'birth:farm#kept　爹　对话', // 爹不在家孩子落地时，取名那句还是他说的。加 bond 生父 present
-  'dad:north#told　爹　对话', // 爹去外县做工了，还在讲十八岁那年。kin.ts 事件加 present
-  'mom:past#silent　娘　对话', // 同上，mom:past
-  'school:threshold#afford　先生　对话', // 先生迁走了还伸手要束脩。schooling.ts 加 family teacher present
-  'school:threshold#strain　先生　对话',
-]
+/**
+ * 记过账、等内容层修的穿帮。头一轮五处（爹去外县做工了还在讲十八岁那年、先生迁走了还伸手要束脩、
+ * 孩子落地时爹在外头取名那句还是他说的）已经修掉：四处加了 `present`，先生那两处根子在 id——
+ * 王府教授跟村塾先生共用一个 `teacher`，现在各是各的，人在他第一次开口的那一节入册。
+ */
+const KNOWN: readonly string[] = []
 const knownKey = (hit: Hit): string => `${hit.where}　${hit.subject}　${hit.surface}`
 const stagedOut: string[] = []
 /** 历史那一层：殁了之后他还在不在册上、关系图上 */
@@ -410,6 +433,8 @@ for (const subject of SUBJECTS) {
           if (state === '生') {
             bitten += 1
             bites.set(subject.label, (bites.get(subject.label) ?? 0) + 1)
+          } else if (broughtBy(scene, subject.id)) {
+            // 见上：这一卷把他立起来，摆死、摆走都是到不了的局
           } else if (!alive) {
             hits.push(hit)
           } else if (!present && one.surface === '对话') {
@@ -577,7 +602,7 @@ if (fresh.length > 0 || mended.length > 0) {
   bad += 1
 } else {
   console.log(
-    `  ✓ 一、死了的人不开口、不被点名；不在场的人不开口。（记过账、等内容层修的 ${stillKnown.size} 处：${[...stillKnown].join('；')}）`,
+    `  ✓ 一、死了的人不开口、不被点名；不在场的人不开口。（记过账的 ${stillKnown.size} 处）`,
   )
 }
 
@@ -600,6 +625,75 @@ if (soft.length > 0) {
     `\n  不在场时效果里点到他的 ${soft.length} 处（回来过年、赶回来奔丧那一类，正文写了他来，数据没记这一趟）：`,
   )
   for (const line of byWhere(soft).slice(0, 12)) console.log(`      ${line}`)
+}
+
+// ============================================================
+// 五、开蒙那一卷：谁教你念书，就在他第一次开口的那一节入册；王府的教授跟村塾的先生是两个人
+// ============================================================
+{
+  const wrong: string[] = []
+  /**
+   * 一节一节演，每一节先落 onEnter 再看正文——引擎就是这个顺序（`story.ts`）。
+   * 正文里开口的人，那一刻人口册上得有他：`meet who` 写在下一节，这一节他就是个没入册的声音。
+   */
+  const walkChecking = (sceneId: string): { spoke: string[]; missing: string[] } => {
+    const scene = lifeScenes[sceneId]
+    const spoke: string[] = []
+    const missing: string[] = []
+    if (!scene) return { spoke, missing: [`库里没有 ${sceneId}`] }
+    let node = scene.nodes[scene.entry]
+    for (let step = 0; step < 32 && node; step += 1) {
+      applyEffects(node.onEnter)
+      for (const block of node.blocks) {
+        if (block.kind !== 'dialogue' || !block.speaker) continue
+        const who = speakerOf(block.speaker)
+        if (!who || !('id' in who)) continue
+        spoke.push(who.id)
+        if (!exists(who.id)) missing.push(`${sceneId}#${node.id}　${block.speaker}开口时册上没有 ${who.id}`)
+        else if (!isPresent(who.id)) missing.push(`${sceneId}#${node.id}　${block.speaker}开口时不在场`)
+      }
+      const choice = (node.choices ?? []).find((one) => holds(one.requires))
+      if (choice) {
+        applyEffects(choice.effects)
+        if (!choice.next) break
+        node = scene.nodes[choice.next.replace(/^.*#/, '')]
+        continue
+      }
+      const target = (node.branches ?? []).find((one) => holds(one.requires))?.next ?? node.next
+      if (!target) break
+      node = scene.nodes[target.replace(/^.*#/, '')]
+    }
+    return { spoke, missing }
+  }
+  const roads: readonly { origin: OriginId; standing?: number; who: 'tutor' | 'teacher'; doing: string; other: 'tutor' | 'teacher' }[] = [
+    { origin: 'court', who: 'tutor', doing: '翰林侍讲', other: 'teacher' },
+    { origin: 'manor', who: 'tutor', doing: '王府教授', other: 'teacher' },
+    { origin: 'office', who: 'teacher', doing: '在你家做西席', other: 'tutor' },
+    { origin: 'cloth', standing: 60, who: 'teacher', doing: '教你认字', other: 'tutor' },
+    { origin: 'farm', standing: 30, who: 'teacher', doing: '教你认字', other: 'tutor' },
+  ]
+  for (const road of roads) {
+    const s = born(road.origin, 7, ['father', 'mother'])
+    if (!s) {
+      wrong.push(`${road.origin}：掷不出七岁爹娘都在的局`)
+      continue
+    }
+    if (road.standing !== undefined) s.household.shiftStanding(road.standing - s.household.standing)
+    const { spoke, missing } = walkChecking('school:threshold')
+    wrong.push(...missing)
+    if (!spoke.includes(road.who)) wrong.push(`${road.origin}：开蒙那一卷里没听见 ${road.who} 开口（听见的是 ${spoke.join('、') || '没人'}）`)
+    const person = s.people.personOf(road.who)
+    if (!person) wrong.push(`${road.origin}：走完开蒙，册上没有 ${road.who}`)
+    else if (person.doing !== road.doing) wrong.push(`${road.origin}：${road.who} 的营生是「${person.doing}」，该是「${road.doing}」`)
+    if (exists(road.other)) wrong.push(`${road.origin}：这条路上不该有 ${road.other}，册上却有`)
+    if (!s.people.kinOf('师').includes(road.who)) wrong.push(`${road.origin}：${road.who} 不是你的师`)
+  }
+  if (wrong.length > 0) {
+    console.log(`\n  ✗ 五、开蒙：${wrong[0]}（共 ${wrong.length} 处）`)
+    bad += 1
+  } else {
+    console.log('  ✓ 五、开蒙四条路各领各的先生进门：宫里的侍讲、王府的教授（tutor）、家里的西席、村塾的先生（teacher），都在开口之前入了册、开口时在场；两位先生不再是一个人。')
+  }
 }
 
 const rulerWrong = ruler()

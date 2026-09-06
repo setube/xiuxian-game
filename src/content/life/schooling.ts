@@ -65,6 +65,15 @@ export const schoolingScenes: SceneLibrary = {
           { type: 'flag', key: 'schooled', value: true },
           { type: 'flag', key: 'royal-schooling', value: true },
           { type: 'attribute', key: 'insight', delta: 6 },
+          // 侍讲先入册再开口：一个在正文里说话的人，人口册上得有他（`scripts/presence.ts`）
+          {
+            type: 'meet',
+            id: 'tutor',
+            calls: '侍讲',
+            delta: 10,
+            who: { surname: '沈', given: '一贯', gender: '男', age: 44, doing: '翰林侍讲' },
+            bond: '师',
+          },
           /**
            * 这一世的天下太不太平，在你七岁开蒙那天就已经定了。
            *
@@ -130,10 +139,16 @@ export const schoolingScenes: SceneLibrary = {
               { value: '倾', weight: 42 },
             ],
           },
-          // 教授先在这儿入册：他不叫「先生」，府里上下叫他「教授」
+          /**
+           * 教授先在这儿入册：他不叫「先生」，府里上下叫他「教授」。
+           *
+           * 他的 id 是 `tutor`，不是村塾那位的 `teacher`。头一版两人共用 `teacher`，`who` 里连名字
+           * 都一样（都叫周敬之）——两个人被写成了一个：削爵搬走的孩子在册上的「先生」还是王府那位，
+           * 城里私塾的周先生一开口，按 id 找就是个不在场的人。**人物 id 是一个人，不是一个位置。**
+           */
           {
             type: 'meet',
-            id: 'teacher',
+            id: 'tutor',
             calls: '教授',
             delta: 12,
             who: { surname: '周', given: '敬之', gender: '男', age: 48, doing: '王府教授' },
@@ -166,6 +181,15 @@ export const schoolingScenes: SceneLibrary = {
           { type: 'flag', key: 'private-tutor', value: true },
           { type: 'identity', identity: '学童' },
           { type: 'attribute', key: 'insight', delta: 4 },
+          // 教你念书的人在他第一次开口的这一节入册（三条路各一处，见 `lessons` 那一节的注）
+          {
+            type: 'meet',
+            id: 'teacher',
+            calls: '先生',
+            delta: 15,
+            who: { surname: '周', given: '敬之', gender: '男', age: 50, doing: '在你家做西席' },
+            bond: '师',
+          },
           { type: 'chronicle', text: '家里请了西席，在家中开蒙。' },
         ],
         blocks: [
@@ -197,6 +221,14 @@ export const schoolingScenes: SceneLibrary = {
         onEnter: [
           { type: 'time', months: 3 },
           { type: 'household', standing: -12, debt: 6 },
+          {
+            type: 'meet',
+            id: 'teacher',
+            calls: '先生',
+            delta: 15,
+            who: { surname: '周', given: '敬之', gender: '男', age: 50, doing: '教你认字' },
+            bond: '师',
+          },
           { type: 'flag', key: 'schooled', value: true },
           { type: 'flag', key: 'schooled-at-a-price', value: true },
           { type: 'identity', identity: '学童' },
@@ -221,6 +253,14 @@ export const schoolingScenes: SceneLibrary = {
         onEnter: [
           { type: 'time', months: 2 },
           { type: 'household', standing: -4 },
+          {
+            type: 'meet',
+            id: 'teacher',
+            calls: '先生',
+            delta: 15,
+            who: { surname: '周', given: '敬之', gender: '男', age: 50, doing: '教你认字' },
+            bond: '师',
+          },
           { type: 'flag', key: 'schooled', value: true },
           { type: 'identity', identity: '学童' },
           { type: 'chronicle', text: '你进了私塾。' },
@@ -265,21 +305,15 @@ export const schoolingScenes: SceneLibrary = {
       lessons: {
         id: 'lessons',
         /**
-         * 玩家只知道他姓周。
+         * 教你念书的人不在这一节入册了——他在 `strain` / `afford` / `tutor` 各自那一节入册，
+         * 因为他在那一节就开口了（「把手伸出来」）：**一个人开口之前，人口册上得先有他**
+         * （`scripts/presence.ts` 的「存在」那一层）。三处 `who` 一个字不差，认的是同一个人；
+         * 王府那条路入册的是另一个人（`tutor`，教授），不到这儿来。
          *
-         * `name` 不写，所以人口册里那个「敬之」他一辈子也不会知道——
+         * 玩家只知道他姓周。`name` 不写，所以人口册里那个「敬之」他一辈子也不会知道——
          * 一个学生记得先生说话的样子，记不得先生的名字，这件事本来就常见。
          */
-        onEnter: [
-          {
-            type: 'meet',
-            id: 'teacher',
-            calls: '先生',
-            delta: 15,
-            who: { surname: '周', given: '敬之', gender: '男', age: 50, doing: '教你认字' },
-            bond: '师',
-          },
-        ],
+        onEnter: [],
         blocks: [],
         choices: [
           {

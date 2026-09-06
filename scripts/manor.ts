@@ -101,7 +101,8 @@ function live(origin: OriginId): Lived | null {
     stewardTemper,
     doingsAtFour,
     text,
-    teacherDoing: people.personOf('teacher')?.doing ?? null,
+    // 王府的教授是 `tutor`，村塾的周先生才是 `teacher`——两个人，两个 id
+    teacherDoing: people.personOf('tutor')?.doing ?? null,
     dismissed: world.hasFlag('page-dismissed'),
     pageAway: page !== undefined && page.place !== household.home,
   }

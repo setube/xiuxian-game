@@ -232,14 +232,16 @@ const PATHS: readonly Path[] = [
    * 这一支的分母跟着 +1，于是这里红了一回——**那正是这张覆盖率表的用处**：
    * 库里多一处在改变谁在你身边，它当天就问「谁量过」。
    *
-   * 放在 `lessons` 而不是上面四节，是因为四条入学路认的是同一个人（见
-   * `content/life/schooling.ts`）。走它一趟，四条路就都验到了。
+   * 先生从前在 `lessons` 那一节入册（四条路汇到那儿）。现在他在**第一次开口的那一节**入册
+   * （`strain` / `afford` / `tutor` 各一处，王府那条路入的是另一个人 `tutor`）——一个人开口之前
+   * 人口册上得先有他（`scripts/presence.ts`）。这一趟从 `afford` 进，四条路里的另外三条
+   * 移交给 presence.ts 第五条，它一条一条摆。
    */
   {
     id: 'schooling',
     label: '走出门遇见的人：私塾的先生',
     origin: 'farm',
-    steps: [{ scene: 'school:threshold', node: 'lessons' }],
+    steps: [{ scene: 'school:threshold', node: 'afford' }],
   },
   /**
    * 「嫁」得单走一趟——**同一条人生里它会被「娶」盖住。**
@@ -960,6 +962,11 @@ const HANDED_OVER: Readonly<Record<string, string>> = {
   'reunion:emptied#open:back-to-town': 'kept.ts',
   // 王府的孩子才走得到书房（两分之一百的出身）；manor.ts 掷够十世王府，量教授进没进门
   'school:threshold#study': 'manor.ts',
+  // 开蒙那一卷四条路各自领先生进门（宫里的侍讲、王府的教授、家里的西席、村塾的先生）。
+  // presence.ts 第五条把四条路各摆一世走一遍，量的是「人在开口之前入了册」
+  'school:threshold#hall': 'presence.ts',
+  'school:threshold#tutor': 'presence.ts',
+  'school:threshold#strain': 'presence.ts',
   // 分家进城那一支：举家带的得是你自己这一户。succession.ts 量妻儿跟着、娘和哥没动
   'house:divide#choose:town': 'succession.ts',
   // 老屋添的人（嫂子、侄儿）进的是老屋不是你这一户。kindred.ts 量他们住在哪一户

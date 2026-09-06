@@ -40,7 +40,8 @@ export const MANOR_DOINGS: readonly Doing[] = [
     requires: [
       MANOR,
       { flag: { key: 'schooled', equals: true } },
-      { family: { id: 'teacher', alive: true } },
+      // 王府的先生是教授（`tutor`），不是村塾那位（`teacher`）
+      { family: { id: 'tutor', alive: true } },
     ],
     echo: '你去了书房。',
   },
