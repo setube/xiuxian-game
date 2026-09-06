@@ -38,14 +38,13 @@ import './lib/seeded'
 
 import { createPinia, setActivePinia } from 'pinia'
 
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { attend } from '../src/engine/attention'
 import { glance, rollTruth } from '../src/engine/wounded'
-import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
-import { useNarrativeStore } from '../src/stores/narrative'
 import { useWorldStore } from '../src/stores/world'
+import { mapShards } from './lib/parallel'
+import type { Observed } from './tasks/attention-lives'
 
 import { beOf } from './origin'
 
@@ -211,32 +210,19 @@ const share = { caught: 0, glimpsed: 0, missed: 0 }
   let stopped = 0
   let walkedAway = 0
 
-  for (let i = 0; i < RUNS; i += 1) {
-    setActivePinia(createPinia())
-    const narrative = useNarrativeStore()
-    const world = useWorldStore()
-    const story = useStory(lifeScenes, {
-      events: lifeEvents,
-      routine: lifeRoutine,
-      finale: lifeFinale,
-    })
-    story.begin()
+  // 这一段原样搬去了 tasks/attention-lives.ts，走法一步没动；
+  // 判据留在这儿：哪一档算走上过、哪两种读法算绕开走了，都是这一支自己的话
+  const observed = (
+    await mapShards<Observed[]>({ task: 'scripts/tasks/attention-lives.ts', runs: RUNS })
+  ).flat()
 
-    let turns = 0
-    while (!narrative.ended && turns < 200) {
-      const open = narrative.options.filter((option) => !option.locked)
-      if (open.length === 0) break
-      story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-      turns += 1
-    }
-
-    const level = world.getFlag('attention')
-    if (typeof level !== 'string') continue
+  for (const one of observed) {
+    const level = one.level
+    if (level === null) continue
     walked += 1
     if (level === 'caught' || level === 'glimpsed' || level === 'missed') share[level] += 1
     if (level !== 'caught') continue
-    const reading = world.getFlag('wounded-reading')
-    if (typeof reading === 'string' && WALKS_AWAY.has(reading)) walkedAway += 1
+    if (one.reading !== null && WALKS_AWAY.has(one.reading)) walkedAway += 1
     else stopped += 1
   }
 

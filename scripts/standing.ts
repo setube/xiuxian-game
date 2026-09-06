@@ -39,15 +39,9 @@
  */
 import './lib/seeded'
 
-import { createPinia, setActivePinia } from 'pinia'
-
 import { ORIGINS, originById } from '../src/content/origins'
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
-import { useStory } from '../src/engine/story'
-import { useCharacterStore } from '../src/stores/character'
-import { useHouseholdStore } from '../src/stores/household'
-import { useNarrativeStore } from '../src/stores/narrative'
-import type { OriginId } from '../src/types/game'
+import { mapShards, sumTallies } from './lib/parallel'
+import { liveOne, type Life, type StandingShard } from './tasks/standing-lives'
 
 /**
  * 走查跑多少世。
@@ -68,71 +62,32 @@ import type { OriginId } from '../src/types/game'
 const RUNS = 400
 const RUNS_AT_MOST = 2000
 
-/** 后半生从哪一岁算起。十六岁是人生阶段的变化点，不是检测线 */
-const LATER_LIFE_FROM = 17
+// `Life` 与「后半生从哪一岁算起」都跟着单世模拟搬去了 tasks/standing-lives.ts
 
-interface Life {
-  origin: OriginId
-  /** 立基那一刻：出身表掷完，一次也没选之前 */
-  founded: number
-  /** 咽气那年 */
-  final: number
-  finalOutlook: string
-}
+// 这一段原样搬去了 tasks/standing-lives.ts，走法一步没动
+const bulk = sumTallies(
+  await mapShards<StandingShard>({ task: 'scripts/tasks/standing-lives.ts', runs: RUNS }),
+)
+const lives: Life[] = bulk.lives
+let downSteps = bulk.downSteps
+let allSteps = bulk.allSteps
 
-const lives: Life[] = []
-/** 十七岁以后，家境往下走过几步 / 一共动过几步。这两个数是第二条的分子分母 */
-let downSteps = 0
-let allSteps = 0
-
-function live(): void {
-  setActivePinia(createPinia())
-  const narrative = useNarrativeStore()
-  const household = useHouseholdStore()
-  const character = useCharacterStore()
-  const story = useStory(lifeScenes, {
-    events: lifeEvents,
-    routine: lifeRoutine,
-    finale: lifeFinale,
-  })
-
-  const origin = household.origin
-  const founded = household.standing
-
-  story.begin()
-
-  let previous = household.standing
-  let turns = 0
-  while (!narrative.ended && turns < 200) {
-    const open = narrative.options.filter((o) => !o.locked)
-    if (open.length === 0) break
-    story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-    turns += 1
-
-    const now = household.standing
-    // 岁数在每一步之后读，因为效果里的 time 刚刚推过它
-    if (character.age >= LATER_LIFE_FROM && now !== previous) {
-      allSteps += 1
-      if (now < previous) downSteps += 1
-    }
-    previous = now
-  }
-
-  lives.push({
-    origin,
-    founded,
-    final: household.standing,
-    finalOutlook: household.outlook,
-  })
-}
-
-for (let i = 0; i < RUNS; i += 1) live()
+/*
+ * 补跑那一段留在主线程，而且必须留：它的条件是「十一种出身还没凑齐
+ * 就再掷一世」——每掷一世都要回头看已经攒到的集合，**天生是串行的**。
+ * 摊开跑就成了「一口气再掷一千世」，那是另一回事。
+ */
 for (
   let tries = 0;
   tries < RUNS_AT_MOST - RUNS && new Set(lives.map((life) => life.origin)).size < ORIGINS.length;
   tries += 1
-)
-  live()
+) {
+  const one = liveOne()
+  lives.push(one.life)
+  downSteps += one.downSteps
+  allSteps += one.allSteps
+}
+
 /** 实际掷了多少世。判据里的分母是它，不是 RUNS */
 const SAMPLED = lives.length
 
@@ -294,7 +249,9 @@ console.log()
       `十七岁以后采到 ${allSteps} 步家境变动 / 面板上那句话出现过 ${byOutlook.size} 种`,
   )
   if (originsSeen < ORIGINS.length) {
-    console.log(`  ✗ ${ORIGINS.length} 种出身掷了 ${SAMPLED} 世只掷到 ${originsSeen} 种，这一批的表是缺行的。`)
+    console.log(
+      `  ✗ ${ORIGINS.length} 种出身掷了 ${SAMPLED} 世只掷到 ${originsSeen} 种，这一批的表是缺行的。`,
+    )
     bad += 1
   }
 

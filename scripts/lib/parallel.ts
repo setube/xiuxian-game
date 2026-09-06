@@ -71,6 +71,26 @@ const DEFAULT_WORKERS = (() => {
  * 加起来才是总世数。原样抄 `RUNS` 的话，十一片各报一次全量，
  * **分母会翻十一倍，而每一格比例都跟着缩水十一倍**。
  */
+/**
+ * 这一格是不是「按键计数」的普通对象（`Record<string, number>`）。
+ *
+ * `Map` 一眼认得出，可有些走查的计数攒在普通对象上（`royal.ts` 的
+ * `identities` / `genders` / `endings` 就是）。两者语义一样，都该按键相加。
+ *
+ * ## 判据要看所有分片，不能只看头一片
+ *
+ * 一个 `{}` 分不出它是「这一片还没记过东西的计数表」还是「各片都一样的常量」。
+ * 只看头一片的话，恰好那一片空着就会把整格当成常量——**后面十片记的数
+ * 全部丢掉，而报表上那一行只是变小，不会有任何东西喊**。
+ * 所以只要**任何一片**在这一格上是非空的数字表，整格就按计数合并。
+ */
+function isCountRecord(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false
+  if (Array.isArray(value) || value instanceof Map || value instanceof Set) return false
+  const entries = Object.values(value)
+  return entries.length > 0 && entries.every((one) => typeof one === 'number')
+}
+
 export function sumTallies<T extends object>(shards: readonly T[]): T {
   const first = shards[0]
   if (!first) throw new Error('没有可合并的分片')
@@ -101,6 +121,14 @@ export function sumTallies<T extends object>(shards: readonly T[]): T {
       const union = new Set<unknown>()
       for (const row of rows) for (const one of row[key] as Set<unknown>) union.add(one)
       total[key] = union
+    } else if (rows.some((row) => isCountRecord(row[key]))) {
+      const merged: Record<string, number> = {}
+      for (const row of rows) {
+        for (const [at, n] of Object.entries(row[key] as Record<string, number>)) {
+          merged[at] = (merged[at] ?? 0) + n
+        }
+      }
+      total[key] = merged
     } else {
       // 别的一律取头一片的。这类格子是各片都一样的常量，不是攒出来的数
       total[key] = sample

@@ -7,72 +7,23 @@
  */
 import './lib/seeded'
 
-import { createPinia, setActivePinia } from 'pinia'
-
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
-import { useStory } from '../src/engine/story'
-import { useCharacterStore } from '../src/stores/character'
-import { useHouseholdStore } from '../src/stores/household'
-import { useNarrativeStore } from '../src/stores/narrative'
-import { useWorldStore } from '../src/stores/world'
 import type { OriginId } from '../src/types/game'
 
-import { beOf } from './origin'
+import { mapShards, sumTallies } from './lib/parallel'
+import { type RoyalTally } from './tasks/royal-lives'
 
 const RUNS = 300
 
-function probe(id: OriginId, label: string): void {
-  const tally = {
-    n: 0,
-    fell: 0,
-    walkedOut: 0,
-    observatory: 0,
-    entered: 0,
-    guarded: 0,
-    slipped: 0,
-    knew: 0,
-    identities: {} as Record<string, number>,
-    genders: {} as Record<string, number>,
-    endings: {} as Record<string, number>,
-  }
-
-  for (let i = 0; i < RUNS; i += 1) {
-    setActivePinia(createPinia())
-    const narrative = useNarrativeStore()
-    const world = useWorldStore()
-    const character = useCharacterStore()
-    const household = useHouseholdStore()
-    // 绕开权重：这一支太稀有，按权重掷根本攒不出样本。
-    // 钉的是主键——王府与宫里那五格完全相同，只有主键分得开这两支
-    beOf(id)
-    const story = useStory(lifeScenes, {
-      events: lifeEvents,
-      routine: lifeRoutine,
-      finale: lifeFinale,
-    })
-    story.begin()
-
-    let turns = 0
-    while (!narrative.ended && turns < 200) {
-      const open = narrative.options.filter((o) => !o.locked)
-      if (open.length === 0) break
-      story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-      turns += 1
-    }
-
-    tally.n += 1
-    if (world.hasFlag('the-fall')) tally.fell += 1
-    if (world.hasFlag('walked-out')) tally.walkedOut += 1
-    if (world.hasFlag('event:royal-observatory')) tally.observatory += 1
-    if (world.hasFlag('entered-observatory')) tally.entered += 1
-    if (world.hasFlag('guarded')) tally.guarded += 1
-    if (world.hasFlag('slipped-the-guards')) tally.slipped += 1
-    if (character.knows('cultivators-exist')) tally.knew += 1
-    tally.identities[character.identity] = (tally.identities[character.identity] ?? 0) + 1
-    tally.genders[household.gender] = (tally.genders[household.gender] ?? 0) + 1
-    const ending = narrative.nodeId ?? '(未收尾)'
-    tally.endings[ending] = (tally.endings[ending] ?? 0) + 1
-  }
+async function probe(id: OriginId, label: string): Promise<void> {
+  // 这一段原样搬去了 tasks/royal-lives.ts，走法一步没动；
+  // 摊开跑的理由跟别支一样：世与世之间没有边，每一世自己 createPinia()
+  const tally = sumTallies(
+    await mapShards<RoyalTally, OriginId>({
+      task: 'scripts/tasks/royal-lives.ts',
+      runs: RUNS,
+      payload: id,
+    }),
+  )
 
   const p = (v: number) => `${((v / tally.n) * 100).toFixed(0)}%`
   console.log(`\n=== ${label}（${RUNS} 世，出身钉死）===`)
@@ -115,6 +66,6 @@ function probe(id: OriginId, label: string): void {
   )
 }
 
-probe('court', '生在宫里')
-probe('manor', '生在王府')
+await probe('court', '生在宫里')
+await probe('manor', '生在王府')
 console.log()

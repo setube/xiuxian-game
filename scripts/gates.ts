@@ -144,10 +144,30 @@ function saveTimes(times: Record<string, number>): void {
  */
 const MASTER_SEED =
   process.env.SEED !== undefined && process.env.SEED !== '' ? process.env.SEED : freshSeed()
+/**
+ * 每个门禁进程内部开几个 worker 线程。
+ *
+ * ## 默认值让「进程数 × 线程数」等于核数
+ *
+ * 从前默认是「核心数减一」，跟 `JOBS` 各算各的，于是四个进程各开十一个线程，
+ * 十二个核上挤了四十四个可运行体。**代价是量得出来的**：同一批门禁，
+ * `lifelong` 单独跑 48 秒，在那种池子里要 205 秒——四倍，全花在互相抢核上。
+ *
+ * 三组配置各跑一遍（52 支，12 核）：
+ *
+ *     JOBS=4  SHARDS=11　　墙上 5.3 分钟　　合计 21.4 分钟　　四十四个线程抢十二个核
+ *     JOBS=11 SHARDS=1 　　墙上 5.8 分钟　　合计 37.6 分钟　　最长那支退回单线程，尾巴拖长
+ *     JOBS=4  SHARDS=3 　　墙上 4.7 分钟　　合计 18.7 分钟　　乘积正好等于核数
+ *     JOBS=2  SHARDS=6 　　墙上 4.8 分钟　　合计 9.6 分钟　 　同上，且更省算力
+ *
+ * 两个乘积等于核数的配置墙上时间基本打平，而两个不配平的都更慢。
+ * 所以这里不再独立取值，改成跟着 `JOBS` 算——**人只需要挑 `JOBS`，
+ * 乘积由这一行保证**。显式给了 `GATE_SHARDS` 仍然优先，复现红灯要用它。
+ */
 const SHARDS =
   process.env.GATE_SHARDS !== undefined && process.env.GATE_SHARDS !== ''
     ? process.env.GATE_SHARDS
-    : String(Math.max(1, cpus().length - 1))
+    : String(Math.max(1, Math.round(cpus().length / JOBS)))
 
 function seedOf(name: string): string {
   return deriveSeed(MASTER_SEED, name)
