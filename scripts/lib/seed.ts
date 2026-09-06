@@ -87,8 +87,15 @@ let installed: string | undefined
  */
 export function installSeed(seed: string): string {
   const next = sfc32(cyrb128(seed))
+  /**
+   * 编号走自己的一条流。从前跟世界的骰子共用一条：`people.tie()` 每牵一条边就 `createId()` 一次，
+   * 吃掉一个随机数，**内容里多立一条边，整个世界的掷骰全部推偏**——另一个会话在出生那一刻
+   * 给爹娘、兄弟姐妹补了几条边，`kindred` 的随机采样就换了一批世（种子 1959t641pabs）。
+   * 分开之后，加边、加债只动编号那条流，世界的骰子照旧；同一颗种子的世界不再因为多记了一件事实而变样。
+   */
+  const ids = sfc32(cyrb128(`${seed}#id`))
   Math.random = () => next() / 4294967296
-  crypto.randomUUID = () => uuidFrom(next)
+  crypto.randomUUID = () => uuidFrom(ids)
   installed = seed
   return seed
 }

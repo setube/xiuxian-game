@@ -83,7 +83,12 @@ function localize<T extends Effect>(effect: T): T {
 }
 
 /** 这几种效果的 `id` 指的是人口册上的一个人 */
-const PERSON_EFFECTS: ReadonlySet<Effect['type']> = new Set(['meet', 'relation', 'person', 'family'])
+const PERSON_EFFECTS: ReadonlySet<Effect['type']> = new Set([
+  'meet',
+  'relation',
+  'person',
+  'family',
+])
 
 /**
  * 效果里写的是角色（`'elder'`「家里的大人」、`'dam'`、`'child'`），结算前换成此刻那个真人。
@@ -367,7 +372,8 @@ function applyOne(
     case 'person': {
       // 他去了别处、换了差事、没了——都不是把他删掉，是改他的下落
       // 回到一户住的地方：户里别的活人在哪他就在哪；没人说得出就不动
-      const back = effect.backTo === undefined ? undefined : people.placeOfHouse(effect.backTo, effect.id)
+      const back =
+        effect.backTo === undefined ? undefined : people.placeOfHouse(effect.backTo, effect.id)
       people.amend(effect.id, {
         // 地名跟 `home` 那条一样过记号：正文里写「{prefecture} · 城西旧宅」，落的是真地名
         ...(effect.place === undefined ? {} : { place: fillString(effect.place) }),
@@ -386,9 +392,7 @@ function applyOne(
       const leaver =
         effect.leaves === 'me'
           ? 'me'
-          : people
-              .kinOf(effect.leaves)
-              .find((id) => people.isAlive(id) && people.ageOf(id) >= 16)
+          : people.kinOf(effect.leaves).find((id) => people.isAlive(id) && people.ageOf(id) >= 16)
       const home = people.houses['home']
       // 分出去的人得真在这一户里：弟弟早分出去了，就没有第二回
       if (leaver === undefined || !home || !home.members.includes(leaver)) return null
@@ -414,7 +418,9 @@ function applyOne(
       if (leaver === 'me') {
         const motherStays = people
           .kinOf('生母')
-          .some((id) => people.isAlive(id) && (people.houses['old-home']?.members ?? []).includes(id))
+          .some(
+            (id) => people.isAlive(id) && (people.houses['old-home']?.members ?? []).includes(id),
+          )
         world.setFlag('old-home-mother', motherStays)
       }
       settleHeads(world, character, household, people)
@@ -460,10 +466,10 @@ function applyOne(
          * 走的是同一份规矩，不是第三份抄写。
          */
         const surname = effect.who.surname ?? houseSurname(people)
-        // 住在别的户里的人（老屋的嫂子、侄儿），落脚在那一户户主所在的地方
-        const theirHead = effect.who.house ? people.houses[effect.who.house]?.head : undefined
+        // 住在别的户里的人（老屋的嫂子、侄儿），落脚在那一户所在的地方——户里多数人在哪，
+        // 不是户主在哪：哥在镇上做木匠，侄媳妇进的门在老屋
         const place =
-          (theirHead !== undefined ? people.personOf(theirHead)?.place : undefined) ??
+          (effect.who.house !== undefined ? people.placeOfHouse(effect.who.house) : undefined) ??
           household.home
         people.enroll(
           makePerson({

@@ -45,16 +45,14 @@ import { createPinia, setActivePinia } from 'pinia'
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
-import { fillString } from '../src/engine/interpolate'
 import { useStory } from '../src/engine/story'
-import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useNarrativeStore } from '../src/stores/narrative'
-import { makePerson, usePeopleStore } from '../src/stores/people'
+import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 import type { Livelihood, Temper, Terms } from '../src/types/game'
-import { beOf } from './origin'
 import { effectsOf } from './refs'
+import { type Staged, ageTo, grownUp, marryIn, play, stage, weather } from './lib/staged'
 
 const LIVES = 240
 const CAP = 5000
@@ -85,101 +83,7 @@ function termsFor(wife: Temper, mother: Temper): Terms {
  * 条件用真的 `meetsAll` 判、正文用真的 `fillString` 落、效果用真的 `applyEffects` 结。
  * 随机人生里也走到了几世，只报数，不作判据。
  */
-type PeopleStore = ReturnType<typeof usePeopleStore>
-type WorldStore = ReturnType<typeof useWorldStore>
-type HouseholdStore = ReturnType<typeof useHouseholdStore>
-
-const CALM = { rain: 55, harvest: 58, grain: 112, order: 66, plague: 0 }
-
-/** 把库里的一卷一节一节演下去。有选项的节按 `choiceId` 选，没写就选第一个 */
-function play(sceneId: string, choiceId?: string): string[] {
-  const scene = lifeScenes[sceneId]
-  if (!scene) return []
-  const texts: string[] = []
-  let node = scene.nodes[scene.entry]
-  for (let step = 0; step < 32 && node; step += 1) {
-    applyEffects(node.onEnter)
-    for (const block of node.blocks) {
-      if ('text' in block && block.text) texts.push(fillString(block.text))
-    }
-    for (const one of node.seen ?? []) if (meetsAll(one.requires)) texts.push(fillString(one.text))
-    if (node.choices && node.choices.length > 0) {
-      const choice = node.choices.find((one) => one.id === choiceId) ?? node.choices[0]!
-      applyEffects(choice.effects)
-      if (!choice.next) break
-      node = scene.nodes[choice.next.replace(/^.*#/, '')]
-      continue
-    }
-    const target = node.branches?.find((one) => meetsAll(one.requires))?.next ?? node.next
-    if (!target) break
-    node = scene.nodes[target.replace(/^.*#/, '')]
-  }
-  return texts
-}
-
-interface Staged {
-  people: PeopleStore
-  world: WorldStore
-  household: HouseholdStore
-}
-
-/** 生在一个有哥、娘还在的人家，推到二十岁，分家。掷不出来就 null */
-function stage(origin: 'farm' | 'cloth'): Staged | null {
-  for (let tries = 0; tries < 600; tries += 1) {
-    setActivePinia(createPinia())
-    const household = useHouseholdStore()
-    const world = useWorldStore()
-    const people = usePeopleStore()
-    // 出身要在角色 store 建起来之前定：出生（立人、立户）发生在 `useCharacterStore()` 那一刻，
-    // 之后再 `beOf` 只改得了家境四格，改不了已经立起来的户——头一版摆出来的「布庄人家」老屋在种地
-    beOf(origin)
-    useCharacterStore()
-    useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale }).begin()
-    if (!people.isAlive('brother') || !people.isAlive('mother')) continue
-    world.regions = { [household.prefecture]: { state: { ...CALM }, last: {} } }
-    applyEffects([{ type: 'time', years: 20 }])
-    if (!people.isAlive('brother') || !people.isAlive('mother')) continue
-    applyEffects([{ type: 'divide', leaves: 'me' }])
-    if (!people.houses['old-home']) continue
-    // 摆好的局里只演几天的事。站在年尾，三天喜酒就跨了年，跨年才会有人殁——
-    // 先走到开春，走完再看人都还在不在
-    if (world.time.month >= 10) {
-      applyEffects([{ type: 'time', months: 13 - world.time.month }])
-      if (!people.isAlive('brother') || !people.isAlive('mother')) continue
-    }
-    return { people, world, household }
-  }
-  return null
-}
-
-function weather(s: Staged, patch: Partial<typeof CALM>): void {
-  s.world.regions = { [s.household.prefecture]: { state: { ...CALM, ...patch }, last: {} } }
-}
-
-/**
- * 让一个人长到这个岁数：挪他的生年，不推世界。推世界十九年，哥和娘都可能殁在半路——
- * 那是另一件事，不是这一局要量的
- */
-function ageTo(s: Staged, id: string, age: number): void {
-  s.people.amend(id, { bornYear: s.world.time.year - age })
-}
-
-/** 让嫂子先在老屋里，性情由这一局定——娶亲那一卷的 `meet` 见到已有的人就不再造 */
-function marryIn(s: Staged, temper: Temper): void {
-  s.people.enroll(
-    makePerson({
-      id: 'brother-wife',
-      surname: '吴',
-      given: '氏',
-      gender: '女',
-      bornYear: s.world.time.year - 19,
-      temper,
-      doing: '操持家务',
-      place: s.people.personOf('brother')?.place ?? s.household.home,
-    }),
-  )
-  s.people.joinHouse('old-home', 'brother-wife')
-}
+// 摆局的工具（`stage` / `play` / `weather` / `ageTo` / `marryIn` / `grownUp`）在 `lib/staged.ts`，`away.ts` 也用它
 
 interface Lived {
   divided: boolean
@@ -562,8 +466,17 @@ if (divided.length < DIVIDES_WANTED) {
 {
   const lent = borrowed.filter((l) => l.lent === true)
   const refused = borrowed.filter((l) => l.lent === false)
-  const lentWrong = lent.filter((l) => !(l.brotherAfterBorrow! > l.brotherBeforeBorrow!))
-  const refusedWrong = refused.filter((l) => !(l.brotherAfterBorrow! < l.brotherBeforeBorrow!))
+  // 好感封顶正负一百：顶上再匀粮也升不了，那不是「没升」。另一个会话在种子 1959t641pabs 下撞上的
+  const lentWrong = lent.filter(
+    (l) =>
+      l.brotherAfterBorrow! < l.brotherBeforeBorrow! ||
+      (l.brotherBeforeBorrow! < 100 && !(l.brotherAfterBorrow! > l.brotherBeforeBorrow!)),
+  )
+  const refusedWrong = refused.filter(
+    (l) =>
+      l.brotherAfterBorrow! > l.brotherBeforeBorrow! ||
+      (l.brotherBeforeBorrow! > -100 && !(l.brotherAfterBorrow! < l.brotherBeforeBorrow!)),
+  )
   // 年节走动一格不改——查的是那一卷本身：同一步里年表能连着抽到守孝（+4），动态量分不开是谁动的
   const newyearScene = lifeScenes['kindred:newyear']
   const newyearTouches = Object.values(newyearScene?.nodes ?? {}).flatMap((node) =>
@@ -1174,18 +1087,6 @@ if (divided.length < DIVIDES_WANTED) {
   const hungryEvent = lifeEvents.find((one) => one.id === 'nephew-restless-hungry')
   const goesEvent = lifeEvents.find((one) => one.id === 'nephew-goes')
   const mendEvent = lifeEvents.find((one) => one.id === 'nephew-mend')
-  /** 分了家、哥娶了亲、侄儿十八岁、下过地 */
-  const grownUp = (): Staged | null => {
-    const st = stage('farm')
-    if (!st) return null
-    marryIn(st, '温和')
-    play('kindred:wedding')
-    play('kindred:nephew')
-    ageTo(st, 'nephew', 18)
-    play('kindred:nephew-grown')
-    applyEffects([{ type: 'flag', key: 'event:kindred-nephew-grown', value: true }])
-    return st
-  }
   /** 老屋在哪：嫂子从没离开过 */
   const oldHomePlace = (st: Staged): string | undefined => st.people.personOf('brother-wife')?.place
 

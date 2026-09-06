@@ -187,17 +187,32 @@ export const usePeopleStore = defineStore(
     }
 
     /**
-     * 这一户的人此刻在哪：先看当家的，再看户里别的活人；`except` 是正要回去的那个人，不算他自己。
+     * 这一户在哪：户里多数活人此刻在哪，平手看当家的。`except` 是正要回去的那个人，不算他自己。
+     *
+     * 头一版看当家的：哥去镇上做了木匠，老屋就跟着「在镇上」了——侄媳妇进门落在镇上，
+     * 哥回老屋回到他自己脚下。当家的一个人在外做工，户不跟他走；只剩他一个的户，他在哪户就在哪。
      * 户里没有别的活人就答不出（`undefined`）——老屋在哪，眼下只有住在里面的人说得出，
      * 居所那三层落地之前没有第二个来源。
      */
     function placeOfHouse(houseId: string, except?: string): string | undefined {
       const house = houses.value[houseId]
       if (!house) return undefined
-      const there = [house.head, ...house.members].filter(
-        (id, i, all) => id !== except && isAlive(id) && all.indexOf(id) === i,
-      )
-      return there.map((id) => roster.value[id]?.place).find((place) => place !== undefined)
+      const tally = new Map<string, number>()
+      for (const id of house.members) {
+        if (id === except || !isAlive(id)) continue
+        const place = roster.value[id]?.place
+        if (place !== undefined) tally.set(place, (tally.get(place) ?? 0) + 1)
+      }
+      const headPlace = house.head === except ? undefined : roster.value[house.head]?.place
+      let best: string | undefined
+      let most = 0
+      for (const [place, count] of tally) {
+        if (count > most || (count === most && place === headPlace)) {
+          best = place
+          most = count
+        }
+      }
+      return best
     }
 
     /** 他住进这一户。已经在了就不动 */

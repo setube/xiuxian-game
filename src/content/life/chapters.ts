@@ -14,6 +14,7 @@ import { kinEvents, kinScenes } from './kin'
 import { kindredEvents, kindredScenes } from './kindred'
 import { leavingEvents, leavingScenes } from './leaving'
 import { meetingEvents, meetingScenes } from './meeting'
+import { awayEvents, awayScenes } from './away'
 import { nephewEvents, nephewScenes } from './nephew'
 import { reunionEvents, reunionScenes } from './reunion'
 import { rivermanEvents, rivermanScenes } from './riverman'
@@ -244,6 +245,22 @@ export const CHAPTERS: readonly Chapter[] = [
       '走没走成、后来和没和好，你都不在场；正月里看见结果，缘由是娘告诉你的',
     ],
     marks: ['tie', 'person', 'flag'],
+  },
+
+  /** 在外的那些年：哥在镇上谋生十年二十年，家里的事照旧发生——银子、丧事、伤、老、儿子回不回来 */
+  {
+    id: 'away',
+    scenes: awayScenes,
+    events: awayEvents,
+    called: ['年表'],
+    to: [],
+    age: [33, 80],
+    purpose: [
+      '一个人在外谋生十年二十年，家庭、婚姻、子女、关系、财产、原户各自怎么变——每一件都从已有的事实里出，不建新东西',
+      '财产从营生里出：木匠有的是银钱没有粮，荒年是他捎银子回来（第二笔债，方向反着，进同一个格）',
+      '回来了还是老屋的人：伤了手、老了做不动了，自己的营生清掉落回老屋的；儿子回不回来看父子那条边',
+    ],
+    marks: ['owe', 'repay', 'person', 'flag', 'chronicle'],
   },
 
   /**

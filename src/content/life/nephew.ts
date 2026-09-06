@@ -170,7 +170,9 @@ export const nephewScenes: SceneLibrary = {
       },
       said: {
         id: 'said',
-        blocks: [{ kind: 'narration', text: '这件事怎么了结，是老屋的事。你回了自己家。', tone: 'faint' }],
+        blocks: [
+          { kind: 'narration', text: '这件事怎么了结，是老屋的事。你回了自己家。', tone: 'faint' },
+        ],
       },
     },
   },
@@ -255,7 +257,13 @@ export const nephewScenes: SceneLibrary = {
       'father-back': {
         id: 'father-back',
         onEnter: [
-          { type: 'person', id: 'brother', livelihood: null, backTo: 'old-home', doing: '回老屋种地' },
+          {
+            type: 'person',
+            id: 'brother',
+            livelihood: null,
+            backTo: 'old-home',
+            doing: '回老屋种地',
+          },
         ],
         blocks: [],
         next: 'done',
