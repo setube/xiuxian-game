@@ -143,6 +143,10 @@ export const youthScenes: SceneLibrary = {
             effects: [
               { type: 'time', years: 2 },
               { type: 'identity', identity: '学徒' },
+              // 拜师是这一生的一道坎：从此他不再是「家里那个孩子」，
+              // 而是某个人的徒弟。身份变了，年表就得有一笔——否则多年以后
+              // 回看这一生，他会在某一年毫无来由地变成了学徒
+              { type: 'chronicle', text: '你拜了师傅，学一门手艺。', tone: 'deep' },
               { type: 'attribute', key: 'insight', delta: 6 },
               { type: 'attribute', key: 'body', delta: 6 },
               { type: 'attribute', key: 'will', delta: 4 },
@@ -169,6 +173,7 @@ export const youthScenes: SceneLibrary = {
             effects: [
               { type: 'time', years: 2 },
               { type: 'identity', identity: '伙计' },
+              { type: 'chronicle', text: '你进了铺子当伙计。', tone: 'deep' },
               { type: 'attribute', key: 'insight', delta: 8 },
               { type: 'attribute', key: 'fortune', delta: 4 },
               { type: 'attribute', key: 'body', delta: 2 },
@@ -191,6 +196,9 @@ export const youthScenes: SceneLibrary = {
             effects: [
               { type: 'time', years: 2 },
               { type: 'identity', identity: '农家子' },
+              // 这一条没有 tone：留在家里种地不是转折，是本来就该发生的那条路。
+              // 但它仍然要记——**「什么也没变」和「变了而没人记得」是两回事**
+              { type: 'chronicle', text: '你没有出门，把家里的地接了过来。' },
               { type: 'attribute', key: 'body', delta: 10 },
               { type: 'attribute', key: 'will', delta: 6 },
               {
