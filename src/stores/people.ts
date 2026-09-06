@@ -147,7 +147,13 @@ export const usePeopleStore = defineStore(
        */
       const neighbour = roster.value[id]
       if (neighbour && isNeighbour(id) && bondsWith(id).length === 0) {
-        return neighbourCall(neighbour, ageOf(id), world.time.year - world.bornYear, '家常')
+        return neighbourCall(
+          neighbour,
+          ageOf(id),
+          world.time.year - world.bornYear,
+          '家常',
+          sideOf(id),
+        )
       }
       return acquaintance.calls
     }
@@ -288,7 +294,10 @@ export const usePeopleStore = defineStore(
             if (!person || !acquaintance) continue
             known.value = {
               ...known.value,
-              [gone]: { ...acquaintance, calls: neighbourCall(person, ageOf(gone), me.age, '家常') },
+              [gone]: {
+                ...acquaintance,
+                calls: neighbourCall(person, ageOf(gone), me.age, '家常', sideOf(gone)),
+              },
             }
           }
         }
@@ -401,6 +410,28 @@ export const usePeopleStore = defineStore(
     /** 这个人是不是邻居家的人 */
     function isNeighbour(personId: string): boolean {
       return neighbourHouses().some((house) => house.members.includes(personId))
+    }
+
+    /**
+     * 他家在哪一头。
+     *
+     * 邻居只有东西两户（`content/birth.ts` 立基时排在同一条巷子上），
+     * 而**两户可以同姓**——立基只保证了邻居不跟自家同姓。于是东邻方桂英
+     * 和西舍方兰香都叫「方婶」，人际面板里并排两行一模一样的字，
+     * 玩家分不出谁是谁；而这两个人在荒年那一卷里做的是不同的事。
+     *
+     * 方位不是新数据：`adjoin('east', 'west')` 里东西就是户的 id 本身。
+     * 拿它去缀称呼，比给人物新加一个「绰号」字段干净——
+     * **而且乡里本来就是这么叫的**，一条巷子上两个同姓的婶子，
+     * 说的就是「东头那个」「西头那个」。
+     *
+     * 查不到就返回 `undefined`，`neighbourCall` 那边不缀：
+     * 半路认识的人、镇上的人没有方位，**宁可少一个字，不可编一个方位出来**。
+     */
+    function sideOf(personId: string): '东' | '西' | undefined {
+      if (houses.value['east']?.members.includes(personId)) return '东'
+      if (houses.value['west']?.members.includes(personId)) return '西'
+      return undefined
     }
 
     /** 把一个人记进世界。已经在册的不动——同一个人不该被造两次 */
