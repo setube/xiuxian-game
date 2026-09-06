@@ -93,7 +93,7 @@ const houseFaults: string[] = []
 
 for (let i = 0; i < BIRTHS; i += 1) {
   setActivePinia(createPinia())
-  const household = useHouseholdStore()
+  useHouseholdStore()
   const people = usePeopleStore()
   const world = useWorldStore()
   useNarrativeStore()
@@ -228,7 +228,7 @@ while (
     story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
     turns += 1
     for (const item of narrative.stream.slice(seen)) {
-      const text = item.block.text
+      const text = 'text' in item.block ? item.block.text : null
       if (text && text.includes('还有没有余粮') && borrowing === null) borrowing = text
     }
     seen = narrative.stream.length

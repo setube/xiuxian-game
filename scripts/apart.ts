@@ -111,7 +111,9 @@ interface Site {
 function resolve(step: Step): Site | string {
   if ('beat' in step) {
     const beat = BEATS.find(
-      (one) => one.doing === step.beat.doing && one.text.some((t) => t.includes(step.beat.includes)),
+      (one) => one.doing === step.beat.doing && (typeof one.text === 'string' ? [one.text] : one.text).some((t) =>
+          t.includes(step.beat.includes),
+        ),
     )
     if (!beat) return `一天里没有这一段：${step.beat.doing} · ${step.beat.includes}`
     return { where: `一天 · ${beat.doing}:w${beat.weight}`, effects: beat.effects ?? [] }

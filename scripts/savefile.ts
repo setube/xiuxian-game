@@ -137,6 +137,7 @@ let bad = 0
     given: '守拙',
     gender: '男',
     bornYear: -13,
+    bornMonth: 4,
     doing: '务农',
     temper: '温和',
     health: 60,

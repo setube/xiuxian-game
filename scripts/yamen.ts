@@ -85,7 +85,7 @@ function live(origin: OriginId): Lived | null {
     for (const item of narrative.stream) {
       if (kept.has(item.id)) continue
       kept.add(item.id)
-      if (item.block.text) text += item.block.text + '\n'
+      if ('text' in item.block) text += item.block.text + '\n'
     }
   }
   drain()

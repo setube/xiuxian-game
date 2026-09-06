@@ -44,7 +44,7 @@
 import './lib/seeded'
 
 import { lifeScenes } from '../src/content/life'
-import type { Condition } from '../src/types/game'
+import type { Condition, NarrativeBlock } from '../src/types/game'
 import { mapShards } from './lib/parallel'
 
 /**
@@ -135,8 +135,12 @@ for (const [sceneId, scene] of Object.entries(lifeScenes)) {
      * 头一版这儿留空，而空串在 `string[]` 上 `includes` 恒为 false，
      * 于是那一节永远「没人走到」，底下的话被判成白写的。
      */
-    const firstText = (n: { blocks: readonly { text?: string }[] } | undefined): string | null =>
-      n?.blocks.find((block) => typeof block.text === 'string')?.text ?? null
+    const firstText = (n: { blocks: readonly NarrativeBlock[] } | undefined): string | null => {
+      // 不能写成 `find((block) => 'text' in block)?.text`：`find` 的返回值仍是
+      // 整个联合，收窄不跨出回调。逐块看，命中就地返回
+      for (const block of n?.blocks ?? []) if ('text' in block) return block.text
+      return null
+    }
     const own = firstText(node)
     const onward = [...(node.branches ?? []).map((b) => b.next), node.next ?? '']
       .filter((id): id is string => id.length > 0)

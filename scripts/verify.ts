@@ -494,6 +494,33 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
      * 那是从日子里读出来的一个属性，不是一种日子。
      */
     living: (living) => (living.is === undefined ? null : [neededLivings, living.is]),
+    /**
+     * 底下这五格一律 `null`，理由是同一条：**它们没有一个可查的名字。**
+     *
+     * 这张表的查表那一支要的是 `[某张来源表, 一个 id]`——它问的是
+     * 「这个名字有没有地方产出来」。`item`、`flag`、`knowledge`、`living`
+     * 四格问得动，因为它们各自点着一个字符串。
+     *
+     * 这五格点不出这样的名字：
+     *
+     *   dwelling  问的是住处与聚落的**种类**，`ResidenceKind`／`SettlementKind`
+     *             各是一个封闭联合，写错一个字编译期就红，用不着这张表兜
+     *   house     问的是这一户的结构（谁当家、户里有没有我的这种人），
+     *             跟 `family`／`bond` 同一类，那两格也是 `null`
+     *   temper    人的 id 加一个封闭的 `Temper` 联合，同上
+     *   tie       两个人的 id 加一个封闭的 `Terms` 联合，同上
+     *   owed      问的是有没有这样一笔债。债由 `owe`／`repay` 两个效果产出，
+     *             而**那两个效果在底下的 MAKES 里也是 `null`**——
+     *             一笔债没有 id，两张表两头都无从登记
+     *
+     * 哪天这几格里有谁开始点名字（比如 `house.id` 之外再认一个具名的户），
+     * 那一格就该改成查表的那一支，而不是留着这段注释。
+     */
+    dwelling: null,
+    house: null,
+    temper: null,
+    tie: null,
+    owed: null,
     gender: null,
     stage: null,
   } satisfies {
@@ -640,6 +667,14 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     tie: null,
     owe: null,
     repay: null,
+    /**
+     * 承户：`{ type: 'succession' }`，**整条效果没有任何载荷**。
+     *
+     * 这张表登记的是「这条效果产出了哪个名字」，而它一个字段也没有，
+     * 自然点不出名字来。它改的是户主是谁——那件事归 `scripts/household.ts`
+     * 那一支量，不在这张「有没有来源」的表里。
+     */
+    succession: null,
   } satisfies {
     [K in Effect['type']]: ((effect: Extract<Effect, { type: K }>) => [Set<string>, string]) | null
   }
@@ -1838,7 +1873,12 @@ console.log('=== 称呼验收（玩家读到的字里有英文吗）===\n')
       if (one.type === 'meet' && one.who !== undefined) enrolled.add(one.id)
       if (one.type === 'family' && one.born === true) enrolled.add(one.id)
       const ids: string[] = []
-      if (one.type === 'meet' || one.type === 'relation' || one.type === 'person' || one.type === 'family') {
+      if (
+        one.type === 'meet' ||
+        one.type === 'relation' ||
+        one.type === 'person' ||
+        one.type === 'family'
+      ) {
         ids.push(one.id)
       }
       if (one.type === 'tie') ids.push(one.from, one.to)
@@ -1847,7 +1887,8 @@ console.log('=== 称呼验收（玩家读到的字里有英文吗）===\n')
     }
   }
   for (const [sceneId, scene] of Object.entries(lifeScenes)) {
-    for (const [nodeId, node] of Object.entries(scene.nodes)) note(`${sceneId}#${nodeId}`, effectsOf(node))
+    for (const [nodeId, node] of Object.entries(scene.nodes))
+      note(`${sceneId}#${nodeId}`, effectsOf(node))
   }
   for (const beat of BEATS) note(`一天 · ${beat.doing}`, beat.effects ?? [])
   const roles = new Set<string>(ROLE_IDS)
@@ -1856,8 +1897,12 @@ console.log('=== 称呼验收（玩家读到的字里有英文吗）===\n')
 
   const stores = readdirSync(new URL('../src/stores/', import.meta.url))
     .filter((file) => file.endsWith('.ts'))
-    .map((file) => ({ file, text: readFileSync(new URL(`../src/stores/${file}`, import.meta.url), 'utf8') }))
-  const TRUNCATES = /\.slice\(\s*-\d|\.slice\([^)]*\.length\s*-|MAX_[A-Z_]*LENGTH|\.splice\(\s*0\s*,/
+    .map((file) => ({
+      file,
+      text: readFileSync(new URL(`../src/stores/${file}`, import.meta.url), 'utf8'),
+    }))
+  const TRUNCATES =
+    /\.slice\(\s*-\d|\.slice\([^)]*\.length\s*-|MAX_[A-Z_]*LENGTH|\.splice\(\s*0\s*,/
   const capped = stores
     .filter(({ file, text }) => file !== 'narrative.ts' && TRUNCATES.test(text))
     .map(({ file }) => file)

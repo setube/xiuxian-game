@@ -152,7 +152,7 @@ for (let i = 0; i < RUNS; i += 1) {
 
     for (const [id, calls] of gone) {
       for (const item of fresh) {
-        const text = item.block.text
+        const text = 'text' in item.block ? item.block.text : null
         if (!text || !text.includes(calls)) continue
         if (TALKING_ABOUT_DEATH.test(text)) continue
         if (innocent(text, calls)) continue
