@@ -108,7 +108,9 @@ export const CIRCUMSTANCES: readonly Circumstance[] = [
       { id: 'father', bond: '抚养', calls: '爹', older: 29 },
       { id: 'mother', bond: '生母', calls: '娘', older: 26 },
       { id: 'mother', bond: '抚养', calls: '娘', older: 26 },
-      { id: 'elder', bond: '兄', calls: '哥', older: 5 },
+      // id 叫 brother，跟「跟着兄长过」那一种同名——`elder` 是「家里的大人」那个角色的名字，
+      // 不能同时是哥的人名（从前是，于是 `meet id: 'elder'` 造出了幽灵熟人「一个人」）
+      { id: 'brother', bond: '兄', calls: '哥', older: 5 },
     ],
     standing: -4,
   },

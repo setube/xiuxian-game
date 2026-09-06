@@ -84,9 +84,14 @@ function dividedWrong(
   const old = houses['old-home']
   if (!home || !old) return ['分完家只有一户']
   if (home.residence === old.residence) wrong.push('两户住在同一处宅')
-  if (!adjacent.some((e) => (e.a === 'home' && e.b === 'old-home') || (e.b === 'home' && e.a === 'old-home')))
+  if (
+    !adjacent.some(
+      (e) => (e.a === 'home' && e.b === 'old-home') || (e.b === 'home' && e.a === 'old-home'),
+    )
+  )
     wrong.push('两户不相邻')
-  for (const id of mine) if (!home.members.includes(id)) wrong.push(`${id} 该跟我走，却不在我这一户`)
+  for (const id of mine)
+    if (!home.members.includes(id)) wrong.push(`${id} 该跟我走，却不在我这一户`)
   for (const id of theirs) if (!old.members.includes(id)) wrong.push(`${id} 该留在老屋，却不在老屋`)
   for (const id of home.members) if (old.members.includes(id)) wrong.push(`${id} 同时在两户`)
   if (home.head !== 'me') wrong.push(`我这一户的户主是 ${home.head}`)
@@ -100,7 +105,11 @@ function live(): Lived {
   const people = usePeopleStore()
   const world = useWorldStore()
   const character = useCharacterStore()
-  const story = useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale })
+  const story = useStory(lifeScenes, {
+    events: lifeEvents,
+    routine: lifeRoutine,
+    finale: lifeFinale,
+  })
   story.begin()
 
   const alive = (id: string): boolean => id === 'me' || people.isAlive(id)
@@ -124,9 +133,10 @@ function live(): Lived {
     const open = narrative.options.filter((o) => !o.locked)
     if (open.length === 0) break
     // 分家那一卷两条路都要走到：进城那一支掷得少，见到就多走一回
-    const town = open.find((o) => o.choice.id === 'town' && (narrative.sceneId ?? '') === 'house:divide')
-    const pick =
-      town && Math.random() < 0.5 ? town : open[Math.floor(Math.random() * open.length)]!
+    const town = open.find(
+      (o) => o.choice.id === 'town' && (narrative.sceneId ?? '') === 'house:divide',
+    )
+    const pick = town && Math.random() < 0.5 ? town : open[Math.floor(Math.random() * open.length)]!
     const sceneBefore = narrative.sceneId ?? ''
     const nodeBefore = narrative.nodeId ?? ''
     // 分家之前记下谁在老屋：分完对账
@@ -170,7 +180,11 @@ function live(): Lived {
     }
 
     // 五、役家承了户：差不是家里的东西，此后给人做工
-    if (out.livingAfter === null && household.origin === 'yamen' && world.hasFlag('event:house-succeed')) {
+    if (
+      out.livingAfter === null &&
+      household.origin === 'yamen' &&
+      world.hasFlag('event:house-succeed')
+    ) {
       out.livingAfter = { is: character.living.id, should: 'hired' }
     }
 
@@ -197,7 +211,10 @@ function live(): Lived {
       const shopFamily = ['cloth', 'inn', 'tavern', 'herb'].includes(household.origin)
       const craftless = household.origin === 'craft' && !world.hasFlag('has-craft')
       const should =
-        chose === 'house:divide#choose:town' || shopFamily || craftless || household.origin === 'yamen'
+        chose === 'house:divide#choose:town' ||
+        shopFamily ||
+        craftless ||
+        household.origin === 'yamen'
           ? 'hired'
           : household.origin === 'farm'
             ? 'farm'
@@ -232,7 +249,11 @@ let bad = 0
 
 const lives: Lived[] = []
 for (let i = 0; i < LIVES; i += 1) lives.push(live())
-for (let tries = 0; tries < CAP && lives.filter((l) => l.divided).length < DIVIDES_WANTED; tries += 1) {
+for (
+  let tries = 0;
+  tries < CAP && lives.filter((l) => l.divided).length < DIVIDES_WANTED;
+  tries += 1
+) {
   lives.push(live())
 }
 const sampled = lives.length
@@ -262,7 +283,10 @@ console.log(
   } else if (wrong.length > 0) {
     console.log(`  ✗ 二、${wrong.length} 世承户讲的不是真事：${wrong[0]!.succeedNote}`)
     bad += 1
-  } else console.log(`  ✓ 二、${succeeded.length} 世承户，讲完户主都是我；殁了的确实殁了，交出来的确实还在。`)
+  } else
+    console.log(
+      `  ✓ 二、${succeeded.length} 世承户，讲完户主都是我；殁了的确实殁了，交出来的确实还在。`,
+    )
 }
 
 // 三、分家分的是户
@@ -275,7 +299,9 @@ console.log(
     console.log(`  ✗ 三、${wrong.length} 世分家分得不像两户：${wrong[0]!.divideNote}`)
     bad += 1
   } else {
-    console.log(`  ✓ 三、${divided.length} 世分家：两户、两处宅、相邻；妻儿跟我，娘和哥留在老屋；铺子归了哥的产是 null。`)
+    console.log(
+      `  ✓ 三、${divided.length} 世分家：两户、两处宅、相邻；妻儿跟我，娘和哥留在老屋；铺子归了哥的产是 null。`,
+    )
   }
 }
 
@@ -301,10 +327,14 @@ console.log(
     bad += 1
   } else if (wrong.length > 0) {
     const one = wrong[0]!
-    console.log(`  ✗ 五、${wrong.length} 世分完家过错了日子：${one.origin} 该过 ${one.livingAfter!.should}，过的是 ${one.livingAfter!.is}`)
+    console.log(
+      `  ✗ 五、${wrong.length} 世分完家过错了日子：${one.origin} 该过 ${one.livingAfter!.should}，过的是 ${one.livingAfter!.is}`,
+    )
     bad += 1
   } else {
-    console.log(`  ✓ 五、${judged.length} 世分完家过的日子都对：${hired.length} 世该去给人做工的都在给人做工，种地的照旧种地。`)
+    console.log(
+      `  ✓ 五、${judged.length} 世分完家过的日子都对：${hired.length} 世该去给人做工的都在给人做工，种地的照旧种地。`,
+    )
   }
 }
 
@@ -316,7 +346,9 @@ console.log(
     console.log(`  ✗ 六、${sampled} 世没有一世弟弟分出去——那一卷没人走到。`)
     bad += 1
   } else if (tooYoung.length > 0) {
-    console.log(`  ✗ 六、${tooYoung.length} 世弟弟分出去那年才 ${tooYoung[0]!.youngerAge} 岁（-1 是人没了）。`)
+    console.log(
+      `  ✗ 六、${tooYoung.length} 世弟弟分出去那年才 ${tooYoung[0]!.youngerAge} 岁（-1 是人没了）。`,
+    )
     bad += 1
   } else console.log(`  ✓ 六、${judged.length} 世弟弟分出去，那年都满了十六。`)
 }
@@ -324,8 +356,22 @@ console.log(
 // 七、尺子自检
 {
   const good: Record<string, House> = {
-    home: { id: 'home', surname: '沈', head: 'me', members: ['me', 'spouse'], residence: 'h1', livelihood: '务农' },
-    'old-home': { id: 'old-home', surname: '沈', head: 'elder', members: ['elder', 'mother'], residence: 'h0', livelihood: '务农' },
+    home: {
+      id: 'home',
+      surname: '沈',
+      head: 'me',
+      members: ['me', 'spouse'],
+      residence: 'h1',
+      livelihood: '务农',
+    },
+    'old-home': {
+      id: 'old-home',
+      surname: '沈',
+      head: 'elder',
+      members: ['elder', 'mother'],
+      residence: 'h0',
+      livelihood: '务农',
+    },
   }
   const aliveAll = (): boolean => true
   const deadElder = (id: string): boolean => id !== 'elder'
@@ -333,7 +379,9 @@ console.log(
   const sparedLive = deadHeadsOf(good, aliveAll, 30).length === 0
   const edge = [{ a: 'home', b: 'old-home' }]
   const passGood = dividedWrong(good, edge, ['spouse'], ['mother', 'elder']).length === 0
-  const merged: Record<string, House> = { home: { ...good['home']!, members: ['me', 'spouse', 'mother'] } }
+  const merged: Record<string, House> = {
+    home: { ...good['home']!, members: ['me', 'spouse', 'mother'] },
+  }
   const caughtMerged = dividedWrong(merged, edge, ['spouse'], ['mother']).length > 0
   const sameRoof = { ...good, 'old-home': { ...good['old-home']!, residence: 'h1' } }
   const caughtRoof = dividedWrong(sameRoof, edge, ['spouse'], ['mother', 'elder']).length > 0
@@ -343,7 +391,10 @@ console.log(
         `好的分家${passGood ? '认了' : '误判'}，并成一户${caughtMerged ? '抓到' : '没抓到'}，同一处宅${caughtRoof ? '抓到' : '没抓到'}。`,
     )
     bad += 1
-  } else console.log(`  ✓ 七、尺子自检：死户主抓得到、活户主放得过；并成一户、同住一处宅都红在该红的那条。`)
+  } else
+    console.log(
+      `  ✓ 七、尺子自检：死户主抓得到、活户主放得过；并成一户、同住一处宅都红在该红的那条。`,
+    )
 }
 
 console.log()
@@ -351,5 +402,7 @@ if (bad > 0) {
   console.log(`  ✗ ${bad} 项不成立。\n`)
   process.exitCode = 1
 } else {
-  console.log('  户主不留死人；分家分的是户，不是数值；铺子归了哥，业就变了——同一套底座，没有职业系统。\n')
+  console.log(
+    '  户主不留死人；分家分的是户，不是数值；铺子归了哥，业就变了——同一套底座，没有职业系统。\n',
+  )
 }

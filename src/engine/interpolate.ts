@@ -5,6 +5,7 @@ import { useWorldStore } from '@/stores/world'
 import type { Bond, Manner, NarrativeBlock } from '@/types/game'
 
 import { kinCall, titleNow } from './address'
+import { describeAge } from './describe'
 import { isNearby } from './nearby'
 
 /**
@@ -50,7 +51,7 @@ import { isNearby } from './nearby'
  * 而「此刻在不在行礼」根本不是一种状态，它是一句话的属性。
  */
 const TOKENS =
-  /\{(name|home|province|prefecture|here|livelihood|elder|elders|dam|chore|putsAway|title|era|bornEra|call|house|place|nearbyVillage|nearbyCounty)(?::([\w-]+))?\}/g
+  /\{(name|home|province|prefecture|here|livelihood|elder|elders|dam|chore|putsAway|title|era|bornEra|call|house|place|age|nearbyVillage|nearbyCounty)(?::([\w-]+))?\}/g
 
 /**
  * 挑一个还在身边的关系人，按给定的优先次序。
@@ -81,6 +82,33 @@ function callByBond(order: readonly Bond[], manner: Manner): string {
     }
   }
   return '家里的大人'
+}
+
+/** 同一把尺子，只要人不要称呼：此刻在身边、排在最前的那个 */
+function idByBond(order: readonly Bond[]): string | undefined {
+  const people = usePeopleStore()
+  for (const bond of order) {
+    for (const id of people.kinOf(bond)) if (isNearby(id)) return id
+  }
+  return undefined
+}
+
+/**
+ * 效果里写的角色名。
+ *
+ * `{elder}` 是正文里的记号；效果里对应的是 `id: 'elder'`——「跟家里的大人多说了几句」
+ * 的那个 `meet`、「他没能熬过去」的那个 `person`。它们从前直接拿 `'elder'` 当人名去查
+ * 人口册，而册上没有这个人（有的话是哥，那是另一个 bug）：于是 `meet` 造出一个叫
+ * 「一个人」的幽灵熟人挂在人际面板上，`person fate 殁` 谁也没杀。
+ * 现在角色名在结算前换成真人的 id，换不到（身边没有这样的人）那一条效果就不落。
+ */
+export const ROLE_IDS = ['elder', 'dam', 'child'] as const
+
+export function roleId(role: string): string | undefined {
+  if (role === 'elder') return idByBond(['生父', '抚养', '生母'])
+  if (role === 'dam') return idByBond(['生母', '抚养', '生父'])
+  if (role === 'child') return idByBond(['子', '女'])
+  return undefined
 }
 
 /**
@@ -208,6 +236,12 @@ export function fillString(text: string, manner: Manner = '家常'): string {
      */
     if (token === 'call') return usePeopleStore().callOf(arg ?? '')
     if (token === 'house') return houseCall(arg ?? '')
+    // 他今年多大。「侄儿已经十一岁了」——岁数从生年现算，不存；孩子是几个月就说几个月
+    if (token === 'age') {
+      const people = usePeopleStore()
+      const who = arg ?? ''
+      return people.personOf(who) ? describeAge(people.ageOf(who), people.monthsOf(who)) : '几岁'
+    }
     /*
      * 地方。`{place:county}` 是他家归的那个县；`{nearbyVillage}` 是同一个镇底下
      * 的别的村，`{nearbyCounty}` 是同一个府底下的别的县——正文里那五处「邻村」

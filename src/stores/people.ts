@@ -135,8 +135,13 @@ export const usePeopleStore = defineStore(
        * 她七十岁了该叫「王婆婆」。存一个字符串就是又一个「28岁。还在襁褓里」——
        * 写死的字段活得比事实久。所以每次问都重新算，算的维度见 `neighbourCall`。
        */
+      /*
+       * 关系压过邻接。分家之后哥住在隔壁老屋——按户算他是邻居，可他是你哥：
+       * 「邻接归户、关系归人」，问称呼先问关系图。跟你没有任何一条边的人才按邻居叫。
+       * 头一版没有这一条，老屋那一片一写出来，哥落成了「江老爹」，侄儿落成了「老江」。
+       */
       const neighbour = roster.value[id]
-      if (neighbour && isNeighbour(id)) {
+      if (neighbour && isNeighbour(id) && bondsWith(id).length === 0) {
         return neighbourCall(neighbour, ageOf(id), world.time.year - world.bornYear, '家常')
       }
       return acquaintance.calls

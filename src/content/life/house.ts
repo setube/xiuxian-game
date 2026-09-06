@@ -40,7 +40,9 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
 
 /** 这一片只写这几种日子。其余各有各的分法，等它们自己的第一个使用者 */
 const THIS_PIECE = {
-  living: { notIn: ['office', 'palace', 'manor', 'fallen', 'market', 'temple', 'begging', 'adrift'] },
+  living: {
+    notIn: ['office', 'palace', 'manor', 'fallen', 'market', 'temple', 'begging', 'adrift'],
+  },
 }
 
 export const houseScenes: SceneLibrary = {
@@ -67,7 +69,9 @@ export const houseScenes: SceneLibrary = {
           { type: 'chronicle', text: '你承了户。', tone: 'deep' },
         ],
         blocks: [],
-        branches: [{ requires: [{ flag: { key: 'head-passed-how', equals: '交' } }], next: 'handed' }],
+        branches: [
+          { requires: [{ flag: { key: 'head-passed-how', equals: '交' } }], next: 'handed' },
+        ],
         next: 'bereaved',
       },
       bereaved: {
@@ -99,7 +103,8 @@ export const houseScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '你成人那年，当家的把钥匙交给了你。' },
           { kind: 'event', text: '这一户从此是你的了。' },
-          { kind: 'narration', text: '里长来过一趟，册子上把名字换成了你的。' },
+          // 户籍名义与实际主持是两件事：寡母当家那些年，册子上写的多半早就是儿子的名字
+          { kind: 'narration', text: '册子上早就是你的名字。家，从这天起才真是你当。' },
         ],
         seen: [
           {
@@ -144,14 +149,15 @@ export const houseScenes: SceneLibrary = {
         id: 'craft',
         blocks: [
           { kind: 'narration', text: '架上那些家什归了你。有几件你还使不顺手。' },
-          { kind: 'narration', text: '来定活的人还是那句「老师傅呢」。你说不在了。他愣了一下，还是把活留下了。' },
+          {
+            kind: 'narration',
+            text: '来定活的人还是那句「老师傅呢」。你说不在了。他愣了一下，还是把活留下了。',
+          },
         ],
       },
       hunt: {
         id: 'hunt',
-        blocks: [
-          { kind: 'narration', text: '山上那几条路你都认得。那张弓如今挂在你的墙上。' },
-        ],
+        blocks: [{ kind: 'narration', text: '山上那几条路你都认得。那张弓如今挂在你的墙上。' }],
       },
       /**
        * 衙役人家的承户：差不是家里的东西。
@@ -244,7 +250,11 @@ export const houseScenes: SceneLibrary = {
         onEnter: [{ type: 'household', standing: -12 }],
         blocks: [
           { kind: 'narration', text: '铺子分不开。归了哥，你折了银子。' },
-          { kind: 'narration', text: '那块柜台你站了十几年。搬东西出来的时候，你没有回头看。', tone: 'faint' },
+          {
+            kind: 'narration',
+            text: '那块柜台你站了十几年。搬东西出来的时候，你没有回头看。',
+            tone: 'faint',
+          },
         ],
         next: 'shop-gone',
       },
@@ -260,9 +270,7 @@ export const houseScenes: SceneLibrary = {
       craft: {
         id: 'craft',
         onEnter: [{ type: 'household', standing: -6 }],
-        blocks: [
-          { kind: 'narration', text: '家什各拿一半。好使的那几件，哥留下了。' },
-        ],
+        blocks: [{ kind: 'narration', text: '家什各拿一半。好使的那几件，哥留下了。' }],
         // 学过手艺的自己开张；没学过的，家什拿了也是给人做工
         branches: [{ requires: [{ flag: { key: 'has-craft' } }], next: 'choose' }],
         next: 'craft-hired',
@@ -288,9 +296,7 @@ export const houseScenes: SceneLibrary = {
           { type: 'household', standing: -4, livelihood: '佣工' },
           { type: 'living', living: 'hired' },
         ],
-        blocks: [
-          { kind: 'narration', text: '没什么可分的。差不是家里的东西，分的只有两间屋。' },
-        ],
+        blocks: [{ kind: 'narration', text: '没什么可分的。差不是家里的东西，分的只有两间屋。' }],
         next: 'choose',
       },
       choose: {
@@ -341,7 +347,11 @@ export const houseScenes: SceneLibrary = {
         id: 'town',
         blocks: [
           { kind: 'narration', text: '城里租的是一间半。头几个月你什么活都接。' },
-          { kind: 'narration', text: '街上没有人认得你。你走过去，也没有人跟你打招呼。', tone: 'faint' },
+          {
+            kind: 'narration',
+            text: '街上没有人认得你。你走过去，也没有人跟你打招呼。',
+            tone: 'faint',
+          },
         ],
       },
     },
@@ -441,7 +451,10 @@ export const houseEvents: readonly LifeEvent[] = [
     // 哥当家、你成了家：分出去。父在不分家——问的是「当家的是哥」，不是「当家的不是我」
     id: 'house-divide',
     window: { from: 18, to: 60 },
-    // 分家是儿子们的事：女儿出嫁是另一卷（还没写），不在这儿用「分出去」掩盖
+    // 只写了成了家的儿子分出去。**这是第一片的内容限制，不是规则**（用户 2026-09-06）：
+    // 女儿出嫁、三个以上的儿子、分书上的地亩与债，各是另一卷——尤其女儿出嫁，
+    // 别写成「从这一户删掉、加进夫家那一户」，嫁资、户绝女承分、寡妇主持另有一套现实，
+    // 等第一个真实使用者来逼，不提前设计
     requires: [
       THIS_PIECE,
       { gender: '男' },

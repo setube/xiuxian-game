@@ -923,6 +923,9 @@ const HANDED_OVER: Readonly<Record<string, string>> = {
   'school:threshold#study': 'manor.ts',
   // 分家进城那一支：举家带的得是你自己这一户。succession.ts 量妻儿跟着、娘和哥没动
   'house:divide#choose:town': 'succession.ts',
+  // 老屋添的人（嫂子、侄儿）进的是老屋不是你这一户。kindred.ts 量他们住在哪一户
+  'kindred:wedding#open': 'kindred.ts',
+  'kindred:nephew#open': 'kindred.ts',
 }
 
 function handoverHolds(sites: Map<string, string[]>): string[] {

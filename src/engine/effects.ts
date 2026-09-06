@@ -28,7 +28,7 @@ import {
   type BookTruth,
 } from './book'
 import { currentView, merchantLore, talk, viewWords, willingToday } from './hearsay'
-import { fillString } from './interpolate'
+import { ROLE_IDS, fillString, roleId } from './interpolate'
 import { ask } from './inquire'
 import { encounterCultivator } from './meeting'
 import { practise, teach, weighUp } from './tutelage'
@@ -79,6 +79,25 @@ function localize<T extends Effect>(effect: T): T {
     const value = draft[field]
     if (typeof value === 'string') draft[field] = fillString(value)
   }
+  return draft as T
+}
+
+/** 这几种效果的 `id` 指的是人口册上的一个人 */
+const PERSON_EFFECTS: ReadonlySet<Effect['type']> = new Set(['meet', 'relation', 'person', 'family'])
+
+/**
+ * 效果里写的是角色（`'elder'`「家里的大人」、`'dam'`、`'child'`），结算前换成此刻那个真人。
+ * 身边没有这样的人，这一条效果就不落——不造幽灵熟人，也不杀一个不存在的人。
+ * 见 `interpolate.ts` 的 `roleId`。
+ */
+function aimAtPerson<T extends Effect>(effect: T): T | null {
+  if (!PERSON_EFFECTS.has(effect.type)) return effect
+  const draft: Record<string, unknown> = { ...effect }
+  const id = draft['id']
+  if (typeof id !== 'string' || !(ROLE_IDS as readonly string[]).includes(id)) return effect
+  const real = roleId(id)
+  if (real === undefined) return null
+  draft['id'] = real
   return draft as T
 }
 
@@ -386,6 +405,13 @@ function applyOne(
           : []
       people.divideHouse({ leaves: leaver, takes, residence: placeId })
       if (leaver === 'me' && world.settlement) world.settle(placeId, world.settlement)
+      // 娘留在了老屋——「娘在老屋没了」那一卷问的就是这面旗，不是「娘殁了没」
+      if (leaver === 'me') {
+        const motherStays = people
+          .kinOf('生母')
+          .some((id) => people.isAlive(id) && (people.houses['old-home']?.members ?? []).includes(id))
+        world.setFlag('old-home-mother', motherStays)
+      }
       settleHeads(world, character, household, people)
       return null
     }
@@ -415,6 +441,11 @@ function applyOne(
          * 走的是同一份规矩，不是第三份抄写。
          */
         const surname = effect.who.surname ?? houseSurname(people)
+        // 住在别的户里的人（老屋的嫂子、侄儿），落脚在那一户户主所在的地方
+        const theirHead = effect.who.house ? people.houses[effect.who.house]?.head : undefined
+        const place =
+          (theirHead !== undefined ? people.personOf(theirHead)?.place : undefined) ??
+          household.home
         people.enroll(
           makePerson({
             id: effect.id,
@@ -434,17 +465,23 @@ function applyOne(
              */
             ...(effect.who.age === 0 ? { bornMonth: world.time.month } : {}),
             doing: effect.who.doing,
-            place: household.home,
+            place,
           }),
         )
+        if (effect.who.house !== undefined) people.joinHouse(effect.who.house, effect.id)
       }
       // 没写 calls 就是「已经认识的人」，只调好感，不改称呼
       const calls = effect.calls ?? people.known[effect.id]?.calls ?? '一个人'
       const isNew = people.meet(effect.id, calls, effect.delta ?? 0, effect.note)
       // 关系图上添一条边。`bind` 只往后添，旧的边一条也不覆盖
       if (effect.bond !== undefined) people.bind('me', effect.id, effect.bond)
-      // 娶进门的、生下的、收进门的徒弟，从此住在这一户里。朋友不算，先生不算
-      if (effect.bond !== undefined && [...HOUSEHOLD_BONDS, '徒'].includes(effect.bond)) {
+      // 娶进门的、生下的、收进门的徒弟，从此住在这一户里。朋友不算，先生不算；
+      // 正文点名住在别的户里的（`who.house`），不进你这一户
+      if (
+        effect.who?.house === undefined &&
+        effect.bond !== undefined &&
+        [...HOUSEHOLD_BONDS, '徒'].includes(effect.bond)
+      ) {
         people.joinHouse('home', effect.id)
       }
       // 「知道他叫什么」是单独一件事，值得单独报一句
@@ -1141,7 +1178,9 @@ export function applyEffects(effects?: readonly Effect[]): NarrativeBlock[] {
   const settle = (effect: Effect): void => {
     // 先换占位符再结算：写进 store 的就该是玩家会读到的那句话，
     // 而不是一个等着被谁替换的模板
-    const receipt = applyOne(localize(effect), world, character, household, people)
+    const aimed = aimAtPerson(localize(effect))
+    if (aimed === null) return
+    const receipt = applyOne(aimed, world, character, household, people)
     if (Array.isArray(receipt)) receipts.push(...receipt)
     else if (receipt) receipts.push(receipt)
   }

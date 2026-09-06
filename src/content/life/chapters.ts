@@ -11,6 +11,7 @@ import { houseEvents, houseScenes } from './house'
 import { illnessEvents, illnessScenes } from './illness'
 import { inquiryEvents, inquiryScenes } from './inquiry'
 import { kinEvents, kinScenes } from './kin'
+import { kindredEvents, kindredScenes } from './kindred'
 import { leavingEvents, leavingScenes } from './leaving'
 import { meetingEvents, meetingScenes } from './meeting'
 import { reunionEvents, reunionScenes } from './reunion'
@@ -210,6 +211,22 @@ export const CHAPTERS: readonly Chapter[] = [
       '差不是家里的东西——役是制度与当前人生的关系，不是家世',
     ],
     marks: ['divide', 'household', 'chronicle'],
+  },
+
+  /** 老屋：分家以后的两家。哥娶妻添丁、娘老了没了、荒年借粮、年节走动 */
+  {
+    id: 'kindred',
+    scenes: kindredScenes,
+    events: kindredEvents,
+    called: ['年表'],
+    to: [],
+    age: [19, 70],
+    purpose: [
+      '家拆成两户之后，关系不会自己烂掉——见面不加分，不见面也不减分，变的只来自具体的事',
+      '哥跟你好，嫂子未必跟你好：两条边各是各的，她处不处得来从她的性情里出',
+      '老屋里的人是真人：嫂子进门、侄儿出生都进人口册，住在老屋，岁数从生年现算',
+    ],
+    marks: ['meet', 'chronicle'],
   },
 
   /**

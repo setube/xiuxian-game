@@ -123,6 +123,8 @@ export function describeAge(age: number, months?: number): string {
     if (months >= 11) return '快一岁了'
     return `${toChineseNumber(months)}个月`
   }
+  // 「两岁」是人说的话，「二岁」是数出来的
+  if (age === 2) return '两岁'
   return `${toChineseNumber(age)}岁`
 }
 

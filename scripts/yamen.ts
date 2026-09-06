@@ -78,14 +78,22 @@ function live(origin: OriginId): Lived | null {
   const living = character.living.id
   const male = household.gender === '男'
 
+  // 正文按块 id 收：流封顶四百块，`slice(seen)` 在长人生里会静默丢掉后半段
   let text = ''
-  let seen = 0
+  const kept = new Set<string>()
+  const drain = (): void => {
+    for (const item of narrative.stream) {
+      if (kept.has(item.id)) continue
+      kept.add(item.id)
+      if (item.block.text) text += item.block.text + '\n'
+    }
+  }
+  drain()
   for (let turns = 0; !narrative.ended && turns < 200; turns += 1) {
     const open = narrative.options.filter((o) => !o.locked)
     if (open.length === 0) break
     story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-    for (const item of narrative.stream.slice(seen)) text += (item.block.text ?? '') + '\n'
-    seen = narrative.stream.length
+    drain()
   }
   return { origin, living, male, schooled: world.hasFlag('schooled'), text }
 }

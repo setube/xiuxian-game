@@ -198,7 +198,16 @@ const CHECKS = {
         .some((id) => home.members.includes(id) && people.isAlive(id))
       if (!inHouse) return false
     }
+    // 分过家没有：老屋（`old-home`）在不在。你分出去那一刻它才立起来
+    if (house.divided !== undefined && (people.houses['old-home'] !== undefined) !== house.divided) {
+      return false
+    }
     return true
+  },
+
+  temper: (temper) => {
+    const person = usePeopleStore().personOf(temper.id)
+    return person !== undefined && temper.in.includes(person.temper)
   },
 
   dwelling: (dwelling, { world }) => {
