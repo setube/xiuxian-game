@@ -17,8 +17,8 @@ import type { Effect, LifeEvent, NarrativeBlock, OriginId, Scene, SceneLibrary }
  *
  * 挂**出身主键**，不挂那五格中的任何一格：取名这件事是一行出身一段，
  * 十一段各不相同。`manor` 与 `court` 那四格完全一样（宗室／食禄／无铺面／宗室），
- * 可一个是宗正寺排字辈，一个是御笔画圈——**挑粒度是内容的事**，
- * 而这一卷要的就是最细的那一档。
+ * 可一个是宗人府按玉牒排字辈，一个是太祖二十字派轮到那一个字——
+ * **挑粒度是内容的事**，而这一卷要的就是最细的那一档。
  */
 export function birthSceneId(id: OriginId): string {
   return `birth:${id}`
@@ -92,17 +92,31 @@ const NAMING: Record<OriginId, readonly NarrativeBlock[]> = {
   ],
   manor: [
     { kind: 'narration', text: '取名这件事，家里一个人也做不了主。' },
-    { kind: 'narration', text: '宗正寺按族谱排了字辈，报上去，等了一个月才批下来。' },
+    { kind: 'narration', text: '宗人府按玉牒排了字辈，报上去，等了一个月才批下来。' },
     { kind: 'narration', text: '{name}。' },
     { kind: 'narration', text: '{elder}看了一眼那道文书，说了句「就这样吧」。' },
     { kind: 'narration', text: '名字入了玉牒。那一页纸你这辈子都不会看见。' },
   ],
   court: [
-    { kind: 'narration', text: '你的名字是{elder}圈的。' },
-    { kind: 'narration', text: '宗正寺拟了八个，钦天监核过生辰，一并呈了上去。' },
-    { kind: 'narration', text: '御笔在其中一个上画了个圈：{name}。' },
+    /**
+     * 皇子的名字，一半在他出生前几代就定死了。
+     *
+     * 从前这儿写的是「宗正寺拟了八个，钦天监核过生辰，御笔圈一个」。
+     * 三处都不对：宗正寺是唐宋的衙门，明初置大宗正院、洪武二十二年改为宗人府
+     * （《明会典》）；而「拟八个候选名再圈一个」这套流程查不到明代的一手依据。
+     *
+     * 明代宗室行的是**字派**：太祖给每一支拟下二十字，子孙依次取一字作上字，
+     * 下字另选、编入玉牒。这比「御笔圈一个」更接近这一卷本来要说的话——
+     * **他的名字里有一半，在他出生之前很多年就已经不由任何人挑了。**
+     */
+    { kind: 'narration', text: '你的名字，上头那个字在你出生前几代就定好了。' },
+    {
+      kind: 'narration',
+      text: '太祖给这一支拟下二十个字，子孙一代取一个，依次往下。轮到你这一辈，是那一个。',
+    },
+    { kind: 'narration', text: '底下那个字由宗人府拟了报上去，请旨定夺：{name}。' },
     { kind: 'narration', text: '{dam}后来跟你说，那天她跪着听完了整道旨。' },
-    { kind: 'narration', text: '这个名字从一开始就写在纸上，写在很多张纸上。' },
+    { kind: 'narration', text: '名字入了玉牒。这个名字从一开始就写在纸上，写在很多张纸上。' },
   ],
 }
 
