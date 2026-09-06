@@ -3,11 +3,12 @@ import { useWorldStore } from '@/stores/world'
 import type { LifeEvent } from '@/types/game'
 
 import { meetsAll } from './conditions'
+import { flagKey } from './facts'
 import { pickWeighted } from './random'
 
-/** 事件发生过就在旗标里留个记号，于是它天然随存档走，也随重开清空 */
+/** 事件发生过就在旗标里留个记号，于是它天然随存档走，也随重开清空。键的拼法登记在 `facts.ts` */
 function firedKey(id: string): string {
-  return `event:${id}`
+  return flagKey('event', id)
 }
 
 /**

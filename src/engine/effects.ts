@@ -41,6 +41,7 @@ import {
   type Reading,
   type WoundedTruth,
 } from './wounded'
+import { knowledgeKey } from './facts'
 import { observe } from './observe'
 import { noticeSigns, signBlocks } from './perceive'
 import { pickWeighted } from './random'
@@ -917,7 +918,7 @@ function applyOne(
       }
       // 线索只进认知层。它不改世界，也不保证是真的
       character.learn({
-        id: `lead:${lead.id}`,
+        id: knowledgeKey('lead', lead.id),
         title: '听来的一件事',
         summary: lead.believes,
         category: '修行',

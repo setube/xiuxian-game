@@ -17,6 +17,7 @@ import { useHouseholdStore } from '@/stores/household'
 import { toAbsoluteDays, useWorldStore } from '@/stores/world'
 import { FOOTINGS, type AttributeKey, type Footing, type NarrativeBlock } from '@/types/game'
 
+import { flagKey, knowledgeKey } from './facts'
 import { observe } from './observe'
 
 /**
@@ -232,7 +233,7 @@ function reachOf(regard: number, cultivator: Cultivator): number {
 }
 
 function footingKey(cultivatorId: string): string {
-  return `footing:${cultivatorId}`
+  return flagKey('footing', cultivatorId)
 }
 
 // ============================================================
@@ -283,7 +284,7 @@ export function teach(cultivatorId: string, riteId: string): Teaching | null {
   ]
 
   character.learn({
-    id: `rite:${rite.id}`,
+    id: knowledgeKey('rite', rite.id),
     title: cultivator.calls + '教的那几句',
     summary: rite.words.join(''),
     category: '修行',
@@ -413,7 +414,7 @@ export function triesOf(riteId: string): number {
  */
 function settle(rite: Rite): void {
   const character = useCharacterStore()
-  const learnt = character.knowledge.find((one) => one.id === `rite:${rite.id}`)
+  const learnt = character.knowledge.find((one) => one.id === knowledgeKey('rite', rite.id))
   if (!learnt) return
   character.learn({
     id: learnt.id,
@@ -563,21 +564,21 @@ function say(lines: readonly string[]): NarrativeBlock[] {
 }
 
 function graspKey(riteId: string): string {
-  return `rite:${riteId}`
+  return flagKey('rite', riteId)
 }
 
 function holdKey(riteId: string): string {
-  return `rite:${riteId}:hold`
+  return flagKey('rite', riteId, 'hold')
 }
 
 function triesKey(riteId: string): string {
-  return `rite:${riteId}:tries`
+  return flagKey('rite', riteId, 'tries')
 }
 
 function taughtByKey(riteId: string): string {
-  return `rite:${riteId}:by`
+  return flagKey('rite', riteId, 'by')
 }
 
 function sinceKey(riteId: string): string {
-  return `rite:${riteId}:since`
+  return flagKey('rite', riteId, 'since')
 }

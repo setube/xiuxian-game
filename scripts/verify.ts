@@ -93,14 +93,25 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import { BEATS, DOINGS } from '../src/content/days'
 import { CIRCUMSTANCES } from '../src/content/circumstances'
+import { CULTIVATORS } from '../src/content/cultivators'
 import { ERRANDS } from '../src/content/errands'
 import { HINDSIGHTS } from '../src/content/hindsight'
 import { INFORMANTS } from '../src/content/informants'
-import { DAMPERS, SPARKS } from '../src/content/leanings'
+import { LEADS } from '../src/content/leads'
+import { DAMPERS, LEANINGS, SPARKS } from '../src/content/leanings'
 import { LIVINGS } from '../src/content/living'
 import { OPENINGS } from '../src/content/openings'
+import { RITES } from '../src/content/rites'
+import { WISHES } from '../src/content/wishes'
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { CHAPTERS } from '../src/content/life/chapters'
+import {
+  FLAG_FACTS,
+  KNOWLEDGE_FACTS,
+  type IdTable,
+  parseFlagKey,
+  parseKnowledgeKey,
+} from '../src/engine/facts'
 import { ROLE_IDS } from '../src/engine/interpolate'
 import { stageOf } from '../src/engine/stages'
 import { useStory } from '../src/engine/story'
@@ -820,21 +831,33 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
   ].join('\n')
 
   /**
-   * 有些旗标是**拼出来的**，字面量搜不到。
+   * 有些旗标是**拼出来的**，字面量搜不到——`event:<id>`、`leaning:<id>`、`rite:<id>:hold`。
    *
-   * 比如念头那一层的 `leaning:${id}`——源码里只有前缀，没有整个键。
-   * 所以带这些前缀的键，只要源码里提到过那个前缀就算有出处。
+   * 从前这里是一张前缀清单：带这几个前缀的键，只要引擎源码里提到过那个前缀就放行。
+   * 那张清单有两个洞，都真踩过：产 `event:` 的 `chronology.ts` 从没在扫描名单里
+   * （第一个拿 `event:` 当条件的内容当场红）；前缀对了 id 打错（`event:kindred-nephew-grownn`）
+   * 照样放行，那条路永远走不到而门禁一声不吭。
    *
-   * 这是这道门禁唯一一处放宽：**它换来的是不用把每个念头 id
-   * 都在扫描里再写一遍**，而那份重复迟早会跟真实的 id 对不上。
-   *
-   * `footing:` 和 `rite:` 是师承那一层加进来的，形状一样：
-   * `tutelage.ts` 里只有模板，具体是哪个修士、哪一样东西要到运行时才知道。
-   * `rite:` 底下如今挂着五个键（层数、身上那一步、练了几回、谁教的、
-   * 哪天教的），**而这里只认那三个字符的前缀**——正因为如此，
-   * 引擎再多挂一个键，这道门禁也不必跟着改。
+   * 现在照 `engine/facts.ts` 那张登记表查：命名空间是封闭的联合类型（引擎里拼一个没登记的
+   * 前缀编译不过），每一行写明 id 该在哪张内容表上——这儿把表名换成真的表，逐条查 id。
+   * 引擎再多挂一个尾巴（`rite:<id>:hold`）登记在 `suffixes` 里，这里照旧不必改。
    */
-  const PREFIXES = ['leaning:', 'spark:', 'branched:', 'event:', 'lead:', 'footing:', 'rite:']
+  const TABLES: Record<IdTable, ReadonlySet<string>> = {
+    lifeEvents: new Set(lifeEvents.map((one) => one.id)),
+    LEANINGS: new Set(LEANINGS.map((one) => one.id)),
+    'SPARKS+DAMPERS': new Set([...SPARKS, ...DAMPERS].map((one) => one.id)),
+    WISHES: new Set(WISHES.map((one) => one.id)),
+    CULTIVATORS: new Set(CULTIVATORS.map((one) => one.id)),
+    RITES: new Set(RITES.map((one) => one.id)),
+    LEADS: new Set(LEADS.map((one) => one.id)),
+  }
+  /** 登记过的键：id 在登记表指的那张表上就有出处，不在就是打错了 */
+  const registered = (kind: '旗标' | '认知', key: string): string | null => {
+    const parsed = kind === '旗标' ? parseFlagKey(key) : parseKnowledgeKey(key)
+    if (!parsed) return null
+    const row = kind === '旗标' ? FLAG_FACTS[parsed.namespace as keyof typeof FLAG_FACTS] : KNOWLEDGE_FACTS[parsed.namespace as keyof typeof KNOWLEDGE_FACTS]
+    return TABLES[row.ids].has(parsed.id) ? 'ok' : `登记表说 id 该在 ${row.ids} 上，查无「${parsed.id}」（产于 ${row.producer}）`
+  }
 
   const orphanNeeds: string[] = []
   for (const [kind, needed, made] of [
@@ -859,8 +882,14 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     for (const [key, wheres] of needed) {
       if (made.has(key)) continue
       if (engineSource.includes(`'${key}'`)) continue
-      if (PREFIXES.some((prefix) => key.startsWith(prefix) && engineSource.includes(prefix)))
-        continue
+      if (kind === '旗标' || kind === '认知') {
+        const verdict = registered(kind, key)
+        if (verdict === 'ok') continue
+        if (verdict !== null) {
+          orphanNeeds.push(`${kind}〔${key}〕　${verdict}　被要求于：${wheres.join('、')}`)
+          continue
+        }
+      }
       orphanNeeds.push(`${kind}〔${key}〕　没有任何地方产出　被要求于：${wheres.join('、')}`)
     }
   }

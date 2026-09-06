@@ -6,6 +6,7 @@ import type { Condition, NarrativeBlock, Topic } from '@/types/game'
 
 import { meetsAll } from './conditions'
 import { ask } from './inquire'
+import { knowledgeKey } from './facts'
 import { fillString } from './interpolate'
 import { pickWeighted } from './random'
 import { askAround } from './seeking'
@@ -192,7 +193,7 @@ export function goOn(errandId: string): Visit | null {
     if (lead) {
       got = true
       character.learn({
-        id: `lead:${lead.id}`,
+        id: knowledgeKey('lead', lead.id),
         title: '听来的一件事',
         summary: lead.believes,
         category: '修行',

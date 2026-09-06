@@ -1155,7 +1155,8 @@ export const kindredEvents: readonly LifeEvent[] = [
   {
     id: 'kindred-wedding',
     window: { from: 19, to: 70 },
-    requires: [...TWO_HOUSES, { family: { id: 'brother-wife', alive: false } }],
+    // 还没有嫂子这个人。写 alive: false 的话嫂子殁了会再娶一次同一个 id——存在 ≠ 活着
+    requires: [...TWO_HOUSES, { family: { id: 'brother-wife', exists: false } }],
     scene: 'kindred:wedding',
     weight: 24,
   },
@@ -1165,7 +1166,7 @@ export const kindredEvents: readonly LifeEvent[] = [
     requires: [
       ...TWO_HOUSES,
       { family: { id: 'brother-wife', alive: true } },
-      { family: { id: 'nephew', alive: false } },
+      { family: { id: 'nephew', exists: false } },
     ],
     scene: 'kindred:nephew',
     weight: 20,
@@ -1236,7 +1237,7 @@ export const kindredEvents: readonly LifeEvent[] = [
     requires: [
       ...OLD_HOUSE,
       { family: { id: 'nephew', alive: true, age: { atLeast: 19 } } },
-      { family: { id: 'nephew-wife', alive: false } },
+      { family: { id: 'nephew-wife', exists: false } },
     ],
     scene: 'kindred:nephew-weds',
     weight: 24,
@@ -1248,7 +1249,7 @@ export const kindredEvents: readonly LifeEvent[] = [
       ...OLD_HOUSE,
       { family: { id: 'nephew', alive: true } },
       { family: { id: 'nephew-wife', alive: true } },
-      { family: { id: 'grandnephew', alive: false } },
+      { family: { id: 'grandnephew', exists: false } },
     ],
     scene: 'kindred:grandnephew',
     weight: 20,

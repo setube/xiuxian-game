@@ -59,8 +59,11 @@ function live(origin: OriginId): Lived | null {
     finale: lifeFinale,
   })
   story.begin()
-  // 生在王府却在寺里、街上长大的，过的是那种日子——这一支量的是住在王府里的孩子
+  // 生在王府却在寺里、街上长大的，过的是那种日子——这一支量的是住在王府里的孩子。
+  // 对照组同理：农家的孩子被寺里收留，去不了镇上是境况不是出身，那一世不算「农户反过来」
+  // （种子 g7njkx12ejnt、s2 各撞上一世，红的是尺子不是内容）
   if (origin === 'manor' && world.residenceKind() !== '王府') return null
+  if (origin === 'farm' && world.residenceKind() !== '宅') return null
 
   // 采样点在这儿，不在一生走完之后：削爵、削藩会把日子换成 fallen / market，
   // 那是这一世后来发生的事，不是「王府的孩子过的是什么日子」

@@ -8,6 +8,7 @@ import type { Condition, RegionKey } from '@/types/game'
 
 import { stageOf } from './stages'
 import { isNearby } from './nearby'
+import { exists, isPresent } from './presence'
 
 type WorldStore = ReturnType<typeof useWorldStore>
 type CharacterStore = ReturnType<typeof useCharacterStore>
@@ -69,7 +70,9 @@ const CHECKS = {
 
   family: (family, { household }) => {
     const people = usePeopleStore()
+    if (family.exists !== undefined && exists(family.id) !== family.exists) return false
     if (family.alive !== undefined && household.isAlive(family.id) !== family.alive) return false
+    if (family.present !== undefined && isPresent(family.id) !== family.present) return false
     if (family.age !== undefined && !within(people.ageOf(family.id), family.age)) return false
     if (family.livelihood !== undefined) {
       // 问的是他自己的营生；没有自己的就是他那一户的，死了的问不出来
@@ -116,14 +119,20 @@ const CHECKS = {
     // 这一格才需要人物库，用到时再取——别的条件不必为它初始化一个 store
     const people = usePeopleStore()
     const ids = people.kinOf(bond.kind)
-    // 三问一个也没问，那问的就是第一问：有没有这层关系
-    if (bond.alive === undefined && bond.near === undefined && bond.years === undefined) {
+    // 四问一个也没问，那问的就是第一问：有没有这层关系
+    if (
+      bond.alive === undefined &&
+      bond.near === undefined &&
+      bond.present === undefined &&
+      bond.years === undefined
+    ) {
       return ids.length > 0
     }
     if (bond.alive !== undefined && ids.some((id) => people.isAlive(id)) !== bond.alive) {
       return false
     }
     if (bond.near !== undefined && ids.some((id) => isNearby(id)) !== bond.near) return false
+    if (bond.present !== undefined && ids.some((id) => isPresent(id)) !== bond.present) return false
     const years = bond.years
     if (years !== undefined && !ids.some((id) => people.boundFor(id, bond.kind) >= years.atLeast)) {
       return false

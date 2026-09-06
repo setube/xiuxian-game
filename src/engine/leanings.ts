@@ -8,6 +8,7 @@ import type { Leaning } from '@/types/leaning'
 import { useCharacterStore } from '@/stores/character'
 
 import { meetsAll } from './conditions'
+import { flagKey } from './facts'
 import { fillString } from './interpolate'
 import { randomBetween } from './random'
 
@@ -33,7 +34,7 @@ import { randomBetween } from './random'
 
 /** 同一个火种点过没有。记在旗标里，于是随存档走，也随重开清空 */
 function sparkKey(id: string): string {
-  return `spark:${id}`
+  return flagKey('spark', id)
 }
 
 /** 他刚刚说出口的那句话。没有就是 null */
@@ -233,7 +234,7 @@ export function branch(): Branching | null {
 
   for (const wish of WISHES) {
     if (leaning.weightOf(wish.id) < BRANCH_AT) continue
-    if (world.hasFlag(`branched:${wish.id}`)) continue
+    if (world.hasFlag(flagKey('branched', wish.id))) continue
 
     const feasible = wish.branches.filter((one) => one.leaning && meetsAll(one.requires))
     const blank = wish.branches.find((one) => !one.leaning)
@@ -252,7 +253,7 @@ export function branch(): Branching | null {
     const taken = feasible.length > 0 && figuresOut ? feasible[0]! : blank
     if (!taken) continue
 
-    world.setFlag(`branched:${wish.id}`, true)
+    world.setFlag(flagKey('branched', wish.id), true)
     // 记下它究竟通向了哪儿。走查靠它分辨，而不是去猜最重的那个念头
     if (taken.leaning) world.setFlag('branched-into', taken.leaning)
     const moment = { at: { ...world.time }, text: fillString(taken.text) }

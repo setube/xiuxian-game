@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { useWorldStore } from './world'
+import { flagKey } from '@/engine/facts'
 
 import type { GameTime } from '@/types/game'
 import type { LeaningMoment, LeaningStage, LeaningState } from '@/types/leaning'
@@ -148,7 +149,7 @@ export const useLeaningStore = defineStore(
        *
        * 判据是一句话：**这一卷写的是世界发生了什么，还是他做了什么？**
        */
-      useWorldStore().setFlag(`leaning:${id}`, next.weight >= STIRRING_AT)
+      useWorldStore().setFlag(flagKey('leaning', id), next.weight >= STIRRING_AT)
       return justNamed
     }
 

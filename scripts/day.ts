@@ -117,7 +117,15 @@ console.log('\n=== 一个十二岁的孩子，自己安排的一天 ===\n')
 console.log(`\n=== ${RUNS} 次行动的形状 ===\n`)
 {
   const tally = new Map<Tier, number>()
-  for (let i = 0; i < RUNS; i += 1) {
+  /**
+   * 「大事」实测占千分之一到三（种子 s1 0.1%、s2 0.3%、s3 0.1%），两千次里期望两到六次，
+   * 抽到零不稀奇（种子 g7njkx12ejnt 就是零）。固定次数判「零」会闪红——掷到它出现为止，
+   * 上限十倍；形状那几条照旧在全部样本上量，报出来实际掷了几次。
+   */
+  const CAP = RUNS * 10
+  let drew = 0
+  for (let i = 0; i < CAP && (i < RUNS || (tally.get('大事') ?? 0) === 0); i += 1) {
+    drew = i + 1
     const state = i % 3 === 0 ? dearth() : calm()
     const origin = (['farm', 'hunt', 'cloth', 'craft'] as OriginId[])[i % 4]!
     fresh(7 + (i % 10), origin, state, i % 5 !== 0)
@@ -128,6 +136,7 @@ console.log(`\n=== ${RUNS} 次行动的形状 ===\n`)
     if (!beat) continue
     tally.set(beat.tier, (tally.get(beat.tier) ?? 0) + 1)
   }
+  if (drew > RUNS) console.log(`  （「大事」两千次里没抽到，掷到第 ${drew} 次才出现）`)
 
   const total = [...tally.values()].reduce((sum, n) => sum + n, 0)
   const bar = (pct: number) => '█'.repeat(Math.max(1, Math.round(pct / 2)))

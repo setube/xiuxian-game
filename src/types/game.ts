@@ -1313,7 +1313,20 @@ export interface Condition {
    */
   family?: {
     id: string
+    /**
+     * 世界立没立过这个人（`engine/presence.ts`）。跟 `alive` 是两问：从前「哥还没娶亲」写成
+     * `brother-wife alive: false`，嫂子殁了这一格也是真——于是同一个 id 会再「娶」一次、
+     * 侄儿殁了会再「生」一次。要问「还没有这个人」用 `exists: false`；`alive: false` 留给
+     * 「有过这个人，他不在了」。
+     */
+    exists?: boolean
     alive?: boolean
+    /**
+     * 此刻跟你在同一个地方（`engine/presence.ts`）。跟 `alive` 是两问：哥在镇上做木匠，
+     * 活着、不在场；正月里回来了，在场。已死或明显不在场的人不能再当现实对话对象——
+     * 一卷里要让他开口，先问这一格。
+     */
+    present?: boolean
     age?: { atLeast?: number; atMost?: number }
     livelihood?: readonly Livelihood[]
   }
@@ -1363,7 +1376,10 @@ export interface Condition {
   bond?: {
     kind: Bond
     alive?: boolean
+    /** 在不在你天天照面的地方（比的是你的家在哪，`engine/nearby.ts`） */
     near?: boolean
+    /** 此刻跟你在不在同一个地方（比的是你此刻在哪，`engine/presence.ts`）。有一个在就算 */
+    present?: boolean
     /** 这层关系里，有没有一条边已经牵了这么多年 */
     years?: { atLeast: number }
   }
