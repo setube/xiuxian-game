@@ -220,7 +220,10 @@ function birthScene(id: OriginId): Scene {
         blocks: [{ kind: 'heading', title: '生' }],
         // 生下来就没爹的孩子，读到的是另一段。
         // 不这么分流的话，弃儿的第一屏是「父亲抱着你走了二里地去取名」
-        branches: [{ requires: [{ bond: { kind: '生父', alive: true } }], next: 'kept' }],
+        // 取名这一幕是他在做——提笔、刻在碎木上、抱着你走二里地去找老先生。
+        // 问 `present` 不问 `alive`：出门做工的爹活得好好的，可孩子落地那天他不在家，
+        // 名字就该是别人取的（底下 `NAMELESS` 那一段）
+        branches: [{ requires: [{ family: { id: 'father', present: true } }], next: 'kept' }],
         next: 'abandoned',
       },
 

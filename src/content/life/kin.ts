@@ -329,7 +329,10 @@ export const kinEvents: readonly LifeEvent[] = [
      */
     id: 'dad-north',
     window: { from: 8, to: 16 },
-    requires: [{ bond: { kind: '生父', alive: true } }, { living: { hasChore: true } }],
+    // 这一卷从头到尾是他在讲十八岁那年跟商队去北方的事——**要让他开口，先问在不在场**。
+    // 从前问的是 `bond 生父 alive`：他去邻县修河堤那几年人好好活着，只是不在这个院子里，
+    // 于是隔着二百里给孩子讲了一晚上北方
+    requires: [{ family: { id: 'father', present: true } }, { living: { hasChore: true } }],
     scene: 'dad:north',
     weight: 7,
   },
@@ -342,14 +345,16 @@ export const kinEvents: readonly LifeEvent[] = [
      */
     id: 'dad-adept',
     window: { from: 11, to: 16 },
-    requires: [{ bond: { kind: '生父', alive: true } }, { knowledge: 'the-north' }],
+    // 同上：这一卷也是他亲口往下讲，不在场就讲不成
+    requires: [{ family: { id: 'father', present: true } }, { knowledge: 'the-north' }],
     scene: 'dad:adept',
     weight: 6,
   },
   {
     id: 'mom-past',
     window: { from: 9, to: 16 },
-    requires: [{ bond: { kind: '生母', alive: true } }],
+    // 「{dam}在收拾箱子，翻出一件旧衣裳」——她得在这儿才翻得动那只箱子
+    requires: [{ family: { id: 'mother', present: true } }],
     scene: 'mom:past',
     weight: 6,
   },
