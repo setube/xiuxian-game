@@ -35,12 +35,8 @@
  */
 import './lib/seeded'
 
-import { createPinia, setActivePinia } from 'pinia'
-
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
-import { useStory } from '../src/engine/story'
-import { useCharacterStore } from '../src/stores/character'
-import { useNarrativeStore } from '../src/stores/narrative'
+import { mapShards, sumTallies } from './lib/parallel'
+import { type ReachShard } from './tasks/reach-lives'
 
 /**
  * 走多少世。
@@ -86,40 +82,20 @@ const wrong: Reach[] = []
 /** 采到多少个「此刻在高墙里」的回合，用来说明判据有没有真的量到东西 */
 let walledTurns = 0
 
-for (let i = 0; i < RUNS; i += 1) {
-  setActivePinia(createPinia())
-  const narrative = useNarrativeStore()
-  const character = useCharacterStore()
-  const story = useStory(lifeScenes, {
-    events: lifeEvents,
-    routine: lifeRoutine,
-    finale: lifeFinale,
-  })
+// 这一段原样搬去了 tasks/reach-lives.ts，走法和采样点一步没动。
+// 搬走的只是模拟；判据（offendersIn）留在这儿——第三条自检要拿坏数据喂它
+const shard = sumTallies(
+  await mapShards<ReachShard, readonly string[]>({
+    task: 'scripts/tasks/reach-lives.ts',
+    runs: RUNS,
+    payload: WALLED,
+  }),
+)
+walledTurns = shard.walledTurns
 
-  story.begin()
-  let turns = 0
-
-  while (!narrative.ended && turns < 200) {
-    const open = narrative.options.filter((one) => !one.locked)
-    if (open.length === 0) break
-
-    /*
-     * 采样点在 `choose` 之前：要问的是「**此刻**摆在他面前的选项」。
-     * 放到 choose 之后就成了「下一节的选项配上一节的身份」，那是另一回事。
-     */
-    const living = character.living.id
-    if (WALLED.includes(living)) {
-      walledTurns += 1
-      for (const label of offendersIn(
-        living,
-        open.map((one) => one.choice.label),
-      )) {
-        wrong.push({ living, label, scene: narrative.sceneId ?? '?' })
-      }
-    }
-
-    story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-    turns += 1
+for (const one of shard.seen) {
+  for (const label of offendersIn(one.living, one.labels)) {
+    wrong.push({ living: one.living, label, scene: one.scene })
   }
 }
 
@@ -180,7 +156,12 @@ let bad = 0
     { living: 'palace', label: '出去做工，挣几个钱', want: true, why: '宫里的孩子不出门挣钱' },
     { living: 'manor', label: '跟着长工下地', want: true, why: '王府的孩子不下地' },
     { living: 'farm', label: '出去做工，挣几个钱', want: false, why: '农户当然可以出去做工' },
-    { living: 'fallen', label: '出去找活', want: false, why: '门第塌了以后正该去找活——这一条最要紧' },
+    {
+      living: 'fallen',
+      label: '出去找活',
+      want: false,
+      why: '门第塌了以后正该去找活——这一条最要紧',
+    },
     { living: 'palace', label: '跟着先生读书', want: false, why: '读书是宫里该有的事' },
   ]
 

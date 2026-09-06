@@ -27,80 +27,19 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { useStory } from '../src/engine/story'
-import { useNarrativeStore } from '../src/stores/narrative'
 import { usePeopleStore } from '../src/stores/people'
+
+import { mapShards, sumTallies } from './lib/parallel'
+import { type NamingShard } from './tasks/naming-lives'
 
 const RUNS = 120
 
-interface Leak {
-  id: string
-  name: string
-  where: '正文' | '选项'
-  text: string
-}
-
-const leaks: Leak[] = []
-/** 玩家知道名字之后正文里写了名字的次数——尺子咬得到的地方 */
-let namedFine = 0
-let personsSeen = 0
-let namedPersons = 0
-let callWrong = 0
-
-for (let i = 0; i < RUNS; i += 1) {
-  setActivePinia(createPinia())
-  const narrative = useNarrativeStore()
-  const people = usePeopleStore()
-  const story = useStory(lifeScenes, {
-    events: lifeEvents,
-    routine: lifeRoutine,
-    finale: lifeFinale,
-  })
-  story.begin()
-  const kept = new Set<string>()
-  const drain = (): string[] => {
-    const fresh: string[] = []
-    for (const item of narrative.stream) {
-      if (kept.has(item.id)) continue
-      kept.add(item.id)
-      if ('text' in item.block && item.block.text) fresh.push(item.block.text)
-      if (item.block.kind === 'dialogue' && item.block.speaker) fresh.push(item.block.speaker)
-    }
-    return fresh
-  }
-  drain()
-  for (let turn = 0; !narrative.ended && turn < 240; turn += 1) {
-    const open = narrative.options.filter((o) => !o.locked)
-    if (open.length === 0) break
-    story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-    const fresh = drain()
-    const labels = narrative.options.map((o) => o.choice.label)
-    for (const person of Object.values(people.roster)) {
-      // 「氏」不是名，「秦娘」的「娘」是名——全名得两个字以上才认，一个字的姓名撞上别的词不算数
-      const name = `${person.surname}${person.given}`
-      if (person.given === '氏' || name.length < 2) continue
-      const knows = people.known[person.id]?.knowsName === true
-      const hits = fresh.filter((text) => text.includes(name))
-      const labelHits = labels.filter((label) => label.includes(name))
-      if (knows) {
-        namedFine += hits.length + labelHits.length
-        continue
-      }
-      for (const text of hits) leaks.push({ id: person.id, name, where: '正文', text })
-      for (const text of labelHits) leaks.push({ id: person.id, name, where: '选项', text })
-    }
-  }
-  // 二、callOf 不知道名字不落名字
-  for (const person of Object.values(people.roster)) {
-    if (!people.known[person.id]) continue
-    personsSeen += 1
-    const name = `${person.surname}${person.given}`
-    const called = people.callOf(person.id)
-    const knows = people.known[person.id]?.knowsName === true
-    if (knows) namedPersons += 1
-    if (!knows && called === name) callWrong += 1
-    if (knows && called !== name) callWrong += 1
-  }
-}
+// 这一段原样搬去了 tasks/naming-lives.ts，走法一步没动。
+// 判据和它们的自检留在这儿——它们是这支门禁的结论，不是实现细节
+const tally = sumTallies(
+  await mapShards<NamingShard>({ task: 'scripts/tasks/naming-lives.ts', runs: RUNS }),
+)
+const { leaks, namedFine, personsSeen, namedPersons, callWrong } = tally
 
 console.log(`\n=== 名字要有人告诉你才知道（${RUNS} 世）===\n`)
 let bad = 0
@@ -130,17 +69,27 @@ if (callWrong > 0) {
 
 // 三、尺子自检
 {
-  // 要一个生下来有爹的人生。有的境况生下来就没爹（种子 19sygn95try1 撞上过），掷到有为止
-  let people = usePeopleStore()
+  /*
+   * 要一个生下来有爹的人生。有的境况生下来就没爹（种子 19sygn95try1 撞上过），掷到有为止。
+   *
+   * 这儿不能写成 `let people = usePeopleStore()` 再进循环——**主线程此刻没有活着的 pinia**。
+   * 从前那么写跑得通，是因为上面紧挨着 120 世模拟，最后一世的 pinia 还留在那儿；
+   * 模拟搬进 worker 之后主线程一片空白，那一行当场就炸。
+   *
+   * 值得记的是这个 bug **躲过了同种子对照**：`GATE_INLINE=1` 那条路在主线程里跑模拟，
+   * 照样留下一个活着的 pinia，于是前后输出逐字节相同、判据全绿，而真 worker 路径是红的。
+   * 逐字节相同证明的是「搬出去的循环体没走样」，不是「搬走之后主脚本还站得住」。
+   */
+  let people: ReturnType<typeof usePeopleStore> | null = null
   for (let tries = 0; tries < 60; tries += 1) {
     setActivePinia(createPinia())
     people = usePeopleStore()
     useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale }).begin()
     if (people.personOf('father')) break
   }
-  const father = people.personOf('father')
+  const father = people?.personOf('father')
   const wrong: string[] = []
-  if (!father) wrong.push('掷了六十世没有一世生下来有爹，摆不出局')
+  if (!people || !father) wrong.push('掷了六十世没有一世生下来有爹，摆不出局')
   else {
     const name = `${father.surname}${father.given}`
     const knows = people.known['father']?.knowsName === true
