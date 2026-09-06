@@ -182,7 +182,7 @@ export function beBorn(id: OriginId, home: string): Birth {
       people.enroll(person)
 
       if (kin.goneAtBirth) {
-        // 他存在过。玩家没见过他，但这条血缘永远成立
+        // 他存在过。玩家没见过他，但这条血缘永远成立。哪一年没的世界不知道，就不写年份
         people.amend(kin.id, { fate: '殁', death: { cause: '在你出生前' } })
       } else {
         // 一出生就认得，但那时还不知道他叫什么——
@@ -192,6 +192,29 @@ export function beBorn(id: OriginId, home: string): Birth {
     }
     // 边照牵。人没了，血缘还在
     people.bind('me', kin.id, kin.bond)
+  }
+
+  /*
+   * 家里人彼此之间的边。
+   *
+   * 上面那个循环牵的边**全都从「我」出发**——这个世界一贯这么记，
+   * 于是「爹和娘是夫妻」「哥也是娘生的」这两件事一直没人记过：
+   * 它们跟「我」无关，而所有的边都挂在「我」身上。
+   *
+   * 缺了不会有任何条件落空（`conditions.ts` 问 bond 只问从「我」出发的边，
+   * 见 `people.kinOf`），所以缺得无声无息。人际面板画成世系图之后才显形：
+   * 爹娘并排站着中间没有一条线，哥和弟悬在旁边，跟这个家只靠
+   * 一条「我的哥」挂着——而他们跟我是同一对爹娘。
+   *
+   * 后来才添的弟妹不走这里，走 `engine/effects.ts` 的 `meet`，那边同样补了一条。
+   */
+  const dad = circumstance.kin.find((one) => one.bond === '生父')
+  const mum = circumstance.kin.find((one) => one.bond === '生母')
+  if (dad && mum) people.bind(dad.id, mum.id, '配偶')
+  for (const one of circumstance.kin) {
+    if (!['兄', '姐', '弟', '妹'].includes(one.bond)) continue
+    if (dad) people.bind(one.id, dad.id, '生父')
+    if (mum) people.bind(one.id, mum.id, '生母')
   }
 
   // 姓：有生父就随生父，没有就是收留的人给的
@@ -659,6 +682,16 @@ export function bearKin(id: string, origin: OriginId, home: string): { calls: st
     }),
   )
   people.bind('me', id, bond)
+  /*
+   * 他跟爹娘的边。
+   *
+   * 跟上面那条是两件事：**「他是我的弟弟」和「他是娘生的」**，从前只记了前一件。
+   * 缺了不会有任何条件落空（`conditions.ts` 问 bond 只问从「我」出发的边，
+   * 见 `people.kinOf`），所以缺得无声无息——直到人际面板画成世系图，
+   * 这个刚落地的弟弟悬在图上，跟这个家只靠一条「我的弟弟」挂着。
+   */
+  for (const dad of people.kinOf('生父')) people.bind(id, dad, '生父')
+  for (const mum of people.kinOf('生母')) people.bind(id, mum, '生母')
   // 生在这一户里，就是这一户的人
   people.joinHouse('home', id)
 
