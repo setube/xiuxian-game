@@ -61,8 +61,8 @@ const CAP = 5000
 /** 走到分家（自己分出去）的世数，掷到够数为止 */
 const DIVIDES_WANTED = 24
 /**
- * 借粮两条路各要几世。荒年得撞上分家之后，稀——种子 k7 掷了一千零四十一世才凑够四世，
- * 这一支跑了十分钟。所以第四条的判据改在摆好的局上量（下面），随机人生里的只报数。
+ * 借粮两条路各要几世。荒年得撞上分家之后，稀——种子 k7 掷了一千零四十一世（平常三百来世）
+ * 才凑够两条路各两世。所以第四条的判据改在摆好的局上量（下面），随机人生里的只报数。
  */
 const BORROWS_WANTED = 0
 
@@ -446,7 +446,7 @@ let bad = 0
 
 const lives: Lived[] = []
 for (let i = 0; i < LIVES; i += 1) lives.push(live())
-// 六到八不靠随机掷到（见下面「摆好的局」），所以这儿只等分家和借粮两条路够数
+// 四、六到十一不靠随机掷到（见上面「摆好的局」），所以这儿只等分家够数
 const enough = (): boolean => lives.filter((l) => l.divided).length >= DIVIDES_WANTED
 for (let tries = 0; tries < CAP && !enough(); tries += 1) lives.push(live())
 const divided = lives.filter((l) => l.divided)
