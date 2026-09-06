@@ -191,11 +191,14 @@ console.log('\n=== ④ 你十四岁以后，再也没有替家里下过地 ===\n
 {
   const { world, diary } = fresh(10)
 
-  // 十岁到十四岁，年年下地
+  // 十岁到十四岁，年年下地。每天掷到哪个 work 片段是随机的，只有一部分带「替家里下地」，
+  // 而 `whatStopped` 要同标签至少三天——十五天卡在阈值附近，八回里红一回。掷到够数为止
+  const farmed = (): number => diary.days.filter((day) => day.tags.includes('替家里下地')).length
   for (let year = 0; year < 5; year += 1) {
     for (let n = 0; n < 3; n += 1) liveADay(['work'])
     world.advanceTime({ years: 1 })
   }
+  for (let extra = 0; farmed() < 3 && extra < 30; extra += 1) liveADay(['work'])
   const farmDays = diary.days.length
   // 十五岁起改成往镇上跑
   for (let year = 0; year < 4; year += 1) {

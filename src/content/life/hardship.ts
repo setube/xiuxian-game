@@ -311,7 +311,7 @@ export const hardshipScenes: SceneLibrary = {
         id: 'open',
         onEnter: [
           { type: 'time', months: 7 },
-          { type: 'person', id: 'father', fate: '殁' },
+          { type: 'person', id: 'father', fate: '殁', cause: '客死' },
           { type: 'household', standing: -10 },
           { type: 'flag', key: 'father-dead', value: true },
           { type: 'chronicle', text: '父亲死在了外地。', tone: 'cinnabar' },

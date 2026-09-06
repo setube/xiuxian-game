@@ -167,7 +167,7 @@ export const illnessScenes: SceneLibrary = {
           { type: 'time', months: 2 },
           { type: 'flag', key: 'illness-at-home', value: false },
           { type: 'flag', key: 'lost-someone', value: true },
-          { type: 'person', id: 'elder', fate: '殁' },
+          { type: 'person', id: 'elder', fate: '殁', cause: '病' },
           { type: 'chronicle', text: '{elder}那年入冬没能熬过去。', tone: 'cinnabar' },
           // 这一夜他想的事，跟从前不一样了
           { type: 'reflect' },

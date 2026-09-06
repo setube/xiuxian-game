@@ -415,6 +415,11 @@ for (const subject of SUBJECTS) {
       const edgesAfter = s.people.relations.filter((r) => r.from === subject.id || r.to === subject.id).length
       // 邻居跟你之间本来就没有边（相邻是户与户的事）；有边的，殁了一条也不能少
       if (edgesAfter < edgesBefore) historyGone.push(`${subject.label}殁了，关系图上少了 ${edgesBefore - edgesAfter} 条边`)
+      // 死亡不是一个布尔：哪一年、在哪儿，世界在那一刻就知道
+      const death = s.people.personOf(subject.id)?.death
+      if (!death) historyGone.push(`${subject.label}殁了，没有死亡记录（哪一年、在哪儿）`)
+      else if (death.year !== s.world.time.year) historyGone.push(`${subject.label}殁的年份记成了 ${death.year}，世界是 ${s.world.time.year} 年`)
+      else if (death.where === undefined || death.where === '') historyGone.push(`${subject.label}殁了，没记在哪儿没的`)
     }
     for (const scene of Object.values(lifeScenes)) {
       if (!enterable(scene)) continue

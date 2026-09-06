@@ -412,6 +412,29 @@ export const usePeopleStore = defineStore(
     }
 
     /** 改写一个人的状态。他去了别处、丢了差事、死了，都走这里 */
+    /**
+     * 他没了。人口册、关系图、债、户里的账一个不删——死亡终止的是主动行为能力，不是社会存在。
+     * 记下哪一年、哪一月、在哪儿、怎么没的：这些是世界在那一刻就知道的事实。
+     * 已经殁了的再殁一回是空操作（死亡记录不覆盖）。
+     */
+    function die(id: string, cause?: string): void {
+      const person = roster.value[id]
+      if (!person || person.fate === '殁') return
+      roster.value = {
+        ...roster.value,
+        [id]: {
+          ...person,
+          fate: '殁',
+          death: {
+            year: world.time.year,
+            month: world.time.month,
+            where: person.place,
+            ...(cause !== undefined ? { cause } : {}),
+          },
+        },
+      }
+    }
+
     function amend(id: string, patch: Partial<Omit<Person, 'id' | 'history'>>): void {
       const person = roster.value[id]
       if (!person) return
@@ -635,13 +658,23 @@ export const usePeopleStore = defineStore(
         // 上了年纪、底子又差的人，每年都有那么点可能过不去
         const frailty = Math.max(0, age - 45) * 0.004 + Math.max(0, 50 - person.health) * 0.0016
         let fate: Fate = person.fate
+        let diedAfter = 0
         for (let i = 0; i < years; i += 1) {
           if (Math.random() < frailty) {
             fate = '殁'
+            diedAfter = i
             break
           }
         }
-        next[id] = fate === person.fate ? person : { ...person, fate }
+        next[id] =
+          fate === person.fate
+            ? person
+            : {
+                ...person,
+                fate,
+                // 老病没的。年份按推到第几年算——推十年、第三年没的，就是第三年
+                death: { year: world.time.year - years + diedAfter, where: person.place, cause: '老病' },
+              }
       }
       roster.value = next
     }
@@ -685,6 +718,7 @@ export const usePeopleStore = defineStore(
       callOf,
       enroll,
       amend,
+      die,
       inscribe,
       recall,
       meet,

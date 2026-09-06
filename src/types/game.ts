@@ -647,8 +647,28 @@ export interface Person {
   /** 此刻人在哪。玩家不在场也照样会变 */
   place: string
   fate: Fate
+  /**
+   * 他是怎么没的。`fate` 是「殁」的人这一格必有（`scripts/presence.ts` 守着）。
+   *
+   * 死亡不能只是把 alive 改成 false（用户 2026-09-07）：谁死了、哪一年、在哪儿、怎么死的，
+   * 是世界在那一刻就知道的事实，此后旁人的悲伤、报仇、继承、传闻都得从这儿追溯。
+   * 这一格记的是**世界事实**——谁知道、谁以为是病死其实是被害，是认知层的事（`character.learn`）。
+   * 不知道哪一年就不写 `year`（出生前就没了的爹），少说一句好过说一句假的。
+   */
+  death?: Death
   /** 他这辈子的事。玩家只看得见 known 的那些 */
   history: Chapter[]
+}
+
+/** 一个人是怎么没的。死亡终止的是生命，不是历史：这一格跟人口册、关系图、债一起留下 */
+export interface Death {
+  /** 哪一年。世界不知道就不写（出生前就没了的人） */
+  year?: number
+  month?: number
+  /** 在哪儿没的。他殁那一刻的 `place` */
+  where?: string
+  /** 怎么没的：病、客死、老病、山里、被害……自由字符串，内容写得出什么就记什么 */
+  cause?: string
 }
 
 /**
@@ -1712,6 +1732,8 @@ export type Effect =
        */
       backTo?: string
       fate?: Fate
+      /** 只跟 `fate: '殁'` 一起写：他是怎么没的。不写就只记时间地点 */
+      cause?: string
       health?: number
       /**
        * 他不再是这一户的人。

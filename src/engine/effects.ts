@@ -365,7 +365,7 @@ function applyOne(
        */
       if (effect.rank !== undefined) people.amend(effect.id, { rank: effect.rank })
       if (effect.alive === false) {
-        people.amend(effect.id, { fate: '殁' })
+        people.die(effect.id)
         settleHeads(world, character, household, people)
       }
       return null
@@ -382,9 +382,11 @@ function applyOne(
         ...(effect.doing === undefined ? {} : { doing: effect.doing }),
         // null 是清掉：自己的营生没了，落回他那一户的
         ...(effect.livelihood === undefined ? {} : { livelihood: effect.livelihood ?? undefined }),
-        ...(effect.fate === undefined ? {} : { fate: effect.fate }),
+        // 殁不走 amend：时间、地点、死因要在那一刻记下（`people.die`）
+        ...(effect.fate === undefined || effect.fate === '殁' ? {} : { fate: effect.fate }),
         ...(effect.health === undefined ? {} : { health: effect.health }),
       })
+      if (effect.fate === '殁') people.die(effect.id, effect.cause)
       if (effect.leavesHouse === true) people.leaveHouse(effect.id)
       if (effect.fate !== undefined) settleHeads(world, character, household, people)
       return null
@@ -501,6 +503,26 @@ function applyOne(
       const isNew = people.meet(effect.id, calls, effect.delta ?? 0, effect.note)
       // 关系图上添一条边。`bind` 只往后添，旧的边一条也不覆盖
       if (effect.bond !== undefined) people.bind('me', effect.id, effect.bond)
+      /*
+       * 孩子跟另一个人的边。
+       *
+       * 上面那一条记的是「他是我的儿子」，可**他也是他娘生的**——
+       * 这两件事从前只记了前一件，因为这个世界的边一贯从「我」出发。
+       *
+       * 缺了不会有任何条件落空（`conditions.ts` 问 bond 只问从「我」出发的边，
+       * 见 `people.kinOf`），所以缺得无声无息。人际面板画成世系图之后才显形：
+       * 孩子只连着我一个，那条线从我脚底单独垂下来，而他明明是两个人的。
+       *
+       * 配偶殁了这条边照牵——家谱上亡妻仍在她孩子上头，跟 `content/birth.ts`
+       * 出生那一刻「边照牵，人没了血缘还在」是同一条道理。
+       * 出身自带的爹娘兄弟不走这里，走 `content/birth.ts`，那边同样补了。
+       */
+      if (effect.bond === '子' || effect.bond === '女') {
+        for (const spouse of people.kinOf('配偶')) {
+          const asParent = people.personOf(spouse)?.gender === '女' ? '生母' : '生父'
+          people.bind(effect.id, spouse, asParent)
+        }
+      }
       // 娶进门的、生下的、收进门的徒弟，从此住在这一户里。朋友不算，先生不算；
       // 正文点名住在别的户里的（`who.house`），不进你这一户
       if (
