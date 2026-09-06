@@ -130,6 +130,9 @@ const ENGINE_FILES = [
   'errand.ts',
   'meeting.ts',
   'tutelage.ts',
+  // 年表记「这件事发生过」的 `event:` 旗在这儿产。`PREFIXES` 早就列了它，产它的文件却一直没扫——
+  // 第一个拿 `event:` 旗当条件的内容（侄儿想走得先成了人、下过地）才把这一行逼出来
+  'chronology.ts',
 ] as const
 
 /**

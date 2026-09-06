@@ -366,11 +366,15 @@ function applyOne(
     }
     case 'person': {
       // 他去了别处、换了差事、没了——都不是把他删掉，是改他的下落
+      // 回到一户住的地方：户里别的活人在哪他就在哪；没人说得出就不动
+      const back = effect.backTo === undefined ? undefined : people.placeOfHouse(effect.backTo, effect.id)
       people.amend(effect.id, {
         // 地名跟 `home` 那条一样过记号：正文里写「{prefecture} · 城西旧宅」，落的是真地名
         ...(effect.place === undefined ? {} : { place: fillString(effect.place) }),
+        ...(back === undefined ? {} : { place: back }),
         ...(effect.doing === undefined ? {} : { doing: effect.doing }),
-        ...(effect.livelihood === undefined ? {} : { livelihood: effect.livelihood }),
+        // null 是清掉：自己的营生没了，落回他那一户的
+        ...(effect.livelihood === undefined ? {} : { livelihood: effect.livelihood ?? undefined }),
         ...(effect.fate === undefined ? {} : { fate: effect.fate }),
         ...(effect.health === undefined ? {} : { health: effect.health }),
       })

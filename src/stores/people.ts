@@ -186,6 +186,20 @@ export const usePeopleStore = defineStore(
       return personOf(personId)?.livelihood ?? houseOf(personId)?.livelihood
     }
 
+    /**
+     * 这一户的人此刻在哪：先看当家的，再看户里别的活人；`except` 是正要回去的那个人，不算他自己。
+     * 户里没有别的活人就答不出（`undefined`）——老屋在哪，眼下只有住在里面的人说得出，
+     * 居所那三层落地之前没有第二个来源。
+     */
+    function placeOfHouse(houseId: string, except?: string): string | undefined {
+      const house = houses.value[houseId]
+      if (!house) return undefined
+      const there = [house.head, ...house.members].filter(
+        (id, i, all) => id !== except && isAlive(id) && all.indexOf(id) === i,
+      )
+      return there.map((id) => roster.value[id]?.place).find((place) => place !== undefined)
+    }
+
     /** 他住进这一户。已经在了就不动 */
     function joinHouse(houseId: string, personId: string): void {
       const house = houses.value[houseId]
@@ -645,6 +659,7 @@ export const usePeopleStore = defineStore(
       adjoin,
       houseOf,
       livelihoodOf,
+      placeOfHouse,
       neighbourHouses,
       isNeighbour,
       guardians,

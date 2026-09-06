@@ -14,6 +14,7 @@ import { kinEvents, kinScenes } from './kin'
 import { kindredEvents, kindredScenes } from './kindred'
 import { leavingEvents, leavingScenes } from './leaving'
 import { meetingEvents, meetingScenes } from './meeting'
+import { nephewEvents, nephewScenes } from './nephew'
 import { reunionEvents, reunionScenes } from './reunion'
 import { rivermanEvents, rivermanScenes } from './riverman'
 import { routineScenes } from './routine'
@@ -227,6 +228,22 @@ export const CHAPTERS: readonly Chapter[] = [
       '老屋里的人是真人：嫂子进门、侄儿出生都进人口册，住在老屋，岁数从生年现算',
     ],
     marks: ['meet', 'chronicle'],
+  },
+
+  /** 侄儿：老屋的第二代想走自己的路。想不想走、走不走成都是倾向；父子那条边是他们的 */
+  {
+    id: 'nephew',
+    scenes: nephewScenes,
+    events: nephewEvents,
+    called: ['年表'],
+    to: [],
+    age: [30, 80],
+    purpose: [
+      '家庭经营、个人选择、代际关系、个人生计四件事同时存在而不互相覆盖：他走了老屋还是务农的户，他自己是学徒',
+      '想走从性情里出也从年景里出，走不走成是爹、他、你、那一年一起定的——「更可能」不是「只允许」',
+      '走没走成、后来和没和好，你都不在场；正月里看见结果，缘由是娘告诉你的',
+    ],
+    marks: ['tie', 'person', 'flag'],
   },
 
   /**

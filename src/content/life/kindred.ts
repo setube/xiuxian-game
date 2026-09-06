@@ -46,7 +46,7 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  */
 
 /** 分了家、哥还在，这一册才有得说 */
-const TWO_HOUSES = [{ house: { divided: true } }, { bond: { kind: '兄', alive: true } }] as const
+export const TWO_HOUSES = [{ house: { divided: true } }, { bond: { kind: '兄', alive: true } }] as const
 /** 分了家就行——哥没了老屋还在，侄儿当家，走动照旧 */
 const OLD_HOUSE = [{ house: { divided: true } }] as const
 
@@ -61,14 +61,20 @@ const INLAWS_SOUR = { tie: { from: 'brother-wife', to: 'mother', terms: ['不睦
 const INLAWS_FOND = { tie: { from: 'brother-wife', to: 'mother', terms: ['亲厚'] } } as const
 
 const OWES_ME = { owed: { debtor: 'brother', creditor: 'me', settled: false } } as const
-const OLD_HOME_FARMS = { house: { id: 'old-home', livelihood: '务农' } } as const
+export const OLD_HOME_FARMS = { house: { id: 'old-home', livelihood: '务农' } } as const
 /**
  * 哥自己还在种地。问的是人不是户：没有自己的营生就是老屋的营生；他去镇上做了木匠，
  * 老屋仍是务农的户，这一条却不成立了。死了的人也不成立——死了的人不种地
  */
 const BROTHER_FARMS = { family: { id: 'brother', alive: true, livelihood: ['务农'] } } as const
 /** 哥在镇上做木匠 */
-const BROTHER_CARPENTER = { family: { id: 'brother', alive: true, livelihood: ['木工'] } } as const
+export const BROTHER_CARPENTER = { family: { id: 'brother', alive: true, livelihood: ['木工'] } } as const
+/** 侄儿在老屋的地上（自己没有营生，就是老屋的营生） */
+export const NEPHEW_FARMS = { family: { id: 'nephew', alive: true, livelihood: ['务农'] } } as const
+/** 侄儿在镇上当学徒：他自己的营生是佣工，老屋仍是务农的户 */
+export const NEPHEW_AWAY = { family: { id: 'nephew', alive: true, livelihood: ['佣工'] } } as const
+/** 父子不睦：那条边是侄儿→哥的，跟你无关。见 `life/nephew.ts` */
+export const FATHER_SON_SOUR = { tie: { from: 'nephew', to: 'brother', terms: ['不睦'] } } as const
 
 export const kindredScenes: SceneLibrary = {
   /**
@@ -99,6 +105,16 @@ export const kindredScenes: SceneLibrary = {
             },
             bond: '亲戚',
           },
+          /*
+           * 哥跟嫂子那条边。你跟她的边是「亲戚」（上面那条），而**他们俩之间是夫妻**——
+           * 这是两件事，从前只记了前一件。
+           *
+           * 缺了它没有任何条件会落空（没有一处正文问过 NPC 之间有没有配偶），
+           * 所以它一直缺得无声无息。直到人际面板画成世系图，嫂子在图上落不到哥旁边：
+           * 她跟哥之间没有边，而「亲戚」不推辈分，于是她掉进了「排不进世系的人」那一栏——
+           * 一个刚过门的嫂子，站在先生和朋友中间。
+           */
+          { type: 'tie', from: 'brother-wife', to: 'brother', bond: '配偶' },
           { type: 'chronicle', text: '哥娶了亲。' },
         ],
         blocks: [
@@ -188,6 +204,21 @@ export const kindredScenes: SceneLibrary = {
             who: { given: '狗儿', gender: '男', age: 0, house: 'old-home' },
             bond: '亲戚',
           },
+          /*
+           * 他是哥的儿子。这一条从前要等到十几年后他想去镇上那一节
+           * （`life/nephew.ts`）才记——那处 `tie` 的本意是记父子处得怎样
+           * （亲厚、平常、不睦），顺手才把边牵上。
+           *
+           * 于是中间那十几年，世界知道「他是我的亲戚」，却不知道他是谁的儿子。
+           * 「亲戚」这一格祖父母、叔伯、侄儿全走（见 `types/game.ts`），
+           * 推 -2、-1、+1 都有，一格说不了辈分——人际面板画成世系图之后，
+           * 一个满地跑的侄儿在图上没有辈分，掉进了「排不进世系的人」那一栏。
+           *
+           * 父子这件事在他落地那天就成立，不该等正文用得着才记。
+           * 后面那几处 `tie` 照旧改它的 `terms`：`tie` 碰上已经立着的边只改处法，
+           * 不新牵一条（`stores/people.ts`）。
+           */
+          { type: 'tie', from: 'nephew', to: 'brother', bond: '生父' },
           { type: 'chronicle', text: '哥家添了个儿子。' },
         ],
         blocks: [
@@ -262,18 +293,30 @@ export const kindredScenes: SceneLibrary = {
         id: 'back',
         blocks: [],
         branches: [{ requires: [BROTHER_CARPENTER], next: 'from-town' }],
-        next: 'granny',
+        next: 'back-nephew',
       },
       'from-town': {
         id: 'from-town',
         blocks: [{ kind: 'narration', text: '哥从镇上回来过年，手上多了几道口子。' }],
+        next: 'back-nephew',
+      },
+      /** 侄儿在镇上当学徒的，也回来过年 */
+      'back-nephew': {
+        id: 'back-nephew',
+        blocks: [],
+        branches: [{ requires: [NEPHEW_AWAY], next: 'nephew-from-town' }],
+        next: 'granny',
+      },
+      'nephew-from-town': {
+        id: 'nephew-from-town',
+        blocks: [{ kind: 'narration', text: '{call:nephew}从镇上回来过年，穿着铺子里的青布衫。' }],
         next: 'granny',
       },
       granny: {
         id: 'granny',
         blocks: [],
         branches: [{ requires: [{ bond: { kind: '生母', alive: true } }], next: 'mother' }],
-        next: 'sister-in-law',
+        next: 'father-son',
       },
       mother: {
         id: 'mother',
@@ -283,7 +326,7 @@ export const kindredScenes: SceneLibrary = {
           { requires: [INLAWS_FOND, { flag: { key: 'inlaws-mended' } }], next: 'mother-mended' },
           { requires: [INLAWS_FOND], next: 'mother-fond' },
         ],
-        next: 'sister-in-law',
+        next: 'father-son',
       },
       /**
        * 婆媳不睦，你只看见结果。翻脸那件事发生的时候你不在场（`kindred:quarrel` 没有正文）：
@@ -294,7 +337,7 @@ export const kindredScenes: SceneLibrary = {
         blocks: [{ kind: 'narration', text: '娘跟嫂子一顿饭没说一句话。哥低着头吃。' }],
         branches: [
           { requires: [{ flag: { key: 'inlaws-quarrel-fresh' } }], next: 'told' },
-          { requires: [{ flag: { key: 'knows-bracelet' } }], next: 'sister-in-law' },
+          { requires: [{ flag: { key: 'knows-bracelet' } }], next: 'father-son' },
         ],
         next: 'untold',
       },
@@ -311,12 +354,12 @@ export const kindredScenes: SceneLibrary = {
           },
           { kind: 'narration', text: '他夹在中间，两头不是人。', tone: 'faint' },
         ],
-        next: 'sister-in-law',
+        next: 'father-son',
       },
       untold: {
         id: 'untold',
         blocks: [{ kind: 'narration', text: '你不知道为了什么。哥没说，你也没问。', tone: 'faint' }],
-        next: 'sister-in-law',
+        next: 'father-son',
       },
       'mother-mended': {
         id: 'mother-mended',
@@ -325,11 +368,56 @@ export const kindredScenes: SceneLibrary = {
           { kind: 'narration', text: '嫂子给娘添饭，娘拉着她的手说话。' },
           { kind: 'narration', text: '她们什么时候和好的，你不知道。', tone: 'faint' },
         ],
-        next: 'sister-in-law',
+        next: 'father-son',
       },
       'mother-fond': {
         id: 'mother-fond',
         blocks: [{ kind: 'narration', text: '嫂子给娘添饭，娘拉着她的手说话。' }],
+        next: 'father-son',
+      },
+      /**
+       * 父子那顿饭。他们不和、后来和好，都是你不在场的事（`life/nephew.ts`）；
+       * 你在这儿看见结果。和好的缘由是娘告诉你的——她得活着、得在老屋。哥没了，这一节不说
+       */
+      'father-son': {
+        id: 'father-son',
+        blocks: [],
+        branches: [
+          { requires: [{ bond: { kind: '兄', alive: true } }, FATHER_SON_SOUR], next: 'father-son-sour' },
+          {
+            requires: [{ bond: { kind: '兄', alive: true } }, { flag: { key: 'father-son-mended' } }],
+            next: 'father-son-mended',
+          },
+        ],
+        next: 'sister-in-law',
+      },
+      'father-son-sour': {
+        id: 'father-son-sour',
+        blocks: [{ kind: 'narration', text: '哥跟{call:nephew}一顿饭没说一句话。' }],
+        next: 'sister-in-law',
+      },
+      'father-son-mended': {
+        id: 'father-son-mended',
+        onEnter: [{ type: 'flag', key: 'father-son-mended', value: false }],
+        blocks: [{ kind: 'narration', text: '哥跟{call:nephew}又说上话了。' }],
+        branches: [
+          {
+            requires: [{ bond: { kind: '生母', alive: true } }, { flag: { key: 'old-home-mother' } }],
+            next: 'mother-tells',
+          },
+        ],
+        next: 'mended-unknown',
+      },
+      'mother-tells': {
+        id: 'mother-tells',
+        blocks: [
+          { kind: 'narration', text: '娘悄悄跟你说，哥病了一冬，是{call:nephew}守着的。', tone: 'faint' },
+        ],
+        next: 'sister-in-law',
+      },
+      'mended-unknown': {
+        id: 'mended-unknown',
+        blocks: [{ kind: 'narration', text: '什么时候的事，你不知道。', tone: 'faint' }],
         next: 'sister-in-law',
       },
       'sister-in-law': {
@@ -582,9 +670,23 @@ export const kindredScenes: SceneLibrary = {
         branches: [
           { requires: [{ house: { id: 'old-home', head: '生父' } }], next: 'father-still' },
           { requires: [{ house: { id: 'old-home', head: '弟' } }], next: 'uncle' },
+          {
+            requires: [{ family: { id: 'nephew', alive: true, age: { atLeast: 16 }, livelihood: ['佣工'] } }],
+            next: 'heir-back',
+          },
           { requires: [{ family: { id: 'nephew', alive: true, age: { atLeast: 16 } } }], next: 'heir' },
         ],
         next: 'widow',
+      },
+      /** 侄儿在镇上当学徒，爹没了他回来当家：地不能荒。他自己的营生清掉，落回老屋的 */
+      'heir-back': {
+        id: 'heir-back',
+        onEnter: [
+          { type: 'person', id: 'nephew', livelihood: null, backTo: 'old-home', doing: '种老屋那几亩地' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '老屋如今是{call:nephew}当家。他从镇上回来了——地不能荒。', tone: 'faint' },
+        ],
       },
       /** 弟弟没分出去、还住在老屋：兄终弟及 */
       uncle: {
@@ -976,7 +1078,8 @@ export const kindredEvents: readonly LifeEvent[] = [
     weight: 30,
   },
   {
-    // 哥改行：侄儿能顶地里的活了，哥把地交给他去镇上做木匠。年纪太大的不走，木讷谨慎的不走
+    // 哥改行：侄儿能顶地里的活了（成了人、还在地上），哥把地交给他去镇上做木匠。
+    // 年纪大的、木讷谨慎的不大走——是倾向不是规则，下一条是例外
     id: 'kindred-brother-turns',
     window: { from: 34, to: 60 },
     requires: [
@@ -984,8 +1087,22 @@ export const kindredEvents: readonly LifeEvent[] = [
       OLD_HOME_FARMS,
       BROTHER_FARMS,
       { family: { id: 'brother', age: { atMost: 55 } } },
-      { family: { id: 'nephew', alive: true, age: { atLeast: 16 } } },
+      { family: { id: 'nephew', alive: true, age: { atLeast: 16 }, livelihood: ['务农'] } },
       { temper: { id: 'brother', in: ['温和', '暴躁', '刚硬', '精明'] } },
+    ],
+    scene: 'kindred:brother-turns',
+    weight: 10,
+  },
+  {
+    // 欠你的粮一直还不上：五十五往上的、木讷谨慎的也会走——「更可能」不是「只允许」（用户 2026-09-07）
+    id: 'kindred-brother-turns-debt',
+    window: { from: 34, to: 70 },
+    requires: [
+      ...TWO_HOUSES,
+      OLD_HOME_FARMS,
+      BROTHER_FARMS,
+      OWES_ME,
+      { family: { id: 'nephew', alive: true, age: { atLeast: 16 }, livelihood: ['务农'] } },
     ],
     scene: 'kindred:brother-turns',
     weight: 10,
