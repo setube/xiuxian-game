@@ -24,7 +24,11 @@ import './lib/seeded'
  *   七、第一笔债——匀了粮就记一笔（谁欠谁、欠什么），没借的没有；还了就销，还不上就一直欠着；
  *       欠着的那些年正月里那句「谁也没提」有，销了就没有
  *   八、老屋的营生——种地的还的是粮、看收成；开铺子的折银子、看粮价。`House.livelihood` 的第一个读者
- *   九、尺子自检：把「不见面不减分」喂一条腐烂的边，第一条得红；把性情对调，第三条、第六条得红
+ *   九、侄儿长大——三岁躲、九岁凑过来、十六岁一般高；温和的自己跑来过、长大了跟你亲，木讷的没来过、
+ *       长大了客客气气，哥跟你再好也一样：他那条边是他的（代际关系不是静态继承的）
+ *   十、第三代——侄儿娶亲、侄孙出生都进老屋、岁数现算；哥没了老屋的当家是侄儿，你跟哥那条边不封口
+ *   十一、活世界——翻脸、和好都在你不在场的时候发生（没有正文、不进编年），你只在正月里看见结果
+ *   十二、尺子自检：把「不见面不减分」喂一条腐烂的边，第一条得红；把性情对调，第三条、第六条得红
  *
  * ## 两处采样上的坑，都踩过
  *
@@ -56,8 +60,11 @@ const LIVES = 240
 const CAP = 5000
 /** 走到分家（自己分出去）的世数，掷到够数为止 */
 const DIVIDES_WANTED = 24
-/** 走到借粮的世数：荒年得撞上分家之后，稀。两条路各要有人走 */
-const BORROWS_WANTED = 4
+/**
+ * 借粮两条路各要几世。荒年得撞上分家之后，稀——种子 k7 掷了一千零四十一世才凑够四世，
+ * 这一支跑了十分钟。所以第四条的判据改在摆好的局上量（下面），随机人生里的只报数。
+ */
+const BORROWS_WANTED = 0
 
 const COLD: readonly Temper[] = ['暴躁', '刚硬']
 
@@ -68,6 +75,112 @@ function termsFor(wife: Temper, mother: Temper): Terms {
   return '平常'
 }
 
+/**
+ * ## 四、六到十一是摆好的局，不是随机掷到的
+ *
+ * 四、六到十一问的是「这一处效果落下去，世界对不对」，不是「随机人生走不走得到」——走不走得到
+ * 归上面五条和各支的覆盖率。随机掷到「分了家、哥娶了亲、娘还在、荒年、又到了还粮那一年」
+ * 要几千世（头一版这一支为此跑了十分钟没跑完），而一局摆好只要几毫秒。所以照 `apart.ts`
+ * 的法子：出生、推到二十岁、分家，然后把库里那一卷一节一节演下去（`play`）——
+ * 条件用真的 `meetsAll` 判、正文用真的 `fillString` 落、效果用真的 `applyEffects` 结。
+ * 随机人生里也走到了几世，只报数，不作判据。
+ */
+type PeopleStore = ReturnType<typeof usePeopleStore>
+type WorldStore = ReturnType<typeof useWorldStore>
+type HouseholdStore = ReturnType<typeof useHouseholdStore>
+
+const CALM = { rain: 55, harvest: 58, grain: 112, order: 66, plague: 0 }
+
+/** 把库里的一卷一节一节演下去。有选项的节按 `choiceId` 选，没写就选第一个 */
+function play(sceneId: string, choiceId?: string): string[] {
+  const scene = lifeScenes[sceneId]
+  if (!scene) return []
+  const texts: string[] = []
+  let node = scene.nodes[scene.entry]
+  for (let step = 0; step < 32 && node; step += 1) {
+    applyEffects(node.onEnter)
+    for (const block of node.blocks) {
+      if ('text' in block && block.text) texts.push(fillString(block.text))
+    }
+    for (const one of node.seen ?? []) if (meetsAll(one.requires)) texts.push(fillString(one.text))
+    if (node.choices && node.choices.length > 0) {
+      const choice = node.choices.find((one) => one.id === choiceId) ?? node.choices[0]!
+      applyEffects(choice.effects)
+      if (!choice.next) break
+      node = scene.nodes[choice.next.replace(/^.*#/, '')]
+      continue
+    }
+    const target = node.branches?.find((one) => meetsAll(one.requires))?.next ?? node.next
+    if (!target) break
+    node = scene.nodes[target.replace(/^.*#/, '')]
+  }
+  return texts
+}
+
+interface Staged {
+  people: PeopleStore
+  world: WorldStore
+  household: HouseholdStore
+}
+
+/** 生在一个有哥、娘还在的人家，推到二十岁，分家。掷不出来就 null */
+function stage(origin: 'farm' | 'cloth'): Staged | null {
+  for (let tries = 0; tries < 600; tries += 1) {
+    setActivePinia(createPinia())
+    const household = useHouseholdStore()
+    const world = useWorldStore()
+    const people = usePeopleStore()
+    // 出身要在角色 store 建起来之前定：出生（立人、立户）发生在 `useCharacterStore()` 那一刻，
+    // 之后再 `beOf` 只改得了家境四格，改不了已经立起来的户——头一版摆出来的「布庄人家」老屋在种地
+    beOf(origin)
+    useCharacterStore()
+    useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale }).begin()
+    if (!people.isAlive('brother') || !people.isAlive('mother')) continue
+    world.regions = { [household.prefecture]: { state: { ...CALM }, last: {} } }
+    applyEffects([{ type: 'time', years: 20 }])
+    if (!people.isAlive('brother') || !people.isAlive('mother')) continue
+    applyEffects([{ type: 'divide', leaves: 'me' }])
+    if (!people.houses['old-home']) continue
+    // 摆好的局里只演几天的事。站在年尾，三天喜酒就跨了年，跨年才会有人殁——
+    // 先走到开春，走完再看人都还在不在
+    if (world.time.month >= 10) {
+      applyEffects([{ type: 'time', months: 13 - world.time.month }])
+      if (!people.isAlive('brother') || !people.isAlive('mother')) continue
+    }
+    return { people, world, household }
+  }
+  return null
+}
+
+function weather(s: Staged, patch: Partial<typeof CALM>): void {
+  s.world.regions = { [s.household.prefecture]: { state: { ...CALM, ...patch }, last: {} } }
+}
+
+/**
+ * 让一个人长到这个岁数：挪他的生年，不推世界。推世界十九年，哥和娘都可能殁在半路——
+ * 那是另一件事，不是这一局要量的
+ */
+function ageTo(s: Staged, id: string, age: number): void {
+  s.people.amend(id, { bornYear: s.world.time.year - age })
+}
+
+/** 让嫂子先在老屋里，性情由这一局定——娶亲那一卷的 `meet` 见到已有的人就不再造 */
+function marryIn(s: Staged, temper: Temper): void {
+  s.people.enroll(
+    makePerson({
+      id: 'brother-wife',
+      surname: '吴',
+      given: '氏',
+      gender: '女',
+      bornYear: s.world.time.year - 19,
+      temper,
+      doing: '操持家务',
+      place: s.people.personOf('brother')?.place ?? s.household.home,
+    }),
+  )
+  s.people.joinHouse('old-home', 'brother-wife')
+}
+
 interface Lived {
   divided: boolean
   /** 分家那一刻哥的好感，和之后每一个「老屋没事发生的年」采到的好感 */
@@ -76,6 +189,9 @@ interface Lived {
   wifeHouse: string | null
   nephewHouse: string | null
   nephewAges: number[]
+  /** 随机人生里走到了哪几步：侄儿成人、第三代——只报数，不作判据 */
+  nephewGrown: boolean
+  thirdGeneration: boolean
   newyearLines: string[]
   wifeTemper: Temper | null
   wifeCold: boolean | null
@@ -143,6 +259,8 @@ function live(): Lived {
     wifeHouse: null,
     nephewHouse: null,
     nephewAges: [],
+    nephewGrown: false,
+    thirdGeneration: false,
     newyearLines: [],
     wifeTemper: null,
     wifeCold: null,
@@ -176,7 +294,7 @@ function live(): Lived {
     return fresh
   }
   drain()
-  const KINDRED_TEXT = /老屋|嫂子|侄儿|正月里|喜酒/
+  const KINDRED_TEXT = /老屋|嫂子|侄儿|侄孙|侄媳|正月里|喜酒/
   let lastYear = world.time.year
   for (let turns = 0; !narrative.ended && turns < 240; turns += 1) {
     const open = narrative.options.filter((o) => !o.locked)
@@ -219,6 +337,9 @@ function live(): Lived {
       out.brotherBeforeBorrow = brotherBefore
       out.brotherAfterBorrow = brotherNow
     }
+
+    if (!out.nephewGrown && fired('kindred-nephew-grown')) out.nephewGrown = true
+    if (!out.thirdGeneration && fired('kindred-grandnephew')) out.thirdGeneration = true
 
     // 二、老屋在过日子。头一回见到他们时量住在哪一户；这一步里就夭折了的（时序跨了年）不量——
     // 殁了的人不在户里，那是对的
@@ -326,10 +447,7 @@ let bad = 0
 const lives: Lived[] = []
 for (let i = 0; i < LIVES; i += 1) lives.push(live())
 // 六到八不靠随机掷到（见下面「摆好的局」），所以这儿只等分家和借粮两条路够数
-const enough = (): boolean =>
-  lives.filter((l) => l.divided).length >= DIVIDES_WANTED &&
-  lives.filter((l) => l.lent === true).length >= BORROWS_WANTED / 2 &&
-  lives.filter((l) => l.lent === false).length >= BORROWS_WANTED / 2
+const enough = (): boolean => lives.filter((l) => l.divided).length >= DIVIDES_WANTED
 for (let tries = 0; tries < CAP && !enough(); tries += 1) lives.push(live())
 const divided = lives.filter((l) => l.divided)
 const wedded = divided.filter((l) => l.wifeHouse !== null)
@@ -440,10 +558,23 @@ if (divided.length < DIVIDES_WANTED) {
   const newyearTouches = Object.values(newyearScene?.nodes ?? {}).flatMap((node) =>
     effectsOf(node).filter((one) => one.type === 'meet' || one.type === 'relation'),
   )
-  if (lent.length < BORROWS_WANTED / 2 || refused.length < BORROWS_WANTED / 2) {
-    console.log(
-      `  ✗ 四、借粮掷不够：借了 ${lent.length} 世，没借 ${refused.length} 世，两条路各要 ${BORROWS_WANTED / 2} 世。`,
-    )
+  // 借了升、没借降：在摆好的局上量（随机人生里荒年撞上分家太稀）
+  const stagedWrong: string[] = []
+  for (const choice of ['lend', 'refuse'] as const) {
+    const st = stage('farm')
+    if (!st) {
+      stagedWrong.push('掷不出局')
+      continue
+    }
+    const before = st.people.known['brother']?.affinity ?? 0
+    play('kindred:borrow', choice)
+    const after = st.people.known['brother']?.affinity ?? 0
+    if (choice === 'lend' && !(after > before)) stagedWrong.push(`匀了粮，哥那条边 ${before}→${after}`)
+    if (choice === 'refuse' && !(after < before)) stagedWrong.push(`没借，哥那条边 ${before}→${after}`)
+  }
+  void BORROWS_WANTED
+  if (stagedWrong.length > 0) {
+    console.log(`  ✗ 四、${stagedWrong[0]}`)
     bad += 1
   } else if (lentWrong.length > 0 || refusedWrong.length > 0) {
     console.log(
@@ -455,7 +586,7 @@ if (divided.length < DIVIDES_WANTED) {
     bad += 1
   } else
     console.log(
-      `  ✓ 四、借了粮的 ${lent.length} 世好感升、没借的 ${refused.length} 世降；年节那一卷一格好感也不碰。`,
+      `  ✓ 四、匀了粮哥那条边升、没借的降；年节那一卷一格好感也不碰。（随机人生里借了 ${lent.length} 世、没借 ${refused.length} 世，方向都对）`,
     )
 }
 
@@ -471,97 +602,6 @@ if (divided.length < DIVIDES_WANTED) {
   } else console.log(`  ✓ 五、${mourned.length} 世娘在老屋没了，你回去守孝；守的时候她确实不在了。`)
 }
 
-/**
- * ## 六到八是摆好的局，不是随机掷到的
- *
- * 六到八问的是「这一处效果落下去，世界对不对」，不是「随机人生走不走得到」——走不走得到
- * 归上面五条和各支的覆盖率。随机掷到「分了家、哥娶了亲、娘还在、荒年、又到了还粮那一年」
- * 要几千世（头一版这一支为此跑了十分钟没跑完），而一局摆好只要几毫秒。所以照 `apart.ts`
- * 的法子：出生、推到二十岁、分家，然后把库里那一卷一节一节演下去（`play`）——
- * 条件用真的 `meetsAll` 判、正文用真的 `fillString` 落、效果用真的 `applyEffects` 结。
- * 随机人生里也走到了几世，只报数，不作判据。
- */
-type PeopleStore = ReturnType<typeof usePeopleStore>
-type WorldStore = ReturnType<typeof useWorldStore>
-type HouseholdStore = ReturnType<typeof useHouseholdStore>
-
-const CALM = { rain: 55, harvest: 58, grain: 112, order: 66, plague: 0 }
-
-/** 把库里的一卷一节一节演下去。有选项的节按 `choiceId` 选，没写就选第一个 */
-function play(sceneId: string, choiceId?: string): string[] {
-  const scene = lifeScenes[sceneId]
-  if (!scene) return []
-  const texts: string[] = []
-  let node = scene.nodes[scene.entry]
-  for (let step = 0; step < 32 && node; step += 1) {
-    applyEffects(node.onEnter)
-    for (const block of node.blocks) {
-      if ('text' in block && block.text) texts.push(fillString(block.text))
-    }
-    for (const one of node.seen ?? []) if (meetsAll(one.requires)) texts.push(fillString(one.text))
-    if (node.choices && node.choices.length > 0) {
-      const choice = node.choices.find((one) => one.id === choiceId) ?? node.choices[0]!
-      applyEffects(choice.effects)
-      if (!choice.next) break
-      node = scene.nodes[choice.next.replace(/^.*#/, '')]
-      continue
-    }
-    const target = node.branches?.find((one) => meetsAll(one.requires))?.next ?? node.next
-    if (!target) break
-    node = scene.nodes[target.replace(/^.*#/, '')]
-  }
-  return texts
-}
-
-interface Staged {
-  people: PeopleStore
-  world: WorldStore
-  household: HouseholdStore
-}
-
-/** 生在一个有哥、娘还在的人家，推到二十岁，分家。掷不出来就 null */
-function stage(origin: 'farm' | 'cloth'): Staged | null {
-  for (let tries = 0; tries < 600; tries += 1) {
-    setActivePinia(createPinia())
-    const household = useHouseholdStore()
-    const world = useWorldStore()
-    const people = usePeopleStore()
-    // 出身要在角色 store 建起来之前定：出生（立人、立户）发生在 `useCharacterStore()` 那一刻，
-    // 之后再 `beOf` 只改得了家境四格，改不了已经立起来的户——头一版摆出来的「布庄人家」老屋在种地
-    beOf(origin)
-    useCharacterStore()
-    useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale }).begin()
-    if (!people.isAlive('brother') || !people.isAlive('mother')) continue
-    world.regions = { [household.prefecture]: { state: { ...CALM }, last: {} } }
-    applyEffects([{ type: 'time', years: 20 }])
-    if (!people.isAlive('brother') || !people.isAlive('mother')) continue
-    applyEffects([{ type: 'divide', leaves: 'me' }])
-    if (!people.houses['old-home']) continue
-    return { people, world, household }
-  }
-  return null
-}
-
-function weather(s: Staged, patch: Partial<typeof CALM>): void {
-  s.world.regions = { [s.household.prefecture]: { state: { ...CALM, ...patch }, last: {} } }
-}
-
-/** 让嫂子先在老屋里，性情由这一局定——娶亲那一卷的 `meet` 见到已有的人就不再造 */
-function marryIn(s: Staged, temper: Temper): void {
-  s.people.enroll(
-    makePerson({
-      id: 'brother-wife',
-      surname: '吴',
-      given: '氏',
-      gender: '女',
-      bornYear: s.world.time.year - 19,
-      temper,
-      doing: '操持家务',
-      place: s.people.personOf('brother')?.place ?? s.household.home,
-    }),
-  )
-  s.people.joinHouse('old-home', 'brother-wife')
-}
 
 // 六、嫂子跟娘：第一条 NPC↔NPC 的边
 {
@@ -591,7 +631,15 @@ function marryIn(s: Staged, temper: Temper): void {
     )
     const want = termsFor(combo.wife, combo.mother)
     const label = `嫂子${combo.wife}、娘${combo.mother}`
-    if (!edge) wrong.push(`${label}：娶亲之后嫂子跟娘之间没有边`)
+    if (!edge) {
+      wrong.push(
+        `${label}：娶亲之后嫂子跟娘之间没有边（娘${s.people.isAlive('mother') ? '还在' : '不在了'} ${s.people.ageOf('mother')} 岁，` +
+          `嫂子${s.people.personOf('brother-wife')?.temper ?? '不在册'}，到娘的边：${s.people.relations
+            .filter((r) => r.to === 'mother')
+            .map((r) => `${r.from}:${r.bond}:${r.terms ?? ''}`)
+            .join(' ')}）`,
+      )
+    }
     else if (edge.terms !== want) wrong.push(`${label}：边上写的是 ${edge.terms}，该是 ${want}`)
     if ((s.people.known['mother']?.affinity ?? null) !== mineBefore) {
       wrong.push(`${label}：牵那条边动了你跟娘的好感`)
@@ -730,7 +778,206 @@ function marryIn(s: Staged, temper: Temper): void {
   }
 }
 
-// 九、尺子自检
+// 九、侄儿长大：代际关系不是静态继承的
+{
+  const wrong: string[] = []
+  const comes = lifeEvents.find((one) => one.id === 'kindred-nephew-comes')
+  const grown = lifeEvents.find((one) => one.id === 'kindred-nephew-grown')
+  // 一个温和的孩子：三岁躲、九岁凑过来、自己跑来找你、长大了跟你亲
+  const s = stage('farm')
+  if (!s || !comes || !grown) wrong.push('掷不出局，或者年表上没有侄儿那两卷')
+  else {
+    marryIn(s, '温和')
+    play('kindred:wedding')
+    play('kindred:nephew')
+    s.people.amend('nephew', { temper: '温和' })
+    ageTo(s, 'nephew', 3)
+    const at3 = play('kindred:newyear')
+    if (!at3.some((l) => l.includes('躲到'))) wrong.push(`三岁：${at3.find((l) => l.includes('侄儿')) ?? '（没提侄儿）'}`)
+    ageTo(s, 'nephew', 9)
+    const at9 = play('kindred:newyear')
+    if (!at9.some((l) => l.includes('凑过来'))) wrong.push(`九岁：${at9.find((l) => l.includes('侄儿')) ?? '（没提侄儿）'}`)
+    if (at9.some((l) => l.includes('躲到'))) wrong.push('九岁还躲在嫂子身后')
+    if (!meetsAll(comes.requires)) wrong.push('九岁、温和，「侄儿来了」那一卷却关着')
+    const brotherBefore = s.people.known['brother']?.affinity ?? null
+    const nephewBefore = s.people.known['nephew']?.affinity ?? 0
+    play('kindred:nephew-comes')
+    if ((s.people.known['nephew']?.affinity ?? 0) <= nephewBefore) wrong.push('他自己跑来了，他那条边没动')
+    if ((s.people.known['brother']?.affinity ?? null) !== brotherBefore) wrong.push('侄儿来了，动的却是哥那条边')
+    ageTo(s, 'nephew', 16)
+    const at16 = play('kindred:newyear')
+    if (!at16.some((l) => l.includes('一般高'))) wrong.push(`十六岁：${at16.find((l) => l.includes('侄儿')) ?? '（没提侄儿）'}`)
+    if (!meetsAll(grown.requires)) wrong.push('十六岁，「侄儿成人」那一卷却关着')
+    const lines = play('kindred:nephew-grown')
+    if (!lines.some((l) => l.includes('像小时候那样'))) wrong.push(`小时候来过的，长大了却：${lines[lines.length - 1]}`)
+    if (!(s.people.personOf('nephew')?.doing ?? '').includes('种地')) wrong.push(`农户老屋的侄儿成人了，手上的活是「${s.people.personOf('nephew')?.doing}」`)
+  }
+  // 一个木讷的孩子：不会自己跑来；长大了对你客客气气——哥跟你再好也一样
+  const t = stage('farm')
+  if (!t || !comes) wrong.push('掷不出第二局')
+  else {
+    marryIn(t, '温和')
+    play('kindred:wedding')
+    play('kindred:nephew')
+    t.people.amend('nephew', { temper: '木讷' })
+    ageTo(t, 'nephew', 9)
+    if (meetsAll(comes.requires)) wrong.push('木讷的孩子九岁也「自己跑来」了')
+    t.people.meet('brother', '哥', 30) // 哥跟你好
+    const nephewBefore = t.people.known['nephew']?.affinity ?? 0
+    ageTo(t, 'nephew', 16)
+    const lines = play('kindred:nephew-grown')
+    if (!lines.some((l) => l.includes('客客气气'))) wrong.push(`没来过的，长大了却：${lines[lines.length - 1]}`)
+    if ((t.people.known['nephew']?.affinity ?? 0) !== nephewBefore) wrong.push('客客气气的那一支动了他那条边')
+    const brother = t.people.known['brother']?.affinity ?? 0
+    const nephew = t.people.known['nephew']?.affinity ?? 0
+    if (!(brother > nephew)) wrong.push(`哥跟你好（${brother}）该压过侄儿（${nephew}）`)
+  }
+  const randomly = divided.filter((l) => l.nephewGrown).length
+  if (wrong.length > 0) {
+    console.log(`  ✗ 九、侄儿长大：${wrong[0]}（共 ${wrong.length} 处）`)
+    bad += 1
+  } else {
+    console.log(
+      `  ✓ 九、侄儿三岁躲、九岁凑过来、十六岁一般高；温和的自己跑来过、长大了跟你亲，木讷的没来过、长大了客客气气——` +
+        `哥跟你再好也一样，他那条边是他的。（随机人生里侄儿成人的 ${randomly} 世）`,
+    )
+  }
+}
+
+// 十、第三代
+{
+  const wrong: string[] = []
+  const s = stage('farm')
+  if (!s) wrong.push('掷不出局')
+  else {
+    marryIn(s, '温和')
+    play('kindred:wedding')
+    play('kindred:nephew')
+    ageTo(s, 'nephew', 19)
+    const weds = lifeEvents.find((one) => one.id === 'kindred-nephew-weds')
+    if (!weds || !meetsAll(weds.requires)) wrong.push('侄儿十九了，娶亲那一卷却关着')
+    play('kindred:nephew-weds')
+    ageTo(s, 'nephew', 20)
+    if (s.people.houseOf('nephew-wife')?.id !== 'old-home') wrong.push(`侄媳妇进的是 ${s.people.houseOf('nephew-wife')?.id ?? '（无）'}`)
+    const born = lifeEvents.find((one) => one.id === 'kindred-grandnephew')
+    if (!born || !meetsAll(born.requires)) wrong.push('侄媳妇进了门，添丁那一卷却关着')
+    const lines = play('kindred:grandnephew')
+    if (s.people.houseOf('grandnephew')?.id !== 'old-home') wrong.push(`侄孙进的是 ${s.people.houseOf('grandnephew')?.id ?? '（无）'}`)
+    if (!lines.some((l) => l.includes('手都不知道往哪儿放'))) wrong.push('哥还在，添丁那句却没提他')
+    ageTo(s, 'grandnephew', 3)
+    if (s.people.ageOf('grandnephew') !== 3) wrong.push(`侄孙三年后 ${s.people.ageOf('grandnephew')} 岁`)
+    // 爹还在的话先送走爹：老屋的当家换成哥（成年的儿子），那是他殁那一刻的事
+    if (s.people.isAlive('father')) {
+      applyEffects([{ type: 'person', id: 'father', fate: '殁' }])
+      if (s.people.houses['old-home']?.head !== 'brother') wrong.push(`爹没了，老屋的当家是 ${s.people.houses['old-home']?.head}`)
+    }
+    // 哥没了：老屋的当家换成侄儿，那是他殁那一刻的事；你跟哥那条边不封口
+    applyEffects([{ type: 'person', id: 'brother', fate: '殁' }])
+    // 谁该当家：没分出去、还住在老屋的成年弟弟（兄终弟及）压过侄儿；没有这样的弟弟才是侄儿
+    const old = s.people.houses['old-home']
+    const uncle = s.people
+      .kinOf('弟')
+      .find((id) => s.people.isAlive(id) && s.people.ageOf(id) >= 16 && (old?.members ?? []).includes(id))
+    const heir = uncle ?? 'nephew'
+    if (old?.head !== heir) wrong.push(`哥没了，老屋的当家该是 ${heir}，是 ${old?.head}`)
+    if (s.people.houses['old-home']?.members.includes('brother')) wrong.push('哥没了还在老屋的户里')
+    const edge = s.people.relations.find((r) => r.from === 'me' && r.to === 'brother' && r.bond === '兄')
+    if (!edge || edge.until !== null) wrong.push('哥没了，「他是你哥」那条边被封了口')
+    const gone = lifeEvents.find((one) => one.id === 'kindred-brother-gone')
+    if (!gone || !meetsAll(gone.requires)) wrong.push('哥没了，丧事那一卷却关着')
+    const mourning = play('kindred:brother-gone')
+    if (!mourning.some((l) => l.includes('当家'))) wrong.push(`哥没了那一卷没说谁当家：${mourning[mourning.length - 1]}`)
+    if (uncle && !mourning.some((l) => l.includes('轮不到他'))) wrong.push('弟弟当了家，那一卷却说是侄儿')
+    if (!uncle && mourning.some((l) => l.includes('轮不到他'))) wrong.push('侄儿当了家，那一卷却说是弟弟')
+    // 哥没了照样走动：送你到巷口的是侄儿
+    const after = play('kindred:newyear')
+    if (!after.some((l) => l.includes('送你到巷口') && l.includes('叔'))) wrong.push('哥没了，正月里送你到巷口的不是侄儿')
+  }
+  const randomly = divided.filter((l) => l.thirdGeneration).length
+  if (wrong.length > 0) {
+    console.log(`  ✗ 十、第三代：${wrong[0]}（共 ${wrong.length} 处）`)
+    bad += 1
+  } else {
+    console.log(
+      `  ✓ 十、侄儿娶亲、侄孙出生都进老屋、岁数现算；哥没了老屋的当家是侄儿，你跟哥那条边不封口，正月里送你到巷口的换成侄儿。（随机人生里到第三代的 ${randomly} 世）`,
+    )
+  }
+}
+
+// 十一、活世界：老屋里的事发生的时候你不在场
+{
+  const wrong: string[] = []
+  for (const id of ['kindred:quarrel', 'kindred:mend']) {
+    const scene = lifeScenes[id]
+    const spoken = Object.values(scene?.nodes ?? {}).some((node) => node.blocks.length > 0 || (node.seen?.length ?? 0) > 0)
+    if (!scene) wrong.push(`库里没有 ${id}`)
+    else if (spoken) wrong.push(`${id} 有正文——你不在场的事不该有你读到的话`)
+    else if (Object.values(scene.nodes).some((node) => effectsOf(node).some((e) => e.type === 'chronicle'))) {
+      wrong.push(`${id} 记了编年——你不在场的事不该进你的编年`)
+    }
+  }
+  // 赶上了那一回：哥送你到巷口说了缘由
+  const s = stage('farm')
+  if (!s) wrong.push('掷不出局')
+  else {
+    s.people.amend('mother', { temper: '温和' })
+    marryIn(s, '温和')
+    play('kindred:wedding')
+    play('kindred:nephew')
+    ageTo(s, 'nephew', 3)
+    const chronicleBefore = s.world.chronicle.length
+    const quarrel = play('kindred:quarrel')
+    if (quarrel.length > 0) wrong.push('翻脸那一卷落了正文')
+    if (s.world.chronicle.length !== chronicleBefore) wrong.push('翻脸那一卷进了编年')
+    if (s.people.termsBetween('brother-wife', 'mother') !== '不睦') wrong.push('翻了脸，边上不是不睦')
+    const visit = play('kindred:newyear')
+    if (!visit.some((l) => l.includes('没说一句话'))) wrong.push('翻了脸，正月里那顿饭却有人说话')
+    if (!visit.some((l) => l.includes('镯子'))) wrong.push('赶上了那一回，哥却没说镯子的事')
+    const again = play('kindred:newyear')
+    if (again.some((l) => l.includes('镯子'))) wrong.push('镯子的事说了两回')
+    if (again.some((l) => l.includes('你不知道为了什么'))) wrong.push('知道了缘由还说不知道')
+  }
+  // 没赶上：一辈子不知道为了什么；后来她们和好了，你也只看见结果
+  const t = stage('farm')
+  if (!t) wrong.push('掷不出第二局')
+  else {
+    t.people.amend('mother', { temper: '温和' })
+    marryIn(t, '温和')
+    play('kindred:wedding')
+    play('kindred:nephew')
+    ageTo(t, 'nephew', 3)
+    play('kindred:quarrel')
+    const mend = lifeEvents.find((one) => one.id === 'kindred-mend')
+    // 娘还不到五十五：和好那一卷关着；把她的生年往前挪，就开了
+    if (!mend) wrong.push('年表上没有和好那一卷')
+    else {
+      const mother = t.people.personOf('mother')
+      if (mother && t.people.ageOf('mother') < 55) {
+        if (meetsAll(mend.requires)) wrong.push('娘还没老，和好那一卷就开了')
+        t.people.amend('mother', { bornYear: mother.bornYear - (56 - t.people.ageOf('mother')) })
+      }
+      if (!meetsAll(mend.requires)) wrong.push('婆媳不睦、娘老了，和好那一卷却关着')
+      const chronicleBefore = t.world.chronicle.length
+      const lines = play('kindred:mend')
+      if (lines.length > 0 || t.world.chronicle.length !== chronicleBefore) wrong.push('和好那一卷落了正文或进了编年')
+      if (t.people.termsBetween('brother-wife', 'mother') !== '亲厚') wrong.push('和好了，边上不是亲厚')
+      const visit = play('kindred:newyear')
+      if (!visit.some((l) => l.includes('添饭'))) wrong.push('和好了，正月里却没看见嫂子给娘添饭')
+      if (!visit.some((l) => l.includes('什么时候和好的，你不知道'))) wrong.push('没赶上翻脸也没赶上和好，正月里却像什么都知道')
+      if (visit.some((l) => l.includes('镯子'))) wrong.push('没人跟你说过镯子，你却知道')
+    }
+  }
+  if (wrong.length > 0) {
+    console.log(`  ✗ 十一、活世界：${wrong[0]}（共 ${wrong.length} 处）`)
+    bad += 1
+  } else {
+    console.log(
+      `  ✓ 十一、翻脸、和好都在你不在场的时候发生（没有正文、不进编年）；你只在正月里看见结果——赶上那一回才知道缘由，没赶上的一辈子不知道。`,
+    )
+  }
+}
+
+// 十二、尺子自检
 {
   const rotten = driftOf(40, [
     { year: 1, affinity: 40 },
@@ -756,10 +1003,10 @@ function marryIn(s: Staged, temper: Temper): void {
     termsFor('温和', '暴躁') === '亲厚'
   if (rotten !== 2 || steady !== 0 || swapped !== 2 || right !== 0 || !inlawsRuler) {
     console.log(
-      `  ✗ 九、尺子自检：腐烂的边抓到 ${rotten}/2，稳的边误抓 ${steady}，性情对调抓到 ${swapped}/2，对的误抓 ${right}，婆媳那把尺${inlawsRuler ? '对' : '错'}。`,
+      `  ✗ 十二、尺子自检：腐烂的边抓到 ${rotten}/2，稳的边误抓 ${steady}，性情对调抓到 ${swapped}/2，对的误抓 ${right}，婆媳那把尺${inlawsRuler ? '对' : '错'}。`,
     )
     bad += 1
-  } else console.log(`  ✓ 九、尺子自检：腐烂的边抓得到、稳的边放得过；性情对调当场红；婆媳那把尺四种性情组合都对。`)
+  } else console.log(`  ✓ 十二、尺子自检：腐烂的边抓得到、稳的边放得过；性情对调当场红；婆媳那把尺四种性情组合都对。`)
 }
 
 console.log()

@@ -743,14 +743,15 @@ export const encounterEvents: readonly LifeEvent[] = [
   {
     id: 'omen-merchant-2',
     window: { from: 11, to: 14 },
-    requires: [{ flag: { key: 'met-merchant' } }],
+    // 他有身子了（不再是一句称呼），会老会死：死在路上的人不会「又来了」
+    requires: [{ flag: { key: 'met-merchant' } }, { family: { id: 'merchant', alive: true } }],
     scene: 'omen:merchant',
     weight: 10,
   },
   {
     id: 'omen-merchant-3',
     window: { from: 14, to: 16 },
-    requires: [{ flag: { key: 'met-merchant' } }],
+    requires: [{ flag: { key: 'met-merchant' } }, { family: { id: 'merchant', alive: true } }],
     scene: 'omen:merchant',
     weight: 10,
   },

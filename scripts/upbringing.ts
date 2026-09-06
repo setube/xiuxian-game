@@ -341,7 +341,7 @@ function livingsUnder(conditions: readonly Condition[] | undefined): Set<string>
       // `family` 问的是人口册里有没有这个 id 且还在世，跟 `bond` 是一回事的两种写法。
       // 欠债那条链后半截问的就是它（`{ family: { id: 'father', alive: true } }`）
       const who = one.family.id
-      const mustLive = one.family.alive
+      const mustLive = one.family.alive === true
       const found = livingsWithKin(
         (kin) => kin.id === who && !(mustLive && kin.goneAtBirth === true),
       )

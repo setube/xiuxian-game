@@ -1280,8 +1280,11 @@ export interface Condition {
   age?: { atLeast?: number; atMost?: number }
   /** 家境刻度闭区间。隐藏刻度，只在这里露面 */
   standing?: { atLeast?: number; atMost?: number }
-  /** 某位家人是否在世 */
-  family?: { id: string; alive: boolean }
+  /**
+   * 某个人在不在世、多大。`age` 的第一个读者是侄儿：三岁躲在嫂子身后，九岁凑过来问东问西，
+   * 十六岁跟哥一般高——同一句正文不能从三岁念到三十岁（写死的字段活得比事实久）。
+   */
+  family?: { id: string; alive?: boolean; age?: { atLeast?: number; atMost?: number } }
   /**
    * 有没有某一层关系，那个人还在不在，还在不在你身边。
    *

@@ -67,7 +67,13 @@ const CHECKS = {
 
   standing: (standing, { household }) => within(household.standing, standing),
 
-  family: (family, { household }) => household.isAlive(family.id) === family.alive,
+  family: (family, { household }) => {
+    if (family.alive !== undefined && household.isAlive(family.id) !== family.alive) return false
+    if (family.age !== undefined && !within(usePeopleStore().ageOf(family.id), family.age)) {
+      return false
+    }
+    return true
+  },
 
   /**
    * 有没有这层关系，那个人还在不在，还在不在你身边，这条边牵了多久。

@@ -47,6 +47,8 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
 
 /** 分了家、哥还在，这一册才有得说 */
 const TWO_HOUSES = [{ house: { divided: true } }, { bond: { kind: '兄', alive: true } }] as const
+/** 分了家就行——哥没了老屋还在，侄儿当家，走动照旧 */
+const OLD_HOUSE = [{ house: { divided: true } }] as const
 
 /** 嫂子处不处得来：从她的性情里出。刚硬、暴躁的跟你不对付，别的处得来 */
 const COLD_SISTER_IN_LAW = { temper: { id: 'brother-wife', in: ['暴躁', '刚硬'] } } as const
@@ -201,8 +203,10 @@ export const kindredScenes: SceneLibrary = {
 
   /**
    * 年节走动。这一卷**一格好感也不改**：见面不加分，不见面也不减分。
-   * 变的只有人——侄儿长了几岁，娘更老了，嫂子照旧那个样子；
-   * 娘跟嫂子那顿饭有没有人说话；那笔粮谁也不提。
+   * 变的只有人——侄儿长了几岁（三岁躲、九岁凑过来、十六岁一般高：同一句不能从三岁念到三十岁），
+   * 娘更老了，嫂子照旧那个样子；娘跟嫂子那顿饭有没有人说话；那笔粮谁也不提。
+   *
+   * 哥没了之后照样走动：送你到巷口的换成侄儿。老屋是一户，不是哥一个人。
    */
   'kindred:newyear': {
     id: 'kindred:newyear',
@@ -212,13 +216,43 @@ export const kindredScenes: SceneLibrary = {
       open: {
         id: 'open',
         onEnter: [{ type: 'time', days: 2 }],
+        blocks: [{ kind: 'narration', text: '正月里你回了一趟老屋。' }],
+        branches: [
+          { requires: [{ family: { id: 'nephew', age: { atMost: 6 } } }], next: 'small' },
+          { requires: [{ family: { id: 'nephew', age: { atMost: 12 } } }], next: 'boy' },
+        ],
+        next: 'tall',
+      },
+      small: {
+        id: 'small',
         blocks: [
-          { kind: 'narration', text: '正月里你回了一趟老屋。' },
           {
             kind: 'narration',
             text: '{call:nephew}已经{age:nephew}了，见了你先躲到{call:brother-wife}身后，过一会儿才出来。',
           },
         ],
+        next: 'granny',
+      },
+      boy: {
+        id: 'boy',
+        blocks: [
+          {
+            kind: 'narration',
+            text: '{call:nephew}已经{age:nephew}了，不躲了，凑过来看你腰上挂的东西，问东问西。',
+          },
+        ],
+        next: 'granny',
+      },
+      tall: {
+        id: 'tall',
+        blocks: [
+          { kind: 'narration', text: '{call:nephew}已经跟哥一般高了。见了你叫一声叔，接过你手里的东西。' },
+        ],
+        next: 'granny',
+      },
+      granny: {
+        id: 'granny',
+        blocks: [],
         branches: [{ requires: [{ bond: { kind: '生母', alive: true } }], next: 'mother' }],
         next: 'sister-in-law',
       },
@@ -227,13 +261,51 @@ export const kindredScenes: SceneLibrary = {
         blocks: [{ kind: 'narration', text: '娘坐在灶边，问你那边过得怎么样。你说都好。' }],
         branches: [
           { requires: [INLAWS_SOUR], next: 'mother-sour' },
+          { requires: [INLAWS_FOND, { flag: { key: 'inlaws-mended' } }], next: 'mother-mended' },
           { requires: [INLAWS_FOND], next: 'mother-fond' },
         ],
         next: 'sister-in-law',
       },
+      /**
+       * 婆媳不睦，你只看见结果。翻脸那件事发生的时候你不在场（`kindred:quarrel` 没有正文）：
+       * 这一回哥送你到巷口才压着声说了镯子的事；没赶上这一回的，一辈子不知道为了什么。
+       */
       'mother-sour': {
         id: 'mother-sour',
         blocks: [{ kind: 'narration', text: '娘跟嫂子一顿饭没说一句话。哥低着头吃。' }],
+        branches: [
+          { requires: [{ flag: { key: 'inlaws-quarrel-fresh' } }], next: 'told' },
+          { requires: [{ flag: { key: 'knows-bracelet' } }], next: 'sister-in-law' },
+        ],
+        next: 'untold',
+      },
+      told: {
+        id: 'told',
+        onEnter: [
+          { type: 'flag', key: 'inlaws-quarrel-fresh', value: false },
+          { type: 'flag', key: 'knows-bracelet', value: true },
+        ],
+        blocks: [
+          {
+            kind: 'narration',
+            text: '走的时候哥送你到巷口，压着声说了镯子的事——娘陪嫁的那副，娘说给孙子留着，嫂子说早该当了买粮。',
+          },
+          { kind: 'narration', text: '他夹在中间，两头不是人。', tone: 'faint' },
+        ],
+        next: 'sister-in-law',
+      },
+      untold: {
+        id: 'untold',
+        blocks: [{ kind: 'narration', text: '你不知道为了什么。哥没说，你也没问。', tone: 'faint' }],
+        next: 'sister-in-law',
+      },
+      'mother-mended': {
+        id: 'mother-mended',
+        onEnter: [{ type: 'flag', key: 'inlaws-mended', value: false }],
+        blocks: [
+          { kind: 'narration', text: '嫂子给娘添饭，娘拉着她的手说话。' },
+          { kind: 'narration', text: '她们什么时候和好的，你不知道。', tone: 'faint' },
+        ],
         next: 'sister-in-law',
       },
       'mother-fond': {
@@ -251,17 +323,29 @@ export const kindredScenes: SceneLibrary = {
         id: 'cold',
         blocks: [
           { kind: 'narration', text: '{call:brother-wife}照旧没多话。你坐了一顿饭的工夫就走了。' },
-          { kind: 'narration', text: '哥送你到巷口。他说，她就那个脾气。', tone: 'faint' },
         ],
-        next: 'debt',
+        next: 'lane',
       },
       warm: {
         id: 'warm',
+        blocks: [{ kind: 'narration', text: '{call:brother-wife}留你住了一夜。' }],
+        next: 'lane',
+      },
+      lane: {
+        id: 'lane',
+        blocks: [],
+        branches: [{ requires: [{ bond: { kind: '兄', alive: true } }], next: 'lane-brother' }],
+        next: 'lane-nephew',
+      },
+      'lane-brother': {
+        id: 'lane-brother',
+        blocks: [{ kind: 'narration', text: '走的时候哥送你到巷口。', tone: 'faint' }],
+        next: 'debt',
+      },
+      'lane-nephew': {
+        id: 'lane-nephew',
         blocks: [
-          {
-            kind: 'narration',
-            text: '{call:brother-wife}留你住了一夜。第二天走的时候，哥送你到巷口。',
-          },
+          { kind: 'narration', text: '走的时候{call:nephew}送你到巷口。他说，叔，常来。', tone: 'faint' },
         ],
         next: 'debt',
       },
@@ -279,6 +363,208 @@ export const kindredScenes: SceneLibrary = {
       done: {
         id: 'done',
         blocks: [],
+      },
+    },
+  },
+
+  /**
+   * 侄儿自己跑来了。
+   *
+   * 代际关系不是静态继承的：他跟你怎样，不由哥跟你怎样定，也不由嫂子跟你怎样定。
+   * 木讷、谨慎的孩子不会自己跑来；别的孩子八九岁上会——嫂子跟你不对付也拦不住。
+   * 这一回是他跟你之间自己的事，好感是他那条边上的。
+   */
+  'kindred:nephew-comes': {
+    id: 'kindred:nephew-comes',
+    title: '侄儿来了',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [
+          { type: 'time', days: 1 },
+          { type: 'meet', id: 'nephew', delta: 8, note: '八九岁上自己跑来找过你。' },
+          { type: 'flag', key: 'nephew-came', value: true },
+        ],
+        blocks: [
+          { kind: 'narration', text: '{call:nephew}自己跑来了，一个人，鞋上都是泥。' },
+          { kind: 'narration', text: '他说想来看看。你留他吃了饭，天黑前送他回去。' },
+        ],
+        branches: [{ requires: [COLD_SISTER_IN_LAW], next: 'behind-her-back' }],
+        next: 'done',
+      },
+      'behind-her-back': {
+        id: 'behind-her-back',
+        blocks: [{ kind: 'narration', text: '他没跟{call:brother-wife}说。', tone: 'faint' }],
+      },
+      done: {
+        id: 'done',
+        blocks: [],
+      },
+    },
+  },
+
+  /**
+   * 侄儿成人了。手上有了活（老屋靠什么过活，他就干什么）；
+   * 小时候自己跑来过的，长大了跟你亲；没来过的，对你客客气气，像对一个远亲——
+   * **哪怕哥跟你再好**。
+   */
+  'kindred:nephew-grown': {
+    id: 'kindred:nephew-grown',
+    title: '侄儿成人',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [{ type: 'time', days: 1 }],
+        blocks: [{ kind: 'narration', text: '{call:nephew}成人了，已经跟哥一般高。' }],
+        branches: [{ requires: [{ house: { id: 'old-home', livelihood: '务农' } }], next: 'fields' }],
+        next: 'shop',
+      },
+      fields: {
+        id: 'fields',
+        onEnter: [{ type: 'person', id: 'nephew', doing: '跟着爹种地' }],
+        blocks: [{ kind: 'narration', text: '老屋那几亩地，如今是他跟哥两个人种。' }],
+        next: 'how',
+      },
+      shop: {
+        id: 'shop',
+        onEnter: [{ type: 'person', id: 'nephew', doing: '在铺子里帮忙' }],
+        blocks: [{ kind: 'narration', text: '铺子里的活，如今是他跟哥两个人做。' }],
+        next: 'how',
+      },
+      how: {
+        id: 'how',
+        blocks: [],
+        branches: [{ requires: [{ flag: { key: 'nephew-came' } }], next: 'close' }],
+        next: 'polite',
+      },
+      close: {
+        id: 'close',
+        onEnter: [{ type: 'meet', id: 'nephew', delta: 6, note: '长大了还是跟你亲。' }],
+        blocks: [
+          { kind: 'narration', text: '见了你还是像小时候那样，先把手里的东西放下，凑过来。' },
+        ],
+      },
+      polite: {
+        id: 'polite',
+        blocks: [
+          { kind: 'narration', text: '他对你客客气气的，叫一声叔，再没别的话。像对一个远亲。' },
+        ],
+      },
+    },
+  },
+
+  /** 侄儿娶亲。老屋添的人进老屋，是你的侄媳妇，不是你这一户的人 */
+  'kindred:nephew-weds': {
+    id: 'kindred:nephew-weds',
+    title: '老屋又办喜事',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [
+          { type: 'time', days: 3 },
+          {
+            type: 'meet',
+            id: 'nephew-wife',
+            calls: '侄媳妇',
+            delta: 2,
+            who: { surname: '林', given: '氏', gender: '女', age: 18, doing: '操持家务', house: 'old-home' },
+            bond: '亲戚',
+          },
+          { type: 'chronicle', text: '侄儿娶了亲。' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '老屋捎话来，{call:nephew}定了日子。' },
+          { kind: 'narration', text: '那天你又回去吃了喜酒。上一回坐在上首的是哥，这一回哥坐到了一边。' },
+        ],
+      },
+    },
+  },
+
+  /** 第三代。老屋添的孩子进老屋，岁数从生年现算——跟侄儿当年一样 */
+  'kindred:grandnephew': {
+    id: 'kindred:grandnephew',
+    title: '老屋的第三代',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [
+          { type: 'time', days: 2 },
+          {
+            type: 'meet',
+            id: 'grandnephew',
+            calls: '侄孙',
+            delta: 4,
+            who: { given: '石头', gender: '男', age: 0, house: 'old-home' },
+            bond: '亲戚',
+          },
+          { type: 'chronicle', text: '老屋添了第三代。' },
+        ],
+        blocks: [{ kind: 'narration', text: '{call:nephew}家添了个儿子。老屋有了第三代。' }],
+        branches: [{ requires: [{ bond: { kind: '兄', alive: true } }], next: 'grandpa' }],
+        next: 'gone',
+      },
+      grandpa: {
+        id: 'grandpa',
+        blocks: [{ kind: 'narration', text: '哥抱着孩子，手都不知道往哪儿放。' }],
+      },
+      gone: {
+        id: 'gone',
+        blocks: [{ kind: 'narration', text: '哥没赶上看见。', tone: 'faint' }],
+      },
+    },
+  },
+
+  /**
+   * 哥没了。老屋的当家换人——户主换人是 `people.keepHeads` 在他殁的那一刻做的，
+   * 这一卷只是把它讲出来：儿子成人了就是儿子，没成人就是嫂子当家。
+   */
+  'kindred:brother-gone': {
+    id: 'kindred:brother-gone',
+    title: '老屋的丧事',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [
+          { type: 'time', days: 9 },
+          { type: 'chronicle', text: '哥没了。你回老屋守了七天。', tone: 'cinnabar' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '老屋捎话来，哥没了。' },
+          { kind: 'narration', text: '你回去守了七天。这一回没有人跪在你前头。' },
+        ],
+        /**
+         * 谁当家，问户，不问辈分想当然：爹还在是爹；没分出去的弟弟还在老屋，兄终弟及是他
+         * （`keepHeads` 挑的是户里最年长的成年男丁）；再才是侄儿；都没有，嫂子当家。
+         */
+        branches: [
+          { requires: [{ house: { id: 'old-home', head: '生父' } }], next: 'father-still' },
+          { requires: [{ house: { id: 'old-home', head: '弟' } }], next: 'uncle' },
+          { requires: [{ family: { id: 'nephew', alive: true, age: { atLeast: 16 } } }], next: 'heir' },
+        ],
+        next: 'widow',
+      },
+      /** 弟弟没分出去、还住在老屋：兄终弟及 */
+      uncle: {
+        id: 'uncle',
+        blocks: [{ kind: 'narration', text: '老屋如今是{call:sibling}当家。侄儿还小，轮不到他。', tone: 'faint' }],
+      },
+      /** 白发人送黑发人：爹还在，老屋就还是爹当家 */
+      'father-still': {
+        id: 'father-still',
+        blocks: [{ kind: 'narration', text: '爹还在。老屋还是他当家，只是话更少了。', tone: 'faint' }],
+      },
+      heir: {
+        id: 'heir',
+        blocks: [{ kind: 'narration', text: '老屋如今是{call:nephew}当家。', tone: 'faint' }],
+      },
+      widow: {
+        id: 'widow',
+        blocks: [{ kind: 'narration', text: '老屋里只剩嫂子和孩子。', tone: 'faint' }],
       },
     },
   },
@@ -359,7 +645,10 @@ export const kindredScenes: SceneLibrary = {
         onEnter: [{ type: 'time', days: 1 }],
         blocks: [],
         branches: [
-          { requires: [OLD_HOME_FARMS, { region: { harvest: { atLeast: 50 } } }], next: 'grain-back' },
+          {
+            requires: [OLD_HOME_FARMS, { region: { harvest: { atLeast: 50 } } }],
+            next: 'grain-back',
+          },
           { requires: [OLD_HOME_FARMS], next: 'grain-short' },
           { requires: [{ region: { grain: { atMost: 110 } } }], next: 'silver-back' },
         ],
@@ -377,9 +666,7 @@ export const kindredScenes: SceneLibrary = {
       },
       'grain-short': {
         id: 'grain-short',
-        blocks: [
-          { kind: 'narration', text: '秋后他没来。老屋那边也没打下多少，你没去问。' },
-        ],
+        blocks: [{ kind: 'narration', text: '秋后他没来。老屋那边也没打下多少，你没去问。' }],
       },
       'silver-back': {
         id: 'silver-back',
@@ -387,7 +674,9 @@ export const kindredScenes: SceneLibrary = {
           { type: 'repay', debtor: 'brother', creditor: 'me' },
           { type: 'chronicle', text: '哥折了银子把粮还了。' },
         ],
-        blocks: [{ kind: 'narration', text: '年底哥折了银子送来。他说，粮价下来了，铺子里缓过来了。' }],
+        blocks: [
+          { kind: 'narration', text: '年底哥折了银子送来。他说，粮价下来了，铺子里缓过来了。' },
+        ],
       },
       'silver-short': {
         id: 'silver-short',
@@ -397,8 +686,11 @@ export const kindredScenes: SceneLibrary = {
   },
 
   /**
-   * 婆媳翻脸。为一副娘陪嫁的镯子——这件事在老屋那条边上，**跟你没关系**：
-   * 你去劝，谁也没听你的；你跟娘、跟嫂子的好感一格不动。哥夹在中间。
+   * 婆媳翻脸。为一副娘陪嫁的镯子——这件事在老屋那条边上，**你不在场**。
+   *
+   * 这一卷没有正文、不记编年：世界不是为玩家准备的，老屋里的事发生的时候你在自己家。
+   * 你只在下一回正月看见结果（那顿饭没人说话）；哥赶上那一回送你到巷口才说了缘由，
+   * 没赶上的一辈子不知道为了什么。你跟娘、跟嫂子的好感一格不动。
    */
   'kindred:quarrel': {
     id: 'kindred:quarrel',
@@ -408,18 +700,31 @@ export const kindredScenes: SceneLibrary = {
       open: {
         id: 'open',
         onEnter: [
-          { type: 'time', days: 2 },
           { type: 'tie', from: 'brother-wife', to: 'mother', bond: '亲戚', terms: '不睦' },
-          { type: 'chronicle', text: '老屋婆媳为一副镯子翻了脸。' },
+          { type: 'flag', key: 'inlaws-quarrel-fresh', value: true },
         ],
-        blocks: [
-          {
-            kind: 'narration',
-            text: '老屋那边闹了一场。为一副娘陪嫁的银镯子——娘说给孙子留着，嫂子说早该当了买粮。',
-          },
-          { kind: 'narration', text: '哥夹在中间，两头不是人。你去劝，谁也没听你的。' },
-          { kind: 'narration', text: '从那以后，娘跟嫂子说话都是隔着哥说。', tone: 'faint' },
+        blocks: [],
+      },
+    },
+  },
+
+  /**
+   * 和好了。娘病了一冬，是嫂子伺候的——也是你不在场的事，正月里看见嫂子给娘添饭才知道，
+   * 中间发生了什么你不知道。关系变化来自具体的事，不来自日历翻页；这件事不是你的事。
+   */
+  'kindred:mend': {
+    id: 'kindred:mend',
+    title: '那一冬',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [
+          { type: 'tie', from: 'brother-wife', to: 'mother', bond: '亲戚', terms: '亲厚' },
+          { type: 'flag', key: 'inlaws-quarrel-fresh', value: false },
+          { type: 'flag', key: 'inlaws-mended', value: true },
         ],
+        blocks: [],
       },
     },
   },
@@ -461,13 +766,21 @@ export const kindredScenes: SceneLibrary = {
       fond: {
         id: 'fond',
         blocks: [
-          { kind: 'narration', text: '老人家没了的时候，是嫂子在跟前。她跟你说，没受罪。', tone: 'faint' },
+          {
+            kind: 'narration',
+            text: '老人家没了的时候，是嫂子在跟前。她跟你说，没受罪。',
+            tone: 'faint',
+          },
         ],
       },
       sour: {
         id: 'sour',
         blocks: [
-          { kind: 'narration', text: '老人家最后那两年，饭是自己烧的。你没问，哥也没说。', tone: 'faint' },
+          {
+            kind: 'narration',
+            text: '老人家最后那两年，饭是自己烧的。你没问，哥也没说。',
+            tone: 'faint',
+          },
         ],
       },
       cold: {
@@ -509,17 +822,67 @@ export const kindredEvents: readonly LifeEvent[] = [
   },
   {
     // 年节走动，年年可能有。权重压低：绝大多数正月没什么可记的，正是这一卷要说的话。
-    // 「躲到嫂子身后」得是个会走路的孩子：满月那天认下的侄儿，认了三年就是三岁
+    // 「躲到嫂子身后」得是个会走路的孩子：满月那天认下的侄儿，认了三年就是三岁。
+    // 哥没了照样走动——老屋是一户，不是哥一个人
     id: 'kindred-newyear',
-    window: { from: 22, to: 70 },
+    window: { from: 22, to: 75 },
     requires: [
-      ...TWO_HOUSES,
-      { family: { id: 'nephew', alive: true } },
-      { bond: { kind: '亲戚', alive: true, years: { atLeast: 3 } } },
+      ...OLD_HOUSE,
+      { family: { id: 'nephew', alive: true, age: { atLeast: 3 } } },
     ],
     scene: 'kindred:newyear',
     weight: 5,
     repeatable: true,
+  },
+  {
+    // 侄儿八九岁上自己跑来。木讷、谨慎的孩子不会；嫂子跟你不对付拦不住
+    id: 'kindred-nephew-comes',
+    window: { from: 26, to: 70 },
+    requires: [
+      ...OLD_HOUSE,
+      { family: { id: 'nephew', alive: true, age: { atLeast: 8, atMost: 12 } } },
+      { temper: { id: 'nephew', in: ['温和', '暴躁', '刚硬', '精明'] } },
+    ],
+    scene: 'kindred:nephew-comes',
+    weight: 14,
+  },
+  {
+    id: 'kindred-nephew-grown',
+    window: { from: 34, to: 75 },
+    requires: [...OLD_HOUSE, { family: { id: 'nephew', alive: true, age: { atLeast: 16 } } }],
+    scene: 'kindred:nephew-grown',
+    weight: 30,
+  },
+  {
+    id: 'kindred-nephew-weds',
+    window: { from: 37, to: 78 },
+    requires: [
+      ...OLD_HOUSE,
+      { family: { id: 'nephew', alive: true, age: { atLeast: 19 } } },
+      { family: { id: 'nephew-wife', alive: false } },
+    ],
+    scene: 'kindred:nephew-weds',
+    weight: 24,
+  },
+  {
+    id: 'kindred-grandnephew',
+    window: { from: 38, to: 80 },
+    requires: [
+      ...OLD_HOUSE,
+      { family: { id: 'nephew', alive: true } },
+      { family: { id: 'nephew-wife', alive: true } },
+      { family: { id: 'grandnephew', alive: false } },
+    ],
+    scene: 'kindred:grandnephew',
+    weight: 20,
+  },
+  {
+    // 哥没了：户主换人是他殁那一刻的事，这一卷只讲出来。分了家才有老屋可回
+    id: 'kindred-brother-gone',
+    window: { from: 19, to: 80 },
+    requires: [...OLD_HOUSE, { bond: { kind: '兄', alive: false } }],
+    scene: 'kindred:brother-gone',
+    weight: 60,
   },
   {
     id: 'kindred-borrow',
@@ -537,7 +900,7 @@ export const kindredEvents: readonly LifeEvent[] = [
     weight: 30,
   },
   {
-    // 婆媳翻脸：处得来或平常的才有得翻；不睦的早就不说话了
+    // 婆媳翻脸：处得来或平常的才有得翻；不睦的早就不说话了。你不在场
     id: 'kindred-quarrel',
     window: { from: 20, to: 70 },
     requires: [
@@ -548,6 +911,19 @@ export const kindredEvents: readonly LifeEvent[] = [
     ],
     scene: 'kindred:quarrel',
     weight: 6,
+  },
+  {
+    // 和好：娘老了病了一冬，是嫂子伺候的。你不在场
+    id: 'kindred-mend',
+    window: { from: 22, to: 75 },
+    requires: [
+      ...TWO_HOUSES,
+      { family: { id: 'mother', alive: true, age: { atLeast: 55 } } },
+      { family: { id: 'brother-wife', alive: true } },
+      { tie: { from: 'brother-wife', to: 'mother', terms: ['不睦'] } },
+    ],
+    scene: 'kindred:mend',
+    weight: 8,
   },
   {
     id: 'kindred-mourning',

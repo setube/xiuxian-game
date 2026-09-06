@@ -963,6 +963,8 @@ const HANDED_OVER: Readonly<Record<string, string>> = {
   // 老屋添的人（嫂子、侄儿）进的是老屋不是你这一户。kindred.ts 量他们住在哪一户
   'kindred:wedding#open': 'kindred.ts',
   'kindred:nephew#open': 'kindred.ts',
+  'kindred:nephew-weds#open': 'kindred.ts',
+  'kindred:grandnephew#open': 'kindred.ts',
 }
 
 function handoverHolds(sites: Map<string, string[]>): string[] {

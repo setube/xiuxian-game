@@ -220,7 +220,7 @@ export const CHAPTERS: readonly Chapter[] = [
     events: kindredEvents,
     called: ['年表'],
     to: [],
-    age: [19, 70],
+    age: [19, 80],
     purpose: [
       '家拆成两户之后，关系不会自己烂掉——见面不加分，不见面也不减分，变的只来自具体的事',
       '哥跟你好，嫂子未必跟你好：两条边各是各的，她处不处得来从她的性情里出',
