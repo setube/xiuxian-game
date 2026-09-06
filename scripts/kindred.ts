@@ -1015,6 +1015,8 @@ if (divided.length < DIVIDES_WANTED) {
 // 十三、哥改行：户的营生 ≠ 人的营生；离家做工 ≠ 离户
 {
   const wrong: string[] = []
+  /** 这一局老屋谁当家（爹在是爹，不在是哥）——写进报数那行字，红了好知道采到的是哪一种局 */
+  let whoRuns = '（没摆到）'
   const turns = lifeEvents.find((one) => one.id === 'kindred-brother-turns')
   /** 分了家、哥娶了亲、侄儿十七岁——哥能把地交给他的那一天 */
   const setUp = (): Staged | null => {
@@ -1044,6 +1046,9 @@ if (divided.length < DIVIDES_WANTED) {
       wrong.push(`哥还在地里，侄儿成人那句却是：${before.find((l) => l.includes('种')) ?? '（没提）'}`)
     }
     const nephewPlace = s.people.personOf('nephew')?.place
+    // 当家的是谁问户，不想当然：爹还在就是爹当家，哥去镇上做工不换人。头一版写死了 `'brother'`，
+    // 掷到爹还在的局就红（另一个会话先撞上的）——跟兄终弟及那一回是同一个错
+    const headBefore = s.people.houses['old-home']?.head ?? null
     const lines = play('kindred:brother-turns')
     if (!lines.some((l) => l.includes('还是种地的人家'))) {
       wrong.push(`改行那一卷没说老屋还是种地的人家：${lines[lines.length - 1] ?? '（没有正文）'}`)
@@ -1062,7 +1067,11 @@ if (divided.length < DIVIDES_WANTED) {
     if (s.people.houseOf('brother')?.id !== 'old-home') {
       wrong.push(`哥去镇上做工，就不是老屋的人了（${s.people.houseOf('brother')?.id ?? '无户'}）`)
     }
-    if (oldHome?.head !== 'brother') wrong.push(`哥去镇上做工，老屋的当家换成了 ${oldHome?.head ?? '（无）'}`)
+    if ((oldHome?.head ?? null) !== headBefore) {
+      wrong.push(`哥去镇上做工，老屋的当家从 ${headBefore ?? '（无）'} 换成了 ${oldHome?.head ?? '（无）'}`)
+    }
+    if (!oldHome?.members.includes('brother')) wrong.push('哥去镇上做工，老屋的户里没他了')
+    whoRuns = headBefore === 'brother' ? '哥当家' : headBefore === 'father' ? '爹当家' : `${headBefore ?? '没人'}当家`
     if (s.people.personOf('brother')?.place === nephewPlace) wrong.push('哥去了镇上，人却还在老屋')
     if ((s.people.personOf('nephew')?.doing ?? '').includes('跟着爹')) {
       wrong.push(`哥走了，侄儿手上的活还是「${s.people.personOf('nephew')?.doing}」——写死的字段活得比事实久`)
@@ -1118,7 +1127,7 @@ if (divided.length < DIVIDES_WANTED) {
     bad += 1
   } else {
     console.log(
-      `  ✓ 十三、哥去镇上做木匠：老屋还是务农的户、哥自己是木工、侄儿种着地；人在镇上、户在老屋、当家的还是他；` +
+      `  ✓ 十三、哥去镇上做木匠：老屋还是务农的户、哥自己是木工、侄儿种着地；人在镇上、户在老屋、当家的不换（这一局老屋${whoRuns}）；` +
         `正月里从镇上回来，那笔粮还的是一张桌子；侄儿小、哥木讷都不走；哥没了侄儿成人那句是「一个人种」。（随机人生里哥改了行的 ${randomly} 世）`,
     )
   }

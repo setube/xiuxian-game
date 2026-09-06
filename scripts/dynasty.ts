@@ -380,14 +380,12 @@ for (let i = 0; i < LIVES; i += 1) {
 }
 
 // 宫里那一支：掷到够数的**坠落**为止（理由见 COURT_FALLS）
-let courtSeen = 0
 let fellSeen = 0
 for (let tries = 0; tries < 20000 && fellSeen < COURT_FALLS; tries += 1) {
   setActivePinia(createPinia())
   if (useHouseholdStore().origin !== 'court') continue
   const one = live()
   lives.push(one)
-  courtSeen += 1
   if (one.fallLinked !== null) fellSeen += 1
 }
 
