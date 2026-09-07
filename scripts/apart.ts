@@ -214,7 +214,7 @@ const PATHS: readonly Path[] = [
     label: '家里添的人：娶妻、添丁、收徒',
     origin: 'farm',
     steps: [
-      { scene: 'routine:adult', node: 'wife' },
+      { scene: 'match:offer', node: 'wife' },
       { scene: 'routine:prime', node: 'son' },
       { scene: 'routine:prime', node: 'daughter' },
       { scene: 'routine:prime', node: 'teach' },
@@ -261,7 +261,7 @@ const PATHS: readonly Path[] = [
     id: 'wed-out',
     label: '家里添的人：嫁人',
     origin: 'farm',
-    steps: [{ scene: 'routine:adult', node: 'husband' }],
+    steps: [{ scene: 'match:offer', node: 'husband' }],
   },
 
   /**
@@ -955,6 +955,10 @@ function movingSites(): Map<string, string[]> {
  * （它哪天不走了，这里也红）。它不会腐烂成一袋死字符串。
  */
 const HANDED_OVER: Readonly<Record<string, string>> = {
+  // 议亲那一卷是散事件，还压着三条 requires（没成过家、没在议、家境过得去），
+  // 这一支摆局跑，走不到它。match.ts 摆好局把那一卷从头演到底，量成亲那两条路
+  'match:offer#wife': 'match.ts',
+  'match:offer#husband': 'match.ts',
   'reunion:apprentice#open:go': 'kept.ts',
   'reunion:homecoming#open': 'kept.ts',
   'reunion:homecoming#open:back-to-town': 'kept.ts',

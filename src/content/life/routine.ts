@@ -444,71 +444,76 @@ export const routineScenes: SceneLibrary = {
             next: null,
           },
           {
+            /*
+             * 「守着这个家过」——成年那几年最常见的那一种，也是最没有故事的一种。
+             *
+             * 它是搬走成家那三节之后补进来的。**不是为了凑数**：那三节一走，
+             * 这一节只剩「出远门」「打听修行」两条留痕的路，于是八成的人都出了远门，
+             * 老年那一节的所见跟着塌成一种（`seen.ts` 当场红：
+             * 「过半的人读到的是同一种组合」）。
+             *
+             * 补它回来的道理跟长尾日常是同一条：**大多数人的成年就是什么也没发生**，
+             * 而「什么也没发生」得有个人替它占住位置，否则剩下的人会全被挤到
+             * 那几条有故事的路上去。
+             */
+            id: 'stay',
+            label: '守着这个家过',
+            hint: '田还是那些田，日子还是那些日子',
+            echo: '这几年你没出过远门。',
+            effects: [
+              { type: 'time', years: 2 },
+              { type: 'attribute', key: 'will', delta: 3 },
+              { type: 'attribute', key: 'body', delta: 2 },
+              { type: 'flag', key: 'stayed-put', value: true },
+            ],
+            next: null,
+          },
+          {
+            /*
+             * 这一条从「说一门亲事」改成了「托人问问」。
+             *
+             * 从前它是一步跳过去的：选中 → 一年过去 → 屋里多了一个人。
+             * 那不是娶亲，是**把结果直接写进世界**——而婚姻恰恰是这个时代里
+             * 最不由一个人说了算的事（尊长主婚、媒妁、婚书、聘财都有制度约束）。
+             *
+             * 现在这一条只表达一个意思：**你托了人，接下来等消息。**
+             * 成不成、什么时候有人上门，由 `match:offer` 那一卷定
+             * （`content/life/match.ts`），而那一卷可能一辈子也掷不到——
+             * 一辈子没人来提亲的人生是成立的。
+             *
+             * 底下的 `wed` / `wife` / `husband` 三节已经搬进那一册，这里不再有落点。
+             */
             id: 'wed',
-            label: '说一门亲事',
-            requires: [{ age: { atLeast: 18 } }, { bond: { kind: '配偶', alive: false } }],
-            echo: '家里托人给你说了一门亲。',
-            effects: [{ type: 'time', years: 1 }],
-            next: 'wed',
+            label: '托人问问亲事',
+            hint: '成不成、什么时候有信，都不由你',
+            requires: [
+              { age: { atLeast: 18 } },
+              { bond: { kind: '配偶', alive: false } },
+              // 已经在议的不必再托——这一条是过程中状态在日常里的第一个用处
+              { undertaking: { not: 'betrothal' } },
+            ],
+            echo: '你托了人。',
+            effects: [
+              { type: 'time', years: 1 },
+              { type: 'flag', key: 'asked-for-a-match', value: true },
+            ],
+            next: null,
           },
         ],
       },
 
-      /**
-       * 成家。
+      /*
+       * 成家那三节（wed / wife / husband）搬去 `content/life/match.ts` 了。
        *
-       * 分流按玩家的性别，不是让玩家挑——**「你要娶还是要嫁」不是一道选择题**，
-       * 那是这个时代替他定好的事。这一卷里玩家能决定的是要不要说这门亲，
-       * 不是说给谁。
+       * 它们从前挂在「说一门亲事」那条选项底下，选中就是一步到位：
+       * 一年过去、拜堂、屋里多个人。搬走不是为了整理文件，是因为
+       * **那一步跳过了议亲**——而这个时代里，一门亲事成不成不由当事人一句话定。
        *
-       * 配偶的姓写死一个「秦」，这是一处明写的将就：`meet.who` 省略 surname
-       * 表示跟本家同姓，而娶进门的人本来就是外姓，得有个姓。
-       * 等哪天写出「说亲」那一卷（相看、议聘、退婚都在里头），
-       * 那个姓该由那一卷自己掷。
+       * 那一册里同样的三节还在，只是前面多了：有人来提、长辈打听、
+       * 你愿不愿意、成或不成。原来注释里那句「等哪天写出说亲那一卷
+       * （相看、议聘、退婚都在里头），那个姓该由那一卷自己掷」——
+       * 那一卷现在写出来了，姓仍旧写死一个「秦」，这处将就跟着搬了过去。
        */
-      wed: {
-        id: 'wed',
-        blocks: [
-          { kind: 'narration', text: '过礼、迎亲、拜堂，几个月就过去了。' },
-          { kind: 'narration', text: '从这一天起，{home}这间屋子里多了一个人。' },
-        ],
-        branches: [{ requires: [{ gender: '女' }], next: 'husband' }],
-        next: 'wife',
-      },
-
-      wife: {
-        id: 'wife',
-        onEnter: [
-          {
-            type: 'meet',
-            id: 'spouse',
-            calls: '妻子',
-            delta: 20,
-            name: true,
-            who: { surname: '秦', given: '娘', gender: '女', age: 18, doing: '操持家务' },
-            bond: '配偶',
-          },
-        ],
-        blocks: [{ kind: 'narration', text: '她话不多，手脚很快。' }],
-        choices: [SETTLE_IN],
-      },
-
-      husband: {
-        id: 'husband',
-        onEnter: [
-          {
-            type: 'meet',
-            id: 'spouse',
-            calls: '丈夫',
-            delta: 20,
-            name: true,
-            who: { surname: '秦', given: '大', gender: '男', age: 22, doing: '做工' },
-            bond: '配偶',
-          },
-        ],
-        blocks: [{ kind: 'narration', text: '他话不多，天不亮就出门。' }],
-        choices: [SETTLE_IN],
-      },
     },
   },
 
@@ -544,6 +549,12 @@ export const routineScenes: SceneLibrary = {
           {
             requires: [{ flag: { key: 'been-far', equals: true } }],
             text: '你出过一趟远门。这些年提起来，村里人还爱听。',
+          },
+          {
+            // 跟上一条对着的那一面：一辈子没出过远门的人，老了记得的是别的东西。
+            // 两条都在，老年那一节的所见才有第二种来源——不然八成的人读到同一句话
+            requires: [{ flag: { key: 'stayed-put', equals: true } }],
+            text: '你这辈子没走出过几十里地。村口那条路通向哪里，你只听人说过。',
           },
         ],
         choices: [

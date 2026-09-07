@@ -18,6 +18,7 @@ import { awayEvents, awayScenes } from './away'
 import { nephewEvents, nephewScenes } from './nephew'
 import { reunionEvents, reunionScenes } from './reunion'
 import { rivermanEvents, rivermanScenes } from './riverman'
+import { matchEvents, matchScenes } from './match'
 import { routineScenes } from './routine'
 import { royalEvents, royalScenes } from './royal'
 import { schoolingEvents, schoolingScenes } from './schooling'
@@ -173,6 +174,27 @@ export const CHAPTERS: readonly Chapter[] = [
     age: [8, 16],
     purpose: ['爹娘也有过去，只是要等很多年他才听说'],
     marks: ['recall', 'meet'],
+  },
+
+  /**
+   * 一门亲事。「正在议亲」这件事真的要花时间。
+   *
+   * 这一章是「过程中状态」的第一个使用者：从前成家是一步跳过去的
+   * （`routine.ts` 里选一下、一年过去、屋里多个人），现在它有中间——
+   * 有人提起、长辈打听、你愿不愿意、成或不成。
+   *
+   * **「没成」跟「成了」是同一层的两个结局**，所以 `marks` 里两条都记。
+   */
+  {
+    id: 'match',
+    scenes: matchScenes,
+    events: matchEvents,
+    called: ['年表'],
+    to: [],
+    age: [16, 40],
+    purpose: ['一门亲事从有人提起到成或不成，中间那段时间真的存在过'],
+    // 这一章留下的痕迹：议亲那件事的起止（undertake），以及成了之后进门的那个人（meet）
+    marks: ['undertake', 'meet'],
   },
 
   /** 手艺。铁匠、木匠、药铺 */

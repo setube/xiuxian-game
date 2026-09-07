@@ -896,8 +896,13 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
   const registered = (kind: '旗标' | '认知', key: string): string | null => {
     const parsed = kind === '旗标' ? parseFlagKey(key) : parseKnowledgeKey(key)
     if (!parsed) return null
-    const row = kind === '旗标' ? FLAG_FACTS[parsed.namespace as keyof typeof FLAG_FACTS] : KNOWLEDGE_FACTS[parsed.namespace as keyof typeof KNOWLEDGE_FACTS]
-    return TABLES[row.ids].has(parsed.id) ? 'ok' : `登记表说 id 该在 ${row.ids} 上，查无「${parsed.id}」（产于 ${row.producer}）`
+    const row =
+      kind === '旗标'
+        ? FLAG_FACTS[parsed.namespace as keyof typeof FLAG_FACTS]
+        : KNOWLEDGE_FACTS[parsed.namespace as keyof typeof KNOWLEDGE_FACTS]
+    return TABLES[row.ids].has(parsed.id)
+      ? 'ok'
+      : `登记表说 id 该在 ${row.ids} 上，查无「${parsed.id}」（产于 ${row.producer}）`
   }
 
   const orphanNeeds: string[] = []
@@ -1079,7 +1084,30 @@ console.log('=== 可观测路径验收（人生里真走得到吗）===\n')
    * 均值涨的 14 个正对得上两册里那些稀节；σ 涨到 9.3 是稀卷按卷跳（一卷五节连在 `next` 上）
    * 的老账。上限 = 60.4 + 3 × 9.3 ≈ 88。**是落地之后量的十批，不是拿那三次红倒推的。**
    */
-  const UNVISITED_CEILING = 88
+  /**
+   * ## 第五次换，是因为议亲那一册进来了
+   *
+   * `content/life/match.ts` 九个节点，而它是散事件、还压着三条 `requires`
+   * （没成过家、没在议、家境过得去）——**多数世掷不到它**，于是九节大半走不到。
+   * 上限 88 当场红（98）。
+   *
+   * 落地之后重新量八批（两批因超时截断，只取跑完的）：
+   *
+   *     95　105　98　94　89　91　90　100
+   *     均值 95.25　标准差 5.4
+   *
+   * 均值涨的约 35 个里，九节是议亲那一册，其余是成家三节搬册之后
+   * `routine:adult` 那条路的走法变了带来的连带。σ 反而从 9.3 收到 5.4——
+   * 稀卷多了一册，每一册各自跳，加起来反而比一册独跳时稳。
+   *
+   * 上限 = 95.25 + 3 × 5.4 ≈ 111。**是落地之后量的八批，不是拿那次 98 倒推的**——
+   * 跟前四次换的做法是同一条。
+   *
+   * ⚠️ 八批不是十批。这一格的规矩本来是十批，这次两批跑超时被截断了
+   * （每批约三分钟，十批要跑半小时）。**八批估 σ 比十批更不稳**，
+   * 所以这个 111 比它看起来更软：下一次内容进来红了，重量的时候补够十批。
+   */
+  const UNVISITED_CEILING = 111
 
   const visits = new Map<string, number>()
   for (let index = 0; index < RUNS; index += 1) {
