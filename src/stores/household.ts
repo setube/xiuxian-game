@@ -18,6 +18,7 @@ import type {
   NarrativeBlock,
   OriginId,
   Station,
+  Tenure,
 } from '@/types/game'
 
 const STANDING_MIN = 0
@@ -91,6 +92,7 @@ export const useHouseholdStore = defineStore(
     const census = ref<Census>(rolled.census)
     const livelihood = ref<Livelihood>(rolled.livelihood)
     const business = ref<Business | null>(rolled.business)
+    const tenure = ref<Tenure | null>(rolled.tenure)
     const station = ref<Station>(rolled.station)
     const gender = ref<Gender>(rollGender())
     /**
@@ -248,6 +250,7 @@ export const useHouseholdStore = defineStore(
       census.value = next.census
       livelihood.value = next.livelihood
       business.value = next.business
+      tenure.value = next.tenure
       station.value = next.station
       gender.value = rollGender()
       province.value = nextSeat.province
@@ -263,6 +266,7 @@ export const useHouseholdStore = defineStore(
       census,
       livelihood,
       business,
+      tenure,
       station,
       gender,
       province,
@@ -293,6 +297,7 @@ export const useHouseholdStore = defineStore(
         'census',
         'livelihood',
         'business',
+        'tenure',
         'station',
         'gender',
         'province',

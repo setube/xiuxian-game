@@ -190,8 +190,9 @@ export const youthScenes: SceneLibrary = {
             id: 'farm',
             label: '哪也不去，把家里的地种好',
             // 得先有地。城里破落下来的人家没有田可回，
-            // 这一条对他们整条隐去——他只剩下学手艺和当伙计两条路
-            requires: [{ livelihood: '务农' }],
+            // 这一条对他们整条隐去——他只剩下学手艺和当伙计两条路。
+            // 地抵了债的人家也没有「家里的地」：那是底下 `tenant` 那一条
+            requires: [{ livelihood: '务农' }, { tenure: '自耕' }],
             echo: '你把自家的活计接了过来。',
             effects: [
               { type: 'time', years: 2 },
@@ -199,6 +200,27 @@ export const youthScenes: SceneLibrary = {
               // 这一条没有 tone：留在家里种地不是转折，是本来就该发生的那条路。
               // 但它仍然要记——**「什么也没变」和「变了而没人记得」是两回事**
               { type: 'chronicle', text: '你没有出门，把家里的地接了过来。' },
+              { type: 'attribute', key: 'body', delta: 10 },
+              { type: 'attribute', key: 'will', delta: 6 },
+              {
+                type: 'aspect',
+                key: 'body',
+                self: '你种了两年地。犁、耙、锄，样样都顺。',
+              },
+              { type: 'flag', key: 'full-farmer', value: true },
+            ],
+            next: 'done',
+          },
+          {
+            id: 'tenant',
+            label: '哪也不去，把租的那几亩种好',
+            // 同一条路，地是别人的。效果跟上一条一样——种别人的地也是种地
+            requires: [{ livelihood: '务农' }, { tenure: '佃' }],
+            echo: '你把家里的活计接了过来。',
+            effects: [
+              { type: 'time', years: 2 },
+              { type: 'identity', identity: '农家子' },
+              { type: 'chronicle', text: '你没有出门，接着种那几亩租来的地。' },
               { type: 'attribute', key: 'body', delta: 10 },
               { type: 'attribute', key: 'will', delta: 6 },
               {

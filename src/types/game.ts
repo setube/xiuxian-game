@@ -248,6 +248,17 @@ export type Livelihood =
 export type Business = '布庄' | '客栈' | '酒楼' | '药铺'
 
 /**
+ * 田。种的那几亩地是不是自家的。
+ *
+ * 「家业可以毁掉」（12.md）落到种地的人家身上，就是这一格：欠债走到尽头，地抵了债，
+ * 人还在原来的地里下种，秋后先量出租子挑走，剩下的才是自家的。**日子一天没变，家业没了。**
+ * 一个「靠务农过活」的词说不出这两种人生（`design/society-mapping.md` 佃／自耕那一行）。
+ *
+ * 只有两个值，是因为眼下只有一条内容写它（父债链尾）。「地主」「半自耕」等真有人写再加。
+ */
+export type Tenure = '自耕' | '佃'
+
+/**
  * 家世。这是什么样的人家。
  *
  * 三档，而且这三档是从**实际读取点**里长出来的，不是我摆的社会分层：
@@ -873,6 +884,13 @@ export interface Household {
    * 别把这一格慢慢演成 `businessOwner`（用户 2026-09-06 划的线）。
    */
   business: Business | null
+  /**
+   * 田：种的那几亩地是不是自家的。不靠地过活的人家是 null——这一格对他们没有问题可答。
+   *
+   * 记在家境上而不是户（`House`）上，跟 `business` 同一个理由：第一个使用者（父债链尾）
+   * 发生在分家之前，那时候只有一户。分家分租约那天，再把它搬到户上。
+   */
+  tenure: Tenure | null
   /** 家世：这是什么样的人家。一道旨意就能改 */
   station: Station
   /** 家境，0–100。隐藏 */
@@ -1445,6 +1463,8 @@ export interface Condition {
   census?: Census
   livelihood?: Livelihood
   business?: Business
+  /** 种的地是不是自家的。承户那一卷问它：「那几亩地如今是你的」对佃户是句假话 */
+  tenure?: Tenure
   station?: Station
   /**
    * 这家人过的是什么日子。见 `content/living.ts`。
@@ -1713,6 +1733,8 @@ export type Effect =
       livelihood?: Livelihood
       /** 产没了写 null——分家之后没有铺面的那个人。null 是有分量的一格 */
       business?: Business | null
+      /** 地抵了债：从自耕变成佃。第一个写手是父债链尾（`life/hardship.ts`） */
+      tenure?: Tenure
     }
   /**
    * 分家。

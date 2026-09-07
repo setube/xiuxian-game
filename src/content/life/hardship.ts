@@ -15,6 +15,12 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  */
 const CHAIN = '父债'
 
+/**
+ * 父亲借的那一笔。借的时候记一次，地抵债的时候勾掉同一个数——
+ * 两处各写一个 12，改一处另一处不吭声。
+ */
+const FATHER_LOAN = 12
+
 export const hardshipScenes: SceneLibrary = {
   'debt:drought': {
     id: 'debt:drought',
@@ -51,7 +57,7 @@ export const hardshipScenes: SceneLibrary = {
         id: 'open',
         onEnter: [
           { type: 'time', months: 5 },
-          { type: 'household', debt: 12, standing: -6 },
+          { type: 'household', debt: FATHER_LOAN, standing: -6 },
           { type: 'flag', key: 'father-in-debt', value: true },
           {
             type: 'family',
@@ -397,6 +403,95 @@ export const hardshipScenes: SceneLibrary = {
     },
   },
 
+  /**
+   * 地抵了债。
+   *
+   * 这条链从前停在「债还欠着」——父亲死在外地或再没消息之后，那个数就那样挂着，
+   * 而库里没有任何一处记下**这一户已经败了**。12.md 说的「家业可以毁掉」，
+   * 落到种地的人家身上就是这一卷：镇上来人，地写进一张纸，按了手印。
+   *
+   * 败了不等于换一种日子。人还在原来的地里下种，锄头还是那把锄头，
+   * 只是秋后先量出租子挑到镇上，剩下的才是自家的。**日子一天没变，家业没了。**
+   * 所以这一卷改的是 `tenure`（自耕→佃），不改业、不改日子；承户那一卷
+   * 「那几亩地如今是你的」、分家那一卷「地按亩分」，从此对这一家不成立。
+   *
+   * 写的是典不是绝卖：三年内可赎。**没有赎期那一格**——眼下没有一卷会去赎，
+   * 真写「哥从镇上捎回银子赎地」那天再要它。债主也不是一个人（映射表：债主不是一个人，
+   * 等邻里格）：来的是「镇上两个人」。
+   *
+   * 十一岁到十五岁，正文里没有父亲——他不在了，这一卷里谁也不提他。
+   */
+  'debt:fields': {
+    id: 'debt:fields',
+    title: '地',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [{ type: 'time', months: 2 }],
+        blocks: [
+          { kind: 'narration', text: '腊月里，镇上来了两个人。' },
+          { kind: 'narration', text: '{dam}把他们让进屋，把你支到院子里。门没关严。' },
+          { kind: 'narration', text: '里头说话的声音不高。有一阵谁也没说话。' },
+        ],
+        choices: [
+          {
+            id: 'listen',
+            label: '站在门外听',
+            effects: [
+              { type: 'time', days: 1 },
+              { type: 'attribute', key: 'insight', delta: 2 },
+            ],
+            next: 'heard',
+          },
+          {
+            id: 'fields',
+            label: '去地里',
+            hint: '腊月的地里没有活',
+            effects: [
+              { type: 'time', days: 1 },
+              { type: 'attribute', key: 'will', delta: 2 },
+            ],
+            next: 'went',
+          },
+        ],
+      },
+      heard: {
+        id: 'heard',
+        blocks: [
+          { kind: 'narration', text: '你听见一个人念了一遍：几亩、哪一块、东到谁家、西到哪条沟。' },
+          { kind: 'narration', text: '另一个人说，写典，三年之内拿钱来赎。' },
+          { kind: 'narration', text: '{dam}说了一个字：好。' },
+        ],
+        next: 'signed',
+      },
+      went: {
+        id: 'went',
+        blocks: [
+          { kind: 'narration', text: '地冻得硬。你在田埂上走了一圈，又一圈。' },
+          { kind: 'narration', text: '回来的时候，那两个人已经走了。桌上少了一样东西：当年那张借约。' },
+        ],
+        next: 'signed',
+      },
+      signed: {
+        id: 'signed',
+        onEnter: [
+          { type: 'household', debt: -FATHER_LOAN, standing: -8, tenure: '佃' },
+          { type: 'chronicle', text: '地抵了债。从此种的是别人的地。', tone: 'deep' },
+        ],
+        blocks: [
+          { kind: 'event', text: '地抵了债。', tone: 'deep' },
+          { kind: 'narration', text: '那几亩地写在一张纸上，按了手印。当年借的那笔钱一笔勾了。' },
+          {
+            kind: 'narration',
+            text: '地还是那几亩地。开春照样下种，秋后先量出租子挑到镇上，剩下的才是自家的。',
+          },
+          { kind: 'narration', text: '三年之内可以赎。{dam}没有再提过这个字。', tone: 'faint' },
+        ],
+      },
+    },
+  },
+
   'debt:quit': {
     id: 'debt:quit',
     title: '不读了',
@@ -621,6 +716,28 @@ export const hardshipEvents: readonly LifeEvent[] = [
     ],
     chain: CHAIN,
     scene: 'debt:silence',
+  },
+  /**
+   * 地抵了债。
+   *
+   * 问的是三件事：那笔债还在（`father-in-debt`）、借债的人不在了（殁或杳——
+   * 他回来了就轮不到这一卷）、种的还是自家的地（`tenure: '自耕'`）。
+   * 问 `living` 不问 `livelihood`：被老乞丐养大的孩子家里的业还是务农，可他没有地可抵。
+   *
+   * 不在这一卷里问「债有多少」：`household.debt` 没有条件入口，而这一卷说的是
+   * 「当年借的那笔」，不是「家里所有的债」——荒年另借的那一笔还欠着，也该欠着。
+   */
+  {
+    id: 'debt-fields',
+    window: { from: 11, to: 15 },
+    requires: [
+      { flag: { key: 'father-in-debt' } },
+      { family: { id: 'father', alive: false } },
+      { living: { is: 'farm' } },
+      { tenure: '自耕' },
+    ],
+    chain: CHAIN,
+    scene: 'debt:fields',
   },
   /**
    * 读不下去了。

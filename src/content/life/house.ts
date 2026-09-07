@@ -160,6 +160,8 @@ export const houseScenes: SceneLibrary = {
         id: 'trade',
         blocks: [],
         branches: [
+          // 地抵了债的人家排在前头：「那几亩地如今是你的」对佃户是句假话
+          { requires: [{ living: { is: 'farm' } }, { tenure: '佃' }], next: 'rented' },
           { requires: [{ living: { is: 'farm' } }], next: 'fields' },
           { requires: [{ living: { is: 'shop' } }], next: 'shop' },
           { requires: [{ living: { is: 'clinic' } }], next: 'shop' },
@@ -174,6 +176,18 @@ export const houseScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '开春的时候，地里的活是你带着人干的。' },
           { kind: 'narration', text: '那几亩地从前是他的，如今是你的。你头一回一个人去交粮。' },
+        ],
+      },
+      /**
+       * 承下来的是一户，不是家业——地早就不是自家的了（`debt:fields`）。
+       * 12.md：「子女成年时已经没有家业可继承」，那么承户那一天该讲的就是这个。
+       */
+      rented: {
+        id: 'rented',
+        blocks: [
+          { kind: 'narration', text: '地不是自家的，这是你早就知道的事。开春照样下种。' },
+          { kind: 'narration', text: '只是秋后量租子、挑到镇上那一趟，从此是你去。' },
+          { kind: 'narration', text: '承下来的这一户，名下只有两间屋和几件家什。', tone: 'faint' },
         ],
       },
       shop: {
@@ -257,6 +271,7 @@ export const houseScenes: SceneLibrary = {
           },
         ],
         branches: [
+          { requires: [{ living: { is: 'farm' } }, { tenure: '佃' }], next: 'rented' },
           { requires: [{ living: { is: 'farm' } }], next: 'fields' },
           { requires: [{ living: { is: 'shop' } }], next: 'shop' },
           { requires: [{ living: { is: 'clinic' } }], next: 'shop' },
@@ -272,6 +287,16 @@ export const houseScenes: SceneLibrary = {
         onEnter: [{ type: 'household', standing: -9 }],
         blocks: [
           { kind: 'narration', text: '地按亩分。老屋归哥，你分到东头那几亩，还有一头牛的半个。' },
+        ],
+        next: 'choose',
+      },
+      // 租的地分不了：租约在哥名下。你这一户从此是没有地的佃户——`tenure` 照旧是佃
+      rented: {
+        id: 'rented',
+        onEnter: [{ type: 'household', standing: -6 }],
+        blocks: [
+          { kind: 'narration', text: '没有地可分。租的那几亩，租约在哥名下，他接着种。' },
+          { kind: 'narration', text: '分给你的只有两间屋的料，和一把锄头。' },
         ],
         next: 'choose',
       },
@@ -421,6 +446,7 @@ export const houseScenes: SceneLibrary = {
           },
         ],
         branches: [
+          { requires: [{ living: { is: 'farm' } }, { tenure: '佃' }], next: 'rented' },
           { requires: [{ living: { is: 'farm' } }], next: 'fields' },
           { requires: [{ living: { is: 'shop' } }], next: 'shop' },
           { requires: [{ living: { is: 'clinic' } }], next: 'shop' },
@@ -433,6 +459,12 @@ export const houseScenes: SceneLibrary = {
         id: 'fields',
         onEnter: [{ type: 'household', standing: -8 }],
         blocks: [{ kind: 'narration', text: '地按亩分。他要了东头那几亩。' }],
+        next: 'done',
+      },
+      rented: {
+        id: 'rented',
+        onEnter: [{ type: 'household', standing: -4 }],
+        blocks: [{ kind: 'narration', text: '地是租的，分不了。他另租了两亩。' }],
         next: 'done',
       },
       shop: {

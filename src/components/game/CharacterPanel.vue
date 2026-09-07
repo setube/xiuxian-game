@@ -93,7 +93,8 @@ const ageText = computed(() =>
     monthsSince({ year: world.bornYear, month: world.bornMonth }, world.time),
   ),
 )
-const { livelihood, business, station, gender, home, members, outlook } = storeToRefs(household)
+const { livelihood, business, tenure, station, gender, home, members, outlook } =
+  storeToRefs(household)
 const { place } = storeToRefs(world)
 
 /**
@@ -120,6 +121,8 @@ const houseLine = computed(() => {
   if (business.value) return `${at}，开着一间${business.value}。`
   if (station.value === '宗室') return `${at}。`
   if (station.value === '仕宦') return `${at}，官宦人家。`
+  // 地抵了债之后这一行自己会变：靠的还是务农，种的已经是别人的地
+  if (tenure.value === '佃') return `${at}，租着几亩地种。`
   return `${at}，靠${livelihood.value}过活。`
 })
 
