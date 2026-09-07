@@ -4,7 +4,9 @@ import { computed, ref } from 'vue'
 
 import { usePeopleStore } from '@/stores/people'
 import { useHouseholdStore } from '@/stores/household'
+import { useCharacterStore } from '@/stores/character'
 import { HOUSEHOLD_BONDS, noteOf } from '@/engine/note'
+import { knowledgeKey } from '@/engine/facts'
 import { kinCall } from '@/engine/address'
 import { kinTreeOf, type KinEdge } from '@/engine/kinTree'
 import type { Bond } from '@/types/game'
@@ -37,7 +39,8 @@ import type { Bond } from '@/types/game'
  */
 const people = usePeopleStore()
 const household = useHouseholdStore()
-const { known, relations } = storeToRefs(people)
+const character = useCharacterStore()
+const { known } = storeToRefs(people)
 
 /** 一格多宽、一辈多高。名字最长的是「渡口的青衫人」这种，超了截断 */
 const COL = 84
@@ -51,9 +54,7 @@ const IMPLIED: readonly Bond[] = ['生父', '生母']
 /** 点开了谁。没点就是 null——图上不预选任何人 */
 const chosen = ref<string | null>(null)
 
-const tree = computed(() =>
-  kinTreeOf({ relations: relations.value, known: Object.keys(known.value) }),
-)
+const tree = computed(() => kinTreeOf({ relations: people.knownRelations() }))
 
 interface Placed {
   id: string
@@ -286,6 +287,17 @@ function noteFor(id: string): string {
     age: people.ageOf(id),
     months: people.monthsOf(id),
     vanished: '再没有消息。',
+    /*
+     * 他没了，可你知道吗。
+     *
+     * 世界事实是 `Person.fate`，而这一格问的是**你的认知**
+     * （`facts.ts` 登记的 `death:` 那一类）。不传的话面板照世界事实说，
+     * 于是哥在镇上没了、老屋还没捎话来，这一行就先写了「不在了」——
+     * 玩家不知道的事，不能因为世界知道就上面板。
+     *
+     * `CharacterPanel.vue` 已经是这么接的，两个面板问同一个问题。
+     */
+    knownDead: character.knows(knowledgeKey('death', id)),
     // 只有同一个家里过活的人才落回家业。先生、商旅、掌柜不做你家的营生
     fallback: bonds.some((bond) => HOUSEHOLD_BONDS.includes(bond))
       ? household.livelihood

@@ -89,7 +89,9 @@ export function runShard(runs: number): KinTreeShard {
      * 早读（比如十六岁那年）图上只有爹娘和兄弟，第二、三条根本采不到样本。
      */
     const known = Object.keys(people.known)
-    const tree = kinTreeOf({ relations: people.relations, known })
+    // 面板问的是同一个函数，门禁也问它——判据跟着实际画的那张图走，
+    // 不自己另拼一份输入（另拼的话验的是「我以为面板看到什么」）
+    const tree = kinTreeOf({ relations: people.knownRelations() })
     worlds += 1
     seats += tree.ranks.reduce((sum, row) => sum + row.members.length, 0)
 

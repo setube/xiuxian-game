@@ -21,7 +21,10 @@
  */
 import './lib/seeded'
 
+import { createPinia, setActivePinia } from 'pinia'
+
 import { kinTreeOf } from '../src/engine/kinTree'
+import { makePerson, usePeopleStore } from '../src/stores/people'
 import type { Relation } from '../src/types/game'
 
 import { mapShards, sumTallies } from './lib/parallel'
@@ -155,8 +158,7 @@ console.log(
   const checks: {
     name: string
     relations: Relation[]
-    known: string[]
-    /** 查谁的辈分。跟 `known` 分开，因为有的用例 `known` 就是空的 */
+    /** 查谁的辈分 */
     who: string
     expect: string
   }[] = []
@@ -172,35 +174,31 @@ console.log(
   checks.push({
     name: '姐姐把你养大，她仍是同辈',
     relations: [edge('me', 'sister', '姐'), edge('me', 'sister', '抚养')],
-    known: ['sister'],
     who: 'sister',
     expect: '0',
   })
   checks.push({
     name: '老乞丐把你养大，他是长辈',
     relations: [edge('me', 'beggar', '抚养')],
-    known: ['beggar'],
     who: 'beggar',
     expect: '-1',
   })
   checks.push({
     name: '侄儿低哥一辈',
     relations: [edge('me', 'brother', '兄'), edge('nephew', 'brother', '生父')],
-    known: ['brother', 'nephew'],
     who: 'nephew',
     expect: '1',
   })
   /*
    * 没见过面的爹也在谱上。
    *
-   * 弃儿那一世的真实形状：`known` 是空的（他在你出生前就殁了，从没 meet 过），
-   * 只有一条血缘边。这一条守的是 `whoIsOnChart` 那条补丁——
-   * 没有它，图上会缺一整辈，而缺了不会有任何判据出声。
+   * 弃儿那一世的真实形状：从没 `meet` 过他，只有一条血缘边立着。
+   * 这里验的是**辈分算法**认不认这条边（他该在 -1 辈）；
+   * 至于 `knownRelations()` 会不会把这条边放出来，由底下真 store 那段验。
    */
   checks.push({
     name: '没见过面的爹仍在谱上',
     relations: [edge('me', 'father', '生父')],
-    known: [],
     who: 'father',
     expect: '-1',
   })
@@ -209,18 +207,23 @@ console.log(
    *
    * 爹的爹跟我之间没有直接的边，他不该被顺着爬进来——这一条一旦失守，
    * 整个世界的人口志都会爬上这张图。
+   *
+   * **这一条现在守的是 store 那一侧**（`knownRelations()` 的筛选），
+   * 所以底下拿真 store 验，不喂构造数据：`kinTreeOf` 已经不认 `known` 了，
+   * 直接喂两条边给它，它照画不误——那是对的，过滤本来就不该由它做。
    */
-  checks.push({
-    name: '爹的爹不跟着爬进来',
-    relations: [edge('me', 'father', '生父'), edge('father', 'grandpa', '生父')],
-    known: [],
-    who: 'grandpa',
-    expect: 'undefined',
-  })
 
   const failed: string[] = []
   for (const check of checks) {
-    const tree = kinTreeOf({ relations: check.relations, known: check.known })
+    /*
+     * 直接喂边，不模拟 `knownRelations()` 的筛选。
+     *
+     * **这一批验的是辈分算法本身**（谁在第几辈、哪条边画成什么线），
+     * 而「哪些边玩家看得见」是 store 那一侧的事，由底下那段真 store 验。
+     * 两件事分开验，各自的红才指得出病根；混在一处的话，
+     * 一条红出来分不清是算错了辈分还是筛错了边。
+     */
+    const tree = kinTreeOf({ relations: check.relations })
     const at = rankOf(tree, check.who)
     if (String(at) !== check.expect) {
       failed.push(`${check.name}（该是第 ${check.expect} 辈，算出来是 ${at}）`)
@@ -233,7 +236,6 @@ console.log(
    */
   const noSpouse = kinTreeOf({
     relations: [edge('me', 'brother', '兄'), edge('me', 'brother-wife', '亲戚')],
-    known: ['brother', 'brother-wife'],
   })
   if (rankOf(noSpouse, 'brother-wife') !== undefined) {
     failed.push('拿掉配偶边之后嫂子还站在世系里，第三条查不出那条边缺没缺')
@@ -249,21 +251,71 @@ console.log(
    */
   const raisedBySister = kinTreeOf({
     relations: [edge('me', 'sister', '姐'), edge('me', 'sister', '抚养')],
-    known: ['sister'],
   })
   const wrongLine = raisedBySister.edges.find((one) => one.kind === '亲子')
   if (wrongLine !== undefined) {
     failed.push(`姐姐养大你，图上却从 ${wrongLine.a} 到 ${wrongLine.b} 画了一条亲子线`)
   }
 
-  /* 「仇」这类私密边不该画出来：两头都认得，也不等于玩家知道他俩有旧怨 */
+  /*
+   * 「仇」这类边画不成线。
+   *
+   * 注意这一条现在守的是 `edgeKind`，不是「哪些边玩家看得见」——后者归
+   * `people.knownRelations()`。从前这个文件里还有一张 `PUBLIC_BONDS` 表
+   * 跟 `edgeKind` 判着同一件事，删了；所以这里直接把「仇」喂进去，
+   * 它照样画不出线才算对。
+   */
   const secret = kinTreeOf({
     relations: [edge('me', 'a', '兄'), edge('me', 'b', '弟'), edge('a', 'b', '仇')],
-    known: ['a', 'b'],
   })
   const between = secret.edges.filter((one) => [one.a, one.b].sort().join(' ') === 'a b')
   if (between.length > 0) {
     failed.push(`两个人之间那条「仇」被画成了 ${between[0]!.kind} 线`)
+  }
+
+  /*
+   * 爹的爹不跟着爬进来——**这一条必须拿真 store 验**。
+   *
+   * 它守的是 `people.knownRelations()` 的筛选（补一跳，不级联）：爹是我的血亲，
+   * 他上图；爹的爹跟我之间没有直接的边，也不在 `known` 里，不该顺着爬上来。
+   * 这条规矩一旦失守，整个世界的人口志都会顺着边爬进这张图。
+   *
+   * **喂构造数据验不到它**：`kinTreeOf` 已经不认 `known` 了，两条边直接喂给它
+   * 它照画不误——那是对的，过滤本来就不该由它做。所以这里起一个真 store，
+   * 把边牵上，问 `knownRelations()` 到底放了哪些过去。
+   */
+  {
+    setActivePinia(createPinia())
+    const people = usePeopleStore()
+    people.enroll(
+      makePerson({
+        id: 'father',
+        surname: '沈',
+        given: '怀山',
+        gender: '男',
+        bornYear: -30,
+        place: '青州 · 历城府 · 杏花坞',
+      }),
+    )
+    people.enroll(
+      makePerson({
+        id: 'grandpa',
+        surname: '沈',
+        given: '守田',
+        gender: '男',
+        bornYear: -60,
+        place: '青州 · 历城府 · 杏花坞',
+      }),
+    )
+    people.bind('me', 'father', '生父')
+    people.bind('father', 'grandpa', '生父')
+    const tree = kinTreeOf({ relations: people.knownRelations() })
+    if (rankOf(tree, 'father') === undefined) {
+      failed.push('没见过面的爹没能上图（真 store：只有一条血缘边，`known` 是空的）')
+    }
+    if (rankOf(tree, 'grandpa') !== undefined) {
+      failed.push('爹的爹顺着边爬进了图里——`knownRelations()` 那一跳的界没守住')
+    }
   }
 
   if (failed.length > 0) {

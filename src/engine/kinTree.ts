@@ -42,30 +42,6 @@ const RANK_SHIFT: Partial<Record<Bond, number>> = {
   女: 1,
 }
 
-/**
- * 血缘婚姻这一类。**这类边是公开事实，玩家认得两头就等于知道这条边。**
- *
- * 你认得爹也认得娘，就不必再有谁来告诉你他俩是夫妻；你认得哥也认得侄儿，
- * 那是他儿子这件事同样不用谁说。而「陈先生跟王婶有旧怨」不是这样的事——
- * 它得有人说给你听，或者你自己撞见。所以 `友`、`仇` 不在这里，
- * 它们即便两头都认得也不画（也画不进世系，它们不推辈分）。
- *
- * `亲戚` 在这里：它虽不推辈分，但「这两个人是亲戚」本身是公开的。
- */
-const PUBLIC_BONDS: readonly Bond[] = [
-  '生父',
-  '生母',
-  '抚养',
-  '兄',
-  '姐',
-  '弟',
-  '妹',
-  '配偶',
-  '子',
-  '女',
-  '亲戚',
-]
-
 /** 画出来是一条竖线（亲子）还是一道双横线（夫妻） */
 export type KinEdgeKind = '亲子' | '夫妻' | '同辈'
 
@@ -98,41 +74,34 @@ export interface KinTree {
 }
 
 export interface KinInput {
-  /** 关系图上全部的边。含 `until` 不为 null 的——断了的关系也是发生过的 */
+  /**
+   * **玩家知道的那些边**，由 `people.knownRelations()` 给（两头都是他认得的人、
+   * 或他的血亲、或他自己；已经滤掉断了的边）。
+   *
+   * 这里不再自己判「哪些边玩家看得见」：那份判断从前在这个文件里抄过一遍
+   * （一张 `BLOOD_BONDS` 表），跟 store 里那份**判着同一件事**，迟早各自漂。
+   * 判断只留一处，这里只管把给到的边摆成一张图。
+   */
   relations: readonly Relation[]
-  /** 玩家认识的人。`'me'` 不必在里头，这里自己算上 */
-  known: readonly string[]
 }
 
-/** 这条边此刻还立着吗。断了的边不进世系图——那是「曾经」，不是「是」 */
-function isOpen(relation: Relation): boolean {
-  return relation.until === null
-}
-
-/**
- * 谁站得上这张图。
+/*
+ * 谁站得上这张图：**给进来的那些边的两头**，加上「我」自己。
  *
- * 底子是 `known`——玩家认得的人。但**认得和知道有这么个人不是一回事**：
+ * 用户 2026-09-07 拍的：这张图画玩家知道的人和玩家知道的边，
+ * 不知道的节点不画、不知道的边不画。所以它是一张认知图，不是族谱。
  *
- * 弃儿那一世，爹在你出生之前就殁了。你从没见过他，`known` 里没有他，
- * 可 `me →生父 father` 那条边一直立着（出生那一节写的：「边照牵。人没了，
- * 血缘还在」，见 `life/birth.ts`）。头一版按 `known` 过滤，于是那张图上
- * **整整缺了父亲那一辈**——一个孩子凭空长在娘底下。
- *
- * 家谱历来不是这么记的：没见过面的、早亡的先人都在谱上，那正是谱的用处。
- *
- * 所以补一条：**跟「我」直接连着一条血缘婚姻边的人，一律上图。**
- * 这条规矩有界，不会级联——只补「我」这一跳，不补爹的爹、也不补邻居的亲家。
- * 补进来的人多半没有称呼（从没 `meet` 过），那一格由面板从 bond 上算
- * （`engine/address.ts` 的 `kinCall`，跟正文里 `{elder}` 是同一个答案）。
+ * 「认得这个人」和「知道有这么个人」是两级（用户列的那条认知阶梯：
+ * 陌生／见过／知道其存在／知道姓名…）。弃儿那一世的爹在你出生之前就殁了，
+ * 从没 `meet` 过——可正文里玩家知道自己有爹（「你的名字不是爹娘给的」）。
+ * 他落在「知道其存在」那一级，`knownRelations()` 把血亲算了进来，
+ * 所以他在图上，格子里写「生父」（他没有称呼，那一格由面板从 bond 上算）。
  */
-function whoIsOnChart(relations: readonly Relation[], known: readonly string[]): Set<string> {
-  const on = new Set<string>([...known, 'me'])
+function whoIsOnChart(relations: readonly Relation[]): Set<string> {
+  const on = new Set<string>(['me'])
   for (const relation of relations) {
-    if (!isOpen(relation)) continue
-    if (!PUBLIC_BONDS.includes(relation.bond)) continue
-    if (relation.from === 'me') on.add(relation.to)
-    else if (relation.to === 'me') on.add(relation.from)
+    on.add(relation.from)
+    on.add(relation.to)
   }
   return on
 }
@@ -166,7 +135,6 @@ function assignRanks(
     while (changed) {
       changed = false
       for (const relation of relations) {
-        if (!isOpen(relation)) continue
         if (!inGraph(relation.from) || !inGraph(relation.to)) continue
         const shift = shiftOf(relation.bond)
         if (shift === undefined) continue
@@ -238,7 +206,7 @@ function elderFirst(relation: Relation): { a: string; b: string } {
  * 不是世界的人口志。哥在镇上认识的木匠师傅不该出现在这里。
  */
 export function kinTreeOf(input: KinInput): KinTree {
-  const known = whoIsOnChart(input.relations, input.known)
+  const known = whoIsOnChart(input.relations)
   const inGraph = (id: string): boolean => known.has(id)
 
   const rank = assignRanks(input.relations, inGraph)
@@ -258,13 +226,15 @@ export function kinTreeOf(input: KinInput): KinTree {
     .sort((a, b) => a[0] - b[0])
     .map(([at, members]) => ({ rank: at, members }))
 
-  // 挑边：两头都在图上、两头都排进了辈分、这条边是公开事实
+  // 挑边：两头都在图上、两头都排进了辈分。
+  // **哪些边玩家看得见不在这里判**——那是 `people.knownRelations()` 的职责
+  // （传进来的 `relations` 已经是玩家知道的那些）；画不画得成线由 `edgeKind` 判，
+  // 「友」「仇」这类它返回 undefined。从前这儿还有一张 `PUBLIC_BONDS` 表，
+  // 跟那两处各自判着同一件事，删了免得三处漂。
   const edges: KinEdge[] = []
   const drawn = new Set<string>()
   for (const relation of input.relations) {
-    if (!isOpen(relation)) continue
     if (!inGraph(relation.from) || !inGraph(relation.to)) continue
-    if (!PUBLIC_BONDS.includes(relation.bond)) continue
     const fromRank = rank.get(relation.from)
     const toRank = rank.get(relation.to)
     if (fromRank === undefined || toRank === undefined) continue
