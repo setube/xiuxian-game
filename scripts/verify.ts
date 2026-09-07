@@ -545,6 +545,11 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
      * 已经由底下那张效果表登记。**同一件事不在两张表里各查一遍。**
      */
     undertaking: null,
+    /*
+     * 时令没有出处表可查：它是从 `time.month` 算出来的（`stores/world.ts`），
+     * 不由任何一条效果打出来。**世界自己在走，不需要谁去设它。**
+     */
+    season: null,
   } satisfies {
     [K in keyof Condition]-?:
       ((value: NonNullable<Condition[K]>) => [Map<string, string[]>, string] | null) | null

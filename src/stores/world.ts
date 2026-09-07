@@ -27,6 +27,7 @@ import type {
   RegionState,
   Reign,
   ResidenceKind,
+  Season,
   SettlementKind,
 } from '@/types/game'
 
@@ -94,6 +95,28 @@ export const useWorldStore = defineStore(
     const household = useHouseholdStore()
 
     const time = ref<GameTime>(birthTime())
+    /**
+     * 此刻是什么时令。
+     *
+     * **算出来的，不存**——跟年龄同一条纪律。存一个字段就是又一个
+     * 「28 岁，还在襁褓里」：时间往前走而那个字段不动。
+     *
+     * 正二三春，四五六夏，七八九秋，十冬腊冬（《月令》那一套）。
+     *
+     * 这一格出现之前，**三月和十月过的是同一种日子**——`month` 只被用来
+     * 推进时间，全库没有一处内容读它。有了它，「什么时候农忙」
+     * 「集市开不开」「能不能出远门」才问得出口。
+     *
+     * 要问得更细的（二月河豚、七月鲥鱼）直接问 `time.month`，
+     * **这一格不拦着谁问得更细**。
+     */
+    const season = computed<Season>(() => {
+      const m = time.value.month
+      if (m <= 3) return '春'
+      if (m <= 6) return '夏'
+      if (m <= 9) return '秋'
+      return '冬'
+    })
     const place = ref(household.home)
     /** 到过的地方，按先后排列。世界面板据此呈现「你走过哪里」 */
     const visited = shallowRef<string[]>([household.home])
@@ -449,6 +472,7 @@ export const useWorldStore = defineStore(
 
     return {
       time,
+      season,
       place,
       visited,
       flags,

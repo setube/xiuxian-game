@@ -235,7 +235,10 @@ const CHECKS = {
       if (!inHouse) return false
     }
     // 分过家没有：老屋（`old-home`）在不在。你分出去那一刻它才立起来
-    if (house.divided !== undefined && (people.houses['old-home'] !== undefined) !== house.divided) {
+    if (
+      house.divided !== undefined &&
+      (people.houses['old-home'] !== undefined) !== house.divided
+    ) {
       return false
     }
     return true
@@ -265,6 +268,14 @@ const CHECKS = {
       const here = world.settlementKind()
       if (here === null || !dwelling.settlement.includes(here)) return false
     }
+    return true
+  },
+
+  season: (season, { world }) => {
+    const now = world.season
+    if (season.is !== undefined && now !== season.is) return false
+    // 「春夏两季农忙」——两条 `is` 说不出「或者」，跟 `living.in` 同一个道理
+    if (season.in !== undefined && !season.in.includes(now)) return false
     return true
   },
 
