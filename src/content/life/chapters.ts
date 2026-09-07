@@ -18,6 +18,7 @@ import { awayEvents, awayScenes } from './away'
 import { nephewEvents, nephewScenes } from './nephew'
 import { reunionEvents, reunionScenes } from './reunion'
 import { rivermanEvents, rivermanScenes } from './riverman'
+import { attemptEvents, attemptScenes } from './attempt'
 import { matchEvents, matchScenes } from './match'
 import { mourningEvents, mourningScenes } from './mourning'
 import { routineScenes } from './routine'
@@ -218,6 +219,27 @@ export const CHAPTERS: readonly Chapter[] = [
     age: [11, 70],
     purpose: ['守孝有始也有终，而终了的那一天媒人才又上门'],
     marks: ['undertake'],
+  },
+
+  /**
+   * 试着照书上说的做。修仙第一条纵切的最后一段。
+   *
+   * 前面几步库里都有：听说（`kin`）、找（`seeking`）、照面（`meeting`）、
+   * 拿到那册书（`riverman`）。**唯独最后一步是空的**——他揣着一册炼气法门，
+   * 知道那是修行的入门之法，然后这辈子再没打开过它。
+   *
+   * 到此收住：不碰宗门、境界、丹药、法宝、秘境（用户拍板）。
+   * 这一章只回答一个问题：**这个人试了，然后呢。**
+   */
+  {
+    id: 'attempt',
+    scenes: attemptScenes,
+    events: attemptEvents,
+    called: ['年表'],
+    to: [],
+    age: [16, 60],
+    purpose: ['修行不是拿到功法就会了——他试了一年，多半什么也没有'],
+    marks: ['undertake', 'roll'],
   },
 
   /** 手艺。铁匠、木匠、药铺 */
