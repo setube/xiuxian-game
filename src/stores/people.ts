@@ -232,8 +232,8 @@ export const usePeopleStore = defineStore(
     }
 
     /** 算「这一家的人」的那几种边。户主只从这几种人里出，乳母、学徒、寄居的不算 */
-/** 血亲：你知道有这么个人，哪怕从没见过 */
-const BLOOD_BONDS: readonly Bond[] = ['生父', '生母', '兄', '姐', '弟', '妹', '子', '女']
+    /** 血亲：你知道有这么个人，哪怕从没见过 */
+    const BLOOD_BONDS: readonly Bond[] = ['生父', '生母', '兄', '姐', '弟', '妹', '子', '女']
     const HEAD_BONDS: readonly Bond[] = [
       '生父',
       '生母',
@@ -310,12 +310,45 @@ const BLOOD_BONDS: readonly Bond[] = ['生父', '生母', '兄', '姐', '弟', '
           (member) => id !== 'home' || member === 'me' || kin.has(member),
         )
         const byAge = (a: string, b: string) => ageOfAny(b) - ageOfAny(a)
+        /*
+         * 家里成年的男丁，按年纪从大到小。
+         *
+         * **这一串底下有两个用处，而它们要问的不是同一件事**——
+         * 我头一版只改了一处，把另一处也堵死了，`succession` 当场抓到
+         * 「15 处户主是死人」。
+         *
+         *   ① 活着的女户主要不要交出来（`widowHandsOver`）
+         *   ② 户主殁了谁接（`heir`）
+         *
+         * 第 ② 处谁都能接，人没了总得有人当家——**丈夫尤其能接**。
+         * 第 ① 处不行：那条规矩说的是「寡母交给成年儿子」，
+         * 而**你的丈夫不是你的儿子**。赘婿被当成儿子接走妻家，
+         * 正是入赘那一路露出来的。
+         */
         const grownSons = family
           .filter((m) => m !== house.head && genderOf(m) === '男' && ageOfAny(m) >= 16)
           .sort(byAge)
+        /**
+         * 判的是「这两个人之间有没有一条配偶边」，不是「这两人各自有没有配偶」——
+         * 后者会把同住一屋的两对夫妻也判进去（儿子娶了亲、婆婆还当着家，
+         * 那个儿子仍旧是儿子）。
+         */
+        const marriedTo = (a: string, b: string): boolean =>
+          relations.value.some(
+            (r) =>
+              r.until === null &&
+              r.bond === '配偶' &&
+              ((r.from === a && r.to === b) || (r.from === b && r.to === a)),
+          )
+        /** 「寡母交给成年儿子」里的儿子：丈夫不算 */
+        const sonsNotHusband = grownSons.filter((m) => !marriedTo(m, house.head))
         const headAlive = alive(house.head)
+        // 「寡母交给成年儿子」——问的是儿子，所以用排除了丈夫的那一串
         const widowHandsOver =
-          headAlive && house.head !== 'me' && genderOf(house.head) === '女' && grownSons.length > 0
+          headAlive &&
+          house.head !== 'me' &&
+          genderOf(house.head) === '女' &&
+          sonsNotHusband.length > 0
         if (headAlive && !widowHandsOver) {
           next[id] = house
           continue
@@ -324,9 +357,49 @@ const BLOOD_BONDS: readonly Bond[] = ['生父', '生母', '兄', '姐', '弟', '
           .filter((m) => m !== house.head && genderOf(m) === '女' && ageOfAny(m) >= 16)
           .sort(byAge)
         const anyone = family.filter((m) => m !== house.head).sort(byAge)
-        const heir = grownSons[0] ?? grownWomen[0] ?? anyone[0]
+        /*
+         * 接手的人选。**两种情形取的不是同一串**：
+         *
+         *   户主殁了（`headAlive` 假）　　谁都能接，丈夫也能——人没了总得有人当家
+         *   寡母交出来（`widowHandsOver`）交给儿子，**丈夫不算**
+         *
+         * 混用一串的后果两头都出过：用全部的，赘婿接走妻家；
+         * 用排除丈夫的，妻子殁了没人接，`succession` 报「15 处户主是死人」。
+         */
+        const menFirst = widowHandsOver ? sonsNotHusband : grownSons
+        const heir = menFirst[0] ?? grownWomen[0] ?? anyone[0]
         if (heir === undefined) {
-          next[id] = house
+          /*
+           * 户绝：亲属全殁，接不出人来。
+           *
+           * 注释开头写着「一户人全殁了就是户绝，成员空着」——**而「全殁」
+           * 说的其实是「亲属全殁」**。王府、宫里那几种出身，屋里还住着
+           * 乳母、老管家、门房、丫头，他们不在 `kin` 里（`HEAD_BONDS` 只收亲属），
+           * 所以接不了户，可他们让 `members` 不空。
+           *
+           * 从前这一格露不出来：**「我」一直在自家那一户里兜底**，
+           * 怎么也轮不到无人可接。女玩家出嫁（`wed-into`）迁走之后，
+           * 兜底的人不在了，于是娘家的户主是个死人而成员还有五个下人——
+           * `succession` 报的那 76 处正是这个，全出在王府/宫里出身上。
+           *
+           * 树倒猢狲散：人还在册上、还在世界里，只是不再算这一户的人。
+           * 户主留着上一任的名字，那是史实不是活人。
+           *
+           * ## 只在「我」已经不在这一户时才散
+           *
+           * 头一版写的是 `id === 'home'`，于是**「我」还在家的时候它也散**——
+           * 玩家自己就是 `family` 白名单里的兜底，可 `heir` 那一串里没有 `me`
+           * （`family.filter(m => m !== house.head)` 之外还要过 `kin`，而
+           * 「我」不在人口册上）。结果是娘还活着、还在家，却被移出了 members，
+           * 分家那一卷当场报「mother 该留在老屋，却不在老屋」。
+           *
+           * 真正的条件是**这一户里连「我」都不在了**——那才叫树倒猢狲散。
+           *
+           * （真因由 79 复核出来——我原先判在白名单条件上，那一条其实没错：
+           * 「跟我有关系的人」在我出嫁之后仍旧是我爹娘兄弟。）
+           */
+          const iAmGone = id === 'home' && !house.members.includes('me')
+          next[id] = iAmGone ? { ...house, members: [] } : house
           continue
         }
         next[id] = { ...house, head: heir }
@@ -606,7 +679,9 @@ const BLOOD_BONDS: readonly Bond[] = ['生父', '生母', '兄', '姐', '弟', '
       )
       const recognised = (id: string): boolean =>
         id === 'me' || known.value[id] !== undefined || blood.has(id)
-      return relations.value.filter((r) => r.until === null && recognised(r.from) && recognised(r.to))
+      return relations.value.filter(
+        (r) => r.until === null && recognised(r.from) && recognised(r.to),
+      )
     }
 
     function termsBetween(from: string, to: string): Terms | undefined {

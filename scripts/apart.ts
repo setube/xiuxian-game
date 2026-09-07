@@ -980,6 +980,13 @@ const HANDED_OVER: Readonly<Record<string, string>> = {
    */
   'bearing:await#son': 'bearing.ts',
   'bearing:await#daughter': 'bearing.ts',
+  /*
+   * 入赘那一节压得更死：除了议亲那三条，还要家境二十六以下、务农、有活着的哥。
+   * 摆局跑走不到，随机世里也极稀——**而那正是它该有的频率**。
+   *
+   * `match.ts` 那一支专门摆两个局验它：穷的走得到、不穷的走不到，两头都验。
+   */
+  'match:offer#uxorial': 'match.ts',
   'reunion:apprentice#open:go': 'kept.ts',
   'reunion:homecoming#open': 'kept.ts',
   'reunion:homecoming#open:back-to-town': 'kept.ts',

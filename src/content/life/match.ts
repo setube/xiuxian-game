@@ -92,7 +92,8 @@ export const matchScenes: SceneLibrary = {
           { kind: 'narration', text: '{elder}问了那家几亩地、几口人、上头还有谁。' },
           { kind: 'narration', text: '问完没说行，也没说不行，只说再打听打听。' },
           { kind: 'narration', text: '过了半个月，媒人又来了一趟。' },
-        ],        choices: [
+        ],
+        choices: [
           {
             id: 'agree',
             label: '你说，家里定就是了',
@@ -210,8 +211,90 @@ export const matchScenes: SceneLibrary = {
           { kind: 'narration', text: '过礼、迎亲、拜堂，几个月就过去了。' },
           { kind: 'narration', text: '从这一天起，{home}这间屋子里多了一个人。' },
         ],
-        branches: [{ requires: [{ gender: '女' }], next: 'husband' }],
+        /*
+         * 三条路，顺序要紧：`branches` 是从上往下第一条成立的算数。
+         *
+         *   女的 → 嫁过去
+         *   男的、家里穷、又没田可继承 → 入赘
+         *   其余的男的 → 娶进门
+         *
+         * 入赘那条排在娶妻前面，否则它一次也走不到——而**走不到的内容
+         * 跟没写一模一样，并且没有任何机器会说**。
+         */
+        branches: [
+          { requires: [{ gender: '女' }], next: 'husband' },
+          {
+            requires: [
+              { gender: '男' },
+              { standing: { atMost: 26 } },
+              // 有田的男丁不去做赘婿。问的是这一户靠什么过活，不是他自己会干什么
+              { livelihood: '务农' },
+              /*
+               * 头一版这里写的是 `house: { head: 'other' }`（他不当家）。
+               * **那个条件在这一卷走到的时候多半已经不成立了**：
+               * 议亲要走两三年，这期间叔伯老死、自己成年承户，
+               * `settleHeads` 早把户主换成了「我」——门禁实测到 `wedding`
+               * 那一节时户主正是 `me`，于是入赘这条一次也走不到。
+               *
+               * 而且那个条件本来就选错了：**入赘要问的不是「他当不当家」，
+               * 是「家里有没有东西给他」。** 一个当了家却只有两亩薄田的人
+               * 照样可能去做赘婿；一个不当家但家底厚的不会去。
+               *
+               * `standing atMost 26` 已经在问家底了，所以这一格改问
+               * 「家里还有没有别人」——`bond 兄` 那一问：
+               * **有哥的次子分不到什么，是赘婿最常见的来处。**
+               */
+              { bond: { kind: '兄', alive: true } },
+            ],
+            next: 'uxorial',
+          },
+        ],
         next: 'wife',
+      },
+
+      /**
+       * 入赘那一路。
+       *
+       * ## 它不是「嫁的男版」
+       *
+       * 户口这一层的动作确实一样（进一户已经在那儿的人家，当家的不是你），
+       * 可**处境差得远**：赘婿在这个时代是要被指指点点的，
+       * 「养老女婿」「接脚夫」都不是好话。所以这一节的正文
+       * 不是把出嫁那几句性别对调，它得说出那份别扭。
+       *
+       * ## 谁会走到这里
+       *
+       * 两个条件卡得很死：**家里穷**（`standing atMost 26`），
+       * 而且**没有田让他继承**。这个时代一个有田有兄弟的男丁不会去做赘婿，
+       * 去的多半是家里养不起、或者干脆没家的。
+       *
+       * 所以它出现得少——而**那正是它该有的频率**。
+       */
+      uxorial: {
+        id: 'uxorial',
+        onEnter: [
+          {
+            type: 'meet',
+            id: 'spouse',
+            calls: '妻子',
+            delta: 16,
+            name: true,
+            who: { surname: '秦', given: '娘', gender: '女', age: 20, doing: '操持家务' },
+            bond: '配偶',
+          },
+          // 同一套户口簿记反过来用：他进的是妻家那一户，当家的是老丈人那一辈
+          { type: 'wed-into', spouse: 'spouse', uxorial: true },
+          { type: 'chronicle', text: '你入赘到了秦家。', tone: 'deep' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '那家没有儿子，只有这一个女儿。' },
+          { kind: 'narration', text: '过门那天你没有骑马，是走过去的。' },
+          {
+            kind: 'narration',
+            text: '村里有人说了几句难听的。你听见了，没接话。',
+            tone: 'faint',
+          },
+        ],
       },
 
       wife: {
@@ -243,9 +326,24 @@ export const matchScenes: SceneLibrary = {
             who: { surname: '秦', given: '大', gender: '男', age: 22, doing: '做工' },
             bond: '配偶',
           },
-          { type: 'chronicle', text: '你成了亲。', tone: 'deep' },
+          /*
+           * 你嫁过去了。
+           *
+           * **这一笔补的是这一册留下的洞**：从前女玩家成亲，世界里唯一变的是
+           * 屋里多了个丈夫——她没出嫁，还在娘家户里，户主还是她爹。
+           *
+           * `house.ts` 早写着「女儿出嫁是另一卷，等第一个真实使用者来逼」，
+           * 而这一册就是那个使用者。
+           *
+           * 不带人走：陪嫁的丫头、改嫁带过去的孩子是另一回事，这一卷里没有。
+           */
+          { type: 'wed-into', spouse: 'spouse' },
+          { type: 'chronicle', text: '你嫁过去了。', tone: 'deep' },
         ],
-        blocks: [{ kind: 'narration', text: '他话不多，天不亮就出门。' }],
+        blocks: [
+          { kind: 'narration', text: '他话不多，天不亮就出门。' },
+          { kind: 'narration', text: '头一个月你总在半夜醒，认不出屋顶的椽子。' },
+        ],
       },
 
       /**

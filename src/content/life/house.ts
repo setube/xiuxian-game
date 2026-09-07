@@ -530,6 +530,18 @@ export const houseEvents: readonly LifeEvent[] = [
       { gender: '男' },
       { house: { head: '兄' } },
       { bond: { kind: '配偶', alive: true } },
+      /*
+       * 人还在这一户里。
+       *
+       * **入赘的男丁分不了自家的家**——他已经迁进妻家（`wed-into`），
+       * 老屋那一户里没有他了。从前不必问这一句，因为男玩家一辈子
+       * 都在自己家；入赘那一路落地之后，`divide` 会找不到人可分，
+       * 分完只有一户，`succession` 当场报「分完家只有一户」。
+       *
+       * `head: 'other'` 那一问不够：入赘之后妻家的当家也是「别人」。
+       * 要问的是「你还是不是这一户的人」。
+       */
+      { house: { mine: true } },
     ],
     scene: 'house:divide',
     weight: 30,

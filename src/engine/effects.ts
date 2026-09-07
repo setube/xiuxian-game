@@ -494,6 +494,87 @@ function applyOne(
       settleHeads(world, character, household, people)
       return null
     }
+    /**
+     * 你嫁进（或入赘进）另一户。
+     *
+     * ## 跟 `divide` 反着来
+     *
+     * `divide` 是**另起一处宅**，你自己当家。这一条是**进一户已经在
+     * 那儿的人家**，那一户的当家不是你——是丈夫（或岳父）。
+     *
+     * 从前女玩家成亲，世界里唯一变的是屋里多了个丈夫：**她没出嫁，
+     * 还在娘家户里，户主还是她爹。** `house.ts` 早写着「女儿出嫁是另一卷，
+     * 等第一个真实使用者来逼」，而婚事那一册落地之后，那个使用者到了。
+     *
+     * ## 老屋不删人，只是不再是你的户
+     *
+     * 跟 `divide` 同一条纪律：你走了，老屋照旧在那儿，爹娘兄弟一个不少。
+     * 变的只是**你归哪一户**——而这正是 `members` 那一格的意思
+     * （「这一户的人」不等于「此刻睡在这屋里的人」）。
+     */
+    case 'wed-into': {
+      const spouse = effect.spouse
+      const from = people.houses['home']
+      // 嫁过去的对象得真在人口册上——没有这个人就没有那一户
+      if (!people.personOf(spouse) || !from) return null
+
+      const houseId = `in-law-${spouse}`
+      if (!people.houses[houseId]) {
+        const lane = world.residence ? (world.placeOf(world.residence)?.within ?? null) : null
+        const placeId = `home-${Object.keys(world.places).length}`
+        world.enrollPlace({
+          id: placeId,
+          name: effect.uxorial ? '妻家那几间屋' : '夫家那几间屋',
+          kind: '宅',
+          within: lane,
+        })
+        people.enrollHouse({
+          id: houseId,
+          surname: people.personOf(spouse)?.surname ?? '',
+          head: spouse,
+          members: [spouse],
+          residence: placeId,
+          /*
+           * 夫家的营生**照抄娘家**，这是明写的将就。
+           *
+           * 真实情况里两家营生多半不同（种地的女儿嫁给开铺子的），
+           * 而那要由内容说了算——媒人提亲那一节就该讲清楚对方是干什么的。
+           * 眼下 `match.ts` 里那家「也是种地的」，所以抄过来是对的；
+           * **哪天有一卷写「嫁进了商户」，这一行就得由那一卷传进来。**
+           */
+          livelihood: from.livelihood,
+        })
+        people.adjoin('home', houseId)
+      }
+
+      // 跟着走的人：多数时候一个也没有。带的是陪嫁的丫头、改嫁时带过去的孩子
+      const takes = (effect.takes ?? [])
+        .flatMap((bond) => people.kinOf(bond))
+        .filter((id) => from.members.includes(id) && people.isAlive(id))
+
+      /*
+       * 配偶本人必须从娘家名册上划掉——**他从来就不是那一户的人**。
+       *
+       * `meet` 造人时会把新人放进当前这一户，所以拜完堂丈夫短暂地
+       * 挂在娘家名下。只迁走 `me` 的话他就留在那儿了，**同时在两户里**，
+       * 而娘家老户主一殁，`keepHeads` 看见一个户里的成年男丁，
+       * 就把家交给了他——`succession` 报的「home 的户主 spouse」正是这个。
+       *
+       * 这一条不写进 `takes`：`takes` 是「你带谁过去」，
+       * 而配偶不是你带过去的，他本来就在那头。
+       */
+      for (const id of ['me', ...takes, spouse]) {
+        if (!from.members.includes(id) && id !== 'me') continue
+        people.leaveHouse(id)
+        people.joinHouse(houseId, id)
+      }
+      const target = people.houses[houseId]
+      // 跟 `divide` 同一个写法：`settlement` 是村还是镇由别处定，
+      // 这里只在它已经有值时才跟着搬——嫁出去不改变这是哪一级聚落
+      if (target && world.settlement) world.settle(target.residence, world.settlement)
+      settleHeads(world, character, household, people)
+      return null
+    }
     case 'tie':
       people.tie(effect.from, effect.to, effect.bond, effect.terms)
       return null
@@ -595,7 +676,16 @@ function applyOne(
         effect.bond !== undefined &&
         [...HOUSEHOLD_BONDS, '徒'].includes(effect.bond)
       ) {
-        people.joinHouse('home', effect.id)
+        /*
+         * 进的是**我此刻这一户**，不是写死的 `home`。
+         *
+         * 从前这里硬写 `'home'`，那在「玩家一辈子都在自己家」的前提下是对的。
+         * 女玩家出嫁（`wed-into`）之后前提就没了：**她生的孩子会落进娘家的户**，
+         * 而她本人在夫家。孩子跟娘不在一个户口上，谁也没报错。
+         *
+         * `houseOf('me')` 答不出来时仍旧落回 `home`——那是没出嫁的常态。
+         */
+        people.joinHouse(people.houseOf('me')?.id ?? 'home', effect.id)
       }
       // 「知道他叫什么」是单独一件事，值得单独报一句
       const learned = effect.name ? people.learnName(effect.id) : false
@@ -1263,6 +1353,8 @@ const PHASE = {
   reading: '事实',
   succession: '事实',
   divide: '事实',
+  // 嫁进另一户是户口簿记，跟分家同一档：它改的是世界，不是这一刻的上下文
+  'wed-into': '事实',
   tie: '事实',
   owe: '事实',
   repay: '事实',

@@ -226,6 +226,8 @@ const CHECKS = {
     if (house.livelihood !== undefined && home.livelihood !== house.livelihood) return false
     if (house.head === 'me' && home.head !== 'me') return false
     if (house.head === 'other' && home.head === 'me') return false
+    // 你自己还算不算这一户的人。入赘、出嫁之后这一问跟「自家」分开了
+    if (house.mine !== undefined && home.members.includes('me') !== house.mine) return false
     if (house.head !== undefined && house.head !== 'me' && house.head !== 'other') {
       if (!people.kinOf(house.head).includes(home.head)) return false
     }
