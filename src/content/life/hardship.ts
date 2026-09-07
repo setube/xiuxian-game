@@ -314,6 +314,28 @@ export const hardshipScenes: SceneLibrary = {
           { type: 'person', id: 'father', fate: '殁', cause: '客死' },
           { type: 'household', standing: -10 },
           { type: 'flag', key: 'father-dead', value: true },
+          /**
+           * 死讯是**听来的**，不是看见的。
+           *
+           * 世界事实是 `person fate: '殁'`（上面那一行），可他死在二百里外的
+           * 河堤工地上，家里没有一个人在场。玩家知道这件事，是因为**冬天回来
+           * 一个人，先去了里正家，然后才来你家**——这一卷从头到尾就是那个消息。
+           *
+           * 所以 `contact` 是「听说」。同一件事若换成 `illness.ts` 那一卷
+           * （在家没的），引擎自己记一条「亲历」，不用内容写——**人在跟前，
+           * 不需要谁来告诉你。**
+           *
+           * 隔壁 `debt:silence`（杳）那一卷不记这一条：那一卷里他生死未卜，
+           * 家里既不办丧事也不能指望他回来。**世界不知道的事，认知层也不该有。**
+           */
+          {
+            type: 'knowledge',
+            id: 'death:father',
+            title: '父亲死在了外地',
+            summary: '冬天回来一个人，跟他一起出去做工的。说是塌方，八月里的事。',
+            category: '人物',
+            contact: '听说',
+          },
           { type: 'chronicle', text: '父亲死在了外地。', tone: 'cinnabar' },
         ],
         blocks: [
