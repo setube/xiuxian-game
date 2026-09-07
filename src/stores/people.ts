@@ -704,7 +704,11 @@ export const usePeopleStore = defineStore(
                 ...person,
                 fate,
                 // 老病没的。年份按推到第几年算——推十年、第三年没的，就是第三年
-                death: { year: world.time.year - years + diedAfter, where: person.place, cause: '老病' },
+                death: {
+                  year: world.time.year - years + diedAfter,
+                  where: person.place,
+                  cause: '老病',
+                },
               }
       }
       roster.value = next
