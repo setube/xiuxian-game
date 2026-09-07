@@ -1,6 +1,8 @@
 import { useCharacterStore } from '@/stores/character'
 import { resetAll } from '@/stores/founding'
+import { useHouseholdStore } from '@/stores/household'
 import { useNarrativeStore } from '@/stores/narrative'
+import { usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
 import type {
   Choice,
@@ -17,7 +19,7 @@ import type {
 import { markFired, pickEvent } from './chronology'
 import { meetsAll } from './conditions'
 import { describeSpan, describeTime } from './describe'
-import { applyEffects } from './effects'
+import { applyEffects, settleHeads } from './effects'
 import { fill, fillString } from './interpolate'
 import { isSpent } from './lifespan'
 import { stageOf } from './stages'
@@ -239,6 +241,14 @@ export function useStory(library: SceneLibrary, plan: LifePlan): Story {
         narrative.finish()
         return
       }
+      /*
+       * 你没了——这是一件事，记下哪一年、在哪儿；然后家里的户主换人。
+       * 玩家死亡结束的是玩家这一生，不是世界：世界照样能往前推，认识你的人继续活。
+       * 落幕那一卷只是不再问你了。
+       */
+      const world = useWorldStore()
+      character.die({ year: world.time.year, month: world.time.month, where: world.place })
+      settleHeads(world, character, useHouseholdStore(), usePeopleStore())
       // 落幕自身不再往下追事件——都到这一步了，年表没有话要说了
       enterNode(ending, MAX_EVENT_CHAIN)
       return

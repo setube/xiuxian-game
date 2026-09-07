@@ -842,7 +842,32 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
    * 前缀编译不过），每一行写明 id 该在哪张内容表上——这儿把表名换成真的表，逐条查 id。
    * 引擎再多挂一个尾巴（`rite:<id>:hold`）登记在 `suffixes` 里，这里照旧不必改。
    */
+  /** 人口册上会立的人：立基时的亲人邻居、境况表的抚养人、剧本里 `meet who` / `family born` 立的人 */
+  const rosterIds = new Set<string>([
+    'father',
+    'mother',
+    'east-head',
+    'east-wife',
+    'west-head',
+    'west-wife',
+    ...[1, 2, 3].flatMap((n) => [`east-child-${n}`, `west-child-${n}`]),
+    'nurse',
+    'steward',
+    'gatekeeper',
+    'maid',
+    'page',
+  ])
+  for (const one of CIRCUMSTANCES) for (const kin of one.kin) rosterIds.add(kin.id)
+  for (const scene of Object.values(lifeScenes)) {
+    for (const node of Object.values(scene.nodes)) {
+      for (const one of effectsOf(node)) {
+        if (one.type === 'meet' && one.who !== undefined) rosterIds.add(one.id)
+        if (one.type === 'family' && one.born === true) rosterIds.add(one.id)
+      }
+    }
+  }
   const TABLES: Record<IdTable, ReadonlySet<string>> = {
+    roster: rosterIds,
     lifeEvents: new Set(lifeEvents.map((one) => one.id)),
     LEANINGS: new Set(LEANINGS.map((one) => one.id)),
     'SPARKS+DAMPERS': new Set([...SPARKS, ...DAMPERS].map((one) => one.id)),

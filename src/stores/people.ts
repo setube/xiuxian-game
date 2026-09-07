@@ -232,6 +232,8 @@ export const usePeopleStore = defineStore(
     }
 
     /** 算「这一家的人」的那几种边。户主只从这几种人里出，乳母、学徒、寄居的不算 */
+/** 血亲：你知道有这么个人，哪怕从没见过 */
+const BLOOD_BONDS: readonly Bond[] = ['生父', '生母', '兄', '姐', '弟', '妹', '子', '女']
     const HEAD_BONDS: readonly Bond[] = [
       '生父',
       '生母',
@@ -267,7 +269,7 @@ export const usePeopleStore = defineStore(
      * @returns 换了户主的那几户：谁传给了谁，是殁了还是交出来的。
      *   `home` 那一条由效果层记成旗标，正文按它说话
      */
-    function keepHeads(me: { age: number; gender: Gender }): {
+    function keepHeads(me: { age: number; gender: Gender; alive?: boolean }): {
       house: string
       from: string
       to: string
@@ -279,7 +281,9 @@ export const usePeopleStore = defineStore(
           .filter((r) => r.from === 'me' && r.until === null && HEAD_BONDS.includes(r.bond))
           .map((r) => r.to),
       )
-      const alive = (id: string): boolean => id === 'me' || roster.value[id]?.fate === '在'
+      // 「我」也会殁（`character.died`）：玩家没了，家得有人接——世界不因玩家死而停
+      const alive = (id: string): boolean =>
+        id === 'me' ? me.alive !== false : roster.value[id]?.fate === '在'
       const ageOfAny = (id: string): number => (id === 'me' ? me.age : ageOf(id))
       const genderOf = (id: string): Gender | undefined =>
         id === 'me' ? me.gender : roster.value[id]?.gender
@@ -584,6 +588,27 @@ export const usePeopleStore = defineStore(
     }
 
     /** 两个人之间处得怎样。没有边、边上没写，都是 undefined */
+    /**
+     * 玩家知道的边：两头都是他认得的人（或他自己）。
+     *
+     * 世系图画的是玩家视角，不是世界族谱（用户 2026-09-07）：节点是他形成了身份认知的人，
+     * 边是他确实知道的关系。第一片粗粒度地把「两头都认得」当「知道这层关系」——
+     * 一家人里你认得哥也认得嫂子，你当然知道他们是夫妻。认得两个人却不知道他们有关系的
+     * 情形（你认识的两个人其实是表亲），等第一个真实内容来分。
+     */
+    function knownRelations(): Relation[] {
+      // 你的血亲你知道有这么个人，哪怕从没见过——出生前就殁了的爹，你知道自己有爹
+      // （「你的名字不是爹娘给的」）。知道有、认得、知道名字，三级各是各的；图上他叫「生父」
+      const blood = new Set(
+        relations.value
+          .filter((r) => r.from === 'me' && r.until === null && BLOOD_BONDS.includes(r.bond))
+          .map((r) => r.to),
+      )
+      const recognised = (id: string): boolean =>
+        id === 'me' || known.value[id] !== undefined || blood.has(id)
+      return relations.value.filter((r) => r.until === null && recognised(r.from) && recognised(r.to))
+    }
+
     function termsBetween(from: string, to: string): Terms | undefined {
       return relations.value.find((r) => r.from === from && r.to === to && r.until === null)?.terms
     }
@@ -732,6 +757,7 @@ export const usePeopleStore = defineStore(
       ious,
       tie,
       termsBetween,
+      knownRelations,
       owe,
       repay,
       enrollHouse,

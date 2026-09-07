@@ -29,11 +29,19 @@
 export type FlagNamespace = 'event' | 'leaning' | 'spark' | 'branched' | 'footing' | 'rite'
 
 /** 引擎拼出来的认知命名空间 */
-export type KnowledgeNamespace = 'lead' | 'rite'
+export type KnowledgeNamespace = 'lead' | 'rite' | 'death'
 
 /** id 该在哪张内容表上。门禁侧把它换成真的表去查（`scripts/verify.ts`） */
 export type IdTable =
-  'lifeEvents' | 'LEANINGS' | 'SPARKS+DAMPERS' | 'WISHES' | 'CULTIVATORS' | 'RITES' | 'LEADS'
+  | 'lifeEvents'
+  | 'LEANINGS'
+  | 'SPARKS+DAMPERS'
+  | 'WISHES'
+  | 'CULTIVATORS'
+  | 'RITES'
+  | 'LEADS'
+  /** 人口册上会立的人：立基时的亲人邻居、境况表的抚养人、剧本里 `meet who` 立的人 */
+  | 'roster'
 
 export interface FactRow {
   /** 谁拼这个键、什么时候 */
@@ -90,6 +98,17 @@ export const KNOWLEDGE_FACTS = {
     producer: 'engine/tutelage.ts——修士教的那几句，听见了不懂也算知道',
     consumer: 'Condition.knowledge',
     ids: 'RITES',
+  },
+  /**
+   * 死讯。世界事实是 `Person.death`（谁、何时、何地、何因）；这一条是**你知不知道**——
+   * 他没了那一刻你在同一个地方，引擎当场记一条（亲历／见过）；不在的话世界知道你不知道，
+   * 要等一卷「老屋捎话来」用 `knowledge` 效果给你（听说）。面板那一行字问的是这一条，
+   * 不问 `fate`：不知道他没了，就不写「不在了」（用户 2026-09-07：玩家不知道的信息不能因为世界知道就进玩家正文）。
+   */
+  death: {
+    producer: 'engine/effects.ts——他没了那一刻你在场（亲历／见过）；剧本 knowledge 效果——捎话来（听说）',
+    consumer: 'Condition.knowledge、engine/note.ts 面板那一行字',
+    ids: 'roster',
   },
 } as const satisfies Record<KnowledgeNamespace, FactRow>
 

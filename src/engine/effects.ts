@@ -112,6 +112,42 @@ type CharacterStore = ReturnType<typeof useCharacterStore>
 type HouseholdStore = ReturnType<typeof useHouseholdStore>
 type PeopleStore = ReturnType<typeof usePeopleStore>
 
+/** 死因落到玩家嘴里的说法 */
+const CAUSE_WORDS: Readonly<Record<string, string>> = {
+  病: '是病没的',
+  客死: '死在了外地',
+  老病: '老病没的',
+}
+
+/**
+ * 你知道他没了。
+ *
+ * 世界事实是 `Person.death`；这一条是**你知不知道**（`facts.ts` 登记的 `death:` 那一类）。
+ * 只记你认得的人——不认得的人没了，世界记着，你的认知里本来就没有他这个人。
+ * 接触只往上走（`character.learn`）：先听说、后来见了，不会退回听说。
+ */
+export function noteDeath(
+  character: CharacterStore,
+  people: PeopleStore,
+  world: WorldStore,
+  id: string,
+  contact: '听说' | '见过' | '亲历',
+): void {
+  if (!people.known[id]) return
+  const call = people.callOf(id)
+  const cause = people.personOf(id)?.death?.cause
+  const word = cause !== undefined ? CAUSE_WORDS[cause] : undefined
+  character.learn({
+    id: knowledgeKey('death', id),
+    title: `${call}没了`,
+    summary: word !== undefined && contact !== '听说' ? `${call}没了，${word}。` : `${call}没了。`,
+    category: '人物',
+    at: world.time,
+    contact,
+    interpretation: '确信',
+  })
+}
+
 function record(text: string, tone?: InkTone): NarrativeBlock {
   return { kind: 'record', text, ...(tone ? { tone } : {}) }
 }
@@ -121,13 +157,17 @@ function record(text: string, tone?: InkTone): NarrativeBlock {
  * 自家那一户换了人，记两面旗：上一任是谁（正文按它说「爹留下的」还是「娘交的钥匙」），
  * 换给了谁。承户那一卷问的是 `house.head`，不问这面旗。
  */
-function settleHeads(
+export function settleHeads(
   world: WorldStore,
   character: CharacterStore,
   household: HouseholdStore,
   people: PeopleStore,
 ): void {
-  const passed = people.keepHeads({ age: character.age, gender: household.gender })
+  const passed = people.keepHeads({
+    age: character.age,
+    gender: household.gender,
+    alive: character.died === null,
+  })
   for (const one of passed) {
     if (one.house !== 'home') continue
     world.setFlag('head-passed-from', one.from)
@@ -157,7 +197,18 @@ function applyOne(
       const years = world.advanceTime(effect)
       // 玩家在私塾念书的那几年，在外地做工的父亲也在老去。
       // NPC 不因离开玩家视野而停止存在，就落实在这一行
+      const aliveBefore = new Set(
+        Object.values(people.roster)
+          .filter((person) => person.fate === '在')
+          .map((person) => person.id),
+      )
       people.live(years)
+      // 这几年里老病没了的：跟你住一处的你知道，不住一处的世界知道你不知道
+      for (const id of aliveBefore) {
+        const person = people.personOf(id)
+        if (!person || person.fate !== '殁' || person.place !== world.place) continue
+        noteDeath(character, people, world, id, '见过')
+      }
       // 这几年里殁了的户主，户里得有人接；寡母当家到儿子成人也在这儿交
       if (years > 0) settleHeads(world, character, household, people)
       return null
@@ -365,7 +416,9 @@ function applyOne(
        */
       if (effect.rank !== undefined) people.amend(effect.id, { rank: effect.rank })
       if (effect.alive === false) {
+        const here = people.personOf(effect.id)?.place === world.place
         people.die(effect.id)
+        if (here) noteDeath(character, people, world, effect.id, '亲历')
         settleHeads(world, character, household, people)
       }
       return null
@@ -386,7 +439,12 @@ function applyOne(
         ...(effect.fate === undefined || effect.fate === '殁' ? {} : { fate: effect.fate }),
         ...(effect.health === undefined ? {} : { health: effect.health }),
       })
-      if (effect.fate === '殁') people.die(effect.id, effect.cause)
+      if (effect.fate === '殁') {
+        // 他没了那一刻你在同一个地方，你就知道了；不在，世界知道你不知道——等一卷捎话来
+        const here = people.personOf(effect.id)?.place === world.place
+        people.die(effect.id, effect.cause)
+        if (here) noteDeath(character, people, world, effect.id, '亲历')
+      }
       if (effect.leavesHouse === true) people.leaveHouse(effect.id)
       if (effect.fate !== undefined) settleHeads(world, character, household, people)
       return null

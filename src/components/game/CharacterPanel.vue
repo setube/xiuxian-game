@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { ASPECTS } from '@/engine/aspects'
 import { describeAge, describeStamp, monthsSince } from '@/engine/describe'
 import { selfSense } from '@/engine/leanings'
+import { knowledgeKey } from '@/engine/facts'
 import { noteOf } from '@/engine/note'
 import { useCharacterStore } from '@/stores/character'
 import { useLeaningStore } from '@/stores/leanings'
@@ -47,6 +48,8 @@ function kinLine(id: string): string {
     age: people.ageOf(id),
     months: people.monthsOf(id),
     name: acquaintance?.knowsName && person ? `${person.surname}${person.given}` : undefined,
+    // 他没了你知不知道，问的是你的认知不是世界（`facts.ts` 的 death: 那一类）
+    knownDead: character.knows(knowledgeKey('death', id)),
     vanished: '没有消息。',
     // 这一栏本来就只列自家人，所以落回家里的营生在这儿是无条件的
     fallback: household.livelihood,

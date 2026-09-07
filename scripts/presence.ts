@@ -38,16 +38,18 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
-import { applyEffects } from '../src/engine/effects'
+import { applyEffects, settleHeads } from '../src/engine/effects'
 import { ROLE_IDS } from '../src/engine/interpolate'
 import { exists, isAlive, isPresent } from '../src/engine/presence'
 import { useStory } from '../src/engine/story'
+import { knowledgeKey } from '../src/engine/facts'
+import { noteOf } from '../src/engine/note'
 import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 import type { Bond, Condition, Effect, OriginId, Scene, SceneNode } from '../src/types/game'
-import { grownUp, type Staged } from './lib/staged'
+import { grownUp, play, type Staged } from './lib/staged'
 import { beOf } from './origin'
 import { effectsOf } from './refs'
 
@@ -699,6 +701,97 @@ if (soft.length > 0) {
   } else {
     console.log('  ✓ 五、开蒙四条路各领各的先生进门：宫里的侍讲、王府的教授（tutor）、家里的西席、村塾的先生（teacher），都在开口之前入了册、开口时在场；两位先生不再是一个人。')
   }
+}
+
+// ============================================================
+// 六、死讯是你的认知，不是世界的开关：在场就知道，不在场要有人捎话来；面板那一行字问的是你
+// ============================================================
+{
+  const wrong: string[] = []
+  // 在场：爹在家没了，你当场知道
+  const a = farmChild()
+  if (!a) wrong.push('掷不出局')
+  else {
+    const character = useCharacterStore()
+    if (character.knows(knowledgeKey('death', 'father'))) wrong.push('爹还活着，你就「知道他没了」')
+    applyEffects([{ type: 'person', id: 'father', fate: '殁', cause: '病' }])
+    const entry = character.knowledge.find((one) => one.id === knowledgeKey('death', 'father'))
+    if (!entry) wrong.push('爹在家没了，你在场，认知里却没有这一条')
+    else {
+      if (entry.contact !== '亲历') wrong.push(`爹在家没了你在场，接触该是亲历，记的是「${entry.contact}」`)
+      if (!entry.summary?.includes('是病没的')) wrong.push(`在场的知道死因，认知里那句却是「${entry.summary}」`)
+    }
+    const line = noteOf({ person: a.people.personOf('father'), age: a.people.ageOf('father'), vanished: '没有消息。', knownDead: character.knows(knowledgeKey('death', 'father')) })
+    if (line !== '不在了。') wrong.push(`你知道爹没了，面板那一行却是「${line}」`)
+  }
+  // 不在场：哥在镇上没了，你不知道；老屋捎话来才知道（听说）；守了七天（见过）
+  const b = grownUp()
+  if (!b) wrong.push('掷不出第二局')
+  else {
+    const character = useCharacterStore()
+    b.people.amend('brother', { temper: '精明' })
+    play('kindred:brother-turns')
+    if (b.people.livelihoodOf('brother') !== '木工') wrong.push('摆不出在镇上做木匠的哥')
+    applyEffects([{ type: 'person', id: 'brother', fate: '殁', cause: '病' }])
+    const key = knowledgeKey('death', 'brother')
+    if (character.knows(key)) wrong.push('哥在镇上没了，你在老屋，却当场「知道」了')
+    const line = noteOf({ person: b.people.personOf('brother'), age: b.people.ageOf('brother'), vanished: '没有消息。', knownDead: character.knows(key) })
+    if (line === '不在了。') wrong.push('你还不知道哥没了，面板那一行却写「不在了」——世界知道的事上了你的面板')
+    play('kindred:brother-gone')
+    const entry = character.knowledge.find((one) => one.id === key)
+    if (!entry) wrong.push('老屋捎话来了，认知里还是没有哥没了这一条')
+    else if (entry.contact !== '见过') wrong.push(`捎话来是听说、守了七天是见过，最后该停在见过，记的是「${entry.contact}」`)
+    else if (!(entry.history.length >= 2 && entry.history[0]?.contact === '听说')) wrong.push('那一条的来历该是先听说、后见过')
+    if (entry?.summary?.includes('是病没的')) wrong.push('你没在他跟前，死因却进了你的认知')
+  }
+  if (wrong.length > 0) {
+    console.log(`\n  ✗ 六、死讯：${wrong[0]}（共 ${wrong.length} 处）`)
+    bad += 1
+  } else console.log('  ✓ 六、爹在家没了你当场知道（亲历，连死因）；哥在镇上没了你不知道、面板不写「不在了」，老屋捎话来才是听说、守了七天才是见过，死因你不知道。')
+}
+
+// ============================================================
+// 七、玩家死亡结束的是玩家这一生，不是世界
+// ============================================================
+{
+  const wrong: string[] = []
+  const s = grownUp()
+  if (!s) wrong.push('掷不出局')
+  else {
+    const character = useCharacterStore()
+    if (character.died !== null) wrong.push('人还活着，died 已经有了')
+    if (s.people.houses['home']?.head !== 'me') wrong.push(`分了家你该是自家当家的，却是 ${s.people.houses['home']?.head}`)
+    // 家里得有个能接的人：一个成了年的儿子。没人接的户是绝户，那是另一件事
+    applyEffects([
+      {
+        type: 'meet',
+        id: 'son',
+        calls: '儿子',
+        delta: 20,
+        who: { given: '大牛', gender: '男', age: 18, doing: '跟着你种地', house: 'home' },
+        bond: '子',
+      },
+    ])
+    if (!s.people.houses['home']?.members.includes('son')) wrong.push('儿子没进自家的户，摆不出局')
+    const brotherAge = s.people.ageOf('brother')
+    const edges = s.people.relations.filter((r) => r.from === 'me').length
+    character.die({ year: s.world.time.year, month: s.world.time.month, where: s.world.place })
+    settleHeads(s.world, character, s.household, s.people)
+    if (character.died?.year !== s.world.time.year) wrong.push('你没了，没记下哪一年')
+    if (s.people.houses['home']?.head !== 'son') wrong.push(`你没了，自家的当家该是儿子，却是 ${s.people.houses['home']?.head}——户主不留死人，对你也一样`)
+    if (s.people.houses['home']?.members.includes('me')) wrong.push('你没了还在自家的户里——户里的人是住在这一户里的活人')
+    // 世界照样往前推：哥照样老、边照样在、老屋照样有人当家
+    applyEffects([{ type: 'time', years: 10 }])
+    if (s.people.ageOf('brother') !== brotherAge + 10 && s.people.isAlive('brother')) wrong.push('你没了之后世界不走了：哥没有老')
+    if (s.people.relations.filter((r) => r.from === 'me').length !== edges) wrong.push('你没了，你的边少了——历史不封顶')
+    const oldHead = s.people.houses['old-home']?.head
+    if (oldHead === undefined || !s.people.isAlive(oldHead)) wrong.push('你没了十年，老屋的当家不是活人')
+    if (character.died === null) wrong.push('推了十年，你的死没了')
+  }
+  if (wrong.length > 0) {
+    console.log(`\n  ✗ 七、玩家没了世界继续：${wrong[0]}（共 ${wrong.length} 处）`)
+    bad += 1
+  } else console.log('  ✓ 七、你没了：记下哪一年在哪儿，自家的当家换了活人；推十年，哥照样老、你的边一条不少、老屋照样有人当家。')
 }
 
 const rulerWrong = ruler()

@@ -10,6 +10,7 @@ import type {
   AttributeKey,
   Attributes,
   Contact,
+  Death,
   GameTime,
   Interpretation,
   InventoryItem,
@@ -206,6 +207,14 @@ export const useCharacterStore = defineStore(
      * 为什么下限不是三岁、为什么修行能改它，都写在 `engine/lifespan.ts`。
      */
     const span = ref(rollSpan(attributes.value.body))
+    /**
+     * 你没了。哪一年、哪一月、在哪儿——跟人口册上别人的 `Person.death` 是同一种事实。
+     *
+     * 玩家死亡结束的是玩家这一生，不是世界（用户 2026-09-07 锁死）：这一格记下之后，
+     * 世界照样能推——家里的户主换人（`people.keepHeads` 从此把「我」当殁了的人算），
+     * 认识你的人继续活，你的边、债、名字都还在。落幕那一卷只是停止**问你**，不是停止世界。
+     */
+    const died = ref<Death | null>(null)
     const aspects = shallowRef<Aspects>(blankAspects())
     /** 出生时一无所知，一条见闻也没有。此后每一条都是学来的 */
     const knowledge = shallowRef<KnowledgeEntry[]>([])
@@ -353,6 +362,12 @@ export const useCharacterStore = defineStore(
 
     function knows(id: string): boolean {
       return knowledge.value.some((item) => item.id === id)
+    }
+
+    /** 你没了。记一次，不覆盖 */
+    function die(at: Death): void {
+      if (died.value) return
+      died.value = { ...at }
     }
 
     /**
@@ -549,6 +564,7 @@ export const useCharacterStore = defineStore(
       realm.value = INITIAL_REALM
       attributes.value = withConstitution(rollAttributes(), constitution.value)
       span.value = rollSpan(attributes.value.body)
+      died.value = null
       aspects.value = blankAspects()
       knowledge.value = []
       inventory.value = []
@@ -564,6 +580,8 @@ export const useCharacterStore = defineStore(
       realm,
       attributes,
       span,
+      died,
+      die,
       aspects,
       knowledge,
       inventory,
@@ -596,6 +614,7 @@ export const useCharacterStore = defineStore(
         'realm',
         'attributes',
         'span',
+        'died',
         'aspects',
         'knowledge',
         'inventory',
