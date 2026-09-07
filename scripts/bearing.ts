@@ -118,7 +118,9 @@ function play(): { end: string; kin: number; chronicles: number } {
 
   console.log(`  ${RUNS} 世走到哪儿：`)
   for (const [end, n] of [...ends].sort((a, b) => b[1] - a[1])) {
-    console.log(`      ${end.padEnd(10)} ${n.toString().padStart(3)}　${((n / RUNS) * 100).toFixed(1)}%`)
+    console.log(
+      `      ${end.padEnd(10)} ${n.toString().padStart(3)}　${((n / RUNS) * 100).toFixed(1)}%`,
+    )
   }
 
   const FLOOR = 5
@@ -158,8 +160,10 @@ function play(): { end: string; kin: number; chronicles: number } {
     console.log('\n  ✗ 三百世里一次也没走到「没留住」——这一条判据落空了。')
     bad += 1
   } else if (noKin !== checked || hasChronicle !== checked) {
-    console.log(`\n  ✗ 走到「没留住」${checked} 次，其中 ${checked - noKin} 次多出了人口、` +
-      `${checked - hasChronicle} 次年表没记。`)
+    console.log(
+      `\n  ✗ 走到「没留住」${checked} 次，其中 ${checked - noKin} 次多出了人口、` +
+        `${checked - hasChronicle} 次年表没记。`,
+    )
     bad += 1
   } else {
     console.log(`\n  ✓ 「没留住」走到 ${checked} 次：一次也没多出人口，一次不落都记进了年表。`)

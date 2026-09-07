@@ -162,9 +162,7 @@ export const bearingScenes: SceneLibrary = {
           { type: 'undertake', undertaking: EXPECTING, done: true },
           { type: 'household', standing: -4 },
         ],
-        blocks: [
-          { kind: 'narration', text: '生那一夜，产婆是隔壁村请来的，天亮才走。' },
-        ],
+        blocks: [{ kind: 'narration', text: '生那一夜，产婆是隔壁村请来的，天亮才走。' }],
         branches: [
           { requires: [{ flag: { key: 'newborn-lives', equals: '殁' } }], next: 'lost' },
           { requires: [{ flag: { key: 'newborn-sex', equals: '女' } }], next: 'daughter' },
