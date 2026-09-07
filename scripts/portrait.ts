@@ -43,8 +43,35 @@ import type { Portrait as Character } from './tasks/portrait-lives'
  * 这一支于是成了全套里最慢的一支，将近两分钟。慢有慢的道理：
  * 它守的三条里有两条挂在这半个点上，而**一支五批响一次的门禁
  * 比没有门禁更坏——它教人把红灯当噪音**。
+ *
+ * ## 那个「千分之二」过期了，而过期的方式是它自己预言过的
+ *
+ * 2026-09-07 实测七颗种子：**0.0 / 0.3 / 0.5 / 0.1 / 0.0 / 0.3 / 0.2**，
+ * 均值 0.2%——比定这个数时的 0.5% 低了一半有余，**七批里两批是零**。
+ * 落空率不是千分之二，是 **28%**，四批响一次。
+ *
+ * 上面那段话说得很准：「拿三个人量出来的比例去推该跑几世，
+ * 推出来的那个数本身就带着三倍的误差」——**而它自己就是拿六个人推的。**
+ * 内容一直在长（议亲、生育、出嫁、成年六问那几卷都把人生的岔路加宽了），
+ * 分母涨了，这半个点跟着摊薄。
+ *
+ * ## 所以不再靠加世数，改成掷到它出现为止
+ *
+ * 照 `day.ts` 那条现成的办法：**先跑满 `RUNS` 保证分布量得准，
+ * 之后如果那一格还是零就接着掷，上限十倍**。
+ *
+ * 这样两件事分开了：
+ *
+ *   分布　　　由前 `RUNS` 世量，人数一样多，比例不受影响
+ *   存在性　　由「掷到为止」保证，不再赌某一批的运气
+ *
+ * 而**真断了的时候它照样红**——十倍上限内一个也掷不到，
+ * 那就不是运气问题了。这是这一条跟「把阈值调松」的根本区别：
+ * 调松是让判据闭嘴，这是让判据问对问题。
  */
 const RUNS = 1200
+/** 「听过修士评价」那一格掷不到时最多再跑多少世。十倍是 `day.ts` 定下的老规矩 */
+const CAP = RUNS * 10
 
 /**
  * 把一个人这辈子听过的话印出来。
@@ -91,6 +118,24 @@ const lives = (
   await mapShards<Character[]>({ task: 'scripts/tasks/portrait-lives.ts', runs: RUNS })
 ).flat()
 
+/**
+ * 「听过修士评价」那一格在这批里出现了几次。
+ *
+ * 分开数是关键：**下面补掷的那些世只回答「存在吗」，不进分布**。
+ * 混进去的话，补掷越多这一格的比例越高，而那个比例是假的——
+ * 补掷本来就是挑着有它的那一批在掷。
+ */
+let extraLives = 0
+let extraHeard = 0
+/**
+ * 补掷里「两样都听过」的人数。
+ *
+ * 这一格比上一格还稀——**它要求同一个人既被凡人评过又被修士评过**，
+ * 是两个稀有事件的交集。上一格补掷不管它的话，
+ * 它会在同一批数据上照样零，红得跟没修一样。
+ */
+let extraBoth = 0
+
 for (const character of lives) {
   const learning = character.aspects.learning.claims.length
   const cultivation = character.aspects.cultivation.claims.length
@@ -106,6 +151,36 @@ for (const character of lives) {
   claimCounts.push(
     Object.values(character.aspects).reduce((sum, aspect) => sum + aspect.claims.length, 0),
   )
+}
+
+/**
+ * 那一格是零的话，接着掷到它出现为止。
+ *
+ * **这不是把阈值调松，是把两个问题分开。** 「半个点的事在这一批里
+ * 出现了几次」跟「这条路还通不通」是两回事：前者靠 `RUNS` 世量，
+ * 后者不该赌某一批的运气——2026-09-07 实测七颗种子里两颗是零。
+ *
+ * 真断了的时候它照样红：十倍上限内一个也掷不到，那就不是运气了。
+ */
+if (heardAdept === 0 || bothLearningAndCultivation === 0) {
+  const step = Math.max(300, Math.floor(RUNS / 4))
+  while ((extraHeard === 0 || extraBoth === 0) && extraLives < CAP) {
+    const more = (
+      await mapShards<Character[]>({ task: 'scripts/tasks/portrait-lives.ts', runs: step })
+    ).flat()
+    extraLives += more.length
+    for (const one of more) {
+      const cultivation = one.aspects.cultivation.claims.length
+      const root = one.aspects.root.claims.length
+      const learning = one.aspects.learning.claims.length
+      if (cultivation > 0 || root > 0) extraHeard += 1
+      if (learning > 0 && cultivation > 0) extraBoth += 1
+      // 头一节要印的那个人，补掷里捞到了也算
+      if (!sample && cultivation > 0) sample = one
+    }
+    // 两格都已经在这一批里出现过，就不必再掷了
+    if (heardAdept + extraHeard > 0 && bothLearningAndCultivation + extraBoth > 0) break
+  }
 }
 
 console.log('\n=== 一个人的十六年，他最后知道自己什么 ===\n')
@@ -147,9 +222,16 @@ console.log()
 {
   let bad = 0
 
-  // 一、得有人听过修行方面的评价，否则「他到底是不是那块料」这条线根本没落地
-  if (heardAdept === 0) {
-    console.log('  ✗ 一个人也没听过悟性或资质的评价——没有人被看过，也就没有人被看错。')
+  // 一、得有人听过修行方面的评价，否则「他到底是不是那块料」这条线根本没落地。
+  //
+  // 判的是 `heardAdept + extraHeard`：前者是这一批里的，后者是补掷捞到的。
+  // **两个数加起来才是「这条路通不通」，而单看前者是在赌运气**（实测七颗
+  // 种子里两颗是零）。补掷那些世不进上面的分布，只回答存在性。
+  if (heardAdept + extraHeard === 0) {
+    console.log(
+      `  ✗ ${RUNS + extraLives} 世里一个人也没听过悟性或资质的评价——` +
+        '没有人被看过，也就没有人被看错。',
+    )
     bad += 1
   } else if (heardAdept / RUNS > 0.5) {
     console.log('  ✗ 一半以上的人都被修士看过——那修士就不是稀客，是发牌员。')
@@ -157,9 +239,13 @@ console.log()
   }
 
   // 二、得有人两样都听过。**认知落差是这一支的正题**：
-  // 只听过一边的人不会撞上「他们说的不是一回事」
-  if (bothLearningAndCultivation === 0) {
-    console.log('  ✗ 没有一个人既听过凡人的评价又听过修士的评价——那两栏永远不会打架。')
+  // 只听过一边的人不会撞上「他们说的不是一回事」。
+  // 跟上一条同样加上补掷——这一格是两个稀有事件的交集，比上一格更稀
+  if (bothLearningAndCultivation + extraBoth === 0) {
+    console.log(
+      `  ✗ ${RUNS + extraLives} 世里没有一个人既听过凡人的评价又听过修士的评价——` +
+        '那两栏永远不会打架。',
+    )
     bad += 1
   }
 
