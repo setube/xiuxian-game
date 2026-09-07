@@ -570,12 +570,24 @@ export const routineScenes: SceneLibrary = {
             next: null,
           },
           {
+            /*
+             * 从前这一条是「添个孩子」：选中 → 一年过去 → 屋里多个孩子，
+             * 一次也没落空过。而那写的是**这个人想不想要孩子**，
+             * 不是**这个人有没有孩子**——两件事在这个时代里差着十万八千里。
+             *
+             * 那一整段搬去了 `bearing.ts`，在那儿它有三个同层的结局
+             * （活下来 / 没留住 / 这些年一直没动静）。
+             *
+             * 这里留下的只表达「你们盼着这件事」，**盼不盼得来不由这一条说了算**。
+             * 两条并存的话玩家仍能绕过那一卷直接得到孩子，所以底下不再造人。
+             */
             id: 'bear',
-            label: '添个孩子',
+            label: '想要个孩子',
             requires: [{ bond: { kind: '配偶', alive: true } }, { age: { atMost: 42 } }],
-            echo: '家里添了口人。',
+            hint: '家里人也在等这件事',
+            echo: '家里都盼着添个人口。',
             effects: [{ type: 'time', years: 1 }],
-            next: 'bear',
+            next: null,
           },
           {
             id: 'elders',
@@ -620,82 +632,23 @@ export const routineScenes: SceneLibrary = {
         ],
       },
 
-      /**
-       * 添丁。孩子不写姓——`meet.who` 省略 surname 就是跟本家同姓，
-       * 而剧本写不出玩家姓什么（那是出生那一刻掷的，还分嫡出抱养随母姓）。
+      /*
+       * 添丁那三节（bear/son/daughter）搬去了 `bearing.ts`。
        *
-       * ## 生男生女得真的掷一次
+       * 从前它们在这儿是：选中「添个孩子」→ 一年过去 → 屋里多个孩子，
+       * **一次也没落空过**。搬走之后它有三个同层的结局：
+       * 孩子活下来、孩子没留住、这些年一直没有动静。
        *
-       * 这一卷从前只有一节，写死「是个男孩」，于是全作**生不出女儿**：
-       * `{ bond: { kind: '女' } }` 这一问在任何地方都不可能成立，
-       * 落幕那一行、这一卷底下「教孩子认字」那一行，全都白写。
-       * 那不是一处偏见，是一处偷懒——可读起来跟偏见没有分别。
+       * 两处旧账跟着搬过去了，都还成立：
        *
-       * 掷法照 `kin.ts` 那一节的老规矩：空节点掷一次，再按 flag 分流。
-       * 儿女各用各的 id，所以一世里两样都添得上——
-       * 只是同一样添第二回不会再多一个人（`meet` 认 id，同一个 id 只造一次），
-       * 那是**明写的将就**：`meet.id` 是剧本里写死的字串，
-       * 眼下没有「生第三个」这种事要它支持。
+       * 一、**生男生女得真的掷一次**。从前写死「是个男孩」，于是全作
+       *     生不出女儿——`{ bond: { kind: 女 } }` 这一问在任何地方都不可能成立，
+       *     落幕那一行、底下「教孩子认字」那一行，全都白写。
+       *     那不是一处偏见，是一处偷懒，可读起来跟偏见没有分别。
+       *
+       * 二、**`meet.id` 是剧本里写死的字串，同一个 id 只造一次**，
+       *     所以一世里最多一儿一女。那是明写的将就，不是模型限制。
        */
-      bear: {
-        id: 'bear',
-        onEnter: [
-          // 这一掷玩家看不见，只看得见结果
-          {
-            type: 'roll',
-            key: 'newborn',
-            among: [
-              { value: '男', weight: 50 },
-              { value: '女', weight: 50 },
-            ],
-          },
-          { type: 'household', standing: -4 },
-        ],
-        blocks: [],
-        branches: [{ requires: [{ flag: { key: 'newborn', equals: '女' } }], next: 'daughter' }],
-        next: 'son',
-      },
-
-      son: {
-        id: 'son',
-        onEnter: [
-          {
-            type: 'meet',
-            id: 'son',
-            calls: '孩子',
-            delta: 25,
-            name: true,
-            who: { given: '安', gender: '男', age: 0 },
-            bond: '子',
-          },
-        ],
-        blocks: [
-          { kind: 'narration', text: '是个男孩。' },
-          { kind: 'narration', text: '家里多一张嘴，日子紧了些。你倒是不太在意。' },
-        ],
-        choices: [SETTLE_IN],
-      },
-
-      daughter: {
-        id: 'daughter',
-        onEnter: [
-          {
-            type: 'meet',
-            id: 'daughter',
-            calls: '孩子',
-            delta: 25,
-            name: true,
-            who: { given: '宁', gender: '女', age: 0 },
-            bond: '女',
-          },
-        ],
-        blocks: [
-          { kind: 'narration', text: '是个女孩。' },
-          { kind: 'narration', text: '家里多一张嘴，日子紧了些。你倒是不太在意。' },
-        ],
-        choices: [SETTLE_IN],
-      },
-
       teach: {
         id: 'teach',
         onEnter: [

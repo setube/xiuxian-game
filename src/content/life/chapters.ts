@@ -19,6 +19,7 @@ import { nephewEvents, nephewScenes } from './nephew'
 import { reunionEvents, reunionScenes } from './reunion'
 import { rivermanEvents, rivermanScenes } from './riverman'
 import { attemptEvents, attemptScenes } from './attempt'
+import { bearingEvents, bearingScenes } from './bearing'
 import { matchEvents, matchScenes } from './match'
 import { mourningEvents, mourningScenes } from './mourning'
 import { routineScenes } from './routine'
@@ -197,6 +198,29 @@ export const CHAPTERS: readonly Chapter[] = [
     purpose: ['一门亲事从有人提起到成或不成，中间那段时间真的存在过'],
     // 这一章留下的痕迹：议亲那件事的起止（undertake），以及成了之后进门的那个人（meet）
     marks: ['undertake', 'meet'],
+  },
+
+  /**
+   * 添丁：等着的那几年。
+   *
+   * 跟婚事那一册是同一个立场的第二次落地——**这个时代里最要紧的那几件事，
+   * 都不由一个人说了算**。从前「添个孩子」是 `routine.ts` 里的一个选项，
+   * 选了就有，一次也没落空过；而那写的是「他想不想要孩子」，
+   * 不是「他有没有孩子」。
+   *
+   * 三个结局都是同一层的：孩子活下来、孩子没留住、这些年一直没有动静。
+   * 所以 `marks` 里既有 `meet`（多了一个人）也有 `flag`（`no-issue`）——
+   * **没有孩子那一路也得在这一章的账上留下痕迹**，否则走查会以为那条路空着。
+   */
+  {
+    id: 'bearing',
+    scenes: bearingScenes,
+    events: bearingEvents,
+    called: ['年表'],
+    to: [],
+    age: [18, 45],
+    purpose: ['想要一个孩子和有一个孩子，在这个时代里是两件事'],
+    marks: ['undertake', 'meet', 'flag', 'roll'],
   },
 
   /**

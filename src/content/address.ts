@@ -1,5 +1,7 @@
 import type { Bond, Gender, Manner, OriginId } from '@/types/game'
 
+import { REFERENCE_PERIOD, TIMELESS, type Attestation } from './attest'
+
 /**
  * 称谓语境。
  *
@@ -105,16 +107,14 @@ import type { Bond, Gender, Manner, OriginId } from '@/types/game'
 /**
  * 一个称谓的依据。
  *
- * 这一格不是注释，是**判据**：门禁按 `level` 数「史料几条、合理化几条」，
- * 而 `from` 那句话必须自己站得住——写「大概是这么叫的」等于没写。
+ * 这一格不是注释，是**判据**：门禁按 `status` 数「史料几条、合理化几条」，
+ * 按 `period` 揪出**有出处但不是本朝**的那些格，而 `source` 那句话必须自己
+ * 站得住——写「大概是这么叫的」等于没写。
  * 这条规矩跟别处那条同源：**文档里的因果解释也是判据，也要有出处。**
+ *
+ * 三格的定义和「为什么只有两档」在 `content/attest.ts`，那儿是全库共用的一份。
  */
-export interface Attestation {
-  /** 史料 = 引得出出处；合理化 = 我们为游戏语言定的 */
-  level: '史料' | '合理化'
-  /** 史料写书名卷次和朝代；合理化写为什么这么定，以及它软在哪儿 */
-  from: string
-}
+export type { Attestation } from './attest'
 
 /**
  * 一个人学会的那一套称呼。
@@ -148,12 +148,14 @@ export const REGISTERS: readonly Register[] = [
      * 谁是老几出生那一刻并没有掷过。留通称，等排行真有了再说。
      */
     attested: {
-      level: '史料',
-      from:
-        '宋。宋人笔记里的宫中日常：皇子称父为「爹爹」、称母为「娘娘」，' +
+      period: '宋',
+      status: '史料',
+      source:
+        '宋人笔记里的宫中日常：皇子称父为「爹爹」、称母为「娘娘」，' +
         '兄弟按排行称「大哥」「九哥」。这是**这一层里出处最硬的一格**——' +
         '它同时也是「不能照搬影视剧」这句话本身的证据。' +
-        '⚠️ 缺口写在这儿：出处是宋的，而这个世界照的是明。' +
+        '⚠️ 缺口就在 `period` 那一格上：出处是宋的，而这个世界照的是明，' +
+        '**门禁每次都会把这一条报出来**（`scripts/attest.ts`），报的不是错误是欠账。' +
         '明代宗室材料里大量出现的是「母妃某氏」那类**书面**称谓，' +
         '而「史书写她是母妃」不等于「皇子当面就这么喊她」——' +
         '当面怎么叫要按嫡庶、年龄、场合另考，二手文章下不了这个结论。' +
@@ -179,8 +181,9 @@ export const REGISTERS: readonly Register[] = [
      * 而不是变回「爹」。**他还是那个读书人家教出来的孩子。**
      */
     attested: {
-      level: '合理化',
-      from:
+      period: TIMELESS,
+      status: '合理化',
+      source:
         '通用书面语，不专属任何一朝。「父亲」「母亲」「兄长」在历代文献里' +
         '既是称呼也是叙述用词，正因为如此它才适合当底层：' +
         '它不给任何一种人家添特征，只跟「爹」「娘」那种口语拉开一道教养的距离。',
@@ -279,9 +282,10 @@ export const RANK_CALLS: readonly RankCall[] = [
     manner: '家常',
     word: '父王',
     attested: {
-      level: '合理化',
-      from:
-        '明。《礼部志稿》卷十六证明的是**两套礼并存**——亲王入朝，' +
+      period: REFERENCE_PERIOD,
+      status: '合理化',
+      source:
+        '《礼部志稿》卷十六证明的是**两套礼并存**——亲王入朝，' +
         '在朝廷则行君臣礼，至便殿则叙家人礼。同一对父子，同一天，' +
         '隔一道门就换一套称呼，这件事有据。但家人礼那一侧出口的到底是' +
         '哪两个字，史料没有留下口语实录。「父王」是历代书面语里现成的词，' +
@@ -294,8 +298,9 @@ export const RANK_CALLS: readonly RankCall[] = [
     manner: '礼上',
     word: '王爷',
     attested: {
-      level: '合理化',
-      from:
+      period: REFERENCE_PERIOD,
+      status: '合理化',
+      source:
         '明清口语敬称。礼制上亲王当称「殿下」，这一格没用它，' +
         '是因为世子在同一场合也称殿下（见 `HONORIFICS`）——' +
         '一个词同时指着堂上跪着的父亲和跪在他后头的儿子，那就分不出人了。' +
@@ -309,8 +314,9 @@ export const RANK_CALLS: readonly RankCall[] = [
     manner: '家常',
     word: '母妃',
     attested: {
-      level: '合理化',
-      from:
+      period: '后世小说',
+      status: '合理化',
+      source:
         '比「父王」还软一层。这个词更像后世小说高度固化的文学表达，' +
         '不宜跟「世子」「殿下」算作同一级的明代制度称呼。' +
         '留着它是因为王府那位在 `content/origins.ts` 里本来就写作' +
@@ -349,8 +355,9 @@ export interface Honorific {
 }
 
 const COURT_RITUAL: Attestation = {
-  level: '史料',
-  from:
+  period: TIMELESS,
+  status: '史料',
+  source:
     '历代通行的仪礼称谓：皇帝称陛下，皇太子、亲王称殿下，唐以降公主亦称殿下。' +
     '这一条不专属某一朝，明代沿用。',
 }
@@ -362,9 +369,10 @@ export const HONORIFICS: readonly Honorific[] = [
     identity: '世子',
     word: '世子',
     attested: {
-      level: '史料',
-      from:
-        '明。《礼部志稿》卷十五：亲王嫡长子年十岁立为王世子，世子之妻称世子妃，' +
+      period: REFERENCE_PERIOD,
+      status: '史料',
+      source:
+        '《礼部志稿》卷十五：亲王嫡长子年十岁立为王世子，世子之妻称世子妃，' +
         '其子可为世孙；亲王诸子封郡王，以下有长子、将军、中尉等级。' +
         '**「世子」是一级制度身份，不是一种亲属称呼**——这一整层拆成三张表，' +
         '拆的就是这句话。',
@@ -374,8 +382,9 @@ export const HONORIFICS: readonly Honorific[] = [
     identity: '郡主',
     word: '郡主',
     attested: {
-      level: '史料',
-      from: '明。同上条那一份宗室封爵序列：亲王之女封郡主，郡王之女封县主。',
+      period: REFERENCE_PERIOD,
+      status: '史料',
+      source: '同上条那一份宗室封爵序列：亲王之女封郡主，郡王之女封县主。',
     },
   },
 ]

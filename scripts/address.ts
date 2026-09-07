@@ -68,6 +68,7 @@ import {
   registerFor,
   titleFor,
 } from '../src/content/address'
+import { MIN_SOURCE_LENGTH } from '../src/content/attest'
 import { lifeScenes } from '../src/content/life'
 import { birthSceneId } from '../src/content/life/birth'
 import { ORIGINS } from '../src/content/origins'
@@ -547,7 +548,9 @@ function pathKillsFather(path: Path): boolean {
     const site = resolve(step)
     return (
       typeof site !== 'string' &&
-      site.effects.some((one) => one.type === 'family' && one.id === 'father' && one.alive === false)
+      site.effects.some(
+        (one) => one.type === 'family' && one.id === 'father' && one.alive === false,
+      )
     )
   })
 }
@@ -1111,14 +1114,10 @@ function formalSites(): string[] {
 /**
  * 一条出处至少要写这么多字。
  *
- * 这个数不是量出来的，是定的——它守的是一条纪律：**「明代」两个字不算出处，
- * 「《礼部志稿》卷十六：亲王入朝，在朝廷则君臣礼，至便殿则叙家人礼」才算。**
- * 合理化那一级同理，得写清楚为什么这么定、它软在哪儿。
- *
- * 一句话说不清一个词是从哪儿来的，这一层就退回成「作者的临时感觉」，
- * 而分史料／合理化两级的全部意义正是不让它退回去。
+ * 判据本身在 `content/attest.ts`——那儿是全库共用的一份。这儿只借来用，
+ * **别在这边另定一个数**：两处各定一个，改了一处另一处不会吭声。
  */
-const MIN_ATTESTATION = 20
+const MIN_ATTESTATION = MIN_SOURCE_LENGTH
 
 function ruler(): string[] {
   const wrong: string[] = []
@@ -1308,8 +1307,8 @@ function ruler(): string[] {
    * 为什么这么定、软在哪儿。两级都得有人——一条史料也没有，这一层全是编的；
    * 一条合理化也没有，那等于宣称每个词都引得出出处，而口语实录并不存在。
    */
-  const sourced = ATTESTATIONS.filter((one) => one.attested.level === '史料')
-  const reasoned = ATTESTATIONS.filter((one) => one.attested.level === '合理化')
+  const sourced = ATTESTATIONS.filter((one) => one.attested.status === '史料')
+  const reasoned = ATTESTATIONS.filter((one) => one.attested.status === '合理化')
   console.log(
     `  覆盖率：出处一共 ${ATTESTATIONS.length} 条，史料 ${sourced.length} 条，合理化 ${reasoned.length} 条`,
   )
@@ -1318,14 +1317,14 @@ function ruler(): string[] {
     wrong.push('一条合理化也没有——那等于宣称每个词都引得出出处，而日常口语的实录并不存在')
   }
   for (const one of ATTESTATIONS) {
-    if (one.attested.from.length < MIN_ATTESTATION) {
+    if (one.attested.source.length < MIN_ATTESTATION) {
       wrong.push(
-        `${one.where} 的出处只写了 ${one.attested.from.length} 个字：「${one.attested.from}」——` +
+        `${one.where} 的出处只写了 ${one.attested.source.length} 个字：「${one.attested.source}」——` +
           '一句话说不清一个词是从哪儿来的，等于没写',
       )
     }
   }
-  if (!sourced.some((one) => one.attested.from.includes('《'))) {
+  if (!sourced.some((one) => one.attested.source.includes('《'))) {
     wrong.push('标着史料的那几条里没有一条引到书名——「史料」这一级于是跟「合理化」没有分别')
   }
 
