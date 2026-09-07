@@ -1,7 +1,6 @@
-import { useCharacterStore } from '@/stores/character'
 import { useHouseholdStore } from '@/stores/household'
 import { usePeopleStore } from '@/stores/people'
-import type { Livelihood } from '@/types/game'
+import type { Livelihood, Tenure } from '@/types/game'
 
 /**
  * 你面前有哪几条路。
@@ -17,12 +16,12 @@ import type { Livelihood } from '@/types/game'
  *
  *     你还做着家里那一行，务农。
  *     家里的事，如今是你说了算。
- *     家里那间药铺还在。
+ *     那几亩地是自家的。
  *
  * （12.md 里举的例子是「铺子归了哥，你手里有一笔折了的银子，没有田，
- * 也没有手艺」——那是期望的形状。地那一格等 `household.tenure` 合进来
- * 才答得出，见底下那段待接说明；「手里有多少银子」世界还没记。）
- * **它不给菜单。** 文档反对的正是那个：建一个 `adultCareerChoice` 让玩家
+ * 也没有手艺」——那是期望的形状。地那一格已经接上了 `household.tenure`；
+ * 「手里有多少银子」和「有没有手艺」世界还没记。）
+ * * **它不给菜单。** 文档反对的正是那个：建一个 `adultCareerChoice` 让玩家
  * 从「继承父业 / 自己开铺 / 拜师学艺 / 出外谋生」里挑一个，路就成了
  * 游戏菜单，而不是人生的现实结果。哪条路走得通仍旧由后续各卷的 `requires`
  * 决定——手里有本钱才提得起开铺，识字才谈得上功名，这些条件本来就在那儿。
@@ -51,56 +50,52 @@ export interface Paths {
   home: '自立' | '寄人' | '无'
   /** 名下有没有产业。这一格问的是「这一户目前主要靠什么家业维持」 */
   property: string | null
+  /**
+   * 地。**三档不是两档**：
+   *
+   *     '自耕'  那几亩地是自家的
+   *     '佃'    人还种着地，可地是别人的
+   *     null    说不上——不是「没有地」
+   *
+   * 中间那一档是这一格存在的理由。从前只有「有田／没有田」两种说法，
+   * 而父债链尾「地抵了债」之后的人两种都不是：他照旧天天下地，
+   * 那地却已经归了债主（`household.tenure`，xiuxian-game-79 加的）。
+   */
+  tenure: Tenure | null
   /** 上头有没有人。当家的不是你，就有 */
   under: string | undefined
   /** 还在做家里原来那一行吗 */
   sameTrade: boolean
 }
 
-/*
- * ## 待接：地的那一格（`household.tenure`，xiuxian-game-79 在做）
- *
- * 这个文件顶上那句示例写着「**没有田**，也没有手艺」——而「没有田」这半句
- * 眼下**答不出来**：`Paths` 只有 `property`（那是铺面），地这一格根本不存在。
- * 那句话是照 12.md 写的期望值，不是代码产出的。
- *
- * `tenure` 合进 main 之后这里加一格 `tenure: '自耕' | '佃' | null`，
- * `pathWords` 出两句（措辞 79 定的，村里人说「地」不说「田」）：
- *
- *     自耕  那几亩地是自家的。
- *     佃    种着别人的地，秋后先量租子。
- *     null  不出声
- *
- * **第三档最要紧**：`佃` 从前只能说成「有田」或「没有田」，两个都不对——
- * 人还种着地，地是别人的（79 那一片父债链尾「地抵了债」之后正是这个）。
- *
- * `null` 照现有那条纪律：**说得上的才说**。没有地就不提地，
- * 硬凑一句「你没有地」反而把一件本来无声的事说响了。
- *
- * 出嫁之后 `joined → null`，跟底下 `property` 同一个口径——
- * 业、产、田都看**此刻这一户**，`House` 上没有那几格之前一律「说不上」
- * （79 与 14 2026-09-07 定）。
- *
- * 接的时候**门禁要一起改**（`scripts/lotpath.ts`）：加一条判据验
- * 「说『种着别人的地』时 `tenure` 真的是 `'佃'`」，尺子自检三档各摆一次。
- * 不加的话那两句话跟世界脱钩了不会有人发现，而这一支守的正是
- * 「每一句都能在世界里找到出处」。
- */
-
 /**
  * 你此刻的处境。
  *
  * **不写死 `houses['home']`**：出嫁、入赘之后那一户不再是你的了
- * （`wed-into` 效果把 `me` 迁进 `in-law-<配偶>`）。问的是「`me` 在哪一户」，
- * 答案由 `people.houseOf('me')` 给；它返回 `undefined` 表示你还在自家过
- * （自家不在 `houses` 里，在 `household` 仓库，见 `stores/people.ts`）。
+ * （`wed-into` 把 `me` 迁进 `in-law-<配偶>`）。问的是「`me` 在哪一户」，
+ * 答案由 `people.houseOf('me')` 给——它总有值（出生那刻就进了 `home` 户），
+ * 所以要看的是**那一户是不是娘家那一户**，不是「有没有户」。
  */
 export function pathsNow(): Paths {
   const people = usePeopleStore()
   const household = useHouseholdStore()
-  const character = useCharacterStore()
 
+  /*
+   * 我此刻在哪一户，以及**那是不是我自己家**。
+   *
+   * 这两件事要分开问。头一版只问了前一件（`houseOf('me')` 有没有值），
+   * 依据是 `stores/people.ts` 那句注释「玩家自家的人不在任何一户里」——
+   * **那句话已经过时了**：`content/birth.ts` 出生那一刻就 `enrollHouse({ id: 'home' })`
+   * 并把 `me` 放了进去，所以 `houseOf('me')` 对没出嫁的人也返回 `home`。
+   *
+   * 后果是 `tenure` 和 `property` 恒为 `null`——那两句话一辈子说不出口，
+   * 而门禁只会说「尺子自检没通过」，不会告诉你依据错了。
+   *
+   * 现在问的是「我在的这一户，是不是娘家那一户」：`'home'` 是自家，
+   * `in-law-*` 是嫁过去／入赘进的那一户（`wed-into` 建的）。
+   */
   const joined = people.houseOf('me')
+  const movedOut = joined !== undefined && joined.id !== 'home'
   const head = joined?.head
 
   // 一起过日子的：迁进别人户里的看那一户的名册，还在自家的看自家有谁在
@@ -109,22 +104,18 @@ export function pathsNow(): Paths {
     : household.members.filter((one) => people.isAlive(one.person)).map((one) => one.person)
 
   /*
-   * 当着家还是寄人篱下。
+   * 当着家还是寄人篱下。**问的是眼下谁当家，不是户籍。**
    *
-   * 迁进别人户里的看户主是不是你——入赘的女婿住在妻家，当家的是老丈人，
-   * 那是「寄人」；他日老丈人殁了、家交到他手上（`keepHeads`），同一个人
-   * 同一处屋子，这一格就变成「自立」。**它问的是眼下谁当家，不是户籍。**
+   * 入赘的女婿住在妻家，当家的是老丈人，那是「寄人」；他日老丈人殁了、
+   * 家交到他手上（`keepHeads`），同一个人同一处屋子，这一格变成「自立」。
+   * 自家那一户同理：爹在世时你是寄人，爹殁了你承户就是自立——
+   * 而那一笔由 `keepHeads` 落，不由这里猜。
    *
-   * 还在自家的：成了年就是自立（爹娘殁后你承户，或者本来就该你当家）。
-   * 未成年跟着大人过是「寄人」——这不是贬义，一个十岁的孩子本来就该如此。
+   * 头一版这里有一条 `character.age >= 16` 的将就，用来兜「不在任何一户里」
+   * 的情形。那个情形不存在（`birth.ts` 出生那刻就把 `me` 放进了 `home` 户），
+   * 于是那条分支是死的，而且它答的还是另一个问题——年纪不决定谁当家。
    */
-  const home: Paths['home'] = joined
-    ? head === 'me'
-      ? '自立'
-      : '寄人'
-    : character.age >= 16
-      ? '自立'
-      : '寄人'
+  const home: Paths['home'] = head === undefined ? '无' : head === 'me' ? '自立' : '寄人'
 
   /*
    * 靠什么过活。
@@ -144,7 +135,14 @@ export function pathsNow(): Paths {
     household: together,
     home,
     // 迁出去的人不再靠娘家那份产业，那是娘家的
-    property: joined ? null : household.business,
+    property: movedOut ? null : household.business,
+    /*
+     * 地跟产同一个口径：出嫁、入赘之后娘家那几亩不再是她的，
+     * 而夫家有没有地世界还没记（`House` 上没有这一格，`wed-into` 连
+     * `livelihood` 都是照抄娘家的将就）。**所以是「说不上」，不是「没有」**
+     * ——79 与 14 2026-09-07 定：业产田都看此刻这一户。
+     */
+    tenure: movedOut ? null : household.tenure,
     under: head === 'me' ? undefined : head,
     /*
      * 还做不做家里原来那一行。
@@ -192,7 +190,23 @@ export function pathWords(now: Paths = pathsNow()): string[] {
     said.push(`家里那间${now.property}还在。`)
   }
 
-  // 四、跟谁一起过。一个人过要说——那件事得说出来才成立
+  /*
+   * 四、地。
+   *
+   * **两句话分的是「地是谁的」，不是「有没有地」。** `佃` 那一句要紧：
+   * 人照旧天天下地，那地却是别人的——父债链尾「地抵了债」之后正是这样，
+   * 而从前只有「有田／没有田」两种说法，两种都说不对他。
+   *
+   * 村里人说「地」不说「田」（79 定的措辞）。`null` 不出声：说不上的事
+   * 硬说一句「你没有地」，反而把一件本来无声的事说响了。
+   */
+  if (now.tenure === '自耕') {
+    said.push('那几亩地是自家的。')
+  } else if (now.tenure === '佃') {
+    said.push('种着别人的地，秋后先量租子。')
+  }
+
+  // 五、跟谁一起过。一个人过要说——那件事得说出来才成立
   if (now.household.length === 0) {
     said.push('屋里就你一个。')
   }

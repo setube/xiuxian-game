@@ -41,6 +41,7 @@ import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useNarrativeStore } from '../src/stores/narrative'
 import { usePeopleStore } from '../src/stores/people'
+import type { Tenure } from '../src/types/game'
 
 /**
  * 走多少世。
@@ -59,12 +60,15 @@ const wrongHead: Offence[] = []
 const deadHead: Offence[] = []
 const wrongAlone: Offence[] = []
 const wrongTrade: Offence[] = []
+const wrongTenure: Offence[] = []
 const dowryKept: Offence[] = []
 const emptyWords: Offence[] = []
 
 let wed = 0
 let onOwn = 0
 let underSomeone = 0
+/** 采到多少世说得出地那一句。`null` 那一档不算——它是「说不上」，不出声 */
+let sawTenure = 0
 let worlds = 0
 let lines = 0
 /** 这一批里那段话出现过哪些说法。判据查的就是它们，印出来才知道查过了什么 */
@@ -105,7 +109,13 @@ for (let i = 0; i < RUNS; i += 1) {
   for (const one of said) everySaying.set(one, (everySaying.get(one) ?? 0) + 1)
 
   const joined = people.houseOf('me')
-  if (joined) wed += 1
+  /*
+   * 嫁出去／入赘了没有：看的是**户的 id**，不是「在不在户里」。
+   * `houseOf('me')` 对没出嫁的人也返回 `home`——`birth.ts` 出生那刻就把
+   * `me` 放进了自家那一户。拿「有没有户」当依据，300 世会全部算成嫁出去。
+   */
+  const movedOut = joined !== undefined && joined.id !== 'home'
+  if (movedOut) wed += 1
 
   /* 一、说「这个家是谁当的」，那个人得真是户主，而且真的活着 */
   if (now.under !== undefined) {
@@ -147,7 +157,40 @@ for (let i = 0; i < RUNS; i += 1) {
   }
 
   /*
-   * 四、嫁出去／入赘的人不许再报娘家的产业。
+   * 四、说地那两句，得跟 `household.tenure` 对得上。
+   *
+   * **这一条守的是三档不塌成两档**：说「种着别人的地」时那一格真的是 `'佃'`，
+   * 说「那几亩地是自家的」时真的是 `'自耕'`。塌了的话——比如把 `佃` 也说成
+   * 「自家的」——那句话读起来一点毛病没有，而它把一个佃户说成了地主。
+   *
+   * 「迁出去了没有」看的是**户的 id**，不是「在不在户里」：`houseOf('me')`
+   * 对没出嫁的人也返回 `home`（`birth.ts` 出生那刻就把 `me` 放了进去）。
+   * 拿「有没有户」当依据的话，这几条判据恒为真——那正是这一支第一次红的原因。
+   */
+  const landNow = movedOut ? null : household.tenure
+  if (now.tenure === '佃' && landNow !== '佃') {
+    wrongTenure.push({
+      what: '佃',
+      detail: `话里说种着别人的地，而这一户的 tenure 是「${movedOut ? 'null（迁出去了）' : household.tenure}」`,
+    })
+  }
+  if (now.tenure === '自耕' && landNow !== '自耕') {
+    wrongTenure.push({
+      what: '自耕',
+      detail: `话里说那几亩地是自家的，而这一户的 tenure 是「${movedOut ? 'null（迁出去了）' : household.tenure}」`,
+    })
+  }
+  /* 迁出去的人不许再报娘家的地，跟产业同一个口径 */
+  if (movedOut && now.tenure !== null) {
+    dowryKept.push({
+      what: String(now.tenure),
+      detail: `已经进了「${joined?.id}」这一户，话里却还报着娘家的地`,
+    })
+  }
+  if (now.tenure !== null) sawTenure += 1
+
+  /*
+   * 五、嫁出去／入赘的人不许再报娘家的产业。
    *
    * 这一条守的是 `wed-into` 之后的口径：`home` 那一户不再是你的了，
    * 娘家那间铺子也不再是你名下的。**写死 `houses['home']` 的实现会在这儿红**。
@@ -183,6 +226,11 @@ report(wrongHead, '当家的说错了人', '`under` 那一格取的该是 `house
 report(deadHead, '让死人当着家', '`keepHeads` 守的就是这个：当家的必须是活人。')
 report(wrongAlone, '说「屋里就你一个」而屋里有人', '`household` 那一格该数同户的活人。')
 report(wrongTrade, '说「还做着家里那一行」而那一行早换了', '`sameTrade` 比的是两个营生格。')
+report(
+  wrongTenure,
+  '地那一句跟 `household.tenure` 对不上',
+  '三档不许塌成两档：把「佃」说成「自家的」，读起来毫无破绽，可它把佃户说成了地主。',
+)
 report(
   dowryKept,
   '嫁出去了还报着娘家的产业',
@@ -224,9 +272,25 @@ if (underSomeone === 0) {
 
 console.log(
   `  覆盖：${worlds} 世 / 说出 ${lines} 句（平均每世 ${(lines / Math.max(worlds, 1)).toFixed(1)} 句）\n` +
-    `        其中嫁出去／入赘 ${wed} 世 / 上头有人当家 ${underSomeone} 世 / 自己当家 ${onOwn} 世` +
+    `        其中嫁出去／入赘 ${wed} 世 / 上头有人当家 ${underSomeone} 世 / 自己当家 ${onOwn} 世 / ` +
+    `说得出地那一句 ${sawTenure} 世` +
     `　（采样点：咽气那年，六问的答案最分化的一刻）`,
 )
+
+/*
+ * 地那一格采不到的话，第四条是空的。
+ *
+ * `tenure` 只有务农人家才掷得出（`content/origins.ts`），所以它天然不是
+ * 每一世都有——但**一世也采不到就说明这一条根本没被验过**，
+ * 而没查到跟查过了长得一模一样。
+ */
+if (sawTenure === 0) {
+  console.log(
+    `  ✗ ${RUNS} 世里没有一世说得出地那一句，第四条根本没被验过。` +
+      `\n    household.tenure 那一格是不是压根没掷出来过？`,
+  )
+  bad += 1
+}
 
 /*
  * 这一批里那段话说过哪些句子，印出来。
@@ -293,6 +357,80 @@ for (const [saying, n] of [...everySaying.entries()].sort((a, b) => b[1] - a[1])
     }
     if (now.home !== '自立') {
       failed.push(`家交到我手上之后该是「自立」，算出来是「${now.home}」`)
+    }
+  }
+
+  /*
+   * 地那三档，各摆一次。
+   *
+   * **这一条自检的是「三档没塌成两档」**：`自耕` 和 `佃` 各说各的话，
+   * `null` 一声不出。少了它，把两档合并成「有地／没地」的实现照样全绿——
+   * 那正是这一格存在之前的样子。
+   *
+   * **必须另起 pinia，而且赋值要在 `pathsNow()` 之后**：三个 store 头一次
+   * 被取到时会掷一份家境（`rolled`），把先赋的值冲掉。先跑一次把它们
+   * 初始化完，再改 `tenure`。
+   */
+  setActivePinia(createPinia())
+  {
+    pathsNow()
+    const household = useHouseholdStore()
+    const cases: { tenure: Tenure | null; want: string | null }[] = [
+      { tenure: '自耕', want: '那几亩地是自家的。' },
+      { tenure: '佃', want: '种着别人的地，秋后先量租子。' },
+      { tenure: null, want: null },
+    ]
+    for (const one of cases) {
+      household.tenure = one.tenure
+      const said = pathWords(pathsNow())
+      const about = said.find((line) => line.includes('地'))
+      if (one.want === null) {
+        if (about !== undefined) {
+          failed.push(`tenure 是 null 时不该说地，却说了「${about}」`)
+        }
+      } else if (about !== one.want) {
+        failed.push(`tenure 是「${one.tenure}」时该说「${one.want}」，说的是「${about}」`)
+      }
+    }
+  }
+
+  /*
+   * 迁出去之后，产和田都该「说不上」。
+   *
+   * 这是上面那条的另一半：三档分得清管的是**没迁出去**的情形，
+   * 这一条管**迁出去**的——79 定的那句「读产/田的人对迁出去的玩家
+   * 一律当不知道」，正面守在这儿。
+   *
+   * 两条合起来才是完整的那条语义。只有前一条的话，一个「迁出去了还报
+   * 娘家几亩地」的实现照样全绿。
+   */
+  setActivePinia(createPinia())
+  {
+    pathsNow()
+    const household = useHouseholdStore()
+    const people = usePeopleStore()
+    household.tenure = '自耕'
+    household.business = '药铺'
+    // 先确认没迁出去时说得出来，否则下面那半句证明不了任何事
+    if (pathsNow().tenure !== '自耕') {
+      failed.push('还在自家时地那一格就已经说不上了，这一条验不到迁出去的效果')
+    }
+    people.enrollHouse({
+      id: 'in-law-spouse',
+      surname: '吴',
+      head: 'spouse',
+      members: ['spouse'],
+      residence: 'somewhere',
+      livelihood: '务农',
+    })
+    people.leaveHouse('me')
+    people.joinHouse('in-law-spouse', 'me')
+    const after = pathsNow()
+    if (after.tenure !== null) {
+      failed.push(`嫁出去之后地该说不上，算出来还是「${after.tenure}」`)
+    }
+    if (after.property !== null) {
+      failed.push(`嫁出去之后产业该说不上，算出来还是「${after.property}」`)
     }
   }
 
