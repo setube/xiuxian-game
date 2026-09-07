@@ -113,6 +113,10 @@ export interface Undertaking {
    *
    * 有它才分得开「跟张家议的那门亲」和「跟李家议的那门亲」——
    * 同一个 `id` 可以同时挂两条，而它们是两件事。
+   *
+   * 是人口册上的 id。效果里写的角色名（`who: 'elder'`）在结算时换成真人
+   * （`engine/effects.ts` 的 `aimAtPerson`）：守孝记的是爹，不是「elder」两个字母——
+   * 服满那一卷要按他的死因分话，得知道是谁。
    */
   who?: string
 }
@@ -440,8 +444,11 @@ export const useCharacterStore = defineStore(
      */
     function finish(id: string, who?: string): void {
       const year = world.time.year
+      // 不写 `who` 就收掉这件事正在进行的全部：服满那一卷不知道守的是谁的孝，也不必知道
       undertakings.value = undertakings.value.map((one) =>
-        one.until === null && one.id === id && one.who === who ? { ...one, until: year } : one,
+        one.until === null && one.id === id && (who === undefined || one.who === who)
+          ? { ...one, until: year }
+          : one,
       )
     }
 

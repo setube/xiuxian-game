@@ -28,7 +28,7 @@ import {
   type BookTruth,
 } from './book'
 import { currentView, merchantLore, talk, viewWords, willingToday } from './hearsay'
-import { ROLE_IDS, fillString, roleId } from './interpolate'
+import { ROLE_IDS, type RoleSnapshot, fillString, snapshotRoles } from './interpolate'
 import { ask } from './inquire'
 import { encounterCultivator } from './meeting'
 import { practise, teach, weighUp } from './tutelage'
@@ -73,15 +73,18 @@ const TEXT_FIELDS = [
   'doubt',
 ] as const
 
-/** 把一条 effect 里所有面向玩家的文本换成这一世的实情 */
-function localize<T extends Effect>(effect: T): T {
+/** 把一条 effect 里所有面向玩家的文本换成这一世的实情。角色按这一批开头的快照认 */
+function localize<T extends Effect>(effect: T, roles: RoleSnapshot | undefined): T {
   const draft: Record<string, unknown> = { ...effect }
   for (const field of TEXT_FIELDS) {
     const value = draft[field]
-    if (typeof value === 'string') draft[field] = fillString(value)
+    if (typeof value === 'string') draft[field] = fillString(value, '家常', roles)
   }
   return draft as T
 }
+
+const isRole = (value: unknown): value is (typeof ROLE_IDS)[number] =>
+  typeof value === 'string' && (ROLE_IDS as readonly string[]).includes(value)
 
 /** 这几种效果的 `id` 指的是人口册上的一个人 */
 const PERSON_EFFECTS: ReadonlySet<Effect['type']> = new Set([
@@ -96,14 +99,16 @@ const PERSON_EFFECTS: ReadonlySet<Effect['type']> = new Set([
  * 身边没有这样的人，这一条效果就不落——不造幽灵熟人，也不杀一个不存在的人。
  * 见 `interpolate.ts` 的 `roleId`。
  */
-function aimAtPerson<T extends Effect>(effect: T): T | null {
-  if (!PERSON_EFFECTS.has(effect.type)) return effect
+function aimAtPerson<T extends Effect>(effect: T, roles: RoleSnapshot | undefined): T | null {
+  // 「跟谁的这件事」也指人：守孝记的得是爹，不是「elder」两个字母——服满那一卷要按他的死因分话
+  const field = effect.type === 'undertake' ? 'who' : PERSON_EFFECTS.has(effect.type) ? 'id' : null
+  if (field === null) return effect
   const draft: Record<string, unknown> = { ...effect }
-  const id = draft['id']
-  if (typeof id !== 'string' || !(ROLE_IDS as readonly string[]).includes(id)) return effect
-  const real = roleId(id)
+  const role = draft[field]
+  if (!isRole(role)) return effect
+  const real = roles === undefined ? undefined : roles[role]
   if (real === undefined) return null
-  draft['id'] = real
+  draft[field] = real
   return draft as T
 }
 
@@ -1385,10 +1390,15 @@ export function applyEffects(effects?: readonly Effect[]): NarrativeBlock[] {
    * `time` 不产生回执（`case 'time'` 返回 null），所以提前它不动正文的次序；
    * 多条 `time` 同批也无所谓先后——推进的是天数，加法不挑顺序。
    */
+  /**
+   * 这一批说的是谁。时序推完、别的事还没发生的那一刻，三个角色各是哪个人（`snapshotRoles`）。
+   * 从前每条效果各自现算：「他没能熬过去」那一批先殁了爹，后一条 `{elder}` 就落到了娘身上。
+   */
+  let roles: RoleSnapshot | undefined
   const settle = (effect: Effect): void => {
     // 先换占位符再结算：写进 store 的就该是玩家会读到的那句话，
     // 而不是一个等着被谁替换的模板
-    const aimed = aimAtPerson(localize(effect))
+    const aimed = aimAtPerson(localize(effect, roles), roles)
     if (aimed === null) return
     const receipt = applyOne(aimed, world, character, household, people)
     if (Array.isArray(receipt)) receipts.push(...receipt)
@@ -1398,6 +1408,7 @@ export function applyEffects(effects?: readonly Effect[]): NarrativeBlock[] {
   for (const effect of effects) {
     if (PHASE[effect.type] === '上下文') settle(effect)
   }
+  roles = snapshotRoles()
   for (const effect of effects) {
     if (PHASE[effect.type] !== '上下文') settle(effect)
   }

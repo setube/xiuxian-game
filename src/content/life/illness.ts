@@ -94,6 +94,8 @@ export const illnessScenes: SceneLibrary = {
               { type: 'time', months: 1 },
               { type: 'attribute', key: 'body', delta: 2 },
               { type: 'household', standing: 1 },
+              // 他没能熬过去的话，这面旗是「那半个月你在地里」那句话的来历
+              { type: 'flag', key: 'kept-working', value: true },
               { type: 'reflect' },
             ],
             next: 'watched',
@@ -198,6 +200,76 @@ export const illnessScenes: SceneLibrary = {
             kind: 'narration',
             text: '后来很多年你都记得郎中说的那句：早半个月兴许还有法子。',
             tone: 'deep',
+          },
+        ],
+        /**
+         * 同一场丧事，各人各是一种反应（用户 2026-09-07 拍板：不进引擎，一卷一卷写）。
+         *
+         * 你自己的那一句看你那阵子做了什么：守着的记得他醒过那一回；跑镇上抓药的记得那两副药；
+         * 照旧下地的，后来很多年都想那半个月。**自责不自责，跟关系多亲无关，跟你当时在哪有关。**
+         * 娘的那一句看她的性情；哥的那一句看他的性情——暴躁的把郎中骂了一顿，那是「归咎于某人」。
+         * 这几句只在爹是没了的那个、娘和哥活着在家的时候才说得出来。
+         */
+        seen: [
+          {
+            requires: [{ flag: { key: 'sat-through-illness' } }],
+            text: '你守着的那些天，他有一回醒了，看了你很久，没说话。',
+          },
+          {
+            requires: [{ flag: { key: 'fetched-herbs' } }],
+            text: '你跑了两趟镇上抓回来的那两副药，一副也没喝完。',
+          },
+          {
+            requires: [{ flag: { key: 'kept-working' } }],
+            text: '那半个月你在地里。后来很多年你都想，要是那半个月你在屋里呢。',
+          },
+          {
+            requires: [
+              { family: { id: 'father', alive: false } },
+              { family: { id: 'mother', alive: true, present: true } },
+              { temper: { id: 'mother', in: ['刚硬', '暴躁'] } },
+            ],
+            text: '娘一滴泪没掉。出殡回来她把他的东西收进箱子，锁上，从此不提。',
+          },
+          {
+            requires: [
+              { family: { id: 'father', alive: false } },
+              { family: { id: 'mother', alive: true, present: true } },
+              { temper: { id: 'mother', in: ['温和'] } },
+            ],
+            text: '娘哭了好几夜。饭还是照做，只是常做多一个人的量。',
+          },
+          {
+            requires: [
+              { family: { id: 'father', alive: false } },
+              { family: { id: 'mother', alive: true, present: true } },
+              { temper: { id: 'mother', in: ['谨慎', '精明'] } },
+            ],
+            text: '娘把郎中的药方留了下来。她说，往后家里再有人病，先照这个抓。',
+          },
+          {
+            requires: [
+              { family: { id: 'father', alive: false } },
+              { family: { id: 'mother', alive: true, present: true } },
+              { temper: { id: 'mother', in: ['木讷'] } },
+            ],
+            text: '娘没说什么。那几天她说的话加起来不到十句。',
+          },
+          {
+            requires: [
+              { family: { id: 'father', alive: false } },
+              { family: { id: 'brother', alive: true, present: true } },
+              { temper: { id: 'brother', in: ['暴躁'] } },
+            ],
+            text: '哥把郎中骂了一顿，说是他拖的。郎中没还嘴。',
+          },
+          {
+            requires: [
+              { family: { id: 'father', alive: false } },
+              { family: { id: 'brother', alive: true, present: true } },
+              { temper: { id: 'brother', in: ['刚硬', '木讷', '谨慎', '温和', '精明'] } },
+            ],
+            text: '哥那几天把爹的活全接了过去，一句话也没说。',
           },
         ],
       },

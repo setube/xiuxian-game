@@ -103,12 +103,45 @@ function idByBond(order: readonly Bond[]): string | undefined {
  * 现在角色名在结算前换成真人的 id，换不到（身边没有这样的人）那一条效果就不落。
  */
 export const ROLE_IDS = ['elder', 'dam', 'child'] as const
+export type RoleId = (typeof ROLE_IDS)[number]
+
+const ROLE_ORDER: Readonly<Record<RoleId, readonly Bond[]>> = {
+  elder: ['生父', '抚养', '生母'],
+  dam: ['生母', '抚养', '生父'],
+  child: ['子', '女'],
+}
 
 export function roleId(role: string): string | undefined {
-  if (role === 'elder') return idByBond(['生父', '抚养', '生母'])
-  if (role === 'dam') return idByBond(['生母', '抚养', '生父'])
-  if (role === 'child') return idByBond(['子', '女'])
+  if (role === 'elder' || role === 'dam' || role === 'child') return idByBond(ROLE_ORDER[role])
   return undefined
+}
+
+/**
+ * 一批效果开始那一刻，三个角色各是谁。
+ *
+ * 角色是按「此刻在身边」现算的（`roleId`），而一批效果里前一条会改变身边有谁：
+ * 「他没能熬过去」那一批先写 `person elder 殁`，后写 `chronicle {elder}那年入冬没能熬过去`
+ * ——爹殁了，`{elder}` 落到娘身上，编年记下的是「娘那年入冬没能熬过去」，而娘活得好好的。
+ * 守孝那一笔 `undertake who: 'elder'` 更是连人都没换，记的是「elder」两个字母。
+ *
+ * 所以一批效果里的角色只在开头认一次（`applyEffects`）：**一批效果说的是同一刻的人**，
+ * 那一刻是时序推完、别的事还没发生的时候。快照里是人口册上的 id；身边没有这样的人就是 undefined。
+ */
+export type RoleSnapshot = Readonly<Record<RoleId, string | undefined>>
+
+export function snapshotRoles(): RoleSnapshot {
+  return { elder: roleId('elder'), dam: roleId('dam'), child: roleId('child') }
+}
+
+/** 快照里那个人此刻怎么叫。人殁了也叫得出来（边不封口）——「爹那年入冬没能熬过去」说的就是他 */
+function snapshotCall(id: string | undefined, role: RoleId, manner: Manner): string {
+  if (id === undefined) return '家里的大人'
+  const people = usePeopleStore()
+  for (const bond of ROLE_ORDER[role]) {
+    if (!people.kinOf(bond).includes(id)) continue
+    return kinCall(bond, people.personOf(id)?.rank, manner) ?? people.known[id]?.calls ?? '家里的大人'
+  }
+  return people.known[id]?.calls ?? '家里的大人'
 }
 
 /**
@@ -208,7 +241,7 @@ function putsAwayCall(): string {
  * 库里绝大多数话都是家里人之间说的，默认礼上的话，每一节都得显式写一行
  * 才不穿帮，而漏写的那一节只会让一个八岁孩子在灶间管他爹叫王爷。
  */
-export function fillString(text: string, manner: Manner = '家常'): string {
+export function fillString(text: string, manner: Manner = '家常', roles?: RoleSnapshot): string {
   if (!text.includes('{')) return text
 
   const character = useCharacterStore()
@@ -216,8 +249,9 @@ export function fillString(text: string, manner: Manner = '家常'): string {
   const world = useWorldStore()
 
   return text.replace(TOKENS, (_, token: string, arg: string | undefined) => {
-    if (token === 'elder') return elderCall(manner)
-    if (token === 'dam') return damCall(manner)
+    // 效果批次里带着快照：那一批开头认下的人，哪怕这一批里他殁了，说的还是他
+    if (token === 'elder') return roles ? snapshotCall(roles.elder, 'elder', manner) : elderCall(manner)
+    if (token === 'dam') return roles ? snapshotCall(roles.dam, 'dam', manner) : damCall(manner)
     if (token === 'elders') return eldersCall(manner)
     if (token === 'chore') return choreCall()
     if (token === 'putsAway') return putsAwayCall()

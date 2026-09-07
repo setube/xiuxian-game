@@ -320,6 +320,8 @@ export const hardshipScenes: SceneLibrary = {
           { type: 'person', id: 'father', fate: '殁', cause: '客死' },
           { type: 'household', standing: -10 },
           { type: 'flag', key: 'father-dead', value: true },
+          // 死在外地也是丁忧：从这一天起守孝，媒人三年不上门（`match:offer` 问 `not mourning`）
+          { type: 'undertake', undertaking: 'mourning', who: 'father' },
           /**
            * 死讯是**听来的**，不是看见的。
            *
@@ -397,6 +399,48 @@ export const hardshipScenes: SceneLibrary = {
             kind: 'narration',
             text: '{dam}一个人下地。腰弯得比从前更低了。',
             tone: 'faint',
+          },
+        ],
+        /**
+         * 同一个死讯，家里各人各是一种反应——按人、按性情、按这个人跟死者的事，不按「关系多亲」。
+         * 娘怒的是他当年不听劝；娘忍的是什么也不说；娘怕的是从此不许你出门；哥要去找管工算账。
+         * 这些话只在那个人活着、在家、性情对得上的时候才说得出来。
+         */
+        seen: [
+          {
+            requires: [
+              { family: { id: 'mother', alive: true, present: true } },
+              { temper: { id: 'mother', in: ['暴躁'] } },
+            ],
+            text: '娘把那人送出门，回来把门闩上，骂了半夜。骂的是他——当年不让他去，他偏要去。',
+          },
+          {
+            requires: [
+              { family: { id: 'mother', alive: true, present: true } },
+              { temper: { id: 'mother', in: ['刚硬', '木讷'] } },
+            ],
+            text: '娘一滴泪没掉。她把他的旧鞋收进箱子，锁上，从此不提。',
+          },
+          {
+            requires: [
+              { family: { id: 'mother', alive: true, present: true } },
+              { temper: { id: 'mother', in: ['温和'] } },
+            ],
+            text: '娘哭了好几夜。年三十那晚，她多摆了一副碗筷。',
+          },
+          {
+            requires: [
+              { family: { id: 'mother', alive: true, present: true } },
+              { temper: { id: 'mother', in: ['谨慎', '精明'] } },
+            ],
+            text: '娘从此不许你跟人出去做工。她说，家里少一个就够了。',
+          },
+          {
+            requires: [
+              { family: { id: 'brother', alive: true, present: true } },
+              { temper: { id: 'brother', in: ['暴躁', '刚硬'] } },
+            ],
+            text: '哥说要去{nearbyCounty}找那管工的算账。{dam}没让。',
           },
         ],
       },

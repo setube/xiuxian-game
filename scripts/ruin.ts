@@ -22,20 +22,12 @@
  */
 import './lib/seeded'
 
-import { createPinia, setActivePinia } from 'pinia'
-
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
+import { lifeEvents, lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
-import { useStory } from '../src/engine/story'
-import { useCharacterStore } from '../src/stores/character'
-import { useHouseholdStore } from '../src/stores/household'
-import { usePeopleStore } from '../src/stores/people'
-import { useWorldStore } from '../src/stores/world'
-import type { Condition, OriginId } from '../src/types/game'
+import type { Condition } from '../src/types/game'
 import { mapShards } from './lib/parallel'
-import { play, type Staged } from './lib/staged'
-import { beOf } from './origin'
+import { born, play, type Staged } from './lib/staged'
 import type { RuinedLife } from './tasks/ruin-lives'
 
 const LIVES = 120
@@ -49,22 +41,6 @@ let bad = 0
 // ============================================================
 // 摆局
 // ============================================================
-
-/** 生在某种人家，推到几岁。掷不出（要的人不在）就 null */
-function born(origin: OriginId, years: number, need: readonly string[]): Staged | null {
-  for (let tries = 0; tries < 200; tries += 1) {
-    setActivePinia(createPinia())
-    const household = useHouseholdStore()
-    const world = useWorldStore()
-    const people = usePeopleStore()
-    beOf(origin)
-    useCharacterStore()
-    useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale }).begin()
-    applyEffects([{ type: 'time', years }])
-    if (need.every((id) => people.isAlive(id))) return { people, world, household }
-  }
-  return null
-}
 
 /** 农户的孩子九岁，父债链走到父亲出门；他出门之后的命由调用方定 */
 function inDebt(): Staged | null {

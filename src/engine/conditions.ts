@@ -79,6 +79,10 @@ const CHECKS = {
       const own = people.livelihoodOf(family.id)
       if (own === undefined || !family.livelihood.includes(own)) return false
     }
+    if (family.cause !== undefined) {
+      const cause = people.personOf(family.id)?.death?.cause
+      if (cause === undefined || !family.cause.includes(cause)) return false
+    }
     return true
   },
 
