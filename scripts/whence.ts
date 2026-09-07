@@ -22,13 +22,40 @@
  * 20.md 自己也是这么要求的：不规定「必须经过这六步」，
  * 只要求「必须存在一条真实、合理、可解释的因果路径」。
  *
+ * ## 六类里现在守得住哪几类
+ *
+ * 20.md 说的是六类：身份、关系、性格、愿望、婚姻、死亡。**不是每一类都能用
+ * 同一把尺子量**——「变了而年表没长」这个问法只对身份成立。80 世实测：
+ *
+ *     类别    变化次数   其中年表没长
+ *     身份         —          0       ← 判据本来就是为它写的
+ *     关系       199         53
+ *     婚姻        57          0       ← 永远绿
+ *     死亡       481        345       ← 72% 报红
+ *     愿望      1068        963       ← 90% 报红
+ *
+ * **婚姻永远绿**，因为「成亲」那一卷硬写着 `{ type: 'chronicle' }`，
+ * 判据的测量对象被上游填平了——它会一直打勾，看着像在工作。
+ *
+ * **死亡和愿望天天红**，比永远绿更糟。别人的死、倾向的一格一格长，
+ * 本来就不该每次都写进玩家年表；照搬这个问法会造出一支喊狼来了的门禁，
+ * 而那种门禁的下场是被人关掉，连同它本来能抓到的那几条一起。
+ *
+ * 所以第四条换了个问法：**不问「有没有记」，问「两边对不对得上」。**
+ * 而且方向要挑对——「年表说成亲 → 有没有配偶边」实测 29:0，**也是永远绿**；
+ * 有分辨力的是反过来：**关系图上有一条后天才有的边，这一生里有没有一件事解释它。**
+ * 配偶 19:18、师徒 158:10——既不永远绿也不天天红，判据咬得住东西。
+ *
+ * ## 性格那一类：现在没有守的对象
+ *
+ * `Person.temper` 只在 `content/birth.ts` 两处 `rollTemper()` 掷一次，
+ * **`engine/effects.ts` 里没有任何改它的效果**，全库只读不写。
+ * 没有变化就没有「无来源的变化」，现在造判据等于造一支永远绿的门禁。
+ * 等第一个真的改性格的内容出现，再回来加这一条。
+ *
  * ## 这支抓不住什么，写明在这里
  *
- * 它只看**身份**这一格，不看关系、性格、愿望、婚姻。理由是那几格
- * 要么还没有（婚姻、人格），要么变化本身没有明确的时刻（关系是渐变的）。
- * 身份是现在唯一一个「一步跳过去、且跳的那一刻可采样」的东西。
- *
- * 它也不判年表那一笔**说得对不对**——「你承了户」这句话跟身份变成家主
+ * 它不判年表那一笔**说得对不对**——「你承了户」这句话跟身份变成家主
  * 是不是同一件事，机器分不出。它只判**有没有**。
  * 宁可漏，不可误报：这一层再往里做就得读文本，而那是人的活。
  *
@@ -42,6 +69,7 @@ import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/
 import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useNarrativeStore } from '../src/stores/narrative'
+import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 
 /** 走多少世。身份一生变不了几次，得多走几世才采得到足够多的变化 */
@@ -63,9 +91,48 @@ function unexplained(changed: boolean, chronicleGrew: boolean): boolean {
   return changed && !chronicleGrew
 }
 
+/**
+ * 后天才有的关系。**天生的那几种不在内**——生父、生母、兄、姐是出生那一刻就有的，
+ * 要求这一生里有一件事解释「你为什么有个爹」是荒唐的。
+ *
+ * 配偶、师、徒不一样：**它们必然是这一生里某件事的结果。** 一个人不会生下来就有妻子，
+ * 也不会生下来就有师父——中间一定发生过什么，而那件事该在年表里留下一笔。
+ */
+const EARNED_BONDS: readonly string[] = ['配偶', '师', '徒']
+
+/**
+ * 哪些字眼算是「解释了这条边」。
+ *
+ * **这张表是照库里真写的字抄的，不是想出来的。** 头一版我按印象写了
+ * `/成亲|嫁|娶|结发|婚/`，跑自检时「你成了亲」那条没匹配上——库里写的是
+ * 「你成**了**亲」，中间隔着一个字。`match.ts` 里实际那六句是：
+ *
+ *     有人来给你说亲。   这门亲事定下来了。   那门亲事没有成。
+ *     你成了亲。         你嫁过去了。         你入赘到了秦家。
+ *
+ * 判据里的关键词表是**最容易悄悄失效的那种东西**：内容改一个字它就不匹配了，
+ * 而不匹配的表现是「报出一条无来源的边」——看上去像内容出了问题，其实是尺子瞎了。
+ * 所以这张表要宽（宁可放过），并且底下第六条拿库里的真句子验它。
+ */
+const EXPLAINS: Record<string, RegExp> = {
+  配偶: /成.{0,2}亲|嫁|娶|结发|婚|入赘|亲事/,
+  师: /拜师|师父|收徒|入门|学艺|念书|私塾|先生|识字|开蒙/,
+  徒: /拜师|师父|收徒|入门|学艺|念书|私塾|先生|识字|开蒙/,
+}
+
+/** 一条无来源的关系边 */
+interface Dangling {
+  bond: string
+  scene: string
+  age: number
+}
+
 const jumps: Jump[] = []
+const dangling: Dangling[] = []
 /** 一共采到多少次身份变化。没有这个数，第一条会在「一次也没变过」时照样打勾 */
 let changes = 0
+/** 一共采到多少条后天关系边。同理，没有它第四条会在「一条都没有」时打勾 */
+let earned = 0
 
 for (let i = 0; i < RUNS; i += 1) {
   setActivePinia(createPinia())
@@ -77,6 +144,7 @@ for (let i = 0; i < RUNS; i += 1) {
     routine: lifeRoutine,
     finale: lifeFinale,
   })
+  const people = usePeopleStore()
 
   story.begin()
 
@@ -106,6 +174,23 @@ for (let i = 0; i < RUNS; i += 1) {
     }
     identity = now
     chronicled = world.chronicle.length
+  }
+
+  /*
+   * 这一世走完了，回头看关系图上那些后天才有的边。
+   *
+   * **在世末看而不是逐步看**，因为一条边可以在年表那一笔之前先立起来
+   * （先定了亲，过两年才办喜事），逐步比对会把这种正常的先后当成无来源。
+   * 世末问的是这一辈子有没有解释过它——那才是「不存在无来源的状态跳转」的意思。
+   */
+  const told = world.chronicle.map((one) => one.text ?? '').join('|')
+  for (const relation of people.relations) {
+    if (relation.from !== 'me' && relation.to !== 'me') continue
+    if (!EARNED_BONDS.includes(relation.bond)) continue
+    earned += 1
+    if (!EXPLAINS[relation.bond]?.test(told)) {
+      dangling.push({ bond: relation.bond, scene: narrative.sceneId ?? '?', age: character.age })
+    }
   }
 }
 
@@ -173,6 +258,88 @@ let bad = 0
     bad += 1
   } else {
     console.log(`  ✓ 尺子自检：无来源的跳转抓得到，有来源的和没变的都放得过。`)
+  }
+}
+
+/**
+ * 四、后天才有的关系，这一生里得有一件事解释它。
+ *
+ * 这一条是第一条的另一半，问法**反过来**：第一条问「变了的东西有没有留下记录」，
+ * 这一条问「留下的东西有没有来处」。两个方向都要问，因为它们漏的不是同一批东西。
+ *
+ * 方向挑错就废了：「年表说成亲 → 有没有配偶边」实测 29:0，**永远绿**。
+ * 有分辨力的是这个方向——关系图上立着一条边，而这一生里一个字也没提过它。
+ */
+{
+  const unique = new Map<string, Dangling>()
+  for (const one of dangling) unique.set(`${one.bond}:${one.scene}`, one)
+
+  if (unique.size > 0) {
+    console.log(`  ✗ ${unique.size} 种后天关系，这一生里没有一件事解释得了它：`)
+    for (const [, one] of [...unique].slice(0, 8)) {
+      console.log(`      ${one.bond}（${one.age} 岁，末卷 ${one.scene}）：年表里一个字也没提过`)
+    }
+    bad += 1
+  } else {
+    console.log(`  ✓ 采到 ${earned} 条后天关系，每一条这一生里都有一件事解释得了。`)
+  }
+}
+
+/**
+ * 五、尺子自检：这一批世里真的长出过后天关系。
+ *
+ * 跟第二条同一个道理。**一条后天边都没采到时，第四条会照样打勾**——
+ * 而那句「每一条都有解释」说的其实是「一条也没有」。
+ */
+{
+  if (earned === 0) {
+    console.log(`  ✗ ${RUNS} 世里没有长出过一条后天关系——第四条什么也没量。`)
+    bad += 1
+  } else {
+    console.log(`  ✓ 尺子自检：${earned} 条后天关系确实立起来过，第四条量到了东西。`)
+  }
+}
+
+/**
+ * 六、尺子自检：第四条喂坏数据抓得到，喂对的放得过。
+ *
+ * 跟第三条同一个道理，验的是第四条那把尺子（`EXPLAINS`）。
+ * **只验「有边而年表空白」抓不抓得住是不够的**——还得验它不会把
+ * 「年表里明明写了」的那些也报出来，否则收窄一次就废一次。
+ */
+{
+  const checks: readonly { bond: string; told: string; want: boolean; why: string }[] = [
+    {
+      bond: '配偶',
+      told: '你有了个儿子|今年是个丰年',
+      want: true,
+      why: '有配偶而一生没提过成亲——正是要抓的',
+    },
+    { bond: '配偶', told: '你成了亲。', want: false, why: '「你成了亲」（match.ts 原句）' },
+    { bond: '配偶', told: '你嫁过去了。', want: false, why: '「你嫁过去了」（原句）' },
+    { bond: '配偶', told: '你入赘到了秦家。', want: false, why: '「你入赘到了秦家」（原句）' },
+    { bond: '配偶', told: '这门亲事定下来了。', want: false, why: '「这门亲事定下来了」（原句）' },
+    { bond: '师', told: '你揣了几年的那册书', want: true, why: '有师父而一生没念过书没拜过师' },
+    { bond: '师', told: '家里借了钱，送你进了私塾', want: false, why: '私塾那一笔解释得了师徒' },
+  ]
+
+  /*
+   * 用例里那几句**全是从 `content/life/match.ts` 抄的原句**，不是编的。
+   *
+   * 头一版我按印象编了「你成亲了」「你嫁了人」，跑出来不匹配——库里写的是
+   * 「你成**了**亲」「你嫁**过去**了」，还有一种是「入赘」。**编出来的用例
+   * 只验得了我以为库里写的字。** 而我据此报了一个不存在的 bug 给 14，
+   * 说 `match:offer` 让配偶边凭空出现——其实那一卷四条终点全带 `chronicle`，
+   * 是我的关键词表认不出它们。
+   */
+  const broken = checks.filter((one) => !EXPLAINS[one.bond]!.test(one.told) !== one.want)
+
+  if (broken.length > 0) {
+    console.log(`  ✗ 第四条那把尺子坏了 ${broken.length} 处：`)
+    for (const one of broken) console.log(`      ${one.why}`)
+    bad += 1
+  } else {
+    console.log('  ✓ 尺子自检：无来源的关系抓得到，年表里解释过的都放得过。')
   }
 }
 
