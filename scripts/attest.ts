@@ -131,20 +131,79 @@ const RULE_FILES: readonly string[] = ['eras.ts']
 /**
  * 这一行已经自己带着出处了。
  *
- * 「永乐十九年改北京为京师」「镖局系于清代、明代称标客标行」——**朝代名后面
- * 跟着年号、卷次、书名或具体制度**，那就是出处本身，不是无根的史实主张。
- * 第二道要抓的是「说了朝代却什么依据也没有」，不是「凡提朝代皆有罪」。
+ * 三种形式都算数：
  *
+ *     书名卷次年号　「永乐十九年改北京为京师」「《礼部志稿》卷十六」
+ *     指向审查表　　「明代这一条不如清代明确（design/ming-society.md 3.2）」
+ *     明说待核　　　「明代标客／标行之说待核」
+ *
+ * **后两种是这一版补的，头一版漏了，于是误报了三条。** 那三条恰恰是有人
+ * 已经做过时代判断并留下记录的——`origins.ts` 里镖局那条明说「镖局多系于清代」、
+ * 役户那条明说「明代这一条不如清代明确」所以**不写**那句禁令、永和宫那条明说
+ * 「明代东六宫之一，摆在这儿合制」。**它们是判断的记录，不是无根的主张。**
+ *
+ * 这件事本身是个教训：**尺子头一版判错的方向，往往是「把做过的判断当成没做过」。**
+ * 一条史实主张要是有人认真想过，那句话里多半留着他想的痕迹——待核、存疑、
+ * 不如某朝明确、合制、见某某表。认不出这些痕迹，尺子就会把最用心的那几条报成欠账。
+ *
+ * 第二道要抓的是「说了朝代却什么依据也没有」，不是「凡提朝代皆有罪」。
  * 抓得太宽的后果比漏抓更糟：报表上十二条里十条是误报，人就不看它了，
  * 而真正那两条也一起淹掉——**一支没人看的门禁等于没有。**
  */
-const CITED = /[一二三四五六七八九十百]+年|卷[一二三四五六七八九十百]+|《[^》]+》|元年|年间/
+const CITED =
+  /[一二三四五六七八九十百]+年|卷[一二三四五六七八九十百]+|《[^》]+》|元年|年间|待核|存疑|design\/|不如[^，。]*明确|合制/
 
 interface Claim {
   file: string
   line: number
   dynasty: string
   text: string
+}
+
+/**
+ * 按**注释块**扫，不按行。
+ *
+ * 头一版按行扫，漏判了一条：`origins.ts` 镖局那处，「明代『标客／标行』」在这一行，
+ * 而「之说待核（design/ming-society.md 审查表）」在**下一行**——出处和主张被行边界切开了，
+ * 于是有出处的那条被报成欠账。
+ *
+ * 而一句话在哪儿断行，取决于它有多长、prettier 怎么排，**跟它有没有出处毫无关系**。
+ * 拿行当单位，等于让排版决定判据。注释块才是一个意思的完整边界。
+ */
+function commentBlocks(text: string): { line: number; body: string }[] {
+  const blocks: { line: number; body: string }[] = []
+  const lines = text.split('\n')
+  let start = -1
+  let buffer: string[] = []
+  for (const [index, line] of lines.entries()) {
+    const trimmed = line.trim()
+    const opens = trimmed.startsWith('/*')
+    const inside = trimmed.startsWith('*') || opens
+    if (opens) {
+      start = index + 1
+      buffer = [trimmed]
+      continue
+    }
+    if (start >= 0 && inside) {
+      buffer.push(trimmed)
+      if (trimmed.includes('*/')) {
+        blocks.push({ line: start, body: buffer.join(' ') })
+        start = -1
+        buffer = []
+      }
+      continue
+    }
+    if (start >= 0) {
+      blocks.push({ line: start, body: buffer.join(' ') })
+      start = -1
+      buffer = []
+    }
+    // 行尾注释和单行 `//` 也算，各自成块
+    const slash = line.indexOf('//')
+    if (slash >= 0) blocks.push({ line: index + 1, body: line.slice(slash) })
+  }
+  if (start >= 0) blocks.push({ line: start, body: buffer.join(' ') })
+  return blocks
 }
 
 function unregisteredClaims(): Claim[] {
@@ -155,12 +214,16 @@ function unregisteredClaims(): Claim[] {
     if (REGISTERED_FILES.includes(name)) continue
     if (RULE_FILES.includes(name)) continue
     const text = readFileSync(join(dir, name), 'utf8')
-    const lines = text.split('\n')
-    for (const [index, line] of lines.entries()) {
-      const hit = DYNASTIES.find((one) => line.includes(one))
+    for (const block of commentBlocks(text)) {
+      const hit = DYNASTIES.find((one) => block.body.includes(one))
       if (hit === undefined) continue
-      if (CITED.test(line)) continue
-      found.push({ file: `${CONTENT_DIR}/${name}`, line: index + 1, dynasty: hit, text: line.trim() })
+      if (CITED.test(block.body)) continue
+      found.push({
+        file: `${CONTENT_DIR}/${name}`,
+        line: block.line,
+        dynasty: hit,
+        text: block.body.replace(/^\/\*+\s*/, '').replace(/\s*\*+\/$/, ''),
+      })
     }
   }
   return found
