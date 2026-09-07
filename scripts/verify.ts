@@ -488,6 +488,8 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     census: null,
     livelihood: null,
     business: null,
+    /** 田那一格同上：出身行给初值，父债链尾改它，条件问它不必有人「给」 */
+    tenure: null,
     station: null,
     /**
      * 「他过的是哪一种日子」**从前不需要有人给，现在需要了**。

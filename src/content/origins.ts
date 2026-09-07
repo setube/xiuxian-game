@@ -6,6 +6,7 @@ import type {
   NarrativeBlock,
   OriginId,
   Station,
+  Tenure,
 } from '@/types/game'
 
 import { CAPITAL } from './geography'
@@ -60,6 +61,8 @@ export interface Origin {
   livelihood: Livelihood
   /** 产：家里那一处铺面。没有就是 null */
   business: Business | null
+  /** 田：种的地是不是自家的。不靠地过活的人家是 null。生下来就是佃户的那一行还没写 */
+  tenure: Tenure | null
   /** 家世：这是什么样的人家 */
   station: Station
   weight: number
@@ -105,6 +108,7 @@ export const ORIGINS: readonly Origin[] = [
     census: '民户',
     livelihood: '务农',
     business: null,
+    tenure: '自耕',
     station: '寻常',
     weight: 78,
     locales: ['柳溪村', '下河屯', '青石铺', '杏花坞', '王家庄', '桑园里', '芦花荡'],
@@ -124,6 +128,7 @@ export const ORIGINS: readonly Origin[] = [
     census: '民户',
     livelihood: '打猎',
     business: null,
+    tenure: null,
     station: '寻常',
     weight: 22,
     locales: ['石坳', '北岭', '鹰嘴崖', '黑松坡', '猎户屯'],
@@ -151,6 +156,7 @@ export const ORIGINS: readonly Origin[] = [
     census: '匠户',
     livelihood: '木工',
     business: null,
+    tenure: null,
     station: '寻常',
     weight: 20,
     locales: ['南关外', '东窑', '铁匠巷', '砖窑口', '锯木场'],
@@ -178,6 +184,7 @@ export const ORIGINS: readonly Origin[] = [
     census: '民户',
     livelihood: '经商',
     business: '布庄',
+    tenure: null,
     station: '寻常',
     weight: 18,
     locales: ['西街', '南市', '绸缎街', '货栈巷', '通汇坊'],
@@ -207,6 +214,7 @@ export const ORIGINS: readonly Origin[] = [
     census: '民户',
     livelihood: '经商',
     business: '客栈',
+    tenure: null,
     station: '寻常',
     weight: 16,
     locales: ['北门外', '官道旁', '十里铺', '渡口街', '驿马巷'],
@@ -233,6 +241,7 @@ export const ORIGINS: readonly Origin[] = [
     census: '民户',
     livelihood: '经商',
     business: '酒楼',
+    tenure: null,
     station: '寻常',
     weight: 14,
     locales: ['鼓楼下', '十字街', '状元桥', '望江楼下', '闹市口'],
@@ -267,6 +276,7 @@ export const ORIGINS: readonly Origin[] = [
     census: '医户',
     livelihood: '行医',
     business: '药铺',
+    tenure: null,
     station: '寻常',
     weight: 13,
     locales: ['东街', '药王巷', '回春巷', '济世坊', '晒药坪'],
@@ -298,6 +308,7 @@ export const ORIGINS: readonly Origin[] = [
     census: '民户',
     livelihood: '护送',
     business: null,
+    tenure: null,
     station: '寻常',
     weight: 11,
     locales: ['西关', '校场后街', '武库巷', '演武场东', '骡马巷'],
@@ -336,6 +347,7 @@ export const ORIGINS: readonly Origin[] = [
     census: '民户',
     livelihood: '做官',
     business: null,
+    tenure: null,
     station: '仕宦',
     weight: 7,
     locales: ['衙后街', '学政巷', '儒林坊', '府前街', '清风巷'],
@@ -373,6 +385,7 @@ export const ORIGINS: readonly Origin[] = [
     census: '民户',
     livelihood: '当差',
     business: null,
+    tenure: null,
     station: '寻常',
     weight: 9,
     locales: ['衙前街', '县后街', '快手巷', '南门根', '铺司巷'],
@@ -407,6 +420,7 @@ export const ORIGINS: readonly Origin[] = [
     census: '宗室',
     livelihood: '食禄',
     business: null,
+    tenure: null,
     station: '宗室',
     weight: 4,
     locales: ['靖王府', '恭王府', '庄王府', '肃王府', '宁王府', '睿王府'],
@@ -441,6 +455,7 @@ export const ORIGINS: readonly Origin[] = [
     census: '宗室',
     livelihood: '食禄',
     business: null,
+    tenure: null,
     station: '宗室',
     weight: 2,
     /**

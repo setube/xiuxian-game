@@ -385,6 +385,8 @@ function applyOne(
       // 业与产。分家那一卷头一回写它们：铺子归了哥，你改去给人做工，产是 null
       if (effect.livelihood !== undefined) household.livelihood = effect.livelihood
       if (effect.business !== undefined) household.business = effect.business
+      // 田。地抵了债那一卷是第一个写手：自耕变佃，日子照旧，家业没了
+      if (effect.tenure !== undefined) household.tenure = effect.tenure
       return null
     case 'family': {
       /**

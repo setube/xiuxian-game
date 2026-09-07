@@ -44,6 +44,7 @@ export function beOf(id: OriginId): void {
   household.census = row.census
   household.livelihood = row.livelihood
   household.business = row.business
+  household.tenure = row.tenure
   household.station = row.station
 }
 

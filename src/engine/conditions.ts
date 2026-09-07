@@ -162,6 +162,7 @@ const CHECKS = {
   census: (census, { household }) => household.census === census,
   livelihood: (livelihood, { household }) => household.livelihood === livelihood,
   business: (business, { household }) => household.business === business,
+  tenure: (tenure, { household }) => household.tenure === tenure,
   station: (station, { household }) => household.station === station,
 
   /**
