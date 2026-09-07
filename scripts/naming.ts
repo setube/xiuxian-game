@@ -70,13 +70,26 @@ if (callWrong > 0) {
 // 三、尺子自检
 {
   /*
-   * 要一个生下来有爹的人生。有的境况生下来就没爹（种子 19sygn95try1 撞上过），掷到有为止。
+   * 要一个生下来有爹、而且玩家认得这个爹的人生。
    *
-   * 这儿不能写成 `let people = usePeopleStore()` 再进循环——**主线程此刻没有活着的 pinia**。
+   * **两个条件缺一不可，而它们不是一回事。** `personOf` 查的是世界人物库（`roster`），
+   * `known` 查的是玩家认知库——弃儿那一世的爹在你出生之前就殁了，血缘边一直立着，
+   * 于是他在 `roster` 里而不在 `known` 里。同一颗种子实测 60 掷：
+   * roster 里有爹 58 次，known 里有爹只有 46 次，**差着 12 次**。
+   *
+   * 头一版只问 `personOf('father')` 就收工，撞上那 12 次就一路走到底：
+   * `learnName` 见 `known` 里没有这个人，静默 `return false`（people.ts:556）；
+   * 接着 `callOf` 同样条件下返回「一个陌生人」（people.ts:127）。
+   * 于是自检报出「知道了名字，callOf 却还叫一个陌生人」——
+   * **它指着 `callOf` 说错，而 `callOf` 是对的，错的是这一节自己没摆好局。**
+   *
+   * 一支会诬告被测系统的自检比没有自检更坏：它训练人不信这支门禁。
+   *
+   * 这儿也不能写成 `let people = usePeopleStore()` 再进循环——主线程此刻没有活着的 pinia。
    * 从前那么写跑得通，是因为上面紧挨着 120 世模拟，最后一世的 pinia 还留在那儿；
    * 模拟搬进 worker 之后主线程一片空白，那一行当场就炸。
    *
-   * 值得记的是这个 bug **躲过了同种子对照**：`GATE_INLINE=1` 那条路在主线程里跑模拟，
+   * 值得记的是那个 bug **躲过了同种子对照**：`GATE_INLINE=1` 那条路在主线程里跑模拟，
    * 照样留下一个活着的 pinia，于是前后输出逐字节相同、判据全绿，而真 worker 路径是红的。
    * 逐字节相同证明的是「搬出去的循环体没走样」，不是「搬走之后主脚本还站得住」。
    */
@@ -85,11 +98,12 @@ if (callWrong > 0) {
     setActivePinia(createPinia())
     people = usePeopleStore()
     useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale }).begin()
-    if (people.personOf('father')) break
+    if (people.personOf('father') && people.known['father']) break
   }
   const father = people?.personOf('father')
   const wrong: string[] = []
-  if (!people || !father) wrong.push('掷了六十世没有一世生下来有爹，摆不出局')
+  if (!people || !father || !people.known['father'])
+    wrong.push('掷了六十世没有一世生下来有爹、且玩家认得他，摆不出局')
   else {
     const name = `${father.surname}${father.given}`
     const knows = people.known['father']?.knowsName === true
