@@ -111,7 +111,9 @@ interface Site {
 function resolve(step: Step): Site | string {
   if ('beat' in step) {
     const beat = BEATS.find(
-      (one) => one.doing === step.beat.doing && (typeof one.text === 'string' ? [one.text] : one.text).some((t) =>
+      (one) =>
+        one.doing === step.beat.doing &&
+        (typeof one.text === 'string' ? [one.text] : one.text).some((t) =>
           t.includes(step.beat.includes),
         ),
     )
@@ -208,15 +210,24 @@ const PATHS: readonly Path[] = [
    * 「谁在你身边」，所以一样归这一道管。
    *
    * 儿子、女儿、徒弟一并走完：一世里未必都添得上，可每一节都得有人验过。
+   *
+   * ## 添丁那两节搬走了，这条走查跟着断过一次
+   *
+   * `routine:prime#son` / `#daughter` 搬去了 `bearing.ts`（生育那一册）。
+   * 搬走之后这里的 steps 还指着旧门牌，而**走查是一条线走下来的**：
+   * 前两步找不到节点，第三步的 `teach` 就再也走不到——
+   * 于是报的是「teach 没人量过」，而 teach 一个字也没改。
+   *
+   * **报错的位置和坏掉的位置差着两步**，这是这类写死清单最容易骗人的地方：
+   * 它不说「son 找不到了」，它说「teach 没走到」。
    */
   {
     id: 'household',
-    label: '家里添的人：娶妻、添丁、收徒',
+    label: '家里添的人：娶妻、收徒',
     origin: 'farm',
     steps: [
       { scene: 'match:offer', node: 'wife' },
-      { scene: 'routine:prime', node: 'son' },
-      { scene: 'routine:prime', node: 'daughter' },
+      // 添丁那两节移交给 bearing.ts，见底下 HANDED_OVER
       { scene: 'routine:prime', node: 'teach' },
     ],
   },
@@ -959,6 +970,16 @@ const HANDED_OVER: Readonly<Record<string, string>> = {
   // 这一支摆局跑，走不到它。match.ts 摆好局把那一卷从头演到底，量成亲那两条路
   'match:offer#wife': 'match.ts',
   'match:offer#husband': 'match.ts',
+  /*
+   * 添丁那一卷也是散事件，压着五条 requires（成了亲、没在等着、没在服丧、
+   * 还没有儿子、还没有女儿），这一支摆局跑走不到。
+   *
+   * `bearing.ts` 摆好局把那一卷跑四百遍，量的正是这两条路真不真走得到——
+   * 而且它比这里量得细：四个结局的占比（生儿 27.8%、生女 27.5%、
+   * 没留住 15.0%、一直没有 29.8%），以及「没留住」那一路一次也没多出人口。
+   */
+  'bearing:await#son': 'bearing.ts',
+  'bearing:await#daughter': 'bearing.ts',
   'reunion:apprentice#open:go': 'kept.ts',
   'reunion:homecoming#open': 'kept.ts',
   'reunion:homecoming#open:back-to-town': 'kept.ts',
