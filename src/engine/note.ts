@@ -37,6 +37,11 @@ export interface NoteInput {
    * 那不是年龄，是一个没算出来的数。给了就说「三个月」。
    */
   months?: number
+  /**
+   * 你知不知道他没了。不传就照世界事实说（别的面板还没接上认知层）；传了 `false`，
+   * 他殁了你也不知道，那一行就按你最后知道的样子写——玩家不知道的信息不能因为世界知道就上面板。
+   */
+  knownDead?: boolean
   /** 知道名字就写在前头，「陈怀山，」。不知道就不写——名字要有人告诉你才知道 */
   name?: string
   /**
@@ -104,10 +109,12 @@ export const HOUSEHOLD_BONDS: readonly Bond[] = [
  * 再说玩家自己记下的印象；最后才是他在做什么。
  */
 export function noteOf(input: NoteInput): string {
-  const { person, remembered, age, months, name, vanished, fallback } = input
+  const { person, remembered, age, months, name, vanished, fallback, knownDead } = input
 
   if (!person) return ''
-  if (person.fate === '殁') return '不在了。'
+  // 他没了而你不知道：他在别处（在你跟前没的你当场就知道），你能说的只有「没有消息」——
+  // 一个死在外县的爹，家里没收到信之前，跟杳无音信是同一句话
+  if (person.fate === '殁') return knownDead === false ? vanished : '不在了。'
   if (person.fate === '杳') return vanished
   if (remembered) return remembered
 

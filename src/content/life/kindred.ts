@@ -736,6 +736,9 @@ export const kindredScenes: SceneLibrary = {
         id: 'open',
         onEnter: [
           { type: 'time', days: 9 },
+          // 死讯先是听说（捎话来），守了七天是见过。世界事实（他殁了）跟你知道这件事是两条
+          { type: 'knowledge', id: 'death:brother', title: '哥没了', summary: '老屋捎话来，哥没了。', category: '人物', contact: '听说' },
+          { type: 'knowledge', id: 'death:brother', title: '哥没了', summary: '哥没了。你回老屋守了七天。', category: '人物', contact: '见过' },
           { type: 'chronicle', text: '哥没了。你回老屋守了七天。', tone: 'cinnabar' },
         ],
         blocks: [
@@ -1074,6 +1077,8 @@ export const kindredScenes: SceneLibrary = {
         onEnter: [
           { type: 'time', days: 9 },
           { type: 'flag', key: 'old-home-mother', value: false },
+          { type: 'knowledge', id: 'death:mother', title: '娘没了', summary: '老屋捎话来，娘没了。', category: '人物', contact: '听说' },
+          { type: 'knowledge', id: 'death:mother', title: '娘没了', summary: '娘在老屋没了。你回去守了七天。', category: '人物', contact: '见过' },
           { type: 'chronicle', text: '娘在老屋没了。你回去守了七天。', tone: 'cinnabar' },
         ],
         blocks: [{ kind: 'narration', text: '老屋捎话来，娘没了。' }],
