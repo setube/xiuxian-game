@@ -1080,6 +1080,8 @@ export const kindredScenes: SceneLibrary = {
           { type: 'knowledge', id: 'death:mother', title: '娘没了', summary: '老屋捎话来，娘没了。', category: '人物', contact: '听说' },
           { type: 'knowledge', id: 'death:mother', title: '娘没了', summary: '娘在老屋没了。你回去守了七天。', category: '人物', contact: '见过' },
           { type: 'chronicle', text: '娘在老屋没了。你回去守了七天。', tone: 'cinnabar' },
+          // 娘没了也守孝：这三年里家里不添丁、不议亲（`bearing`、`match` 都问 `not mourning`）
+          { type: 'undertake', undertaking: 'mourning', who: 'mother' },
         ],
         blocks: [{ kind: 'narration', text: '老屋捎话来，娘没了。' }],
         branches: [{ requires: [BROTHER_CARPENTER], next: 'late' }],
@@ -1135,6 +1137,20 @@ export const kindredScenes: SceneLibrary = {
             kind: 'narration',
             text: '老人家最后那两年，饭是自己烧的。你没问，哥也没说。',
             tone: 'faint',
+          },
+        ],
+        /**
+         * 哥的反应看他的性情，不看他跟娘多亲：暴躁、刚硬的把这两年的账翻出来跟嫂子算——
+         * 那是「归咎于某人」；别的性情，这事他心里怎么想的你一辈子不知道。
+         */
+        seen: [
+          {
+            requires: [{ temper: { id: 'brother', in: ['暴躁', '刚硬'] } }],
+            text: '头七那晚哥跟{call:brother-wife}吵了一架，隔着院子都听得见。他说娘这两年是气出来的。',
+          },
+          {
+            requires: [{ temper: { id: 'brother', in: ['温和', '木讷', '谨慎', '精明'] } }],
+            text: '哥没说话。这事他心里怎么想的，你不知道。',
           },
         ],
       },

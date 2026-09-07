@@ -45,15 +45,37 @@ export const mourningScenes: SceneLibrary = {
         id: 'open',
         onEnter: [
           { type: 'time', months: 3 },
-          { type: 'undertake', undertaking: 'mourning', who: 'elder', done: true },
+          // 不写 `who`：收掉正在守的那份孝，不管是给谁守的。守的是谁、他怎么没的，底下分话时再问
+          { type: 'undertake', undertaking: 'mourning', done: true },
           { type: 'chronicle', text: '孝满了。' },
         ],
         blocks: [
           { kind: 'narration', text: '门上那块白布早就取下来了，只是没人提这件事。' },
+        ],
+        /**
+         * 死因的第一个读者。爹死在二百里外的河堤工地上，尸首没有运回来（`hardship.ts`）——
+         * 清明没有坟可上。从前这一卷不问，人人都「去了一趟」，死在外地的也去了一趟。
+         */
+        branches: [
+          { requires: [{ family: { id: 'father', alive: false, cause: ['客死'] } }], next: 'far' },
+        ],
+        next: 'grave',
+      },
+      grave: {
+        id: 'grave',
+        blocks: [
           {
             kind: 'narration',
-            text: '这一年清明你去了一趟，回来的路上遇见几个熟人，都问你近来如何。',
+            text: '这一年清明你去了一趟坟上，回来的路上遇见几个熟人，都问你近来如何。',
           },
+          { kind: 'event', text: '孝满了。' },
+          { kind: 'narration', text: '往后再有人来说亲，家里就不必推了。', tone: 'faint' },
+        ],
+      },
+      far: {
+        id: 'far',
+        blocks: [
+          { kind: 'narration', text: '爹的坟在二百里外，清明去不了。{dam}在门口烧了一把纸。' },
           { kind: 'event', text: '孝满了。' },
           { kind: 'narration', text: '往后再有人来说亲，家里就不必推了。', tone: 'faint' },
         ],

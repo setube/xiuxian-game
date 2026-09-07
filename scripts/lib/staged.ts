@@ -19,7 +19,7 @@ import { useCharacterStore } from '../../src/stores/character'
 import { useHouseholdStore } from '../../src/stores/household'
 import { makePerson, usePeopleStore } from '../../src/stores/people'
 import { useWorldStore } from '../../src/stores/world'
-import type { Temper } from '../../src/types/game'
+import type { OriginId, Temper } from '../../src/types/game'
 import { beOf } from '../origin'
 
 export type PeopleStore = ReturnType<typeof usePeopleStore>
@@ -29,11 +29,15 @@ export type HouseholdStore = ReturnType<typeof useHouseholdStore>
 export const CALM = { rain: 55, harvest: 58, grain: 112, order: 66, plague: 0 }
 
 /** 把库里的一卷一节一节演下去。有选项的节按 `choiceId` 选，没写就选第一个 */
-export function play(sceneId: string, choiceId?: string): string[] {
+/**
+ * 把一卷演到底，收集正文。`choiceId` 是每个岔口都选哪一条（找不到就选第一条）；
+ * `from` 是从哪一节起演——有些节前头是一掷（病好没好），要看的是掷出「没了」之后的那一节。
+ */
+export function play(sceneId: string, choiceId?: string, from?: string): string[] {
   const scene = lifeScenes[sceneId]
   if (!scene) return []
   const texts: string[] = []
-  let node = scene.nodes[scene.entry]
+  let node = scene.nodes[from ?? scene.entry]
   for (let step = 0; step < 32 && node; step += 1) {
     applyEffects(node.onEnter)
     for (const block of node.blocks) {
@@ -58,6 +62,22 @@ export interface Staged {
   people: PeopleStore
   world: WorldStore
   household: HouseholdStore
+}
+
+/** 生在某种人家，推到几岁。掷不出（要的人不在）就 null */
+export function born(origin: OriginId, years: number, need: readonly string[]): Staged | null {
+  for (let tries = 0; tries < 200; tries += 1) {
+    setActivePinia(createPinia())
+    const household = useHouseholdStore()
+    const world = useWorldStore()
+    const people = usePeopleStore()
+    beOf(origin)
+    useCharacterStore()
+    useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale }).begin()
+    applyEffects([{ type: 'time', years }])
+    if (need.every((id) => people.isAlive(id))) return { people, world, household }
+  }
+  return null
 }
 
 /** 生在一个有哥、娘还在的人家，推到二十岁，分家。掷不出来就 null */

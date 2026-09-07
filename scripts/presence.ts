@@ -34,23 +34,17 @@
  */
 import './lib/seeded'
 
-import { createPinia, setActivePinia } from 'pinia'
-
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
+import { lifeEvents, lifeFinale, lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects, settleHeads } from '../src/engine/effects'
 import { ROLE_IDS } from '../src/engine/interpolate'
 import { exists, isAlive, isPresent } from '../src/engine/presence'
-import { useStory } from '../src/engine/story'
 import { knowledgeKey } from '../src/engine/facts'
 import { noteOf } from '../src/engine/note'
 import { useCharacterStore } from '../src/stores/character'
-import { useHouseholdStore } from '../src/stores/household'
 import { usePeopleStore } from '../src/stores/people'
-import { useWorldStore } from '../src/stores/world'
 import type { Bond, Condition, Effect, OriginId, Scene, SceneNode } from '../src/types/game'
-import { grownUp, play, type Staged } from './lib/staged'
-import { beOf } from './origin'
+import { born, grownUp, play, type Staged } from './lib/staged'
 import { effectsOf } from './refs'
 
 // ============================================================
@@ -102,22 +96,6 @@ const SUBJECTS: readonly Subject[] = [
 // ============================================================
 // 摆局
 // ============================================================
-
-/** 生在某种人家，推到几岁。掷不出（要的人不在）就 null */
-function born(origin: OriginId, years: number, need: readonly string[]): Staged | null {
-  for (let tries = 0; tries < 200; tries += 1) {
-    setActivePinia(createPinia())
-    const household = useHouseholdStore()
-    const world = useWorldStore()
-    const people = usePeopleStore()
-    beOf(origin)
-    useCharacterStore()
-    useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale }).begin()
-    applyEffects([{ type: 'time', years }])
-    if (need.every((id) => people.isAlive(id))) return { people, world, household }
-  }
-  return null
-}
 
 /** 农户人家的孩子九岁：爹娘、邻居都在；先生、商旅照库里的效果入册 */
 function farmChild(): Staged | null {

@@ -1378,6 +1378,13 @@ export interface Condition {
     present?: boolean
     age?: { atLeast?: number; atMost?: number }
     livelihood?: readonly Livelihood[]
+    /**
+     * 他是怎么没的（`Person.death.cause`）。活着的人问不出来。
+     *
+     * 第一个读者是服满那一卷：死在外地的没有坟可上，清明那一趟去不了；
+     * 第二个是丧事之后各人的反应——同一场丧事，病没的和死在外地的，家里人说的不是同一句话。
+     */
+    cause?: readonly string[]
   }
   /**
    * 有没有某一层关系，那个人还在不在，还在不在你身边。

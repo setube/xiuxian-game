@@ -477,6 +477,21 @@ export const SPARKS: readonly Spark[] = [
     chance: 0.2,
     text: '场院上晒得满满的。你站着看了一会儿。',
   },
+  {
+    /**
+     * 爹死在外地，你问了他埋在哪儿。
+     *
+     * 同一个死讯两种去向（24.md：死亡改变幸存者的选择，而且不是所有人同一个方向）：
+     * 问过坟在哪的人记着那个地名，心里有一根往外拽的线；没问的人走的是底下那条 damper——
+     * 出门这两个字再没说过。分的是你当时做了什么，不是你跟他多亲。
+     */
+    id: 'went-where-he-went',
+    leaning: 'leave',
+    weight: 3,
+    requires: [{ family: { id: 'father', alive: false, cause: ['客死'] } }, { flag: { key: 'knows-grave' } }],
+    once: true,
+    text: '你记着那人说的那个地名。',
+  },
 ]
 
 /**
@@ -506,6 +521,21 @@ export const DAMPERS: readonly Damper[] = [
     requires: [{ flag: { key: 'illness-at-home' } }],
     once: true,
     text: '家里病倒一个人的那阵子，你没有再提过出门的话。',
+  },
+  {
+    /**
+     * 爹出去做工，死在了外地。
+     *
+     * 死因的读者之一：病没在家里的不压这一条——他没死在路上。
+     * 跟上面那条 `went-where-he-went` 是同一件事的两个方向，谁压过谁看这个人做过什么。
+     */
+    id: 'father-died-away',
+    leaning: 'leave',
+    weight: 4,
+    instead: { leaning: 'settle', weight: 3 },
+    requires: [{ family: { id: 'father', alive: false, cause: ['客死'] } }],
+    once: true,
+    text: '爹死在外地之后，出门这两个字你再没说过。',
   },
   {
     /**
