@@ -71,11 +71,13 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
     // 爹殁的那一批：前一条殁了他，后一条说的还是他
     fatherDiesOfIllness('watch')
     const line = s.world.chronicle.find((one) => one.text.includes('没能熬过去'))?.text ?? ''
-    if (!line.startsWith('爹')) wrong.push(`爹殁了那一批，编年该写「爹那年入冬没能熬过去」，写的是「${line}」`)
+    if (!line.startsWith('爹'))
+      wrong.push(`爹殁了那一批，编年该写「爹那年入冬没能熬过去」，写的是「${line}」`)
     if (!s.people.isAlive('mother')) wrong.push('摆局：娘不该殁')
     const record = character.undertakings.find((one) => one.id === 'mourning' && one.until === null)
     if (!record) wrong.push('爹殁了，没有守孝这件事')
-    else if (record.who !== 'father') wrong.push(`守孝记的该是爹（father），记的是「${record.who}」`)
+    else if (record.who !== 'father')
+      wrong.push(`守孝记的该是爹（father），记的是「${record.who}」`)
     // 爹殁了之后的下一批：{elder} 落到娘身上——快照只管一批，不是把人钉死
     applyEffects([{ type: 'chronicle', text: '{elder}在檐下坐了一会儿。' }])
     const after = s.world.chronicle[s.world.chronicle.length - 1]?.text ?? ''
@@ -84,12 +86,16 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
     applyEffects([{ type: 'person', id: 'mother', fate: '殁', cause: '病' }])
     const before = character.undertakings.length
     applyEffects([{ type: 'undertake', undertaking: 'mourning', who: 'elder' }])
-    if (character.undertakings.length !== before) wrong.push('爹娘都不在了，undertake who: elder 却落了一条')
+    if (character.undertakings.length !== before)
+      wrong.push('爹娘都不在了，undertake who: elder 却落了一条')
   }
   if (wrong.length > 0) {
     console.log(`\n  ✗ 一、同一刻的人：${wrong[0]}（共 ${wrong.length} 处）`)
     bad += 1
-  } else console.log('  ✓ 一、一批效果说的是同一刻的人：爹殁了那一批编年写的是爹，守孝记的是爹；下一批 {elder} 才落到娘身上；没有这样的人那一条不落。')
+  } else
+    console.log(
+      '  ✓ 一、一批效果说的是同一刻的人：爹殁了那一批编年写的是爹，守孝记的是爹；下一批 {elder} 才落到娘身上；没有这样的人那一条不落。',
+    )
 }
 
 // ============================================================
@@ -106,13 +112,18 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
     if (!meetsAll(notMourning)) wrong.push('还没死人就在守孝')
     fatherDiesOfIllness('work')
     if (meetsAll(notMourning)) wrong.push('爹病没了，「没在守孝」却仍成立——媒人照样上门')
-    if (!meetsAll([{ family: { id: 'father', alive: false, cause: ['病'] } }])) wrong.push('爹是病没的，cause 条件却问不出来')
-    if (meetsAll([{ family: { id: 'father', alive: false, cause: ['客死'] } }])) wrong.push('爹是病没的，却答成客死')
+    if (!meetsAll([{ family: { id: 'father', alive: false, cause: ['病'] } }]))
+      wrong.push('爹是病没的，cause 条件却问不出来')
+    if (meetsAll([{ family: { id: 'father', alive: false, cause: ['客死'] } }]))
+      wrong.push('爹是病没的，却答成客死')
     const over = play('mourning:over')
-    if (!over.some((line) => line.includes('去了一趟坟上'))) wrong.push(`病没在家的，服满该去坟上：${over.join(' / ')}`)
-    if (over.some((line) => line.includes('二百里外'))) wrong.push('病没在家的，服满却说坟在二百里外')
+    if (!over.some((line) => line.includes('去了一趟坟上')))
+      wrong.push(`病没在家的，服满该去坟上：${over.join(' / ')}`)
+    if (over.some((line) => line.includes('二百里外')))
+      wrong.push('病没在家的，服满却说坟在二百里外')
     if (!meetsAll(notMourning)) wrong.push('服满了，守孝还没收掉')
-    if (!character.undertakings.some((one) => one.id === 'mourning' && one.until !== null)) wrong.push('服满了，记录该封口不该删')
+    if (!character.undertakings.some((one) => one.id === 'mourning' && one.until !== null))
+      wrong.push('服满了，记录该封口不该删')
   }
   // 客死：也守孝；服满没有坟可上
   const b = child()
@@ -120,24 +131,33 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
   else {
     fatherDiesAway(b, false)
     if (meetsAll(notMourning)) wrong.push('爹死在外地，「没在守孝」却仍成立——死在外地也是丁忧')
-    if (!meetsAll([{ family: { id: 'father', alive: false, cause: ['客死'] } }])) wrong.push('爹是客死的，cause 条件却问不出来')
+    if (!meetsAll([{ family: { id: 'father', alive: false, cause: ['客死'] } }]))
+      wrong.push('爹是客死的，cause 条件却问不出来')
     const over = play('mourning:over')
-    if (!over.some((line) => line.includes('二百里外'))) wrong.push(`死在外地的，服满该说坟在二百里外：${over.join(' / ')}`)
-    if (over.some((line) => line.includes('去了一趟坟上'))) wrong.push('死在外地的，服满却去了一趟坟上')
-    if (!over.some((line) => line.startsWith('爹的坟'))) wrong.push('那句话该说「爹的坟」，说的是别人')
+    if (!over.some((line) => line.includes('二百里外')))
+      wrong.push(`死在外地的，服满该说坟在二百里外：${over.join(' / ')}`)
+    if (over.some((line) => line.includes('去了一趟坟上')))
+      wrong.push('死在外地的，服满却去了一趟坟上')
+    if (!over.some((line) => line.startsWith('爹的坟')))
+      wrong.push('那句话该说「爹的坟」，说的是别人')
     if (!meetsAll(notMourning)) wrong.push('服满了，守孝还没收掉')
   }
   // 活着的人问不出死因
   const c = child()
   if (!c) wrong.push('掷不出第三局')
-  else if (meetsAll([{ family: { id: 'father', cause: ['病', '客死', '老病'] } }])) wrong.push('爹活着，死因条件却成立')
+  else if (meetsAll([{ family: { id: 'father', cause: ['病', '客死', '老病'] } }]))
+    wrong.push('爹活着，死因条件却成立')
   // 媒人那一卷真的问了这一格
   const offer = eventOf('match-offer')
-  if (!offer?.requires?.some((one) => one.undertaking?.not === 'mourning')) wrong.push('媒人上门那一卷没问「没在守孝」，守孝挡不住谁')
+  if (!offer?.requires?.some((one) => one.undertaking?.not === 'mourning'))
+    wrong.push('媒人上门那一卷没问「没在守孝」，守孝挡不住谁')
   if (wrong.length > 0) {
     console.log(`\n  ✗ 二、守孝与死因：${wrong[0]}（共 ${wrong.length} 处）`)
     bad += 1
-  } else console.log('  ✓ 二、病没的、客死的都守孝，服满收掉；死在外地的没有坟可上——死因有了读者，活人问不出死因。')
+  } else
+    console.log(
+      '  ✓ 二、病没的、客死的都守孝，服满收掉；死在外地的没有坟可上——死因有了读者，活人问不出死因。',
+    )
 }
 
 // ============================================================
@@ -162,8 +182,10 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
     }
     s.people.amend(one.who, { temper: one.temper })
     const texts = fatherDiesOfIllness('work')
-    if (!texts.some((line) => line.includes(one.want))) wrong.push(`${one.who} ${one.temper} 该说「${one.want}」：${texts.slice(-4).join(' / ')}`)
-    if (texts.some((line) => line.includes(one.forbid))) wrong.push(`${one.who} ${one.temper} 不该说「${one.forbid}」`)
+    if (!texts.some((line) => line.includes(one.want)))
+      wrong.push(`${one.who} ${one.temper} 该说「${one.want}」：${texts.slice(-4).join(' / ')}`)
+    if (texts.some((line) => line.includes(one.forbid)))
+      wrong.push(`${one.who} ${one.temper} 不该说「${one.forbid}」`)
   }
   // 人不在：娘先没了，她那一句一句也不许有
   const gone = child()
@@ -172,7 +194,8 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
     gone.people.amend('mother', { temper: '温和' })
     applyEffects([{ type: 'person', id: 'mother', fate: '殁', cause: '病' }])
     const texts = fatherDiesOfIllness('work')
-    if (texts.some((line) => line.startsWith('娘'))) wrong.push(`娘不在了，丧事之后却有娘的反应：${texts.find((l) => l.startsWith('娘'))}`)
+    if (texts.some((line) => line.startsWith('娘')))
+      wrong.push(`娘不在了，丧事之后却有娘的反应：${texts.find((l) => l.startsWith('娘'))}`)
   }
   // 哥不在场：哥去了外县，他那一句不许有
   const away = born('farm', 10, ['father', 'mother', 'brother'])
@@ -180,13 +203,14 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
   else {
     away.people.amend('brother', { temper: '暴躁', place: '邻县 · 河堤工地' })
     const texts = fatherDiesOfIllness('work')
-    if (texts.some((line) => line.includes('把郎中骂了一顿'))) wrong.push('哥在外县，丧事上却把郎中骂了一顿')
+    if (texts.some((line) => line.includes('把郎中骂了一顿')))
+      wrong.push('哥在外县，丧事上却把郎中骂了一顿')
   }
   // 你自己的那一句看你那阵子做了什么
   for (const [choice, want, forbid] of [
-    ['watch', '有一回醒了', '那半个月你在地里'],
+    ['watch', '有一回醒了', '那半个月你在外头干活'],
     ['herbs', '一副也没喝完', '有一回醒了'],
-    ['work', '那半个月你在地里', '一副也没喝完'],
+    ['work', '那半个月你在外头干活', '一副也没喝完'],
   ] as const) {
     const s = child()
     if (!s) {
@@ -194,7 +218,8 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
       continue
     }
     const texts = fatherDiesOfIllness(choice)
-    if (!texts.some((line) => line.includes(want))) wrong.push(`${choice} 该说「${want}」：${texts.slice(-4).join(' / ')}`)
+    if (!texts.some((line) => line.includes(want)))
+      wrong.push(`${choice} 该说「${want}」：${texts.slice(-4).join(' / ')}`)
     if (texts.some((line) => line.includes(forbid))) wrong.push(`${choice} 不该说「${forbid}」`)
   }
   // 客死那一卷：娘的反应看性情，哥要去算账
@@ -211,19 +236,24 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
     }
     s.people.amend('mother', { temper })
     const texts = fatherDiesAway(s, false)
-    if (!texts.some((line) => line.includes(want))) wrong.push(`客死，娘 ${temper} 该说「${want}」：${texts.slice(-4).join(' / ')}`)
+    if (!texts.some((line) => line.includes(want)))
+      wrong.push(`客死，娘 ${temper} 该说「${want}」：${texts.slice(-4).join(' / ')}`)
   }
   const angry = born('farm', 10, ['father', 'mother', 'brother'])
   if (!angry) wrong.push('掷不出局')
   else {
     angry.people.amend('brother', { temper: '暴躁' })
     const texts = fatherDiesAway(angry, false)
-    if (!texts.some((line) => line.includes('算账'))) wrong.push(`客死，暴躁的哥该要去算账：${texts.slice(-4).join(' / ')}`)
+    if (!texts.some((line) => line.includes('算账')))
+      wrong.push(`客死，暴躁的哥该要去算账：${texts.slice(-4).join(' / ')}`)
   }
   if (wrong.length > 0) {
     console.log(`\n  ✗ 三、各人各是一种反应：${wrong[0]}（共 ${wrong.length} 处）`)
     bad += 1
-  } else console.log('  ✓ 三、同一场丧事：你的那句看你做了什么，娘的看娘的性情，哥的看哥的性情；人不在、不在场，那句话就没有。')
+  } else
+    console.log(
+      '  ✓ 三、同一场丧事：你的那句看你做了什么，娘的看娘的性情，哥的看哥的性情；人不在、不在场，那句话就没有。',
+    )
 }
 
 // ============================================================
@@ -241,11 +271,13 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
     const leaveBefore = leaning.weightOf('leave')
     const settleBefore = leaning.weightOf('settle')
     const lines = dampen([])
-    if (!lines.some((line) => line.includes('出门这两个字'))) wrong.push(`爹死在外地、没问坟在哪，该压下想走的念头：${lines.join(' / ')}`)
+    if (!lines.some((line) => line.includes('出门这两个字')))
+      wrong.push(`爹死在外地、没问坟在哪，该压下想走的念头：${lines.join(' / ')}`)
     if (leaning.weightOf('leave') >= leaveBefore) wrong.push('压了，想走的念头却没轻')
     if (leaning.weightOf('settle') <= settleBefore) wrong.push('压了想走，想守着的却没顶上来')
     kindle([])
-    if (leaning.weightOf('leave') > leaveBefore - 4) wrong.push('没问坟在哪，「记着那个地名」却点着了')
+    if (leaning.weightOf('leave') > leaveBefore - 4)
+      wrong.push('没问坟在哪，「记着那个地名」却点着了')
   }
   // 问了坟在哪：记着那个地名，想走的念头点起来
   const b = child()
@@ -255,7 +287,8 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
     fatherDiesAway(b, true)
     const before = leaning.weightOf('leave')
     kindle([])
-    if (leaning.weightOf('leave') <= before) wrong.push('问了坟在哪，「记着那个地名」却没点着想走的念头')
+    if (leaning.weightOf('leave') <= before)
+      wrong.push('问了坟在哪，「记着那个地名」却没点着想走的念头')
   }
   // 病没在家：不压（他没死在路上）
   const c = child()
@@ -265,12 +298,16 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
     fatherDiesOfIllness('work')
     leaning.stir('leave', 6, { at: { ...c.world.time }, text: '摆局' }, c.world.time)
     const lines = dampen([])
-    if (lines.some((line) => line.includes('出门这两个字'))) wrong.push('爹病没在家里，却按「死在外地」压了想走的念头')
+    if (lines.some((line) => line.includes('出门这两个字')))
+      wrong.push('爹病没在家里，却按「死在外地」压了想走的念头')
   }
   if (wrong.length > 0) {
     console.log(`\n  ✗ 四、往后的选择：${wrong[0]}（共 ${wrong.length} 处）`)
     bad += 1
-  } else console.log('  ✓ 四、同一个死讯两个方向：没问坟在哪的再没提过出门，问了的记着那个地名；病没在家的不压。')
+  } else
+    console.log(
+      '  ✓ 四、同一个死讯两个方向：没问坟在哪的再没提过出门，问了的记着那个地名；病没在家的不压。',
+    )
 }
 
 // ============================================================
@@ -305,5 +342,7 @@ if (bad > 0) {
   console.log(`  ✗ ${bad} 项不成立。\n`)
   process.exitCode = 1
 } else {
-  console.log('  丧事之后：一批效果说的是同一刻的人；守孝记的是人，服满按死因分话；各人各是一种反应——五条全部成立。\n')
+  console.log(
+    '  丧事之后：一批效果说的是同一刻的人；守孝记的是人，服满按死因分话；各人各是一种反应——五条全部成立。\n',
+  )
 }

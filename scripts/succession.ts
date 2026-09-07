@@ -214,7 +214,11 @@ function live(): Lived {
     if (chose === 'house:divide#choose:stay' || chose === 'house:divide#choose:town') {
       out.divided = true
       const mine = [...spouseBefore, ...kidsBefore].filter((id) => membersBefore.includes(id))
-      const theirs = [...motherBefore, ...brothersBefore].filter((id) => membersBefore.includes(id))
+      // 分家的四个月里（以及可能顺带触发的其他事件），老屋的人可能老病没——
+      // 那不是分家的错；只查分家时还在世的人是不是留在了老屋
+      const theirs = [...motherBefore, ...brothersBefore].filter(
+        (id) => membersBefore.includes(id) && alive(id),
+      )
       const wrong = dividedWrong(people.houses, people.adjacent, mine, theirs)
       if (wrong.length > 0) {
         out.divideOk = false

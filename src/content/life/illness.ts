@@ -221,7 +221,7 @@ export const illnessScenes: SceneLibrary = {
           },
           {
             requires: [{ flag: { key: 'kept-working' } }],
-            text: '那半个月你在地里。后来很多年你都想，要是那半个月你在屋里呢。',
+            text: '那半个月你在外头干活。后来很多年你都想，要是那半个月你在屋里呢。',
           },
           {
             requires: [

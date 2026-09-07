@@ -70,7 +70,8 @@ const canRuin = (): boolean => meetsAll(eventOf('debt-fields')?.requires)
   if (!s) wrong.push('掷不出局')
   else {
     fatherDies(s)
-    if (s.household.tenure !== '自耕') wrong.push(`农户生下来田该是自耕，却是 ${s.household.tenure}`)
+    if (s.household.tenure !== '自耕')
+      wrong.push(`农户生下来田该是自耕，却是 ${s.household.tenure}`)
     if (s.household.debt <= 0) wrong.push('父亲借了钱，家里却不欠债')
     if (!canRuin()) wrong.push('父亲客死、债还在、地是自家的，抵债那一卷却进不来')
     const debtBefore = s.household.debt
@@ -95,7 +96,10 @@ const canRuin = (): boolean => meetsAll(eventOf('debt-fields')?.requires)
   if (wrong.length > 0) {
     console.log(`\n  ✗ 一、地抵了债：${wrong[0]}（共 ${wrong.length} 处）`)
     bad += 1
-  } else console.log('  ✓ 一、父亲客死、债还在：镇上来人，地抵了债——田是佃，债勾了，家境落了，编年记了，正文里没有父亲。')
+  } else
+    console.log(
+      '  ✓ 一、父亲客死、债还在：镇上来人，地抵了债——田是佃，债勾了，家境落了，编年记了，正文里没有父亲。',
+    )
 }
 
 // ============================================================
@@ -120,7 +124,8 @@ const canRuin = (): boolean => meetsAll(eventOf('debt-fields')?.requires)
       { type: 'flag', key: 'father-in-debt', value: true },
       { type: 'person', id: 'father', fate: '殁', cause: '病' },
     ])
-    if (b.household.tenure !== null) wrong.push(`开布庄的人家田该是 null，却是 ${b.household.tenure}`)
+    if (b.household.tenure !== null)
+      wrong.push(`开布庄的人家田该是 null，却是 ${b.household.tenure}`)
     if (canRuin()) wrong.push('开布庄的人家没有地，抵债那一卷却进得来')
   }
   // 父亲杳无音信：跟客死一样进得来（那笔债不因人没消息就没了）
@@ -183,7 +188,9 @@ const canRuin = (): boolean => meetsAll(eventOf('debt-fields')?.requires)
       const want = tenure === '佃' ? reader.renting : reader.owning
       const forbid = tenure === '佃' ? reader.owning : reader.renting
       if (!texts.some((line) => line.includes(want))) {
-        wrong.push(`${reader.where}（${tenure}）该说「${want}」，说的是：${texts.slice(-3).join(' / ')}`)
+        wrong.push(
+          `${reader.where}（${tenure}）该说「${want}」，说的是：${texts.slice(-3).join(' / ')}`,
+        )
       }
       if (texts.some((line) => line.includes(forbid))) {
         wrong.push(`${reader.where}（${tenure}）不该说「${forbid}」`)
@@ -199,15 +206,20 @@ const canRuin = (): boolean => meetsAll(eventOf('debt-fields')?.requires)
     if (!s) wrong.push('掷不出局')
     else {
       const open = (c: { requires?: Condition[] }) => meetsAll(c.requires)
-      if (!open(farm) || open(tenant)) wrong.push('地是自家的：该开「家里的地」那条、锁「租的那几亩」那条')
+      if (!open(farm) || open(tenant))
+        wrong.push('地是自家的：该开「家里的地」那条、锁「租的那几亩」那条')
       applyEffects([{ type: 'household', tenure: '佃' }])
-      if (open(farm) || !open(tenant)) wrong.push('抵了债：该锁「家里的地」那条、开「租的那几亩」那条')
+      if (open(farm) || !open(tenant))
+        wrong.push('抵了债：该锁「家里的地」那条、开「租的那几亩」那条')
     }
   }
   if (wrong.length > 0) {
     console.log(`\n  ✗ 三、读者：${wrong[0]}（共 ${wrong.length} 处）`)
     bad += 1
-  } else console.log('  ✓ 三、承户、分家、弟弟分家、成人那年四处：地是自家的旧话还在，抵了债就换成租的那几亩。')
+  } else
+    console.log(
+      '  ✓ 三、承户、分家、弟弟分家、成人那年四处：地是自家的旧话还在，抵了债就换成租的那几亩。',
+    )
 }
 
 // ============================================================
@@ -249,7 +261,8 @@ const canRuin = (): boolean => meetsAll(eventOf('debt-fields')?.requires)
   if (wrong.length > 0) {
     console.log(`  ✗ 四、随机人生：${wrong[0]}（共 ${wrong.length} 处）`)
     bad += 1
-  } else console.log('  ✓ 四、抵了债的每一世：田是佃、之后正文里没再把地当自家的；没抵过的田还是自耕。')
+  } else
+    console.log('  ✓ 四、抵了债的每一世：田是佃、之后正文里没再把地当自家的；没抵过的田还是自耕。')
 }
 
 console.log()

@@ -64,7 +64,8 @@ function liveALife(): MournedLife {
   }
   for (const id of KIN) {
     const person = people.personOf(id)
-    if (person && person.fate === '殁') out.deaths.push({ id, cause: person.death?.cause ?? '（没记死因）' })
+    if (person && person.fate === '殁')
+      out.deaths.push({ id, cause: person.death?.cause ?? '（没记死因）' })
   }
   // 「X那年入冬没能熬过去」：X 得是没了的人的称呼
   for (const entry of world.chronicle) {
