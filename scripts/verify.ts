@@ -537,6 +537,14 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     owed: null,
     gender: null,
     stage: null,
+    /*
+     * 「正在做的那件事」没有出处表可查。
+     *
+     * `flag` 那一格能查是因为旗标由 `type: 'flag'` 的效果打出来，一一对得上；
+     * 而这一格问的是「此刻有没有一件事在进行」——它的来源是 `undertake` 效果，
+     * 已经由底下那张效果表登记。**同一件事不在两张表里各查一遍。**
+     */
+    undertaking: null,
   } satisfies {
     [K in keyof Condition]-?:
       ((value: NonNullable<Condition[K]>) => [Map<string, string[]>, string] | null) | null
@@ -689,6 +697,14 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
      * 那一支量，不在这张「有没有来源」的表里。
      */
     succession: null,
+    /**
+     * 「开始/结束一件事」产出的是一个过程 id，不是人名。
+     *
+     * 这张表登记的是「这条效果产出了哪个**名字**」——`undertake` 里的
+     * `who` 确实是人名，但那个人必定是别处已经立起来的（议亲得先有对方），
+     * **它引用人，不创造人**。跟 `relation` 那一格同一个道理。
+     */
+    undertake: null,
   } satisfies {
     [K in Effect['type']]: ((effect: Extract<Effect, { type: K }>) => [Set<string>, string]) | null
   }

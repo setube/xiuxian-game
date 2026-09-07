@@ -56,6 +56,68 @@ export interface LivingSpan {
 }
 
 /**
+ * 一件已经开始、尚未结束的事。
+ *
+ * ## 这一格只回答一个问题：他此刻正在做什么
+ *
+ * 正在议亲、正在服丧、正在养伤、正在逃亡、正在等待审判、正在学一门手艺。
+ *
+ * 它是从一条更高的规则里长出来的（用户 2026-09-07 拍板，见 `_施工决议`）：
+ *
+ * > **不得无因果地将人物从一个重大状态直接跳转到另一个重大状态。**
+ *
+ * 从前系统里很多事只有两头：
+ *
+ *     想结婚 → 已婚          决定逃亡 → 已逃亡          想出家 → 已出家
+ *
+ * 中间没有东西，于是时间跳过去了。有了这一格，中间那段才存在——
+ * **议亲要谈几个月，服丧要三年，养伤要看伤在哪儿。**
+ *
+ * ## 三条边界，写在这里，改之前先读
+ *
+ * 用户明说这一格「应该很薄，不要发展成第二套状态机」，并给了三条：
+ *
+ *   一、**只描述「正在发生什么」**
+ *   二、**不描述「下一步必须发生什么」**
+ *   三、**不拥有自己的流转规则**
+ *
+ * 所以这个接口里**没有** `next`、没有 `stage`、没有 `deadline`、没有 `onFinish`。
+ * 它就是一条事实：这件事开始了，还没完。
+ *
+ * **谁结束它、什么时候结束、结束后发生什么，都由对应的真实事件决定。**
+ * 议亲谈成了，是婚礼那一卷结束它；谈崩了，是退亲那一卷结束它；
+ * 女方家里出了事拖下去，那就一直挂着——**挂着本身就是那一世的事实**。
+ *
+ * ## 跟 `LivingSpan` 的分别
+ *
+ * 形状一样（`id + since + until`），语义差一条：**日子同时只能过一种，
+ * 事情可以同时有好几件。** 一个人可以正在服丧、同时正在议亲——
+ * 那正是「守孝三年不许嫁娶」这类礼法冲突的数据基础。
+ * 所以这里没有「至多一条 until 为 null」那个约束。
+ *
+ * ## 为什么不叫 `state`
+ *
+ * 叫 `state` 会招来状态机。这一格是**事情**不是状态：
+ * 「正在议亲」说的是有一件事在进行，不是这个人处于议亲态。
+ * 同一个人身上可以叠好几件，它们互不知道对方存在。
+ */
+export interface Undertaking {
+  /** 这件事叫什么。内容层自己定，如 `betrothal`、`mourning`、`fleeing` */
+  id: string
+  /** 从哪一年起。跟 `LivingSpan.since`、`Relation.since` 同一把尺 */
+  since: number
+  /** 还没完就是 null。同时可以有多条为 null */
+  until: number | null
+  /**
+   * 跟谁的这件事。没有对象的事（养伤、逃亡）留空。
+   *
+   * 有它才分得开「跟张家议的那门亲」和「跟李家议的那门亲」——
+   * 同一个 `id` 可以同时挂两条，而它们是两件事。
+   */
+  who?: string
+}
+
+/**
  * 一个刚出生的人对自己的全部认识：没有。
  *
  * 四面全空不是偷懒，是这一版的立场——十六岁的少年尚且不知道自己的「悟性」，
@@ -194,6 +256,18 @@ export const useCharacterStore = defineStore(
      * 只有人生中途真的换了一种活法，这里才会长出第一段。
      */
     const livings = shallowRef<LivingSpan[]>([])
+    /**
+     * 他此刻正在做的那些事，按开始先后排。
+     *
+     * 出生时是空的，而空是常态——绝大多数日子里一个人没有任何「正在进行」的事，
+     * 该下地下地，该念书念书。只有议亲、服丧、养伤、逃亡这种**跨越多个回合、
+     * 中途会被别的事看见**的东西才进来。
+     *
+     * **完了的不删，只置 `until`。** 跟 `Relation`、`LivingSpan` 同一条纪律：
+     * 「三年前那门亲事没谈成」是这个人一生的一部分，不因为它结束了就没发生过。
+     * 日后媒人再上门，两家都记得上一回。
+     */
+    const undertakings = shallowRef<Undertaking[]>([])
     const realm = ref<Realm>(INITIAL_REALM)
     const attributes = shallowRef<Attributes>(withConstitution(rollAttributes(), constitution.value))
     /**
@@ -334,9 +408,52 @@ export const useCharacterStore = defineStore(
       ]
     }
 
+    /**
+     * 开始一件事。
+     *
+     * 已经在进行的同一件事（同 `id` 同 `who`）不记第二笔——照 `liveAs` 那条：
+     * 一卷里连着两处效果会切出一段零长的过程。
+     *
+     * **这里不检查「能不能开始」。** 守孝期间不许议亲这类规矩是内容层的条件
+     * （`requires`）该管的事，不是这一格。这一格只记事实：它开始了。
+     */
+    function begin(id: string, who?: string): void {
+      const already = undertakings.value.some(
+        (one) => one.until === null && one.id === id && one.who === who,
+      )
+      if (already) return
+      undertakings.value = [
+        ...undertakings.value,
+        { id, since: world.time.year, until: null, ...(who === undefined ? {} : { who }) },
+      ]
+    }
+
+    /**
+     * 结束一件事。
+     *
+     * **不删，只置 `until`**——「三年前那门亲事没谈成」是这个人一生的一部分。
+     * 日后媒人再上门，两家都记得上一回。
+     *
+     * 没在进行就什么也不做，不报错：一卷可能从两条路走到同一个收尾
+     * （谈成了走婚礼、谈崩了走退亲，两边都要收掉议亲这件事），
+     * 而先到的那一条已经把它收了。
+     */
+    function finish(id: string, who?: string): void {
+      const year = world.time.year
+      undertakings.value = undertakings.value.map((one) =>
+        one.until === null && one.id === id && one.who === who ? { ...one, until: year } : one,
+      )
+    }
+
+    /** 他此刻正在做这件事吗。`who` 省掉就问「有没有这么一件事在进行」，不管对象是谁 */
+    function doing(id: string, who?: string): boolean {
+      return undertakings.value.some(
+        (one) => one.until === null && one.id === id && (who === undefined || one.who === who),
+      )
+    }
+
     /** 改写角色对自己某一面的看法。 */
-    function note(key: AspectKey, self: string | null): void {
-      aspects.value = { ...aspects.value, [key]: { ...aspects.value[key], self } }
+    function note(key: AspectKey, self: string | null): void {      aspects.value = { ...aspects.value, [key]: { ...aspects.value[key], self } }
     }
 
     /** 记下别人的评说。只增不改——认知的错位就靠这份先后顺序显形。 */
@@ -561,6 +678,8 @@ export const useCharacterStore = defineStore(
       constitution.value = rollConstitution()
       identity.value = INITIAL_IDENTITY
       livings.value = []
+      // 弃卷重来要清干净：上一世没谈成的那门亲事不能跟到下一世
+      undertakings.value = []
       realm.value = INITIAL_REALM
       attributes.value = withConstitution(rollAttributes(), constitution.value)
       span.value = rollSpan(attributes.value.body)
@@ -576,6 +695,7 @@ export const useCharacterStore = defineStore(
       age,
       identity,
       livings,
+      undertakings,
       living,
       realm,
       attributes,
@@ -591,6 +711,9 @@ export const useCharacterStore = defineStore(
       extendSpan,
       setIdentity,
       liveAs,
+      begin,
+      finish,
+      doing,
       note,
       claim,
       knows,

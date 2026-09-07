@@ -1460,6 +1460,23 @@ export interface Condition {
    */
   living?: { is?: string; in?: readonly string[]; notIn?: readonly string[]; hasChore?: boolean }
   /**
+   * 他此刻正在做的一件事（`stores/character.ts` 的 `Undertaking`）。
+   *
+   * 正在议亲、正在服丧、正在养伤、正在逃亡。**这一格是「不得瞬移」那条
+   * 最高规则在条件层的落点**：婚礼那一卷问的不该是「想不想成亲」，
+   * 而是「有没有一门亲事正在议」——中间那段时间必须真的存在过。
+   *
+   * `is` 问一件，`who` 再收窄到跟谁的那一件。`not` 问的是「没有在做」——
+   * 守孝三年不许嫁娶，媒人上门那一卷就写 `{ undertaking: { not: 'mourning' } }`。
+   *
+   * ## 跟 `flag` 的分别
+   *
+   * 旗标记的是「发生过」，这一格记的是「正在发生」。**旗标不会自己结束，
+   * 而这一格会**——议亲那件事总有个了局，成了或崩了，那一天它就封口了。
+   * 拿旗标当过程用是这套东西以前的老毛病：`father-in-debt` 打上去就再没落下来过。
+   */
+  undertaking?: { is?: string; not?: string; who?: string }
+  /**
    * 住在什么样的地方、归在哪一级聚落。
    *
    * 「谁看得见村口」从前问的是 `living`——一个住在府城的木匠也被算成村里人。
@@ -1578,6 +1595,21 @@ export type Effect =
    * 不会被下一次覆盖，只会被封口——见 `character.liveAs`。
    */
   | { type: 'living'; living: string }
+  /**
+   * 开始或结束一件正在做的事。
+   *
+   * `begin` 记下「这件事开始了」，`finish` 记下「它完了」——完了的不删只封口，
+   * 「三年前那门亲事没谈成」是这个人一生的一部分。
+   *
+   * ⚠️ **这一格只记事实，不管规矩。** 守孝期间不许议亲这类礼法，是那一卷
+   * `requires` 里 `undertaking` 那一格该拦的事，不是这里。写这一条的时候
+   * 别顺手加「如果正在服丧就不开始」——那会让规矩散在两个地方，
+   * 而其中一个地方谁也不会去看。
+   *
+   * `who` 分得开「跟张家议的那门亲」和「跟李家议的那门亲」：同一个 `id`
+   * 可以同时挂两条，它们是两件事。没有对象的事（养伤、逃亡）留空。
+   */
+  | { type: 'undertake'; undertaking: string; who?: string; done?: boolean }
   /** 改写角色对自己某一面的看法 */
   | { type: 'aspect'; key: AspectKey; self: string | null }
   /** 别人对你的评说。只增不改，认知的错位就藏在这里 */

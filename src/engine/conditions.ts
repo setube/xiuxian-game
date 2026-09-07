@@ -179,6 +179,22 @@ const CHECKS = {
    * 于是「帮家里干活」那个去处（`{ living: { hasChore: true } }`）
    * 对他一直是关着的——不是因为那家没有活，是因为引擎还以为他在宫里。
    */
+  undertaking: (undertaking, { character }) => {
+    // 「有一件事正在做」。`who` 收窄到跟谁的那一件——同一个 id 可以同时挂两条
+    if (undertaking.is !== undefined && !character.doing(undertaking.is, undertaking.who)) {
+      return false
+    }
+    /*
+     * 「没有在做这件事」。守孝三年不许嫁娶，媒人上门那一卷写 `not: 'mourning'`。
+     *
+     * 这一问故意不收 `who`：「正在给谁服丧」不影响「不许嫁娶」这条规矩——
+     * 给谁守都一样守着。哪天真有「只挡跟某人有关的那一件」的内容再说，
+     * 现在收了它只会让内容作者以为非填不可。
+     */
+    if (undertaking.not !== undefined && character.doing(undertaking.not)) return false
+    return true
+  },
+
   living: (living, { character }) => {
     const current = character.living
     if (living.is !== undefined && current.id !== living.is) return false
