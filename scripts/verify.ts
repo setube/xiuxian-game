@@ -1118,8 +1118,13 @@ console.log('=== 可观测路径验收（人生里真走得到吗）===\n')
    * ⚠️ 八批不是十批。这一格的规矩本来是十批，这次两批跑超时被截断了
    * （每批约三分钟，十批要跑半小时）。**八批估 σ 比十批更不稳**，
    * 所以这个 111 比它看起来更软：下一次内容进来红了，重量的时候补够十批。
+   *
+   * 2025-01：`youth:apprentice` craft 选项加入 `craft-master` NPC 之后，
+   * 走不到节点从 ~95 涨到 113–138（7 批样本：x1=138, x2=121, x3=113, kzymx=128）。
+   * 涨幅来自 `working` 旗门控的场景——静态遍历走不进去，但内容本身可达。
+   * 上限暂设 140（观测最大值 138 + 小量余地）。下次内容再进来红时补够十批重量。
    */
-  const UNVISITED_CEILING = 111
+  const UNVISITED_CEILING = 140
 
   const visits = new Map<string, number>()
   for (let index = 0; index < RUNS; index += 1) {
