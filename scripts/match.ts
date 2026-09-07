@@ -59,14 +59,14 @@ const BETROTHAL = 'betrothal'
  * 「长辈打听、你想先见一面」那一整条一次也没演过——
  * 而第四条自检印出来的 `open → alone → …` 正是它露的馅。
  */
-function stage(gender: Gender, withElders: boolean): void {
+function stage(gender: Gender, withElders: boolean, standing = 50): void {
   setActivePinia(createPinia())
   beOf('farm')
   const household = useHouseholdStore()
   const character = useCharacterStore()
   const people = usePeopleStore()
   household.gender = gender
-  household.standing = 50
+  household.standing = standing
   useWorldStore().advanceTime({ years: 20 })
   void character.age
 
@@ -188,8 +188,129 @@ let bad = 0
       console.log(`  ✗ ${gender}：人都进门了，议亲那件事还开着——媒人此后不会再上门。`)
       bad += 1
     } else {
-      console.log(`  ✓ ${gender}：人进了门，议亲那件事也封了口。`)
+      /*
+       * 男女在这一节分岔，而分岔的不只是称呼。
+       *
+       * **男的是娶进来，女的是嫁出去**——从前这两条走的是同一套簿记，
+       * 于是女玩家成亲之后世界里唯一变的是屋里多了个丈夫：
+       * 她还在娘家户里，户主还是她爹。
+       *
+       * 所以这里男女问的是**相反**的两件事：
+       *   男　你还是这一户的人（`home` 里有你）
+       *   女　你已经不是了（`home` 里没有你，夫家那一户里有你）
+       *
+       * 只问一头会漏：一个「谁成亲都不动户口」的实现能过男方那一半，
+       * 一个「谁成亲都迁走」的实现能过女方那一半。
+       */
+      const home = people.houses['home']
+      const inHome = home?.members.includes('me') ?? false
+      const inLaw = Object.values(people.houses).find(
+        (h) => h.id !== 'home' && h.members.includes('me'),
+      )
+
+      if (gender === '男' && !inHome) {
+        console.log(`  ✗ 男：娶了亲反倒从自己家里迁出去了（现在归 ${inLaw?.id ?? '无'}）。`)
+        bad += 1
+      } else if (gender === '女' && inHome) {
+        console.log('  ✗ 女：嫁过去了，人还在娘家户里——户主还是她爹。')
+        console.log('    从前这一节只多一个丈夫，别的什么也没变。')
+        bad += 1
+      } else if (gender === '女' && inLaw === undefined) {
+        console.log('  ✗ 女：从娘家出去了，可是没进任何一户——她成了没有户的人。')
+        bad += 1
+      } else if (gender === '女' && inLaw?.head === 'me') {
+        console.log('  ✗ 女：嫁进去当了家。出嫁是进一户已经在那儿的人家，那一户的当家不是你。')
+        bad += 1
+      } else {
+        const where =
+          gender === '男' ? '还是这一户的人' : `归了 ${inLaw?.id}，当家的是 ${inLaw?.head}`
+        console.log(`  ✓ ${gender}：人进了门，议亲那件事也封了口；${where}。`)
+      }
     }
+  }
+}
+
+/**
+ * 二点五、入赘那一路：户口反着走，处境不一样。
+ *
+ * 这一条守两件事：
+ *
+ * 一、**它真的走得到**。`branches` 是从上往下第一条成立的算数，
+ *     入赘那条要是排在娶妻后面，它一次也走不到——而**走不到的内容
+ *     跟没写一模一样，并且没有任何机器会说**。
+ *
+ * 二、**穷才走得到**。摆两个局：家境 20 的走进去，家境 50 的走不进去。
+ *     只验一头会漏——一个「谁都入赘」的实现能过前一半，
+ *     一个「谁都不入赘」的实现能过后一半。
+ */
+{
+  /*
+   * 摆局要立个哥——入赘那条问的是「有哥的次子分不到什么」。
+   *
+   * **头一版没立**，于是「穷的走得到」那一半永远不成立，
+   * 判据报的是「一路答应下来也没走到那一节」，
+   * 看上去像内容写错了，其实是局摆得不对。
+   */
+  stage('男', false, 20)
+  {
+    const people = usePeopleStore()
+    const world = useWorldStore()
+    people.enroll({
+      id: 'brother',
+      surname: '江',
+      given: '二',
+      gender: '男',
+      bornYear: world.time.year - 26,
+      bornMonth: 5,
+      temper: '木讷',
+      health: 72,
+      place: world.place,
+      fate: '在',
+      history: [],
+    })
+    people.bind('me', 'brother', '兄')
+  }
+  const poor = play('open', () => 'agree')
+  const people = usePeopleStore()
+  const inLaw = Object.values(people.houses).find(
+    (h) => h.id !== 'home' && h.members.includes('me'),
+  )
+  const poorWent = poor.includes('uxorial')
+
+  // 不穷的那一头：同样立个哥，只有家境不同——**只有一个变量在动**
+  stage('男', false, 50)
+  {
+    const people = usePeopleStore()
+    const world = useWorldStore()
+    people.enroll({
+      id: 'brother',
+      surname: '江',
+      given: '二',
+      gender: '男',
+      bornYear: world.time.year - 26,
+      bornMonth: 5,
+      temper: '木讷',
+      health: 72,
+      place: world.place,
+      fate: '在',
+      history: [],
+    })
+    people.bind('me', 'brother', '兄')
+  }
+  const rich = play('open', () => 'agree')
+  const richWent = rich.includes('uxorial')
+
+  if (!poorWent) {
+    console.log(`  ✗ 入赘：家境 20 的男子一路答应下来也没走到那一节（走过 ${poor.join(' → ')}）。`)
+    bad += 1
+  } else if (richWent) {
+    console.log('  ✗ 入赘：家境 50 的也入赘了——有田有兄弟的男丁不会去做赘婿。')
+    bad += 1
+  } else if (inLaw === undefined || inLaw.head === 'me') {
+    console.log('  ✗ 入赘：进了妻家，当家的却是自己——赘婿不当家，那正是这件事的分量所在。')
+    bad += 1
+  } else {
+    console.log(`  ✓ 入赘：穷的走得到、不穷的走不到；归了 ${inLaw.id}，当家的是 ${inLaw.head}。`)
   }
 }
 

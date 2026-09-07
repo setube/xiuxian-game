@@ -691,6 +691,11 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     diary: null,
     reading: null,
     divide: null,
+    /*
+     * 嫁进另一户不产出任何要别处「先给」的东西：它改的是户口簿，
+     * 而户口不是前置资源。跟 `divide` 同一格。
+     */
+    'wed-into': null,
     tie: null,
     owe: null,
     repay: null,
