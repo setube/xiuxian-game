@@ -163,6 +163,17 @@ export const youthScenes: SceneLibrary = {
                 category: '世事',
               },
               { type: 'flag', key: 'has-craft', value: true },
+              // 拜师是一件事，得有一个人——拜了师傅，师傅才成了你的师傅。
+              // 手艺是什么不是重点；一个三十几岁的男人，开着小铺子带徒弟，
+              // 在那个年代是再寻常不过的日子。他有名字，有脸。
+              {
+                type: 'meet',
+                id: 'craft-master',
+                calls: '师傅',
+                delta: 14,
+                who: { surname: '刘', given: '有财', gender: '男', age: 36, doing: '带着你做活计' },
+                bond: '师',
+              },
             ],
             next: 'done',
           },
@@ -240,6 +251,16 @@ export const youthScenes: SceneLibrary = {
         blocks: [
           { kind: 'divider', variant: 'dots' },
           { kind: 'narration', text: '两年下来，你算是个半大的人了。', tone: 'faint' },
+        ],
+        seen: [
+          {
+            // 学了手艺的：师傅说了一句话。哥当伙计的、留在地里的，那人不在，这一句没有
+            requires: [
+              { bond: { kind: '师', alive: true } },
+              { flag: { key: 'has-craft' } },
+            ],
+            text: '师傅说你还算灵，打出来的东西能卖钱了。',
+          },
         ],
       },
     },

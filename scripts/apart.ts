@@ -301,6 +301,12 @@ const PATHS: readonly Path[] = [
     origin: 'farm',
     steps: [{ beat: { doing: 'town', includes: '同村的人' } }],
   },
+  {
+    id: 'craft-apprentice',
+    label: '走出门遇见的人：学手艺时拜的师傅',
+    origin: 'farm',
+    steps: [{ scene: 'youth:apprentice', node: 'open', choice: 'craft' }],
+  },
 ]
 
 /** 一个人在某一刻的样子 */
