@@ -168,6 +168,23 @@ export const illnessScenes: SceneLibrary = {
           { type: 'flag', key: 'illness-at-home', value: false },
           { type: 'flag', key: 'lost-someone', value: true },
           { type: 'person', id: 'elder', fate: '殁', cause: '病' },
+          /**
+           * 从这一天起守孝。
+           *
+           * 这是「过程中状态」的第二个使用者（第一个是议亲）。它在这儿
+           * 头一回让两件事撞上：**守孝期间不许嫁娶**——`match:offer` 那一卷
+           * 的 `requires` 里写着 `{ undertaking: { not: 'mourning' } }`，
+           * 于是这三年里媒人不上门。
+           *
+           * ⚠️ **没有人替它计时。** 三年到了自己不会结束——`Undertaking`
+           * 上没有 deadline，那是有意的（用户拍板的三条边界之一：
+           * 不拥有自己的流转规则）。结束它的是底下 `mourning:over` 那一卷，
+           * 它是个散事件，`window` 从十一岁起、要求 `undertaking is mourning`。
+           * **所以「什么时候孝满」不精确**——可能第三年，也可能第五年，
+           * 而那正是这件事本来的样子：孝满不是一个日子，
+           * 是家里人某一天忽然发现门上那块白布早就取下来了。
+           */
+          { type: 'undertake', undertaking: 'mourning', who: 'elder' },
           { type: 'chronicle', text: '{elder}那年入冬没能熬过去。', tone: 'cinnabar' },
           // 这一夜他想的事，跟从前不一样了
           { type: 'reflect' },

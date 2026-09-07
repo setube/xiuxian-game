@@ -19,6 +19,7 @@ import { nephewEvents, nephewScenes } from './nephew'
 import { reunionEvents, reunionScenes } from './reunion'
 import { rivermanEvents, rivermanScenes } from './riverman'
 import { matchEvents, matchScenes } from './match'
+import { mourningEvents, mourningScenes } from './mourning'
 import { routineScenes } from './routine'
 import { royalEvents, royalScenes } from './royal'
 import { schoolingEvents, schoolingScenes } from './schooling'
@@ -195,6 +196,28 @@ export const CHAPTERS: readonly Chapter[] = [
     purpose: ['一门亲事从有人提起到成或不成，中间那段时间真的存在过'],
     // 这一章留下的痕迹：议亲那件事的起止（undertake），以及成了之后进门的那个人（meet）
     marks: ['undertake', 'meet'],
+  },
+
+  /**
+   * 服丧。只做一件事：**让守孝有个尽头。**
+   *
+   * 守孝那件事没有 deadline（`Undertaking` 上不许有流转规则），
+   * 三年到了自己不会停。所以得有一卷真的走到，由它落 `undertake done`。
+   * 少了它，守孝就是无期的，媒人此后再不上门——**而那不是礼法，是漏写。**
+   *
+   * 单独一章而不是塞进 `illness`：那一章讲的是八到十六岁那场病，
+   * 而守孝服的可能是爹、是娘、是哥，一辈子里哪一年都可能撞上。
+   * **章界不是分类抽屉，是「这一段人生里会发生什么」。**
+   */
+  {
+    id: 'mourning',
+    scenes: mourningScenes,
+    events: mourningEvents,
+    called: ['年表'],
+    to: [],
+    age: [11, 70],
+    purpose: ['守孝有始也有终，而终了的那一天媒人才又上门'],
+    marks: ['undertake'],
   },
 
   /** 手艺。铁匠、木匠、药铺 */

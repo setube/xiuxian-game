@@ -294,6 +294,12 @@ export const matchEvents: readonly LifeEvent[] = [
     requires: [
       { bond: { kind: '配偶', alive: false } },
       { undertaking: { not: BETROTHAL } },
+      /*
+       * 守孝期间不许嫁娶。**这是过程中状态第一次让两件事撞上**——
+       * 不是拿旗标挡的（旗标打上去就不会落下来），是问「此刻有没有一件
+       * 叫服丧的事在进行」。它会结束，而结束的那一天媒人才又上门。
+       */
+      { undertaking: { not: 'mourning' } },
       { standing: { atLeast: 20 } },
     ],
     scene: 'match:offer',
