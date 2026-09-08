@@ -22,7 +22,7 @@ import './lib/seeded'
  * 「两回一样」单独成立不了——种子压根没装上，两回也可能一样（比如那支门禁根本不掷骰子）。
  * 所以每一对旁边都放一组异种子：**换一颗种子，输出得变**。变不了，说明这把尺子量的不是种子。
  */
-import { spawnSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -43,26 +43,63 @@ const UNSEEDED = new Set(['gates', 'refs'])
 /** `src` 里允许读挂钟的地方：`createId` 的降级路径，没有 `crypto.randomUUID` 时才走到 */
 const CLOCK_ALLOWED = new Set(['src/engine/id.ts'])
 
-function run(name: string, seed: string, shards: string): { out: string; code: number } {
-  const result = spawnSync(process.execPath, [join(ROOT, 'scripts', `${name}.ts`)], {
-    cwd: ROOT,
-    encoding: 'utf8',
-    env: { ...process.env, NODE_ENV: 'production', SEED: seed, GATE_SHARDS: shards },
-    maxBuffer: 64 * 1024 * 1024,
+/**
+ * 跑一支子门禁。
+ *
+ * ## 这里是 `spawn` 不是 `spawnSync`，为的是六次能并发
+ *
+ * 这一支要跑六次子门禁（两对 × 三回：同种子两回加异种子一回）。从前用
+ * `spawnSync` 一次一次等，六次串行——而 `seen` 一支就要六秒多，
+ * 光它三回就是十九秒，这一支自己实测三十四秒。
+ *
+ * 六次之间**没有任何依赖**：各自独立进程、各自的种子、各自的输出，
+ * 比对是全部跑完之后的事。所以改成一起放出去、`Promise.all` 收。
+ *
+ * 注意这跟被它验的那件事无关：它验的是「同一颗种子两回输出一样」，
+ * 而两回本来就是两个互不相干的进程——**并发不会让它们互相影响**，
+ * 各自的随机流由各自的 `SEED` 钉着。真要是并发之后就不一样了，
+ * 那正是这一支该报的红。
+ */
+function run(name: string, seed: string, shards: string): Promise<{ out: string; code: number }> {
+  return new Promise((fulfil) => {
+    const child = spawn(process.execPath, [join(ROOT, 'scripts', `${name}.ts`)], {
+      cwd: ROOT,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, NODE_ENV: 'production', SEED: seed, GATE_SHARDS: shards },
+    })
+    let out = ''
+    child.stdout.on('data', (chunk: Buffer) => (out += chunk))
+    /*
+     * stderr 也要收。从前 `spawnSync` 只取 `stdout`，stderr 直接落到终端上；
+     * 改成 `spawn` 之后若把它设成 `ignore`，**子门禁崩了就一个字也看不见**——
+     * 而「同种子两回不一样」正可能是崩溃造成的（比如一回崩在半路）。
+     * 收进同一个字符串，比对时它就是输出的一部分：崩了两回崩得一样也算一样，
+     * 崩得不一样这一条就该红。
+     */
+    child.stderr.on('data', (chunk: Buffer) => (out += chunk))
+    child.on('close', (code) => fulfil({ out, code: code ?? 1 }))
   })
-  return { out: result.stdout ?? '', code: result.status ?? 1 }
 }
 
 let failed = 0
 const mine = currentSeed() ?? 'replay'
 
 console.log('\n=== 一、同一颗种子，两回逐字节一样；换一颗，输出得变 ===\n')
-for (const pair of PAIRS) {
-  const seedA = deriveSeed(mine, pair.name, 'a')
-  const seedB = deriveSeed(mine, pair.name, 'b')
-  const first = run(pair.name, seedA, pair.shards)
-  const second = run(pair.name, seedA, pair.shards)
-  const other = run(pair.name, seedB, pair.shards)
+// 六次一起放出去。两对之间、三回之间都没有依赖，等它们各自跑完再比
+const rounds = await Promise.all(
+  PAIRS.map(async (pair) => {
+    const seedA = deriveSeed(mine, pair.name, 'a')
+    const seedB = deriveSeed(mine, pair.name, 'b')
+    const [first, second, other] = await Promise.all([
+      run(pair.name, seedA, pair.shards),
+      run(pair.name, seedA, pair.shards),
+      run(pair.name, seedB, pair.shards),
+    ])
+    return { pair, first, second, other }
+  }),
+)
+
+for (const { pair, first, second, other } of rounds) {
   const label = `${pair.name}（${pair.shards === '1' ? '不分片' : `${pair.shards} 片`}，${first.out.split('\n').length} 行）`
   if (first.out !== second.out) {
     const a = first.out.split('\n')
