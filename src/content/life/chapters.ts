@@ -23,6 +23,7 @@ import { afterwardsEvents, afterwardsScenes } from './afterwards'
 import { apprenticeEvents, apprenticeScenes } from './apprentice'
 import { attemptEvents, attemptScenes } from './attempt'
 import { bearingEvents, bearingScenes } from './bearing'
+import { candourEvents, candourScenes } from './candour'
 import { matchEvents, matchScenes } from './match'
 import { mourningEvents, mourningScenes } from './mourning'
 import { routineScenes } from './routine'
@@ -303,6 +304,40 @@ export const CHAPTERS: readonly Chapter[] = [
     age: [18, 45],
     purpose: ['想要一个孩子和有一个孩子，在这个时代里是两件事'],
     marks: ['undertake', 'meet', 'flag', 'roll'],
+  },
+
+  /**
+   * 一件小事上，你说了不是实话。
+   *
+   * **这一章是「习惯形成」那一梯队（5/7/8.md）的第一个使用者。**
+   * 那份共同方案自己写着这一梯队不宜单独施工，理由是：
+   *
+   * > 习惯形成需要**有反复做的事**——现在长尾日常有了，
+   * > 但可反复的道德性行为（骗、偷、救、背）还没写
+   *
+   * 查证（2026-09-08）：`grep 撒谎|骗|偷|赌|救人|背叛 src/content/life/` **零命中**，
+   * 那句话仍然成立。所以这一章**不做机制，只做那个前置**——
+   * 一件真会反复发生的小事，落一笔可以被累加的痕迹。
+   *
+   * 挑「说了不是实话」不是因为它戏剧性强，恰恰因为它**平常**：
+   * 不需要任何前提、任何出身任何年纪都可能发生，
+   * 而且**小到玩家第一次做的时候不会觉得自己在做一个道德选择**——
+   * 那正是 8.md 要的那句话的条件（「我究竟是什么时候变成这样的？」）。
+   *
+   * 三条不做：不做善恶值、不做即时惩罚、不写「你感到愧疚」。
+   * 尤其第二条——**多数谎话没有后果，而那正是它会变成习惯的原因**。
+   *
+   * 不落 `identity`，所以没有 `identityKind`。
+   */
+  {
+    id: 'candour',
+    scenes: candourScenes,
+    events: candourEvents,
+    called: ['年表'],
+    to: [],
+    age: [12, 70],
+    purpose: ['一件小到当时不觉得是选择的事，做过很多次之后就成了他是谁'],
+    marks: ['flag', 'roll'],
   },
 
   /**
