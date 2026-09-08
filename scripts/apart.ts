@@ -1007,6 +1007,9 @@ const HANDED_OVER: Readonly<Record<string, string>> = {
   'school:threshold#strain': 'presence.ts',
   // 分家进城那一支：举家带的得是你自己这一户。succession.ts 量妻儿跟着、娘和哥没动
   'house:divide#choose:town': 'succession.ts',
+  // 地抵了债那一节领进门的是债主——他成了田主，入的是人口册不是你这一户。
+  // 父债链尾摆局跑走不到；tenancy.ts 第三条从 signed 那一节起演，量他入了册、成了田主、六问说他的姓
+  'debt:fields#signed': 'tenancy.ts',
   // 老屋添的人（嫂子、侄儿）进的是老屋不是你这一户。kindred.ts 量他们住在哪一户
   'kindred:wedding#open': 'kindred.ts',
   'kindred:nephew#open': 'kindred.ts',

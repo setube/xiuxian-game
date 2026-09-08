@@ -520,7 +520,13 @@ function settleLandlord(input: {
 }): void {
   const { people, id, home, bornYear, surname } = input
   const world = useWorldStore()
-  const lane = world.residence ? (world.placeOf(world.residence)?.within ?? null) : null
+  /*
+   * 他家那处宅挂在跟你家同一个村下。你家没有宅的时候（讨饭的、逃难的没有居所；
+   * 寺里收留的住在寺里）挂在聚落下——他的宅是真宅，得有上一级，`dwelling` 那一支
+   * 六百棵树里抓到两处「方家没有上一级」，正是这两种人生里的佃户家
+   */
+  const lane =
+    (world.residence ? world.placeOf(world.residence)?.within : null) ?? world.settlement ?? null
   const taken = new Set([surname, ...Object.values(people.houses).map((house) => house.surname)])
   let family = pick(SURNAMES) ?? '王'
   for (let guard = 0; taken.has(family) && guard < 20; guard += 1) family = pick(SURNAMES) ?? '王'
