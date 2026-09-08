@@ -44,6 +44,7 @@ import { lifeEvents, lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
 import type { Livelihood, Temper, Terms } from '../src/types/game'
+import { usePeopleStore } from '../src/stores/people'
 import { effectsOf } from './refs'
 import { mapShards, sumTallies } from './lib/parallel'
 import { type Staged, ageTo, grownUp, marryIn, play, stage, weather } from './lib/staged'
@@ -505,19 +506,55 @@ if (divided.length < DIVIDES_WANTED) {
   }
   // 借了，收成差：一直欠着；正月里谁也不提；后来还了就不提了
   {
-    const s = stage('farm')
-    if (!s) wrong.push('掷不出局')
-    else {
+    /*
+     * 这一局要掷到「推完三年哥还在」为止。
+     *
+     * ## 为什么单这一局要重掷
+     *
+     * 中间有一步 `applyEffects([{ type: 'time', years: 3 }])`——**摆局里的人会
+     * 在这三年里老死**。而正月里那句「那笔粮，谁也没提」的条件是
+     * `[OWES_ME, { bond: { kind: '兄', alive: true } }]`（`life/kindred.ts`
+     * 遗债那一笔加的 `alive: true`：哥没了就不该再说「他也没提」，那是对的）。
+     *
+     * 于是哥一死，那句不出，判据报「欠着粮，正月里那句没出来」——
+     * **它指着内容说错，而内容是对的，错的是这一局没摆住人**。
+     * `SEED=158kp0h183om/kindred` 撞上过，探针打出来是 `哥活着=false 欠着=true`。
+     *
+     * 连带还有一处：那一局的年节正文里嫂子和侄儿都落成「一个陌生人」——
+     * 他们是通过哥认识的，哥没了称呼就断了。换一颗种子（k-b）零处，
+     * 所以那不是独立的 bug，是同一件事的下游。
+     *
+     * ## 判据不为此放宽
+     *
+     * 「哥还在」是这一条要验的**前提**，不是它要验的东西。前提没摆住就重掷，
+     * 掷不出来才报红——那才是真的有问题（比如哪天改成哥必死）。
+     * 这是 `staged-people-die` 那条的标准做法：链越长越要掷到要的人还在为止。
+     */
+    let staged: Staged | null = null
+    let newyear: string[] = []
+    let lines: string[] = []
+    for (let tries = 0; tries < 40; tries += 1) {
+      const s = stage('farm')
+      if (!s) continue
       play('kindred:borrow', 'lend')
       weather(s, { harvest: 28 })
-      const lines = play('kindred:repay')
-      if (!lines.some((l) => l.includes('秋后他没来')))
-        wrong.push(`收成差，还粮那一卷却说：${lines[0] ?? '（空）'}`)
-      if (!owes(s)) wrong.push('正文说没还，债簿上却销了')
+      lines = play('kindred:repay')
       marryIn(s, '温和')
       play('kindred:nephew')
       applyEffects([{ type: 'time', years: 3 }])
-      const newyear = play('kindred:newyear')
+      newyear = play('kindred:newyear')
+      // 哥没熬过这三年，这一局作废重掷——见上面那段
+      if (!usePeopleStore().isAlive('brother')) continue
+      staged = s
+      break
+    }
+
+    if (!staged) wrong.push('掷了四十局，没有一局哥能熬到欠债那年的正月——前提摆不住')
+    else {
+      const s = staged
+      if (!lines.some((l) => l.includes('秋后他没来')))
+        wrong.push(`收成差，还粮那一卷却说：${lines[0] ?? '（空）'}`)
+      if (!owes(s)) wrong.push('正文说没还，债簿上却销了')
       if (!newyear.some((l) => l.includes('那笔粮，谁也没提')))
         wrong.push('欠着粮，正月里那句「谁也没提」没出来')
       weather(s, { harvest: 72 })
