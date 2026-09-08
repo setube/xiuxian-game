@@ -88,6 +88,17 @@ export const illnessScenes: SceneLibrary = {
              */
             id: 'work',
             label: '照旧干活，家里不能停',
+            /*
+             * 高墙里头的人没有「地里的活」。
+             *
+             * 照 `routine.ts:258` 那条写：问 `living`（他现在过什么日子）
+             * 而不是 `station`（玉牒上写着什么）——削爵之后日子变成 `fallen`，
+             * 这扇门自己就开了，那正是那一册要说的话。
+             *
+             * `scripts/sequestered.ts` 实测抓到的三处之一：从前王府里病倒了人，
+             * 世子也会读到「照旧下地」。
+             */
+            requires: [{ living: { notIn: ['palace', 'manor'] } }],
             hint: '耗 一月',
             echo: '你照旧下地。',
             effects: [

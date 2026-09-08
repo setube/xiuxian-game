@@ -62,7 +62,13 @@ export const leavingScenes: SceneLibrary = {
                 id: 'caravan-boss',
                 calls: '货栈的管事',
                 delta: 4,
-                who: { surname: '沈', given: '大有', gender: '男', age: 41, doing: '管着镇上的货栈' },
+                who: {
+                  surname: '沈',
+                  given: '大有',
+                  gender: '男',
+                  age: 41,
+                  doing: '管着镇上的货栈',
+                },
               },
               { type: 'person', id: 'caravan-boss', place: '{province} · {prefecture} · 镇上货栈' },
             ],
@@ -71,6 +77,16 @@ export const leavingScenes: SceneLibrary = {
           {
             id: 'work',
             label: '接下来做几天',
+            // 「在货栈做短工」不是王府世子做得出的事。照 `routine.ts:258` 那条写：
+            // 问 `living` 不问 `station`——削爵之后这扇门自己就开了，
+            // 而那正是「门第塌了的宗室真要出去挣这口饭」那一册要说的话。
+            // `scripts/sequestered.ts` 抓到的三处之一
+            //
+            // ⚠️ 这一条不违反文件头「选项一个也不多给」：那条管的是**念头**
+            // （想离开的和想守家的看见同一组选项），这一条管的是**身份**
+            // （做不做得出这件事）。两个维度，而且同一个立场——
+            // 世界不因为你想要什么而配合你，也不因为你出身高就替你把活干了。
+            requires: [{ living: { notIn: ['palace', 'manor'] } }],
             hint: '耗 半月',
             echo: '你在货栈做了几天短工。',
             effects: [
@@ -83,7 +99,13 @@ export const leavingScenes: SceneLibrary = {
                 id: 'caravan-boss',
                 calls: '货栈的管事',
                 delta: 8,
-                who: { surname: '沈', given: '大有', gender: '男', age: 41, doing: '管着镇上的货栈' },
+                who: {
+                  surname: '沈',
+                  given: '大有',
+                  gender: '男',
+                  age: 41,
+                  doing: '管着镇上的货栈',
+                },
               },
               { type: 'person', id: 'caravan-boss', place: '{province} · {prefecture} · 镇上货栈' },
             ],
