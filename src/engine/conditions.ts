@@ -222,6 +222,9 @@ const CHECKS = {
     return true
   },
 
+  // 「这类事他做过几回」。数的是行为史那一串的长度，不是哪个格子里存着的数
+  deeds: (deeds, { character }) => within(character.did(deeds.kind), deeds),
+
   living: (living, { character }) => {
     const current = character.living
     if (living.is !== undefined && current.id !== living.is) return false

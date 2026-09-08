@@ -11,6 +11,8 @@ import type {
   Attributes,
   Contact,
   Death,
+  Deed,
+  DeedKind,
   GameTime,
   Interpretation,
   InventoryItem,
@@ -272,6 +274,14 @@ export const useCharacterStore = defineStore(
      * 日后媒人再上门，两家都记得上一回。
      */
     const undertakings = shallowRef<Undertaking[]>([])
+    /**
+     * 行为史：他做过的事，一件一笔（`Deed`）。只追加，不删不改。
+     *
+     * 「做过几次」从这上面数（`did`），不另存计数——存计数只知道五，
+     * 这一串还知道哪五次、什么时候。**玩家永远看不到这一格**：
+     * 「他是什么样的人」由玩家自己从正文的变化里读出来，不是面板上的一栏。
+     */
+    const deeds = shallowRef<Deed[]>([])
     const realm = ref<Realm>(INITIAL_REALM)
     const attributes = shallowRef<Attributes>(
       withConstitution(rollAttributes(), constitution.value),
@@ -459,6 +469,21 @@ export const useCharacterStore = defineStore(
       return undertakings.value.some(
         (one) => one.until === null && one.id === id && (who === undefined || one.who === who),
       )
+    }
+
+    /**
+     * 记下他做了一件事。每做一回一笔，第五回跟第一回各是各的。
+     *
+     * 这里不判「该不该记」、不判「记到几次算习惯」——那是内容层条件（`deeds`）的事。
+     * 也不进编年、不写日录：一句顺口的话不是一生的大事，进不进日录由那一卷自己定。
+     */
+    function record(kind: DeedKind, text: string): void {
+      deeds.value = [...deeds.value, { kind, at: { ...world.time }, text }]
+    }
+
+    /** 这类事他做过几回 */
+    function did(kind: DeedKind): number {
+      return deeds.value.filter((one) => one.kind === kind).length
     }
 
     /** 改写角色对自己某一面的看法。 */
@@ -690,6 +715,7 @@ export const useCharacterStore = defineStore(
       livings.value = []
       // 弃卷重来要清干净：上一世没谈成的那门亲事不能跟到下一世
       undertakings.value = []
+      deeds.value = []
       realm.value = INITIAL_REALM
       attributes.value = withConstitution(rollAttributes(), constitution.value)
       span.value = rollSpan(attributes.value.body)
@@ -706,6 +732,7 @@ export const useCharacterStore = defineStore(
       identity,
       livings,
       undertakings,
+      deeds,
       living,
       realm,
       attributes,
@@ -724,6 +751,8 @@ export const useCharacterStore = defineStore(
       begin,
       finish,
       doing,
+      record,
+      did,
       note,
       claim,
       knows,
@@ -751,6 +780,7 @@ export const useCharacterStore = defineStore(
         'aspects',
         'knowledge',
         'inventory',
+        'deeds',
       ],
     },
   },
