@@ -160,9 +160,7 @@ export const apprenticeScenes: SceneLibrary = {
        */
       gone: {
         id: 'gone',
-        onEnter: [
-          { type: 'chronicle', text: '师傅没了。铺子里的活，成了你的活。', tone: 'deep' },
-        ],
+        onEnter: [{ type: 'chronicle', text: '师傅没了。铺子里的活，成了你的活。', tone: 'deep' }],
         blocks: [
           { kind: 'narration', text: '铺子里没人了。活还是照旧有人送来。' },
           { kind: 'narration', text: '来问活的还照旧来，你就照旧做。做了几回，也没人说什么。' },
