@@ -1,3 +1,4 @@
+import { GROWN_UP } from '@/engine/stages'
 import type { Chapter } from '@/types/chapter'
 
 import { birthEvents, birthScenes } from './birth'
@@ -674,7 +675,7 @@ export const CHAPTERS: readonly Chapter[] = [
     events: seekingEvents,
     called: ['年表'],
     to: ['meeting'],
-    age: [11, 16],
+    age: [11, GROWN_UP],
     purpose: [
       '起了心思之后自己去找——一趟一趟地跑，多半一趟一趟地空',
       '听来的消息真假难辨，跑一趟才知道',
@@ -719,7 +720,7 @@ export const CHAPTERS: readonly Chapter[] = [
     events: meetingEvents,
     called: ['年表'],
     to: ['seeking'],
-    age: [14, 16],
+    age: [14, GROWN_UP],
     purpose: [
       '两个人互相打量了一回——他怎么看你，你怎么看他，两边都会看错',
       '修士不是鉴定机：炼气那个看不见资质，他说的「悟性寻常」是真话也是另一回事',
@@ -745,7 +746,7 @@ export const CHAPTERS: readonly Chapter[] = [
     events: tutelageEvents,
     called: ['年表'],
     to: [],
-    age: [12, 16],
+    age: [12, GROWN_UP],
     purpose: [
       '「能不能修仙」和「有没有人愿意教你」是两件事——四种人生同时成立，而玩家分不出自己是哪一种',
       '他挑人那把尺子量的是肯不肯守着，跟修行没有关系；他量得很准，是他把数连错了结论',

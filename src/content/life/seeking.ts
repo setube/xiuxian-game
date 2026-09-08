@@ -1,5 +1,6 @@
 import { ERRANDS } from '@/content/errands'
 import { toChineseNumber } from '@/engine/describe'
+import { GROWN_UP } from '@/engine/stages'
 import type { Choice, LifeEvent, SceneLibrary } from '@/types/game'
 
 /**
@@ -528,17 +529,33 @@ export const seekingEvents: readonly LifeEvent[] = [
   },
   {
     id: 'seek-asking',
-    window: { from: 12, to: 16 },
+    /*
+     * 头一版到十六岁为止，跟 `tutelage` 那一册同一个理由：成年那一段人生还没写。
+     * 现在有了，`to` 跟着挪到成年段末（`GROWN_UP`，从 `engine/stages.ts` 的段表取）。
+     * 「村口来了个外乡商旅」那一条**不挪**：它入场不看念头、谁都碰得上，
+     * 挪进成年段就成了三成人的成年日常——`candour` 那一册挤光十二岁之后日常的坑，
+     * 就是一卷宽窗口、低门槛的事造成的。这一条要念头，念头的人一百个里两个。
+     */
+    window: { from: 12, to: GROWN_UP },
     // 「想弄明白」攒到了「反复」那一档，他才会开口问。
     // 这是他自己的行动，所以看念头是合法的——世界并没有为他改变什么
     requires: [{ knowledge: 'cultivators-exist' }, { flag: { key: 'leaning:know' } }],
     scene: 'seek:asking',
     weight: 10,
     repeatable: true,
+    /*
+     * 发条。窗口一挪到成年段，这一条就成了 candour 那种事：念头在的人成年后回回是它
+     * （`pickEvent` 有候选就不过日常），一回只推一个月，300 世里 3 世 220 回合走不完一生、
+     * 问了 96–101 回（2026-09-08 实测，`node_modules/.tmp/probe-hog.ts`）。十二到十六岁没这个问题，
+     * 是因为那几年天天收日、火种冷水都在跑，问空一回念头就退了；**成年段没有一卷收日，
+     * 念头几乎冻在十六岁那一刻**（300 世里十六岁后念头有变化的 166 世，变的都只是一两分）——
+     * 旗标在的人一辈子在。0.25 按成年段七个回合算：还揣着那个念头的人成年后再问两回上下。
+     */
+    chance: 0.25,
   },
   {
     id: 'seek-crossed',
-    window: { from: 13, to: 16 },
+    window: { from: 13, to: GROWN_UP },
     requires: [{ flag: { key: 'leads-crossed' } }],
     scene: 'seek:crossed',
     weight: 12,

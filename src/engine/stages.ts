@@ -35,6 +35,17 @@ const STAGES: readonly { until: number; stage: LifeStage }[] = [
   { until: 49, stage: '壮年' },
 ]
 
+/**
+ * 成年段的最后一岁。修行线那几册（找人、照面、师承）的窗口开到这儿为止。
+ *
+ * 它们头一版都到十六岁为止，理由写在 `tutelage.ts`：「成年之后那一段人生还没写，
+ * 拉长了就是往一个不存在的年纪里塞事」。那一段有了（`4f2ba6d`），窗口跟着挪——
+ * 而挪到哪儿从这张表取，不各自写死一个 29：段界一改，窗口跟着改。
+ * 不挪到壮年：三十岁往后的修行是另一种人生（安顿下来的人怎么还会去药庐门口站着），
+ * 等那一段有内容再说。
+ */
+export const GROWN_UP = STAGES.find((entry) => entry.stage === '成年')?.until ?? 29
+
 export function stageOf(age: number): LifeStage {
   for (const entry of STAGES) {
     if (age <= entry.until) return entry.stage
