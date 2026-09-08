@@ -262,7 +262,12 @@ export const kindredScenes: SceneLibrary = {
     nodes: {
       open: {
         id: 'open',
-        onEnter: [{ type: 'time', days: 2 }],
+        // 先把日历推到正月，再推那两天——**顺序有意义**：`untilMonth` 是目标，
+        // 后面那两天是走动本身花掉的。反过来写在月底那两天会分道
+        onEnter: [
+          { type: 'time', untilMonth: 1 },
+          { type: 'time', days: 2 },
+        ],
         blocks: [{ kind: 'narration', text: '正月里你回了一趟老屋。' }],
         branches: [
           { requires: [{ family: { id: 'nephew', age: { atMost: 6 } } }], next: 'small' },
@@ -497,7 +502,9 @@ export const kindredScenes: SceneLibrary = {
       debt: {
         id: 'debt',
         blocks: [],
-        branches: [{ requires: [OWES_ME, { bond: { kind: '兄', alive: true } }], next: 'debt-open' }],
+        branches: [
+          { requires: [OWES_ME, { bond: { kind: '兄', alive: true } }], next: 'debt-open' },
+        ],
         next: 'debt-mine',
       },
       'debt-open': {
@@ -901,7 +908,11 @@ export const kindredScenes: SceneLibrary = {
           { type: 'chronicle', text: '哥下葬那天，你把欠他的二两银子交给了老屋。' },
         ],
         blocks: [
-          { kind: 'narration', text: '下葬那天，你把欠他的二两银子交给了老屋当家的。', tone: 'faint' },
+          {
+            kind: 'narration',
+            text: '下葬那天，你把欠他的二两银子交给了老屋当家的。',
+            tone: 'faint',
+          },
         ],
         next: 'done',
       },
@@ -1311,25 +1322,24 @@ export const kindredEvents: readonly LifeEvent[] = [
     id: 'kindred-newyear',
     window: { from: 22, to: 75 },
     /*
-     * **只在年下演。** 这一卷标题写着「正月里」、正文第一句写着
-     * 「正月里你回了一趟老屋」——从前这里一个字也没提时令，
-     * 散事件掷中那天是几月就是几月，于是它可能在六月演出来。
+     * **到了年下才演，而且是它自己把日历推过去的。**
      *
-     * `month` 那一格是这一卷逼出来的（`types/game.ts`）：条件层从前
-     * 只问得出季节，而正月和三月同属「春」，四档分不出「回老屋过年」
-     * 和「清明上坟」。
+     * 这一卷标题写着「正月里」、正文第一句写着「正月里你回了一趟老屋」。
+     * 从前这里一个字也没提时令，散事件掷中那天是几月就是几月，
+     * 于是它可能在六月演出来；后来收了 `{ month: { in: [12, 1] } }`，
+     * 那一版守住了「不在六月演」，却**守出了另一个毛病**：
      *
-     * 收「腊月或正月」而不是只收正月，是实测出来的：前置齐备
-     * （分了家 + 侄儿满三岁）的那些时刻里，**正月只占 0.4%**——
-     * 各卷推进的天数不一样，月份分布并不均匀，只收正月等于收了一条
-     * 几乎掷不中的死条件。而年下本来就横跨这两个月：腊月备年货、
-     * 正月里走动，说「正月里回了一趟老屋」在腊月廿几也说得过去。
+     * `Condition.month` 问的是「**碰巧**在那个月」。而成年之后一回合推两三年
+     * （`routine:adult` 两年、`routine:prime` 三年），月份几乎不动——
+     * 于是「年年可能有」实际上成了**按世翻的开关**：踏进成年那一刻碰巧是几月，
+     * 就决定了这一世过不过得上年。实测四十世里只有十一世到过腊月正月。
+     * 一卷本该年年有的内容，四分之三的人一辈子读不到。
+     *
+     * 现在时令不写在 `requires` 里，写在那一卷自己的 `onEnter`：
+     * `{ type: 'time', untilMonth: 1 }`——**到了正月**，而不是碰巧在正月。
+     * 节令说的本来就是前者。条件层只管「有没有老屋、侄儿够不够大」。
      */
-    requires: [
-      ...OLD_HOUSE,
-      { month: { in: [12, 1] } },
-      { family: { id: 'nephew', alive: true, age: { atLeast: 3 } } },
-    ],
+    requires: [...OLD_HOUSE, { family: { id: 'nephew', alive: true, age: { atLeast: 3 } } }],
     scene: 'kindred:newyear',
     weight: 5,
     repeatable: true,
