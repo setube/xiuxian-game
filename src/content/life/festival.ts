@@ -43,12 +43,24 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  * 才问的事，问完落到哪一支就说哪一支的话；一个人也不缺的那一年
  * 也有它自己的一句——**人齐不是「没内容」，是另一种内容**。
  *
- * ## 往后五个节令进这一册
+ * ## 这一册里已经有的两卷，各占一头
  *
- * 上元、端午、中元、除夕、祭灶。**每一卷得先说清自己说的是什么**——
- * 六卷都写成「过节了，家里人聚在一起」的话，等于同一卷演了六遍。
- * 中秋占了「不在一处的人」，别的卷各找各的：中元是死了的人，
- * 除夕是一年到头的账，端午是身上的病。
+ *     中秋　　不在一处的人　　孩子、哥、爹娘今晚谁不在跟前（`bond.near`）
+ *     除夕　　一年到头的账　　欠着的、被欠的、清着的（`people.ious`）
+ *
+ * **每一卷得先说清自己说的是什么。** 六卷都写成「过节了，一家人聚在一起」
+ * 等于同一卷演了六遍——两卷都在年下、都是团圆节，要是不各占一头，
+ * 玩家读到的就是同一段话换了个月份。
+ *
+ * 往后四个：上元、端午、中元、祭灶。中元是死了的人，端午是身上的病，
+ * 剩下两个还没想好说什么——**想好之前不写**，宁可只有两卷。
+ *
+ * ## ⚠️ 加一卷的代价是可以量的，量完再定 `chance`
+ *
+ * 每一卷都在成年段抢回合，而**代价累加**：中秋一卷实测让要熬年数的链条
+ * 推后约四分之一（同种子对照，见底下 `festival-midautumn` 那一段）。
+ * 所以第二卷的 `chance` 定得比第一卷低（0.15 对 0.2），
+ * **按量出来的代价定，不按「它有多重要」定**——挤占量得到，重要性量不到。
  */
 
 /**
@@ -63,6 +75,20 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
 const CHILD_AWAY = { bond: { kind: '子', alive: true, near: false } } as const
 const BROTHER_AWAY = { bond: { kind: '兄', alive: true, near: false } } as const
 const PARENT_AWAY = { bond: { kind: '生母', alive: true, near: false } } as const
+
+/**
+ * 年底还欠着的账。
+ *
+ * 「一年到头的账」在这个世界里不是个比方——**库里真有这笔账**
+ * （`people.ious`，`kindred.ts` 那笔粮、`away.ts` 那二两银子）。
+ * 除夕这一卷问的就是它：**旧历年底是清账的日子**，欠着的、被欠的，
+ * 各是一种过法。
+ *
+ * 两个方向分开问，因为它们是两种心情，不是一件事的正反：
+ * 欠人的怕听见敲门，被欠的心里记着但过年不上门讨。
+ */
+const I_OWE = { owed: { debtor: 'me', settled: false } } as const
+const OWED_ME = { owed: { creditor: 'me', settled: false } } as const
 
 export const festivalScenes: SceneLibrary = {
   /**
@@ -161,6 +187,89 @@ export const festivalScenes: SceneLibrary = {
       done: { id: 'done', blocks: [] },
     },
   },
+
+  /**
+   * 除夕。**一年到头的账。**
+   *
+   * 跟中秋分工：中秋说的是**不在一处的人**，除夕说的是**这一年结下的账**。
+   * 两卷都在年下、都是团圆节，要是都写成「一家人围着桌子」，
+   * 等于同一卷演了两遍——所以各占一头。
+   *
+   * 那笔账不是比方：库里真有它（`people.ious`，那笔粮、那二两银子）。
+   * 旧历年底本来就是清账的日子，**欠着的和被欠的各是一种过法**。
+   *
+   * 一格好感也不改，跟这一册其余各卷同一个规矩。
+   */
+  'festival:newyeareve': {
+    id: 'festival:newyeareve',
+    title: '大年三十',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        // 推到腊月，再推过节那一天。**顺序有意义**（见中秋那一卷的注释）
+        onEnter: [
+          { type: 'time', untilMonth: 12 },
+          { type: 'time', days: 1 },
+        ],
+        blocks: [
+          {
+            kind: 'narration',
+            text: '腊月里天黑得早。灶上煮着的东西冒了一夜的气，屋里比外头暖。',
+          },
+        ],
+        branches: [
+          { requires: [I_OWE], next: 'owing' },
+          { requires: [OWED_ME], next: 'owed' },
+        ],
+        next: 'clear',
+      },
+      /**
+       * 欠着人的。
+       *
+       * 不写他还不还得上——**那不是这一卷的事**（还债有 `kindred:repay` 那一卷）。
+       * 这一卷只写那个人年三十晚上是什么心情：听见脚步声要抬一下头。
+       */
+      owing: {
+        id: 'owing',
+        blocks: [
+          { kind: 'narration', text: '巷子里有脚步声过去，你抬了一下头。是别家的。' },
+          {
+            kind: 'narration',
+            text: '那笔账你自己记着日子。年底本该清的，今年清不了。',
+            tone: 'faint',
+          },
+        ],
+        next: 'done',
+      },
+      /**
+       * 被人欠着的。
+       *
+       * **过年不上门讨债**是那个时代的规矩，也是这一句的分量所在：
+       * 他记着，但今晚不提——记着和提出来是两件事。
+       */
+      owed: {
+        id: 'owed',
+        blocks: [
+          { kind: 'narration', text: '有人惦记着欠你的那一笔，托人捎了半扇腊肉来，没提钱。' },
+          { kind: 'narration', text: '你也没提。年三十不说这个。', tone: 'faint' },
+        ],
+        next: 'done',
+      },
+      /**
+       * 账清着。
+       *
+       * **这一支不是「没内容」**——跟中秋「人齐」那一支同一个道理：
+       * 一个不欠人也没人欠的年三十，本身就是一种境况，值得有一句。
+       */
+      clear: {
+        id: 'clear',
+        blocks: [{ kind: 'narration', text: '今年不欠谁的，也没谁欠你的。锅里的水开了两回。' }],
+        next: 'done',
+      },
+      done: { id: 'done', blocks: [] },
+    },
+  },
 }
 
 export const festivalEvents: readonly LifeEvent[] = [
@@ -211,6 +320,30 @@ export const festivalEvents: readonly LifeEvent[] = [
     scene: 'festival:midautumn',
     weight: 6,
     chance: 0.2,
+    repeatable: true,
+  },
+  {
+    /**
+     * 除夕。
+     *
+     * 跟中秋同一个写法：**条件里既没有时令，也没有「欠没欠账」**。
+     * 时令由那一卷自己推（`untilMonth: 12`），欠不欠是进门之后分支的事。
+     *
+     * ## `chance` 比中秋低
+     *
+     * 0.15 而不是 0.2。两卷都在成年段抢回合，而**代价是累加的**：
+     * 中秋一卷实测让要熬年数的链条推后约四分之一（见上面那段实测）。
+     * 两卷都按 0.2 的话代价翻倍，而除夕能说的话比中秋窄一点
+     * （账那一层不是人人年年都有）。
+     *
+     * **这个数是按代价定的，不是按「它有多重要」定的**——
+     * 挤占那件事量得到，重要性量不到。
+     */
+    id: 'festival-newyeareve',
+    window: { from: 22, to: 80 },
+    scene: 'festival:newyeareve',
+    weight: 6,
+    chance: 0.15,
     repeatable: true,
   },
 ]
