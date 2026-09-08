@@ -174,6 +174,14 @@ export const youthScenes: SceneLibrary = {
                 who: { surname: '刘', given: '有财', gender: '男', age: 36, doing: '带着你做活计' },
                 bond: '师',
               },
+              // 「在学徒」是一件有始有终的事，不是一个状态。
+              //
+              // 上头那一笔 `identity: '学徒'` 只管开头；**没有这一笔，它就永远不结束**
+              // ——一个人到六十岁咽气那天，面板上还写着学徒。收尾在
+              // `apprentice.ts`（出师那一册），跟守孝、议亲同一条路子。
+              //
+              // 记 `who`，因为出师那一卷要分「师傅还在」和「师傅没了」两种话。
+              { type: 'undertake', undertaking: 'apprentice', who: 'craft-master' },
             ],
             next: 'done',
           },
@@ -255,10 +263,7 @@ export const youthScenes: SceneLibrary = {
         seen: [
           {
             // 学了手艺的：师傅说了一句话。哥当伙计的、留在地里的，那人不在，这一句没有
-            requires: [
-              { bond: { kind: '师', alive: true } },
-              { flag: { key: 'has-craft' } },
-            ],
+            requires: [{ bond: { kind: '师', alive: true } }, { flag: { key: 'has-craft' } }],
             text: '师傅说你还算灵，打出来的东西能卖钱了。',
           },
         ],
