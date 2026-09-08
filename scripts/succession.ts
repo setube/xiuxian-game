@@ -161,7 +161,12 @@ function live(): Lived {
       const head = people.houses['home']?.head
       const from = world.getFlag('head-passed-from')
       const how = world.getFlag('head-passed-how')
-      if (head !== 'me') {
+      if (head !== 'me' && character.died !== null && from === 'me') {
+        // 承了户，同一回合天年到了：户又从你手上传了下去（玩家没了世界不停，`story.ts` 落幕那一笔）。
+        // 采样点在你死后，这一问对这一世问不成——承户那一卷讲的时候你还是户主。
+        // 户传给了活人由第一条每年守着；这里不算错，也不算验过
+        out.succeeded = false
+      } else if (head !== 'me') {
         out.succeededOk = false
         out.succeedNote = `承户那一卷讲完户主是 ${head}`
       } else if (typeof from === 'string' && how === '殁' && people.isAlive(from)) {
