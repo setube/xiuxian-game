@@ -6,6 +6,7 @@ import { dayEvents, dayScenes } from './day'
 import { dearthEvents, dearthScenes } from './dearth'
 import { encounterEvents, encounterScenes } from './encounters'
 import { endingEvents, endingScenes } from './ending'
+import { examEvents, examScenes } from './exam'
 import { hardshipEvents, hardshipScenes } from './hardship'
 import { houseEvents, houseScenes } from './house'
 import { illnessEvents, illnessScenes } from './illness'
@@ -101,6 +102,37 @@ export const CHAPTERS: readonly Chapter[] = [
       '学识那一面从这里开始分岔',
     ],
     marks: ['knowledge', 'aspect'],
+  },
+
+  /**
+   * 县试那几年。念了书，然后呢。
+   *
+   * 在这一章之前，念书这条线到十三岁就断了：`schooling` 给你 `literacy`，
+   * 而识字之后能做的只有三件——把字捡起来、替人写写算算、收个徒弟。
+   * **念了十年书的人和没念过的人，成年之后除了识字这一条，人生没有任何分岔。**
+   *
+   * 第一个使用者早就在库里，而且是个活人：`schooling.ts:197` 那位西席
+   * 「姓周，**落第多年的秀才**」。这个世界里已经有落第的人了，
+   * 只是玩家自己不能落第——**他的今天就是玩家可能的明天**。
+   *
+   * 三档不是三级：童生（见官不跪）、生员（免徭役）、落第。
+   * **落第不是失败分支**——议亲、生育、修炼三处都立过这条纪律，
+   * 而在功名这一格上它尤其要紧：绝大多数人考不中，
+   * 写得薄了这一册就成了「读书 → 做官」的阶梯，那是最不像那个时代的一件事。
+   *
+   * `marks` 里有 `identity`：童生和生员各换一次身份，
+   * **而它们都有下家**（`exam:done` 那一卷不改身份，人还是那个人）——
+   * 学徒那一格的教训在这儿是记着的。
+   */
+  {
+    id: 'exam',
+    scenes: examScenes,
+    events: examEvents,
+    called: ['年表'],
+    to: [],
+    age: [14, 65],
+    purpose: ['念了十年书，多半什么也不是——而那不是失败，是那个时代的常态'],
+    marks: ['undertake', 'roll', 'flag', 'identity'],
   },
 
   /**
