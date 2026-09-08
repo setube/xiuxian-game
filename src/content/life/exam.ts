@@ -194,6 +194,20 @@ export const examScenes: SceneLibrary = {
        */
       stayed: {
         id: 'stayed',
+        onEnter: [
+          /*
+           * 没去考的人也得从「学童」落下来。
+           *
+           * `exam:done` 那一卷把他们挡在外面（`never-sat-exams absent`），
+           * 而**他们跟考过的人一样，念完了就不再是学童**——
+           * 少了这一笔，「先生劝你去考，你没有去」那条路上的人
+           * 会一辈子挂着「学童」，跟 79 实测的那 450 世是同一个病。
+           *
+           * 落「识字人」不落「农家子」：**他念过书，那件事不会因为没去考就消失**。
+           * 而正文没说他去种地——他家未必有地。
+           */
+          { type: 'identity', identity: '识字人' },
+        ],
         blocks: [
           { kind: 'narration', text: '那年开春你没有去县里。' },
           /*
@@ -381,6 +395,23 @@ export const examScenes: SceneLibrary = {
            * 真要造它，得等第二处内容问「你是不是靠教书过活」。
            * 那时候 `Livelihood` 那一格也该跟着看一眼（现在十种里没有教书）。
            */
+          /*
+           * **身份从「学童」落到「塾师」。**
+           *
+           * 这一笔补的是 xiuxian-game-79 实测出来的一个洞：
+           * **450 世的人死的时候身份栏还写着「学童」**——`schooling.ts` 落了它，
+           * 而全库只有 `exam` 的两节（考中才有）和 `hardship`（家道中落）
+           * 覆盖得到。念过书、没考中、又没家道中落的人，一辈子挂着它。
+           *
+           * 79 那条链查得很实：念书的人不下地，拿不到 `working` 那面旗，
+           * 于是 `youth-apprentice` 那一卷对他们整个关着——**四条本该接手的路，
+           * 一个人也没有。**
+           *
+           * 「学童」是**中间态**：它的语义里含着一个终止条件（不念书了就不是学童）。
+           * 「生员」不是——中了秀才不会因为任何事情不再是秀才，
+           * 所以那一格没有下家是设计，不是漏写。
+           */
+          { type: 'identity', identity: '塾师' },
           { type: 'chronicle', text: '你在人家家里坐馆，教几个孩子认字。' },
         ],
         blocks: [
@@ -403,7 +434,17 @@ export const examScenes: SceneLibrary = {
        */
       letters: {
         id: 'letters',
-        onEnter: [{ type: 'chronicle', text: '你替村里人写信、看契、记账。' }],
+        onEnter: [
+          /*
+           * 没中的那一路，身份也得从「学童」落下来。
+           *
+           * 落的不是「他念书之前那个」——**他已经不是那个孩子了**。
+           * 落的是他现在实际在做的事：识字的人替不识字的人写字，
+           * 这在村里是一个真实的位置。
+           */
+          { type: 'identity', identity: '识字人' },
+          { type: 'chronicle', text: '你替村里人写信、看契、记账。' },
+        ],
         blocks: [
           { kind: 'narration', text: '认得字的人不多，总有人来求。' },
           { kind: 'narration', text: '写一封信给几个钱，或者一顿饭，或者什么也不给。' },
