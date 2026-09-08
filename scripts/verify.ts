@@ -89,7 +89,10 @@ import './lib/seeded'
 
 import { readFileSync, readdirSync } from 'node:fs'
 
-import { createPinia, setActivePinia } from 'pinia'
+
+import { mapShards, sumTallies } from './lib/parallel'
+import { type GhostRule, type VerifyRelationsShard } from './tasks/verify-relations'
+import { SEP, type VerifyPathsShard } from './tasks/verify-paths'
 
 import { BEATS, DOINGS } from '../src/content/days'
 import { CIRCUMSTANCES } from '../src/content/circumstances'
@@ -114,10 +117,6 @@ import {
 } from '../src/engine/facts'
 import { ROLE_IDS } from '../src/engine/interpolate'
 import { stageOf } from '../src/engine/stages'
-import { useStory } from '../src/engine/story'
-import { useCharacterStore } from '../src/stores/character'
-import { useNarrativeStore } from '../src/stores/narrative'
-import { usePeopleStore } from '../src/stores/people'
 import type { Chapter, ChapterCall } from '../src/types/chapter'
 import type {
   Bond,
@@ -179,46 +178,27 @@ interface Leak {
   count: number
 }
 
+/**
+ * 这一段的单世模拟搬去了 `tasks/verify-relations.ts`，走法一步没动。
+ * 判据（`RULES` 那两条正则、怎么数怎么印）留在这儿。
+ *
+ * 合回来的是一张 `Map<`${bond}::${text}`, 次数>`——`sumTallies` 合并 `Map`
+ * 只会按键做加法，值放对象、数组、或者换成普通对象都会静默坏掉
+ * （见那个任务模块的文件头），所以恒定的两格编在 key 里，这儿切回来。
+ */
+const relations = sumTallies(
+  await mapShards<VerifyRelationsShard, readonly GhostRule[]>({
+    task: 'scripts/tasks/verify-relations.ts',
+    runs: RUNS,
+    payload: RULES.map((rule) => ({ bond: rule.bond, ghost: rule.ghost.source })),
+  }),
+)
+const checked = relations.checked
 const leaks = new Map<string, Leak>()
-let checked = 0
-
-for (let index = 0; index < RUNS; index += 1) {
-  setActivePinia(createPinia())
-  const narrative = useNarrativeStore()
-  const people = usePeopleStore()
-  useCharacterStore()
-
-  // 出生当下就记下：这一世哪几条关系一开始就不存在
-  const missing = RULES.filter((rule) => !people.kinOf(rule.bond).some((id) => people.isAlive(id)))
-  if (missing.length === 0) continue
-  checked += 1
-
-  const story = useStory(lifeScenes, {
-    events: lifeEvents,
-    routine: lifeRoutine,
-    finale: lifeFinale,
-  })
-  story.begin()
-
-  let turns = 0
-  while (!narrative.ended && turns < 200) {
-    const open = narrative.options.filter((option) => !option.locked)
-    if (open.length === 0) break
-    story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-    turns += 1
-  }
-
-  for (const item of narrative.stream) {
-    const block = item.block
-    if (!('text' in block)) continue
-    for (const rule of missing) {
-      if (!rule.ghost.test(block.text)) continue
-      const key = `${rule.bond}::${block.text}`
-      const existing = leaks.get(key)
-      if (existing) existing.count += 1
-      else leaks.set(key, { bond: rule.bond, text: block.text, count: 1 })
-    }
-  }
+for (const [key, count] of relations.counts) {
+  // key 是 `${bond}::${text}`。`bond` 里没有冒号，从左边第一个 `::` 切一次
+  const at = key.indexOf('::')
+  leaks.set(key, { bond: key.slice(0, at) as Bond, text: key.slice(at + 2), count })
 }
 
 console.log(`\n=== 关系穿帮验收（${RUNS} 世，其中 ${checked} 世缺了某条关系）===\n`)
@@ -1027,12 +1007,6 @@ let livesWithNewKin = 0
  */
 const hasRoman = (text: string): boolean => /[A-Za-z]/.test(text)
 
-/** 记一笔。同一段字只记头一回见到的地方，不然三百世能刷出几千行 */
-const note = (where: string, text: string | undefined): void => {
-  if (text === undefined || !hasRoman(text)) return
-  if (!romanLeaks.has(text)) romanLeaks.set(text, where)
-}
-
 console.log('=== 可观测路径验收（人生里真走得到吗）===\n')
 {
   /**
@@ -1141,52 +1115,24 @@ console.log('=== 可观测路径验收（人生里真走得到吗）===\n')
    */
   const UNVISITED_CEILING = 164
 
-  const visits = new Map<string, number>()
-  for (let index = 0; index < RUNS; index += 1) {
-    setActivePinia(createPinia())
-    const narrative = useNarrativeStore()
-    useCharacterStore()
-
-    /**
-     * 顺着玩家真正走过的路记一笔。
-     *
-     * 不能从 `narrative.sceneId` 采样：`enterNode` 会一口气自动接好几节，
-     * 中间那些节点在等到下一次落笔之前就被覆盖了——**而恰恰是它们最容易漏**，
-     * `unseen`、`misread` 这类走到就结束的终端节点全在里头。
-     * 所以在这里包一层 `locate`，它是每进一个节点都会被调到的那个。
-     */
-    const locate = narrative.locate
-    narrative.locate = (sceneId: string, nodeId: string): void => {
-      const key = `${sceneId}#${nodeId}`
-      visits.set(key, (visits.get(key) ?? 0) + 1)
-      locate(sceneId, nodeId)
-    }
-
-    const story = useStory(lifeScenes, {
-      events: lifeEvents,
-      routine: lifeRoutine,
-      finale: lifeFinale,
-    })
-    story.begin()
-
-    let turns = 0
-    while (!narrative.ended && turns < 200) {
-      const open = narrative.options.filter((option) => !option.locked)
-      if (open.length === 0) break
-      story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-      turns += 1
-    }
-
-    // 这一世走完了，趁人还在，把人际面板上那些字扫一遍（第八道用）
-    const people = usePeopleStore()
-    if (people.personOf('sibling') !== undefined) livesWithNewKin += 1
-    for (const id of Object.keys(people.known)) {
-      const person = people.personOf(id)
-      note(`${id} 的称呼`, people.callOf(id))
-      note(`${id} 在做什么`, person?.doing)
-      note(`${id} 那一句`, people.known[id]?.note)
-      for (const bond of people.bondsWith(id)) note(`${id} 的关系`, bond)
-    }
+  /*
+   * 这一段的单世模拟搬去了 `tasks/verify-paths.ts`，走法和采样点一步没动
+   * （仍然包在 `narrative.locate` 上，不读 `sceneId`——理由见那边的文件头）。
+   *
+   * 一趟跑喂两段判据：走过哪些节点（这一段）、人际面板上混了英文的字
+   * 和有几世添过丁（第八段）。不为了「一段一个任务」拆成两趟，
+   * 那会把三百世跑成六百世。
+   */
+  const paths = sumTallies(
+    await mapShards<VerifyPathsShard>({ task: 'scripts/tasks/verify-paths.ts', runs: RUNS }),
+  )
+  const visits = paths.visits
+  livesWithNewKin = paths.livesWithNewKin
+  // key 是 `${那段字}␟${在哪见到}`。同一段字可能有好几处，判据只印头一处
+  for (const key of paths.romanLeaks.keys()) {
+    const at = key.indexOf(SEP)
+    const text = key.slice(0, at)
+    if (!romanLeaks.has(text)) romanLeaks.set(text, key.slice(at + 1))
   }
 
   const unvisited: string[] = []

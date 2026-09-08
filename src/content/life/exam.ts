@@ -205,9 +205,29 @@ export const examScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '榜出来那天，你的名字在中间偏后。' },
           { kind: 'narration', text: '{elder}托人写了红纸贴在门上，贴了半个月才揭。' },
+        ],
+        /*
+         * 去谢先生——**得他还在**。
+         *
+         * 这一处是我修「先生殁了整章不开」（`262f54b`）时**漏掉的那一半**：
+         * 我把事件的 `requires` 放宽了、开头那一节分了两支，
+         * 可**正文里另外两处提到先生的句子没跟着加守**，
+         * 于是先生殁了之后他照旧在这儿说话（`present` 那一支抓到的）。
+         *
+         * 教训：**放宽一条 `requires` 之前，先查这一册里还有多少句是靠它成立的。**
+         * 我当时只看了它挡住的那一节，没看它罩着的整册。
+         *
+         * 用 `seen` 不用 `blocks`：`NarrativeBlock` 收不了 `requires`，
+         * 条件正文这个项目一律走 `seen`（`illness.ts` 那几句是现成的样板）。
+         */
+        seen: [
           {
-            kind: 'narration',
+            requires: [{ family: { id: 'teacher', alive: true } }],
             text: '你去谢先生。他说，往上还有院试，别当自己已经是个人物了。',
+          },
+          {
+            requires: [{ family: { id: 'teacher', alive: false } }],
+            text: '红纸贴出去那天你想起先生。他要是还在，大概会说别当自己是个人物了。',
           },
         ],
       },
@@ -275,10 +295,16 @@ export const examScenes: SceneLibrary = {
            * 「地里的活」读起来像一句中性的话，除非有人拿尺子量它。
            */
           { kind: 'narration', text: '家里的活照旧，书还在箱子里。' },
+        ],
+        // 先生没再提——**得他还在**。跟「你去谢先生」那处是同一处漏，见那段注释
+        seen: [
           {
-            kind: 'narration',
+            requires: [{ family: { id: 'teacher', alive: true } }],
             text: '后来先生也没再提这件事。他大概是明白的。',
-            tone: 'faint',
+          },
+          {
+            requires: [{ family: { id: 'teacher', alive: false } }],
+            text: '那些书还是先生留下的。他没能看见你去不去。',
           },
         ],
       },
