@@ -1,3 +1,4 @@
+import { GROWN_UP } from '@/engine/stages'
 import type { LifeEvent, SceneLibrary } from '@/types/game'
 
 /**
@@ -223,9 +224,9 @@ export const meetingScenes: SceneLibrary = {
  * 一件写在二十二岁的事在今天等于死代码：年表永远抽不到它，
  * 而它看起来跟活的一模一样。
  *
- * 所以这里压进十四到十六岁。**要紧的不是隔了几年，是隔着两把尺子**——
+ * 所以头一版压进十四到十六岁。**要紧的不是隔了几年，是隔着两把尺子**——
  * 两条 claim 并排落在同一面下这件事，跟它们相差一年还是十二年无关。
- * 等成年那一段人生写出来，把这个窗口往后拉就行，机制一个字不用动。
+ * 成年那一段人生写出来了（`4f2ba6d`），窗口往后拉到成年段末（`GROWN_UP`），机制一个字没动。
  */
 export const meetingEvents: readonly LifeEvent[] = [
   {
@@ -236,7 +237,8 @@ export const meetingEvents: readonly LifeEvent[] = [
      * 念头退了的人不会为一句脚夫的闲话走半个月——而那是绝大多数人。
      */
     id: 'meet-temple',
-    window: { from: 14, to: 16 },
+    // 到成年段末为止，跟 `seeking` / `tutelage` 同一个理由（`GROWN_UP` 见 `engine/stages.ts`）
+    window: { from: 14, to: GROWN_UP },
     requires: [{ flag: { key: 'leaning:know' } }, { knowledge: 'lead:the-northern-temple' }],
     scene: 'meet:temple',
     weight: 8,

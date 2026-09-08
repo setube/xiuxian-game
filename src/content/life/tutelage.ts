@@ -1,3 +1,4 @@
+import { GROWN_UP } from '@/engine/stages'
 import type { LifeEvent, SceneLibrary } from '@/types/game'
 
 /**
@@ -165,6 +166,52 @@ export const tutelageScenes: SceneLibrary = {
           { kind: 'narration', text: '你走到街口才想起来，他从头到尾没问你要做什么。' },
           { kind: 'narration', text: '你想大约是没把你当回事。', tone: 'faint' },
         ],
+      },
+      /**
+       * 再去一趟。
+       *
+       * 头一版这一卷一辈子只演一回：十二岁上念头一起就撞进去，他量到的那个数
+       * 够不着门槛（`opensAt` 58 量的是肯不肯守着，十四岁的孩子心志中位 51），
+       * 什么也没落下，**而这条链就此死了**——`tutor-errand` 要「搭话」，「搭话」只有
+       * 这一卷给得出。400 世里到过药庐的 11 世，走到第二格的 0 世（2026-09-08）。
+       *
+       * 可他要的正是「肯天天守着」的人。一个十二岁上被他晾了一下午、十八岁上又
+       * 来站着的人，比一个头一回就过了门槛的人更像他要的那种。所以这一节让人回来：
+       * 不写「你想通了」，只写他又去了一趟——去了多少趟他自己也说不上。
+       *
+       * 他晾过的人回得来（旗标没落），自己说「不去了」的人回不来（旗标落了「不理会」）：
+       * 关系断了条件自然落空，跟这一册别处同一条规矩。
+       */
+      again: {
+        id: 'again',
+        onEnter: [{ type: 'time', days: 3 }],
+        blocks: [
+          { kind: 'narration', text: '后来你又去了一趟镇西。' },
+          { kind: 'narration', text: '门还开着。他在称药，没有抬头。' },
+        ],
+        choices: [
+          {
+            id: 'just-stay',
+            label: '站在那儿不走',
+            echo: '你没有说话，也没有走。',
+            effects: [
+              { type: 'time', days: 1 },
+              { type: 'tutelage', who: 'herbalist-at-the-shed' },
+            ],
+            next: 'after',
+          },
+          {
+            id: 'walk-off',
+            label: '看了一会儿，走了',
+            echo: '你退了出来。',
+            effects: [{ type: 'time', days: 1 }],
+            next: 'walked-again',
+          },
+        ],
+      },
+      'walked-again': {
+        id: 'walked-again',
+        blocks: [{ kind: 'narration', text: '他还是没问你来做什么。', tone: 'faint' }],
       },
     },
   },
@@ -572,15 +619,41 @@ export const tutelageEvents: readonly LifeEvent[] = [
      * 而玩家是自己撞进去的。
      */
     id: 'tutor-shed',
-    window: { from: 12, to: 16 },
+    window: { from: 12, to: GROWN_UP },
     requires: [{ flag: { key: 'leaning:know' } }],
     scene: 'tutor:shed',
     chain: 'tutelage',
     weight: 7,
   },
   {
+    /**
+     * 再去一趟。见 `tutor:shed` 里 `again` 那一节的注释。
+     *
+     * 三条 `requires`：念头还在；头一回去过（`event:` 旗）；**他没把你放心上，你也没说不去了**
+     * （`footing` 旗没落——他晾了你，旗标不动；自己「不去了」的旗标落「不理会」，这条就关了）。
+     * 到了「搭话」往后，接手的是 `tutor-errand` 那一条链，这一条自然落空。
+     *
+     * `chance` 是要害。它在 `tutelage` 那条链上，链一开了头它就排在所有散事件前面
+     * （`pickEvent` 第二道闸），少了 `chance` 就是**回回都去**——`candour` 那一册挤光十二岁
+     * 之后日常的坑（`LifeEvent.chance` 的注释）。0.12 是按十二到十六岁一年五到八个回合算的：
+     * 一个念头不退的孩子四年里回去两三趟，成年段再回去一趟上下。
+     */
+    id: 'tutor-shed-again',
+    repeatable: true,
+    window: { from: 13, to: GROWN_UP },
+    requires: [
+      { flag: { key: 'leaning:know' } },
+      { flag: { key: 'event:tutor-shed' } },
+      { flag: { key: 'footing:herbalist-at-the-shed', absent: true } },
+    ],
+    scene: 'tutor:shed#again',
+    chain: 'tutelage',
+    weight: 7,
+    chance: 0.12,
+  },
+  {
     id: 'tutor-errand',
-    window: { from: 12, to: 16 },
+    window: { from: 12, to: GROWN_UP },
     requires: [{ flag: { key: 'footing:herbalist-at-the-shed', equals: '搭话' } }],
     scene: 'tutor:errand',
     chain: 'tutelage',
@@ -588,7 +661,7 @@ export const tutelageEvents: readonly LifeEvent[] = [
   },
   {
     id: 'tutor-walk',
-    window: { from: 13, to: 16 },
+    window: { from: 13, to: GROWN_UP },
     requires: [{ flag: { key: 'footing:herbalist-at-the-shed', equals: '使唤' } }],
     scene: 'tutor:walk',
     chain: 'tutelage',
@@ -612,11 +685,13 @@ export const tutelageEvents: readonly LifeEvent[] = [
      */
     id: 'tutor-words',
     repeatable: true,
-    window: { from: 13, to: 16 },
+    window: { from: 13, to: GROWN_UP },
     requires: [{ flag: { key: 'footing:herbalist-at-the-shed', equals: '带一段' } }],
     scene: 'tutor:words',
     chain: 'tutelage',
     weight: 9,
+    // 窗口到成年段之后要有发条：它在链上、可反复、一回只推三个月，没有发条就是回回都去
+    chance: 0.4,
   },
   {
     /**
@@ -628,18 +703,27 @@ export const tutelageEvents: readonly LifeEvent[] = [
      *
      * ## 「拿得住」在这一册里多半走不到，这是老实话
      *
-     * `QUIET_BREATH.settles` 要一年半，而这个窗口只有十四到十六岁，
+     * `QUIET_BREATH.settles` 要一年半，而头一版这个窗口只有十四到十六岁，
      * 每来一回推二十天。摸着了那一回来得晚一点，日子就不够用了。
      *
-     * 不为这个把窗口拉长——**成年之后那一段人生还没写**，
+     * 头一版没为这个把窗口拉长——**成年之后那一段人生还没写**，
      * 拉长了就是往一个不存在的年纪里塞事。等那一段有了，
      * 把 `to` 往后挪就行，机制一个字不用动。
+     *
+     * 那一段有了（`4f2ba6d`，六个人生阶段各有一卷日常），`to` 挪到了成年段末——
+     * `GROWN_UP` 从 `engine/stages.ts` 那张段表取，不在这儿写死一个 29。
      */
     id: 'tutor-alone',
     repeatable: true,
-    window: { from: 14, to: 16 },
+    window: { from: 14, to: GROWN_UP },
     requires: [{ flag: { key: 'rite:quiet-breath' } }],
     scene: 'tutor:alone',
     weight: 6,
+    /*
+     * 发条。一回只推二十天，窗口到成年段之后没有它就是每回合都在坐——十三年二百多回合，
+     * 一辈子走不完（220 回合的上限）。0.6：会了门路的人坐得勤，但不是每一回都坐。
+     * 「练了三年也没有动静」照样写得出来，只是那三年里也过着别的日子。
+     */
+    chance: 0.6,
   },
 ]

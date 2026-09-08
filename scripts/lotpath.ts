@@ -194,11 +194,31 @@ for (let i = 0; i < RUNS; i += 1) {
    *
    * 这一条守的是 `wed-into` 之后的口径：`home` 那一户不再是你的了，
    * 娘家那间铺子也不再是你名下的。**写死 `houses['home']` 的实现会在这儿红**。
+   *
+   * 问的是 `movedOut`，不是 `joined`——上面地那一句的注释已经写了为什么：
+   * `houseOf('me')` 对没出嫁的人也返回 `home`。头一版这儿写的是 `joined`，
+   * 靠采样点（咽气那年，人已经不在户里）掩着；一世 220 回合没走完、人还活着，
+   * 它就把「在自家报自家的客栈」报成了嫁出去还报娘家（2026-09-08）。
    */
-  if (joined && now.property !== null) {
+  if (movedOut && now.property !== null) {
     dowryKept.push({
       what: now.property,
       detail: `已经进了「${joined.id}」这一户，话里却还报着娘家的产业`,
+    })
+  }
+  /*
+   * 还在自家的人，产那一格就该照实报自家的家业。
+   *
+   * 上面那条是反面（迁出去不许报），这一条是正面，两条合起来才是完整的口径——
+   * 而且只有这一条每一世都被锻炼到：`engine/lotpath.ts` 里 `movedOut ? null : business`
+   * 让反面那条结构上掷不出来，真跑又 `wed === 0`，它今天没有任何东西在锻炼。
+   * 地那一格有 `sawTenure` 哨兵兜底，产这一格从前没有——引擎哪天退化成恒 null，
+   * 「家里那间 X 还在」那句话会从报表里静静消失（17 指出的，2026-09-08）。
+   */
+  if (!movedOut && now.property !== household.business) {
+    dowryKept.push({
+      what: String(now.property),
+      detail: `还在自家，产那一格却报着「${now.property}」，而这一户的家业是「${household.business}」`,
     })
   }
 

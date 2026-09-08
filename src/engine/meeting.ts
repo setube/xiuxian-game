@@ -103,6 +103,8 @@ export function encounterCultivator(cultivatorId: string): Meeting | null {
       gender: cultivator.gender,
       bornYear: world.time.year - cultivator.bornBefore,
       doing: '修行',
+      // 世界知道他是什么，玩家不知道。人口册上有了这一格，他就不按凡人的岁数老死
+      realm: cultivator.realm,
       temper: cultivator.temper,
       place: cultivator.place,
     }),

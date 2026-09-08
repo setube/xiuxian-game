@@ -89,7 +89,6 @@ import './lib/seeded'
 
 import { readFileSync, readdirSync } from 'node:fs'
 
-
 import { mapShards, sumTallies } from './lib/parallel'
 import { type GhostRule, type VerifyRelationsShard } from './tasks/verify-relations'
 import { SEP, type VerifyPathsShard } from './tasks/verify-paths'
@@ -314,15 +313,29 @@ console.log('=== 孤儿节点验收 ===\n')
 
   /** 被外面指过的卷。三种外部入口先记下，跨卷跳转在下面的循环里补 */
   const entered = new Set<string>()
+  /**
+   * 年表指到一卷**中间**的那些节。
+   *
+   * 事件的 `scene` 可以写 `tutor:shed#again`（再去一趟药庐，从「后来你又去了一趟」起演），
+   * 那一节的入边是年表，不在本卷的跳转图上。头一版只记卷名不记节名，
+   * 于是第一个这么写的事件当场被报成孤儿。
+   */
+  const enteredAt = new Map<string, Set<string>>()
   for (const event of lifeEvents) {
-    const [head] = event.scene.split('#')
-    if (head) entered.add(head)
+    const [head, tail] = event.scene.split('#')
+    if (!head) continue
+    entered.add(head)
+    if (tail) {
+      const nodes = enteredAt.get(head) ?? new Set<string>()
+      nodes.add(tail)
+      enteredAt.set(head, nodes)
+    }
   }
   for (const sceneId of Object.values(lifeRoutine)) entered.add(sceneId)
   entered.add(lifeFinale)
 
   for (const [sceneId, scene] of Object.entries(lifeScenes)) {
-    const reachable = new Set<string>([scene.entry])
+    const reachable = new Set<string>([scene.entry, ...(enteredAt.get(sceneId) ?? [])])
     /**
      * 本卷内的落点归 `reachable`，指向别卷的归 `entered`。
      *

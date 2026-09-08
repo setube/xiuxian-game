@@ -55,8 +55,16 @@ export const hardshipScenes: SceneLibrary = {
     nodes: {
       open: {
         id: 'open',
+        /*
+         * 那五个月不在这儿推，在两个选项里推。
+         *
+         * 年表挑中这一卷时爹活着（`requires`），可头一版开场先推五个月，跨了年
+         * `people.live` 就掷一回老病——爹在那五个月里没了，底下「父亲侧头看了你一眼」
+         * 「睡吧」照旧印出来，一个殁了的人陪你坐了一夜（`present` 抓到，2026-09-08，
+         * 种子 1s3a4221ua4j）。这一卷说的是他借钱回来那阵子的事，正文先落、时间后走，
+         * 他要是在往后那五个月里没了，接着来的是 `debt:death` 那一卷，不是这一卷的下半截。
+         */
         onEnter: [
-          { type: 'time', months: 5 },
           { type: 'household', debt: FATHER_LOAN, standing: -6 },
           { type: 'flag', key: 'father-in-debt', value: true },
           {
@@ -82,9 +90,9 @@ export const hardshipScenes: SceneLibrary = {
             label: '陪父亲坐一会儿',
             echo: '你走过去，在他旁边坐下。',
             effects: [
-              { type: 'time', days: 1 },
               { type: 'relation', id: 'father', name: '父亲', delta: 8, note: '欠着一笔债。' },
               { type: 'attribute', key: 'will', delta: 2 },
+              { type: 'time', months: 5, days: 1 },
             ],
             next: 'sat',
           },
@@ -92,7 +100,7 @@ export const hardshipScenes: SceneLibrary = {
             id: 'sleep',
             label: '回屋睡觉',
             echo: '你回屋去了。',
-            effects: [{ type: 'time', days: 1 }],
+            effects: [{ type: 'time', months: 5, days: 1 }],
             next: 'slept',
           },
         ],

@@ -10,6 +10,7 @@ import type {
   Bond,
   Chapter,
   Fate,
+  Realm,
   Gender,
   House,
   IOU,
@@ -797,7 +798,8 @@ export const usePeopleStore = defineStore(
       if (years <= 0) return
       const next: Record<string, Person> = {}
       for (const [id, person] of Object.entries(roster.value)) {
-        if (person.fate !== '在') {
+        // 修士不按凡人的岁数老死——他一百二十岁看着三十。他们怎么没，等内容写（山道上那个是伤重）
+        if (person.fate !== '在' || person.realm !== undefined) {
           next[id] = person
           continue
         }
@@ -911,6 +913,8 @@ export function makePerson(input: {
   doing?: string
   /** 他过的是什么日子。绝大多数人不写——他们过的就是这个家的日子 */
   living?: string
+  /** 修行到了哪一步。凡人不写 */
+  realm?: Realm
   temper?: Temper
   health?: number
   place: string
@@ -925,6 +929,7 @@ export function makePerson(input: {
     bornMonth: input.bornMonth ?? randomBetween(1, 12),
     doing: input.doing,
     living: input.living,
+    ...(input.realm === undefined ? {} : { realm: input.realm }),
     temper: input.temper ?? rollTemper(),
     health: input.health ?? randomBetween(40, 80),
     place: input.place,
