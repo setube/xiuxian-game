@@ -75,6 +75,12 @@ const canRuin = (): boolean => meetsAll(eventOf('debt-fields')?.requires)
     if (s.household.debt <= 0) wrong.push('父亲借了钱，家里却不欠债')
     if (!canRuin()) wrong.push('父亲客死、债还在、地是自家的，抵债那一卷却进不来')
     const debtBefore = s.household.debt
+    /*
+     * 「家境落了」要有得落。旱、借债、爹出门、客死一路减下来，摆局的农家走到这儿
+     * 家境可能已经压在地板上（2026-09-09 种子 1wh95hnt32be：before=0，-8 之后还是 0，
+     * 于是「地没了，家境没落」）。那不是抵债那一卷没落家境，是没地方落了——先垫起来再问
+     */
+    if (s.household.standing < 20) s.household.standing = 20
     const standingBefore = s.household.standing
     const texts = play('debt:fields', 'listen')
     if (s.household.tenure !== '佃') wrong.push(`地抵了债，田那一格却是 ${s.household.tenure}`)
