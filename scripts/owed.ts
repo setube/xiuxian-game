@@ -248,7 +248,9 @@ let bad = 0
       `（勾了 ${withDebt.filter((one) => one.forgiven).length}，还了 ${withDebt.filter((one) => one.repaid).length}）`,
   )
   if (mourned.length === 0)
-    wrong.push(`掷了 ${lives.length} 世没有一世走到哥没了那一卷——第四条没有输入，前三条验的是一个真世里演不到的局面`)
+    wrong.push(
+      `掷了 ${lives.length} 世没有一世走到哥没了那一卷——第四条没有输入，前三条验的是一个真世里演不到的局面`,
+    )
   else if (withDebt.length === 0)
     console.log(
       `  ⚠ 掷了 ${lives.length} 世，哥没了那一卷演过 ${mourned.length} 回，没有一回是带着债没的——` +

@@ -218,9 +218,13 @@ function live(): Lived {
     const chose = `${sceneBefore}#${nodeBefore}:${pick.choice.id}`
     if (chose === 'house:divide#choose:stay' || chose === 'house:divide#choose:town') {
       out.divided = true
-      const mine = [...spouseBefore, ...kidsBefore].filter((id) => membersBefore.includes(id))
-      // 分家的四个月里（以及可能顺带触发的其他事件），老屋的人可能老病没——
-      // 那不是分家的错；只查分家时还在世的人是不是留在了老屋
+      // 分家的四个月里（以及可能顺带触发的其他事件），两边的人都可能老病没——
+      // 那不是分家的错；只查分家时还在世的人：该跟我走的跟来了没有、该留在老屋的留下了没有。
+      // 头一版只给 `theirs` 过了 alive（娘在那四个月里殁了），`mine` 漏了：配偶或孩子殁在那四个月里，
+      // 三就报「spouse 该跟我走，却不在我这一户」，四接着报「妻儿 2 人只有 1 人跟来了」——同一个人
+      const mine = [...spouseBefore, ...kidsBefore].filter(
+        (id) => membersBefore.includes(id) && alive(id),
+      )
       const theirs = [...motherBefore, ...brothersBefore].filter(
         (id) => membersBefore.includes(id) && alive(id),
       )
