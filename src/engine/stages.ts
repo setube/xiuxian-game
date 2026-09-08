@@ -46,6 +46,16 @@ const STAGES: readonly { until: number; stage: LifeStage }[] = [
  */
 export const GROWN_UP = STAGES.find((entry) => entry.stage === '成年')?.until ?? 29
 
+/**
+ * 壮年的最后一岁。师承那条链**续上的**那几件（使唤、带一段、那五句、自己坐）开到这儿。
+ *
+ * 入口（头一回进药庐、再去一趟）到成年段末为止——三十岁往后不会有人头一回撞进药庐；
+ * 可一段已经开始了的关系不因过了二十九就断：二十八岁上他让你跟着走了一段，三十一岁上
+ * 他把炉子收了让你坐下，是同一段关系。头一版四件都到成年段末，念头在成年段才起，
+ * 二十九岁窗口关前只剩四五个回合给这四格，「教一点」在真世里几乎走不到（2026-09-08）。
+ */
+export const PRIME_UP = STAGES.find((entry) => entry.stage === '壮年')?.until ?? 49
+
 export function stageOf(age: number): LifeStage {
   for (const entry of STAGES) {
     if (age <= entry.until) return entry.stage

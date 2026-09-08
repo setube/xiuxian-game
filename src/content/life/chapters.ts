@@ -1,4 +1,4 @@
-import { GROWN_UP } from '@/engine/stages'
+import { GROWN_UP, PRIME_UP } from '@/engine/stages'
 import type { Chapter } from '@/types/chapter'
 
 import { birthEvents, birthScenes } from './birth'
@@ -594,7 +594,7 @@ export const CHAPTERS: readonly Chapter[] = [
       '一生中绝大多数年头本来就什么也没发生',
       '时间是这局里唯一稀缺的东西，而日常是它唯一的出口',
     ],
-    marks: ['time'],
+    marks: ['time', 'reflect'],
   },
 
   /**
@@ -746,7 +746,8 @@ export const CHAPTERS: readonly Chapter[] = [
     events: tutelageEvents,
     called: ['年表'],
     to: [],
-    age: [12, GROWN_UP],
+    // 入口到成年段末，续上的那几件到壮年末——目录记的是这一章最远开到哪
+    age: [12, PRIME_UP],
     purpose: [
       '「能不能修仙」和「有没有人愿意教你」是两件事——四种人生同时成立，而玩家分不出自己是哪一种',
       '他挑人那把尺子量的是肯不肯守着，跟修行没有关系；他量得很准，是他把数连错了结论',

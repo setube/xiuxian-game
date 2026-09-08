@@ -769,7 +769,7 @@ export const rivermanScenes: SceneLibrary = {
  *
  *     weight 120　　跟别的事一起去争，抽不中就是没碰上
  *     16–28　　　　 往外闯的那些年才会撞见；再往后人已经安顿下来了
- *     fortune ≥ 55　命数不够的人这辈子路过不了那个渡口
+ *     fortune ≥ 50　命数不够的人这辈子路过不了那个渡口（头一版 55，见事件上的注释）
  *
  * 那道 `fortune` 门槛是这次改动的重心。命数不是天上掉的：
  * 往城里跑、农闲往山里跑、出一趟远门、跟同窗到处乱跑——
@@ -787,6 +787,12 @@ export const rivermanEvents: readonly LifeEvent[] = [
     window: { from: 16, to: 28 },
     scene: 'riverman',
     weight: 120,
-    requires: [{ attribute: { key: 'fortune', atLeast: 55 } }],
+    /*
+     * 55 → 50（2026-09-08，用户拍板书那条太稀）。真世里量的（`node_modules/.tmp/probe-fortune.ts`，300 世）：
+     * 十六到二十八岁之间命数最高到过 55 的，随便走的人 4%、肯往外走的人 43%；到过 50 的 15% / 60%。
+     * 门槛留在「往外闯过的人多半过得去、守着地的人多半过不去」那条线上——它守的仍是那句话，
+     * 只是从前那条线画在了肯往外走的人的中位之上。
+     */
+    requires: [{ attribute: { key: 'fortune', atLeast: 50 } }],
   },
 ]
