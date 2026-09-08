@@ -64,7 +64,27 @@ import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useNarrativeStore } from '../src/stores/narrative'
 
-/** 走多少世。高门出身稀有（court/manor 加起来不到 2%），少了采不到 */
+/**
+ * 走多少世。高门出身稀有（court/manor 加起来不到 2%），少了采不到。
+ *
+ * ## ⚠️ 600 世一轮只见得到一部分漏网——这一支的绿灯要多跑几颗种子才作数
+ *
+ * 2026-09-08 提交时三处堵完、跑绿；**半小时后再跑，抓到第四处**
+ * （`ask:around#let-it-be`「接着干活去」）。四次跑抓到的不是同一批：
+ *
+ *     一轮只走到一部分卷，而高墙里头的日子本来就稀有
+ *     ——1577 步采样听着不少，摊到几十卷上每卷才几步
+ *
+ * 所以**这一支报绿只说明「这一轮没撞上」**，跟 `identity` 那支的采样量问题
+ * 是同一族（那次是伙计只出现十几世、一世差六个百分点）。
+ *
+ * **判它真绿要跑四五颗种子取并集**：
+ *
+ *     for s in q1 q2 q3 q4 q5; do SEED=$s bun scripts/sequestered.ts; done
+ *
+ * 不把 `RUNS` 一口气抬上去，是因为它要跟另外七十几支一起跑
+ * （同 `gate-thresholds-drift` 那条：正常那八成的路径不该为一成的坏运气一起变慢）。
+ */
 const RUNS = 600
 
 /**
