@@ -55,6 +55,24 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
   return texts
 }
 
+/**
+ * 摆到爹真是客死为止。
+ *
+ * 借债到死讯那条链有三年长，四十多岁的爹十几局里有一局在链走完之前先老病没了
+ * （人口册照凡人的公式老死，摆局也不例外——`people.die('客死')` 落在一个已经殁了的人身上
+ * 什么也不做，于是「爹是客死的，cause 却问不出来」）。2026-09-09 全套红过一次，
+ * 干净树同种子绿：换的不是内容，是随机流——摆局里的人会老死，链越长越要掷到要的人还在为止。
+ */
+function stagedAway(ask: boolean, make: () => Staged | null = child): { s: Staged; texts: string[] } | null {
+  for (let tries = 0; tries < 12; tries += 1) {
+    const s = make()
+    if (!s) continue
+    const texts = fatherDiesAway(s, ask)
+    if (s.people.personOf('father')?.death?.cause === '客死') return { s, texts }
+  }
+  return null
+}
+
 // ============================================================
 // 一、一批效果说的是同一刻的人
 // ============================================================
@@ -126,10 +144,9 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
       wrong.push('服满了，记录该封口不该删')
   }
   // 客死：也守孝；服满没有坟可上
-  const b = child()
-  if (!b) wrong.push('掷不出第二局')
+  const b = stagedAway(false)
+  if (!b) wrong.push('掷不出第二局：十二局里爹没有一局活到死讯那一卷')
   else {
-    fatherDiesAway(b, false)
     if (meetsAll(notMourning)) wrong.push('爹死在外地，「没在守孝」却仍成立——死在外地也是丁忧')
     if (!meetsAll([{ family: { id: 'father', alive: false, cause: ['客死'] } }]))
       wrong.push('爹是客死的，cause 条件却问不出来')
@@ -238,7 +255,9 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
       if (!s) continue
       s.people.amend(who, { temper })
       const texts = fatherDiesAway(s, false)
-      if (s.people.isAlive(who)) return { texts, here: true }
+      // 两个人都得撑到链尾：那个人还在，爹真是死在外地的（不是链走到一半先老病没了）
+      if (s.people.isAlive(who) && s.people.personOf('father')?.death?.cause === '客死')
+        return { texts, here: true }
     }
     return null
   }
@@ -277,11 +296,11 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
 {
   const wrong: string[] = []
   // 没问坟在哪：想走的念头被压下去，想守着的顶上来
-  const a = child()
-  if (!a) wrong.push('掷不出局')
+  const away = stagedAway(false)
+  if (!away) wrong.push('掷不出局')
   else {
+    const a = away.s
     const leaning = useLeaningStore()
-    fatherDiesAway(a, false)
     leaning.stir('leave', 6, { at: { ...a.world.time }, text: '摆局' }, a.world.time)
     const leaveBefore = leaning.weightOf('leave')
     const settleBefore = leaning.weightOf('settle')
@@ -295,11 +314,10 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
       wrong.push('没问坟在哪，「记着那个地名」却点着了')
   }
   // 问了坟在哪：记着那个地名，想走的念头点起来
-  const b = child()
-  if (!b) wrong.push('掷不出第二局')
+  const asked = stagedAway(true)
+  if (!asked) wrong.push('掷不出第二局')
   else {
     const leaning = useLeaningStore()
-    fatherDiesAway(b, true)
     const before = leaning.weightOf('leave')
     kindle([])
     if (leaning.weightOf('leave') <= before)
