@@ -19,6 +19,7 @@ import { meetingEvents, meetingScenes } from './meeting'
 import { awayEvents, awayScenes } from './away'
 import { nephewEvents, nephewScenes } from './nephew'
 import { reunionEvents, reunionScenes } from './reunion'
+import { refugeEvents, refugeScenes } from './refuge'
 import { rivermanEvents, rivermanScenes } from './riverman'
 import { afterwardsEvents, afterwardsScenes } from './afterwards'
 import { apprenticeEvents, apprenticeScenes } from './apprentice'
@@ -537,6 +538,32 @@ export const CHAPTERS: readonly Chapter[] = [
       '回来了还是老屋的人：伤了手、老了做不动了，自己的营生清掉落回老屋的；儿子回不回来看父子那条边',
     ],
     marks: ['owe', 'repay', 'person', 'flag', 'chronicle'],
+  },
+
+  /**
+   * 去投奔：走投无路的时候想起一个人，走两天路去找他。
+   *
+   * 这一章要证的是 14.md 那一句——**「NPC 好感度 100 所以必定帮助你」是假的**。
+   * 三条分岔一次也没读过好感：读的是他还在不在、他多大年纪了。
+   * 同一个师傅、同一份情分，你可能扑空、可能撞上他自己的难处、
+   * 也可能一句话不问就被留下。
+   *
+   * 三档背后是同一件事在走：**时间**。他比你大二十岁，
+   * 你二十几岁去他还硬朗，四十几岁去他做不动了，五十几岁去多半太晚。
+   */
+  {
+    id: 'refuge',
+    scenes: refugeScenes,
+    events: refugeEvents,
+    called: ['年表'],
+    to: [],
+    age: [30, 62],
+    purpose: [
+      '同一个人对你的答复由他的处境决定，不由好感决定——三条分岔读的是他的生死和年纪，不读好感',
+      '扑空不是失败分支：他比你大二十岁，你想起他的时候可能已经太晚',
+      '留下你不等于好结局：出了师的人回来打下手，日子真的换了（living: hired），可那是降格',
+    ],
+    marks: ['living', 'household', 'chronicle'],
   },
 
   /**

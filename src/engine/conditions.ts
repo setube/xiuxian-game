@@ -96,6 +96,16 @@ const CHECKS = {
     if (family.alive !== undefined && household.isAlive(family.id) !== family.alive) return false
     if (family.present !== undefined && isPresent(family.id) !== family.present) return false
     if (family.age !== undefined && !within(people.ageOf(family.id), family.age)) return false
+    /*
+     * 身子骨。跟 `age` 是两问：同样五十岁，有硬朗的也有垮了的。
+     * 死了的人问不出来——他的 health 停在殁的那一天，拿它判「他还撑不撑得住」
+     * 是把一个死人当活人量。
+     */
+    if (family.health !== undefined) {
+      const person = people.personOf(family.id)
+      if (person === undefined || !household.isAlive(family.id)) return false
+      if (!within(person.health, family.health)) return false
+    }
     if (family.livelihood !== undefined) {
       // 问的是他自己的营生；没有自己的就是他那一户的，死了的问不出来
       const own = people.livelihoodOf(family.id)
