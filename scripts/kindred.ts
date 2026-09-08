@@ -116,21 +116,20 @@ let bad = 0
  *
  * ## 为什么不写死
  *
- * 判据要 `DIVIDES_WANTED`（24）户分家、`NEWYEAR_WANTED`（12）世走到年节。
+ * 判据要 `DIVIDES_WANTED`（24）户分家、`TWICE_WANTED`（8）世走到过两次年节。
  * 改造前靠「一世一世补到够」兜着，实测要掷 450–823 世，
  * **三分之二的工作量在补掷里**。摊开跑之后这成了瓶颈：补掷一轮一轮串行、摊不开。
  * 头一版首批照旧 240 世，三颗种子里两颗比改造前还慢——并行省下的全被补掷吃掉。
  *
- * 于是改成按率倒推首批。可那两个率**一天之内变了三次**：
+ * 于是改成按率倒推首批。可那些率**一天之内变了三次**：
  *
  *     原本               年节约 4%
  *     a013dd9 之后       加了 `month: { in: [12, 1] }`，掉到 1.4%
  *     cf27b1d 期间       candour 独占回合、时间推得猛，反弹到 3.5%
  *     dc268d8 之后       `LifeEvent.chance` 给它上了发条，实测 3.3%
  *
- * 每一次我写死的那个数都当场过期，而**过期的方向是「多掷一倍」**——
- * 按 1.4% 算要 1115 世，按实测 3.3% 只需 693 世，白烧四成时间。
- * 反过来要是率掉下去，首批就不够，判据的样本被抽薄。两头都不好。
+ * 每一次写死的那个数都当场过期，而**两个方向都会出事**：估高了白跑几倍的世，
+ * 估低了判据的样本被抽薄，而**抽薄的表现是报表继续全绿**。
  *
  * 所以不再猜：先掷 `SCOUT` 世量一量，再按量出来的率算首批。
  * 探路那批不浪费——它本来就是要掷的世，一并留在 `lives` 里。
@@ -141,47 +140,74 @@ let bad = 0
 /**
  * 探路批掷多少世。
  *
- * 这个数由**方差**定，不由速度定。年节走动率约 3%，150 世期望撞上 4–5 次——
- * 少一次多一次就把率估歪三成，而首批是拿率去除的，误差被放大。
- * 实测 150 世探路时，`k-c` 那颗探到的年节率偏低，首批算成 2340 世、跑了 17 秒，
- * 而别的种子只要 390–1170 世。
- *
- * 300 世期望撞上九到十次，估出来的率稳得多。探路那批不浪费——
+ * 这个数由**方差**定，不由速度定：目标事件期望出现十次左右，少了估的是噪声。
+ * 实测 150 世探路时，`k-c` 那颗探到的率偏低，首批算成 2340 世、跑了 17 秒，
+ * 而别的种子只要 390–1170 世。300 世稳得多。探路那批不浪费——
  * 它本来就是要掷的世，一并留在 `lives` 里。
+ *
+ * ⚠️ 现在最稀的那件事是「走到过两次年节」（1.2–1.6%），300 世期望撞四五次，
+ * **已经在这条规矩的下沿了**。率再掉就该抬 `SCOUT`，否则首批会忽大忽小。
  *
  * ## 这个数是在什么基线上定的（下一个人判断它过期没有，靠这一段）
  *
  *     日子　　2026-09-08
- *     主干　　`dc268d8`（含 `a013dd9` 给年节加 `month: { in: [12, 1] }`、
+ *     主干　　`dc268d8` 之后（含 `a013dd9` 给年节加 `month: { in: [12, 1] }`、
  *             `cf27b1d` 的 candour、`dc268d8` 的 `LifeEvent.chance`）
- *     量法　　五颗种子 k-b/k-c/k-d/recheck-38/verify-kindred，各跑一遍看首批算出多少
- *     实测　　分家率约 4.5%，年节走动率约 3.3%
- *     结果　　SCOUT=150 → 首批 390 / 2340 / 669 / 780 / 1170 世，7–17 秒
- *             SCOUT=300 → 首批 468 /  669 / 720 / 585 /  730 世，8–11 秒
+ *     量法　　三颗种子 k-b/k-c/k-d，各跑一遍看首批算出多少
+ *     实测　　分家率约 4.5%，**走到过两次年节的率只有 1.2–1.6%**
+ *     结果　　780 / 1560 / 1560 世，10–17 秒
  *
  * **写下来是为了让「它过期了」这件事可查。** 这两个率一天之内变过三次
  * （4% → 1.4% → 3.5% → 3.3%），所以首批已经改成现算、不写死；
- * 但 `SCOUT` 这个数本身仍然绑在「年节率约 3%」这个量级上——
+ * 但 `SCOUT` 这个数本身仍然绑在「稀事率约 1–3%」这个量级上——
  * 率要是掉到 0.5%，300 世期望只撞一两次，又估的是噪声了。
  *
- * ⚠️ **看到首批世数忽大忽小（比如某颗种子算出两千多世）先看这里**：
- * 那多半是 `SCOUT` 相对当下的率太小了，而不是补掷逻辑坏了。
+ * ⚠️ **看到首批世数忽大忽小（比如某颗种子算出四千多世）先看这里**：
+ * 那多半是 `SCOUT` 相对当下的率太小了，或者 `TWICE_WANTED` 被抬过头，
+ * 而不是补掷逻辑坏了。**现在最贵的那一条是「走到过两次年节」**
+ * （率 1.2–1.6%，比分家紧三倍），世数由它决定，不由分家决定。
  */
 const SCOUT = 300
-/** 第二条要「走到两次年节」，那比走到一次更稀。要够判，得比想要的世数留够倍数 */
-const NEWYEAR_WANTED = 12
+/**
+ * 「走到过两次年节」要几世。
+ *
+ * ## 这一条不按检出力表算，因为它不是概率性判据
+ *
+ * 第二条里那半句问的是**「侄儿在两次年节之间长了岁数没有」**——
+ * 岁数是拿世界时间现算的（`ageOf`），**长没长是确定性的算术，不是掷出来的**。
+ * 它要是坏了（比如岁数存成了写死的字段），**每一个走到两次年节的世都会红**，
+ * 一个样本就抓得住。
+ *
+ * 这属于 xiuxian-game-17 分的第二类「恒等式判据」：**样本量只影响
+ * 「多久撞上一次」，不影响「撞上了认不认得出」**。给它算检出力，
+ * 等于把「多久遇到」错当成「遇到了会不会漏」。
+ *
+ * ## 我按检出力算过一版，代价证明了它不该这么算
+ *
+ * 先按「抓得住一成违例率要 22 个样本」定，实测走到两次年节的率只有
+ * **1.2–1.6%**，于是世数从 693 涨到 1716–4290，**耗时 8–11 秒变成 16–35 秒**，
+ * 还顶到了 `CAP`。一条判据吃掉三倍工作量，而它本来一个样本就够。
+ *
+ * 所以取 8：够印出一行有意义的报数（「N 世侄儿在两次年节之间长了岁数」），
+ * 也够让「一次也没走到」这件事红出来——那才是这半句真正会失效的方式
+ * （走不到就什么也没验，见第三类「存在性判据」）。
+ */
+const TWICE_WANTED = 8
 /** 探出来的率再低也按这个数兜底，免得某颗种子探到 0 就把首批算成天文数字 */
 const RATE_FLOOR = 0.005
 
+/** 这一世走到过两次年节吗——第二条那半句真正站的样本，不是「走到过年节」 */
+const twiceFeast = (one: Lived): boolean => one.divided && one.nephewAges.length >= 2
+
 const scouted = (await roll(SCOUT)).lives
 const scoutDivides = scouted.filter((one) => one.divided).length
-const scoutFeasts = scouted.filter((one) => one.divided && one.newyearLines.length > 0).length
+const scoutTwice = scouted.filter(twiceFeast).length
 const divideRate = Math.max(scoutDivides / SCOUT, RATE_FLOOR)
-const feastRate = Math.max(scoutFeasts / SCOUT, RATE_FLOOR)
+const twiceRate = Math.max(scoutTwice / SCOUT, RATE_FLOOR)
 /** 还要补多少世。留三成余量吸收方差，扣掉探路已经掷的那批 */
 const FIRST_BATCH = Math.max(
   0,
-  Math.ceil(Math.max(DIVIDES_WANTED / divideRate, NEWYEAR_WANTED / feastRate) * 1.3) - SCOUT,
+  Math.ceil(Math.max(DIVIDES_WANTED / divideRate, TWICE_WANTED / twiceRate) * 1.3) - SCOUT,
 )
 
 const lives: Lived[] = [...scouted, ...(await roll(FIRST_BATCH)).lives]
@@ -205,14 +231,14 @@ const lives: Lived[] = [...scouted, ...(await roll(FIRST_BATCH)).lives]
  */
 const enough = (): boolean =>
   lives.filter((l) => l.divided).length >= DIVIDES_WANTED &&
-  lives.filter((l) => l.divided && l.newyearLines.length > 0).length >= NEWYEAR_WANTED
+  lives.filter(twiceFeast).length >= TWICE_WANTED
 for (let round = 0; round < ROUNDS && !enough() && lives.length < CAP; round += 1) {
   const divides = lives.filter((l) => l.divided).length
-  const feasts = lives.filter((l) => l.divided && l.newyearLines.length > 0).length
+  const twice = lives.filter(twiceFeast).length
   // 两条各算各的，取要得多的那条。命中率现算，一个也没中就按最小批量走
   const need = Math.max(
     divides > 0 ? Math.ceil(((DIVIDES_WANTED - divides) * lives.length) / divides) : LIVES,
-    feasts > 0 ? Math.ceil(((NEWYEAR_WANTED - feasts) * lives.length) / feasts) : LIVES,
+    twice > 0 ? Math.ceil(((TWICE_WANTED - twice) * lives.length) / twice) : LIVES,
   )
   lives.push(...(await roll(Math.min(CAP - lives.length, Math.max(24, need)))).lives)
 }
