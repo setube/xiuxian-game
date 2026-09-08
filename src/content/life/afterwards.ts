@@ -235,7 +235,14 @@ export const afterwardsScenes: SceneLibrary = {
         id: 'let-go',
         onEnter: [{ type: 'chronicle', text: '那件事你再没提起过。' }],
         blocks: [
-          { kind: 'narration', text: '天亮了。你起来喂了鸡，那件事就过去了。' },
+          /*
+           * 原先写「你起来喂了鸡」——`upbringing.ts` 当场抓到：**那默认了这个人有鸡**。
+           * 铺子里的伙计、匠人、宫里出来的都没有。
+           *
+           * 这是同一个错第二次犯（上一次在 `attempt.ts` 的「地里的活不会自己少」），
+           * 而两次都是同一个原因：**写的人自己心里有一个默认的人。**
+           */
+          { kind: 'narration', text: '天亮了。你起来做该做的事，那件事就过去了。' },
           { kind: 'narration', text: '后来偶尔想起，也只是想起，不再打算做什么。' },
           {
             kind: 'narration',
