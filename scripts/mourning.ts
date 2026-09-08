@@ -222,30 +222,45 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
       wrong.push(`${choice} 该说「${want}」：${texts.slice(-4).join(' / ')}`)
     if (texts.some((line) => line.includes(forbid))) wrong.push(`${choice} 不该说「${forbid}」`)
   }
-  // 客死那一卷：娘的反应看性情，哥要去算账
+  /**
+   * 客死那一卷：娘的反应看性情，哥要去算账。
+   *
+   * 这条链从旱到消息推了三年上下，娘也在老：health 掷得低的那几局，她在链尾已经老病没了
+   * （种子 1b60fk51lmc9：娘四十四岁、health 41，第三年殁，`{dam}` 落成「家里的大人」）。
+   * 那一句没有是对的——人不在了。摆局掷到她还在为止，不是让她不死：那是引擎的事，不是尺子的。
+   */
+  const awayWith = (
+    who: 'mother' | 'brother',
+    temper: Temper,
+  ): { texts: string[]; here: boolean } | null => {
+    for (let tries = 0; tries < 12; tries += 1) {
+      const s = who === 'brother' ? born('farm', 10, ['father', 'mother', 'brother']) : child()
+      if (!s) continue
+      s.people.amend(who, { temper })
+      const texts = fatherDiesAway(s, false)
+      if (s.people.isAlive(who)) return { texts, here: true }
+    }
+    return null
+  }
   for (const [temper, want] of [
     ['暴躁', '骂了半夜'],
     ['刚硬', '一滴泪没掉'],
     ['温和', '多摆了一副碗筷'],
     ['谨慎', '不许你跟人出去做工'],
   ] as const) {
-    const s = child()
-    if (!s) {
-      wrong.push(`客死 ${temper}：掷不出局`)
+    const got = awayWith('mother', temper)
+    if (!got) {
+      wrong.push(`客死 ${temper}：十二局里娘没有一局活到链尾，摆不出局`)
       continue
     }
-    s.people.amend('mother', { temper })
-    const texts = fatherDiesAway(s, false)
-    if (!texts.some((line) => line.includes(want)))
-      wrong.push(`客死，娘 ${temper} 该说「${want}」：${texts.slice(-4).join(' / ')}`)
+    if (!got.texts.some((line) => line.includes(want)))
+      wrong.push(`客死，娘 ${temper} 该说「${want}」：${got.texts.slice(-4).join(' / ')}`)
   }
-  const angry = born('farm', 10, ['father', 'mother', 'brother'])
-  if (!angry) wrong.push('掷不出局')
-  else {
-    angry.people.amend('brother', { temper: '暴躁' })
-    const texts = fatherDiesAway(angry, false)
-    if (!texts.some((line) => line.includes('算账')))
-      wrong.push(`客死，暴躁的哥该要去算账：${texts.slice(-4).join(' / ')}`)
+  {
+    const got = awayWith('brother', '暴躁')
+    if (!got) wrong.push('客死，暴躁的哥：摆不出局')
+    else if (!got.texts.some((line) => line.includes('算账')))
+      wrong.push(`客死，暴躁的哥该要去算账：${got.texts.slice(-4).join(' / ')}`)
   }
   if (wrong.length > 0) {
     console.log(`\n  ✗ 三、各人各是一种反应：${wrong[0]}（共 ${wrong.length} 处）`)
