@@ -49,45 +49,81 @@ import { useWorldStore } from '../src/stores/world'
 const RUNS = 300
 
 /**
- * 库里所有「会把日历推到某月」的卷，各自入口那句正文。
+ * 库里所有「会把日历推到某月」的卷：入口那句正文、推到几月、卷名。
  *
- * ## 为什么要它：节令互相污染对方的观测通道
+ * ## 一张表办两件事
  *
- * 步末读到的月份，是那一步里**最后一个推日历的卷**留下的。一步之内可以演
- * 好几卷，于是中秋和年节同步演的时候，谁后跑谁说了算——`newyear` 那一支
- * 因此报出「7 次正月里演在八月」，而那正是我这一卷推过去的。
+ * **一、判据本身。** 每一卷各验各的：它演出来的时候，日历是不是真被推到了
+ * 它自己那个月。从前这儿写死找中秋那一句——**那意味着第二个节令进来时
+ * 不会被验，而报表照样全绿**。「新加节令不必回来改门禁」那句话当时只有一半是真的
+ * （`PUSHER_LINES` 是自动的，判据不是）。
  *
- * **这条噪声会随节令数量增长**：往后还有五个节令要进来，两两都会撞。
+ * **二、互相排除。** 步末读到的月份是那一步里**最后一个推日历的卷**留下的。
+ * 中秋进库那天 `newyear` 立刻报出「7 次正月里演在八月」，而八月正是中秋推过去的。
+ * 一步之内演了两卷节令，这个读数对两卷都无意义，整步排除。
  *
- * ## 自动推导，不写死一张表
+ * ## 为什么从内容推，不写死
  *
- * 判别式直接从内容取：入口节点的 `onEnter` 里有没有 `untilMonth`。
- * **新加一个节令不必回来改这儿**——写死一张表的话，第六个节令进来那天
- * 这里会静默地漏掉它，而漏掉的表现是噪声上涨，看着像内容坏了。
- * （同「判据的标准要从系统取」：抄一份就成了两处各自漂。）
+ * 判别式直接取入口节点的 `onEnter` 里有没有 `untilMonth`。写死一张表的话，
+ * 第三个节令进来那天这里会静默漏掉它：**判据那一半漏掉是「没人验」，
+ * 排除那一半漏掉是「噪声上涨」——前者报表干净，后者看着像内容坏了**。
+ * 两种都不会指向真正的原因。（同「判据的标准要从系统取」。）
  */
-const PUSHER_LINES: readonly string[] = Object.values(lifeScenes)
-  .filter((scene) => {
+interface Festival {
+  /** 卷名，报表里指名道姓用 */
+  id: string
+  /** 入口那句正文。判据靠它认出这一卷演了 */
+  line: string
+  /** 它把日历推到几月 */
+  month: number
+  /**
+   * 它的普遍性是不是由日历这一层决定的。
+   *
+   * ## 这一格是「拿错尺子量」逼出来的
+   *
+   * 泛化这一支之后它把 `kindred:newyear` 也纳入了（那一卷同样带 `untilMonth`），
+   * 于是三分之一那条线去量它——**4.0%，红**。而那不是机制坏了：
+   * 年节的 `requires` 压着「分了家 + 侄儿满三岁」，**那是老屋那条链的稀有度，
+   * 不是节令的稀有度**。
+   *
+   * 三分之一那条线要量的是「日历这一层有没有卡住」。一卷节令要是自己压着
+   * 别的前提，它的到达率由那些前提决定，**跟日历这一层无关**——
+   * 拿这条线去判它，等于把上游的稀有度算到下游头上
+   * （同一晚跟 79 归纳的那条：**多层筛的末端率说的是整条链，不是末端那一层**，
+   * 而我转头就踩了）。
+   *
+   * 所以只有「前提只剩年纪」的节令才受这条线管。判别式从内容取：
+   * 指向这一卷的事件有没有写 `requires`。
+   */
+  universal: boolean
+}
+const FESTIVALS: readonly Festival[] = Object.values(lifeScenes)
+  .map((scene) => {
     const open = scene.nodes[scene.entry]
-    return (open?.onEnter ?? []).some(
+    const push = (open?.onEnter ?? []).find(
       (one) => one.type === 'time' && one.untilMonth !== undefined,
     )
+    if (push === undefined || push.type !== 'time' || push.untilMonth === undefined) return null
+    const first = (open?.blocks ?? []).find((one) => 'text' in one)
+    const line = first && 'text' in first ? first.text : ''
+    if (line.length === 0) return null
+    // 指向这一卷的事件压了别的前提没有——压了的，它的到达率不归日历管
+    const gated = lifeEvents.some(
+      (event) => event.scene === scene.id && (event.requires?.length ?? 0) > 0,
+    )
+    return { id: scene.id, line, month: push.untilMonth, universal: !gated }
   })
-  .map((scene) => {
-    const first = (scene.nodes[scene.entry]?.blocks ?? []).find((one) => 'text' in one)
-    return first && 'text' in first ? first.text : ''
-  })
-  .filter((one) => one.length > 0)
+  .filter((one): one is Festival => one !== null)
 
-/** 中秋那一卷入口那句。判据找的就是它 */
-const MID_AUTUMN = '八月十五，月亮上来得早'
-
-/** 演出来的那些卷：步末的月份，以及进这一步之前是几月 */
-const when: { month: number; before: number }[] = []
-/** 演到过中秋的世数。跟上面那个不同：一世可以演好几回 */
-let worldsWithFestival = 0
 /**
- * 同一步里还演了别的节令、月份读数因而无意义、被排除的回数。
+ * 各卷演出来的那些回：步末的月份。按卷名分开记——**一张总表判不出
+ * 「哪一卷坏了」**，而节令一多，那正是要问的第一个问题。
+ */
+const when = new Map<string, { month: number; before: number }[]>()
+/** 各卷演到过的世数。跟上面那个不同：一世可以演好几回 */
+const reached = new Map<string, number>()
+/**
+ * 同一步里演了两卷以上节令、月份读数因而无意义、被排除的回数。
  *
  * **必须印出来**：悄悄扔掉的样本跟没有过的样本长得一模一样。
  */
@@ -107,7 +143,8 @@ for (let i = 0; i < RUNS; i += 1) {
   story.begin()
   worlds += 1
   let turns = 0
-  let sawHere = false
+  /** 这一世见过哪几卷节令。世数按卷分开数——一世演三回中秋仍只算一世 */
+  const seenHere = new Set<string>()
 
   // 收正文用「见过的块 id」，不用下标切片——一步之内可能推进好几块，
   // 而 `stream` 是累积的；按下标切要自己维护游标，漏一次就丢一段
@@ -155,102 +192,126 @@ for (let i = 0; i < RUNS; i += 1) {
      * 落月是随机的，八九月合计 1/6 上下，跟好着的九成以上差一个数量级。
      */
     const fresh = drain()
-    if (fresh.some((line) => line.includes(MID_AUTUMN))) {
-      sawHere = true
-      const pushers = PUSHER_LINES.filter((line) => fresh.some((one) => one.includes(line)))
-      if (pushers.length > 1) ambiguous += 1
-      else when.push({ month: world.time.month, before: monthBefore })
+    const fired = FESTIVALS.filter((one) => fresh.some((line) => line.includes(one.line)))
+    for (const one of fired) seenHere.add(one.id)
+    if (fired.length > 1) {
+      // 两卷同步演，步末那个月份对两卷都无意义
+      ambiguous += fired.length
+    } else if (fired.length === 1) {
+      const one = fired[0]!
+      const rows = when.get(one.id) ?? []
+      rows.push({ month: world.time.month, before: monthBefore })
+      when.set(one.id, rows)
     }
   }
-  if (sawHere) worldsWithFestival += 1
+  for (const id of seenHere) reached.set(id, (reached.get(id) ?? 0) + 1)
 }
 
-console.log(`\n=== 节令：中秋演在几月（${RUNS} 世）===\n`)
+console.log(`\n=== 节令：各卷演在几月（${RUNS} 世，${FESTIVALS.length} 卷）===\n`)
 
 let bad = 0
 
 /*
- * 一、演出来的那些，绝大多数落在八月。
+ * 一、每一卷演出来的那些，绝大多数落在它自己那个月。
+ *
+ * **按卷循环，不合成一张总表**——合起来判的话，一卷坏了会被别几卷的正确
+ * 稀释掉，而报表只会说「总体 82%」，指不出是谁。节令一多，
+ * 「哪一卷坏了」正是要问的第一个问题。
  *
  * **这一条按比例判，不按零容忍判**——不是判据宽松，是**测量通道有噪声**：
- * 步末读到的月份是那一步里最后一个推日历的卷留下的，而中秋不一定是最后一个。
- * 库里三百多处 `type: 'time'`，枚举「还有谁会推」追不完（这一支为此改过三版，
- * 见循环里那一段）。
+ * 步末读到的月份是那一步里最后一个推日历的卷留下的，而这一卷不一定是最后一个。
+ * 同步的节令已经排除了（`FESTIVALS` 那张表），剩下的残噪是**非节令的卷也在推日历**
+ * ——库里三百多处 `type: 'time'`，枚举追不完（这一支为此改过三版，见循环里那一段）。
  *
  * 两种情形差着一个数量级，所以比例判分得很开：
  *
- *     untilMonth 好着　　月份绝大多数是 8（`days: 1` 溢进 9 的算对）
- *     untilMonth 坏了　　那一行被删或算错月 → 随机落月，八九月合计 1/6 上下
+ *     untilMonth 好着　　月份绝大多数是目标月（`days` 溢进下个月的算对）
+ *     untilMonth 坏了　　那一行被删或算错月 → 随机落月，两个月合计 1/6 上下
  *
- * 门槛取**九成**：实测 98.6%，坏掉是 17% 上下，九成这条线离两边都远。
- * 不贴着实测标（98%）——贴着标的阈值会把噪声的正常起伏判成红。
- */
-const OFF_SEASON_FLOOR = 0.9
-const inSeason = when.filter((one) => one.month === 8 || one.month === 9)
-const offSeason = when.filter((one) => one.month !== 8 && one.month !== 9)
-const hitRate = when.length === 0 ? 0 : inSeason.length / when.length
-if (when.length > 0 && hitRate < OFF_SEASON_FLOOR) {
-  const byMonth = new Map<number, number>()
-  for (const one of offSeason) byMonth.set(one.month, (byMonth.get(one.month) ?? 0) + 1)
-  console.log(
-    `  ✗ 只有 ${inSeason.length} / ${when.length}（${(hitRate * 100).toFixed(1)}%）落在八九月，不足九成：`,
-  )
-  for (const [m, n] of [...byMonth.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6)) {
-    console.log(`      ${String(m).padStart(2)} 月　${n} 次`)
-  }
-  console.log(`    那一卷的 onEnter 里有 { type: 'time', untilMonth: 8 }，它该把日历推过去。`)
-  bad += 1
-}
-
-/*
+ * 门槛取**九成**：中秋实测 98.6%，打断（把 8 改成 3）掉到 0.2%，
+ * 九成这条线离两边都远。不贴着实测标——贴着标的阈值会把噪声的正常起伏判成红。
+ *
  * 二、**这一条才是这次改造的意义**：演到的世远多于四分之一。
  *
  * 靠 `Condition.month` 守时令的时候，一卷节令能不能演，取决于踏进成年
  * 那一刻碰巧是几月——实测四十世只有十一世到过腊月正月，
- * **四分之三的人一辈子读不到**。改成内容自己推日历之后，
- * 「碰巧」这一层没有了：条件够了就演，日历自己走过去。
+ * **四分之三的人一辈子读不到**。改成内容自己推日历之后，「碰巧」这一层没有了。
  *
- * 门槛取**三分之一**，不取四分之一贴着旧值：贴着实测标的阈值
- * 分不出「刚好比旧的好一点」和「真的把开关拆掉了」。三分之一是条语义线——
- * 过不了它就说明还有什么在按世卡着。
+ * 门槛取**三分之一**，不取四分之一贴着旧值：贴着实测标的阈值分不出
+ * 「刚好比旧的好一点」和「真的把开关拆掉了」。三分之一是条语义线。
  *
  * ⚠️ 这一条量的是**演到过的世数占比**，分母是跑了多少世，不是演了多少次
  * （一世可以演好几回）。两个数的差别在 `newyear` 那一支上咬过人：
  * 那边抄了 `kindred` 的率，而两支数的不是同一个量，差五倍。
  */
-const reach = worldsWithFestival / Math.max(worlds, 1)
-if (worldsWithFestival === 0) {
-  console.log(
-    `  ✗ ${RUNS} 世里一次也没演到中秋，前两条根本没被验过。` +
-      `\n    先看条件：那一卷要「有一个活着、不在跟前的哥」（bond 兄 alive near:false）。`,
-  )
+const MONTH_FLOOR = 0.9
+const REACH_FLOOR = 1 / 3
+if (FESTIVALS.length === 0) {
+  console.log(`  ✗ 库里一卷会推日历的节令也没有——这一支整个没有被测对象。`)
   bad += 1
-} else if (reach < 1 / 3) {
+}
+for (const festival of FESTIVALS) {
+  const rows = when.get(festival.id) ?? []
+  const worldsHere = reached.get(festival.id) ?? 0
+  const reach = worldsHere / Math.max(worlds, 1)
+  // 目标月，以及 `days` 溢出去的下一个月（腊月溢到正月，按环形算）
+  const next = (festival.month % 12) + 1
+  const onTime = rows.filter((one) => one.month === festival.month || one.month === next)
+  const rate = rows.length === 0 ? 0 : onTime.length / rows.length
+
+  const months = new Map<number, number>()
+  for (const one of rows) months.set(one.month, (months.get(one.month) ?? 0) + 1)
+  const spread = [...months.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([m, n]) => `${m}月 ${n}`)
+    .join('　')
+
   console.log(
-    `  ✗ 只有 ${worldsWithFestival} / ${worlds} 世（${(reach * 100).toFixed(1)}%）演到过中秋，不足三分之一。` +
-      `\n    这一格改造要拆掉的正是「按世翻的开关」——靠 Condition.month 守时令的旧版` +
-      `\n    实测只有四分之一的世过得上节。占比压在三分之一以下，说明还有什么在按世卡着。`,
+    `  ${festival.id}（该推到 ${festival.month} 月${festival.universal ? '' : '，前提另有条件'}）：` +
+      `演到过的 ${worldsHere}/${worlds} 世（${(reach * 100).toFixed(1)}%）、` +
+      `月份可判 ${rows.length} 回、落在 ${festival.month}/${next} 月的 ${(rate * 100).toFixed(1)}%` +
+      (spread.length > 0 ? `\n      落在各月：${spread}` : ''),
   )
-  bad += 1
+
+  if (worldsHere === 0) {
+    console.log(
+      `  ✗ ${festival.id}：${RUNS} 世里一次也没演到，这一卷的两条判据根本没被验过。` +
+        `\n    先看它的 requires 是不是压了一件稀事——节令该是年年有的。`,
+    )
+    bad += 1
+    continue
+  }
+  /*
+   * 三分之一那条线**只管前提只剩年纪的节令**。
+   *
+   * 一卷节令自己压着别的前提（年节要「分了家 + 侄儿满三岁」），它的到达率
+   * 由那些前提决定，跟日历这一层无关——**拿这条线去判它，是把上游的
+   * 稀有度算到下游头上**。它的月份那一条照样判（那才是日历这一层的事）。
+   */
+  if (festival.universal && reach < REACH_FLOOR) {
+    console.log(
+      `  ✗ ${festival.id}：只有 ${(reach * 100).toFixed(1)}% 的世演到过，不足三分之一。` +
+        `\n    它的事件没有压别的前提，所以到达率该由日历这一层决定——` +
+        `\n    压这么低说明还有什么在按世卡着，那正是这次改造要拆的东西。`,
+    )
+    bad += 1
+  }
+  if (rows.length > 0 && rate < MONTH_FLOOR) {
+    console.log(
+      `  ✗ ${festival.id}：只有 ${onTime.length}/${rows.length}（${(rate * 100).toFixed(1)}%）` +
+        `落在 ${festival.month}/${next} 月，不足九成。` +
+        `\n    它的 onEnter 里该有 { type: 'time', untilMonth: ${festival.month} }，且排在 days 前面。`,
+    )
+    bad += 1
+  }
 }
 
 console.log(
-  `  覆盖：${worlds} 世 / 演到过中秋的 ${worldsWithFestival} 世（${(reach * 100).toFixed(1)}%）` +
-    ` / 月份可判的 ${when.length} 回（另有 ${ambiguous} 回同步演了别的节令，排除）` +
-    `，落在八九月的 ${(hitRate * 100).toFixed(1)}%` +
+  `\n  覆盖：${worlds} 世 / ${FESTIVALS.length} 卷节令` +
+    `（另有 ${ambiguous} 回两卷同步演、月份读数无意义，已排除）` +
     `\n        （采样点：每一步选完之后读月份。同步的节令已排除，剩下的残噪是非节令的卷也在推日历——` +
-    `\n        所以第一条按比例判，不按零容忍判）`,
+    `\n        所以按比例判，不按零容忍判）`,
 )
-if (when.length > 0) {
-  const months = new Map<number, number>()
-  for (const one of when) months.set(one.month, (months.get(one.month) ?? 0) + 1)
-  console.log(
-    `        落在各月：${[...months.entries()]
-      .sort((a, b) => a[0] - b[0])
-      .map(([m, n]) => `${m}月 ${n}`)
-      .join('　')}`,
-  )
-}
 
 /**
  * 三、尺子自检：`untilMonth` 那一格本身得真的在算事。
@@ -312,23 +373,49 @@ if (when.length > 0) {
   }
 
   /*
-   * 那一卷真的收了这一格——有人把 `onEnter` 里那一行删掉，上面几条
-   * 未必立刻红（真跑那一半会红，但尺子这一半得自己站得住）。
+   * 每一卷的 `onEnter` 里，`untilMonth` 得排在增量前面。
    *
-   * 条件直接从内容里取，不在这儿抄一份：抄一份就成了两处各自漂，
-   * 而判据抄错了的表现是误报，比漏报更能骗人。
+   * **这一条是「顺序写反」那种坏法的打断验证**——它只在月底那几天分道，
+   * 违例率一两成，真跑那一半要二十几个样本才抓得住（`newyear` 那一支里
+   * 有那张检出力表）。这里直接查结构，一条就够。
+   *
+   * `FESTIVALS` 那张表已经保证了「有 `untilMonth`」这件事（没有的卷根本不在表里），
+   * 所以这儿只查顺序。**表是空的也要红**——那说明库里一卷节令也没有，
+   * 上面所有判据都没有被测对象，而空表跑出来的报表是干净的。
    */
-  const scene = lifeScenes['festival:midautumn']
-  if (scene === undefined) {
-    failed.push('库里找不到 festival:midautumn 这一卷了')
-  } else {
-    const open = scene.nodes[scene.entry]
-    const pushes = (open?.onEnter ?? []).filter(
-      (one) => one.type === 'time' && one.untilMonth === 8,
+  if (FESTIVALS.length === 0) {
+    failed.push('库里一卷带 untilMonth 的节令也没有——所有判据都没有被测对象')
+  }
+  for (const festival of FESTIVALS) {
+    const open = lifeScenes[festival.id]?.nodes[lifeScenes[festival.id]!.entry]
+    const times = (open?.onEnter ?? []).filter((one) => one.type === 'time')
+    const targetAt = times.findIndex((one) => one.type === 'time' && one.untilMonth !== undefined)
+    const deltaAt = times.findIndex(
+      (one) => one.type === 'time' && (one.days !== undefined || one.months !== undefined),
     )
-    if (pushes.length === 0) {
-      failed.push('中秋那一卷的 onEnter 里没有 untilMonth: 8——它又变回碰巧演了')
+    if (targetAt >= 0 && deltaAt >= 0 && targetAt > deltaAt) {
+      failed.push(
+        `${festival.id}：untilMonth 排在了 days 后面——先推天数再推到那个月，月底那几天会差一年`,
+      )
     }
+  }
+
+  /*
+   * **`universal` 这个豁免不许把所有卷都豁免掉。**
+   *
+   * 它从内容推导（事件写没写 `requires`），好处是新加节令自动归类；
+   * 代价是**给一卷加一条 `requires` 就能让它躲开三分之一那条线**。
+   * 一卷一卷加下去，某天所有节令都「另有前提」，那条判据一个对象也不剩，
+   * **而报表全绿**——那正是这一支存在的理由被架空的样子。
+   *
+   * 所以这儿盯着：至少得有一卷是「前提只剩年纪」的。这一条不判具体是哪一卷，
+   * 只判**那条线还有没有人受它管**。
+   */
+  if (FESTIVALS.length > 0 && !FESTIVALS.some((one) => one.universal)) {
+    failed.push(
+      `${FESTIVALS.length} 卷节令全都「另有前提」，三分之一那条线一个对象也没有了——` +
+        `节令该是年年有的，至少有一卷不该压别的条件`,
+    )
   }
 
   if (failed.length > 0) {
@@ -336,10 +423,12 @@ if (when.length > 0) {
     for (const one of failed) console.log(`      ${one}`)
     bad += 1
   } else {
+    const universal = FESTIVALS.filter((one) => one.universal).length
     console.log(
-      `\n  ✓ 尺子自检（5 条）：当月推 0、同年往前推、腊月跨到正月不往回拨、` +
-        `九月推八月等到明年；\n    目标跟增量同写时先到月再加——` +
-        `而中秋那一卷真的收了 untilMonth: 8。`,
+      `\n  ✓ 尺子自检（5 条算术 + ${FESTIVALS.length} 卷的顺序 + 豁免没被架空）：` +
+        `当月推 0、同年往前推、腊月跨到正月不往回拨、九月推八月等到明年；\n` +
+        `    目标跟增量同写时先到月再加；每一卷的 untilMonth 都排在 days 前面；\n` +
+        `    ${FESTIVALS.length} 卷里有 ${universal} 卷前提只剩年纪，三分之一那条线还有人受它管。`,
     )
   }
 }
