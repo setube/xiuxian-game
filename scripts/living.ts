@@ -219,6 +219,30 @@ const PATHS: readonly Path[] = [
     ],
   },
   {
+    /**
+     * 受封之国：从宫里的日子换成王府的日子。
+     *
+     * 这一条跟上面「削藩：王府的孩子成了寓公之子」正好是反向的一对：
+     * 那边爵没了、日子从 `manor` 掉到 `fallen`；这边爵封了、
+     * 日子从 `palace` 换成 `manor`。
+     *
+     * **而两条走的是同一层机制**——`living` 由内容明写着换，
+     * 跟身份那一格分开走。受封那天他的 `identity` 就变了（`open` 那一节），
+     * 可日子要到两个月路走完、进了那座新府才换（`arrive` 那一节）。
+     * 中间那两个月他是「亲王」，过的还是路上的日子。
+     *
+     * 走两步：`open` 落爵位，`arrive` 才换日子。只走 `open` 的话
+     * 这条人生停在换日子之前。
+     */
+    id: 'invest',
+    label: '受封之国：宫里的日子换成王府的日子',
+    origin: 'court',
+    steps: [
+      { scene: 'royal:invest', node: 'open' },
+      { scene: 'royal:invest', node: 'arrive' },
+    ],
+  },
+  {
     id: 'farm',
     label: '对照：农户的孩子，一辈子没换过日子',
     origin: 'farm',
