@@ -706,6 +706,7 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     tie: null,
     owe: null,
     repay: null,
+    forgive: null,
     /**
      * 承户：`{ type: 'succession' }`，**整条效果没有任何载荷**。
      *

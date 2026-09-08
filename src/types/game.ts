@@ -446,8 +446,16 @@ export interface IOU {
   what: string
   /** 约定。写成人说的话：「开春还」 */
   terms: string
-  /** 哪一年还清的。null 是还没还 */
+  /** 哪一年了结的。null 是还没了结 */
   settled: number | null
+  /**
+   * 怎么了结的：还了，还是勾了。不写的（旧存档）当还了。
+   *
+   * 第一个使用者是哥没了那一卷：他欠你的那笔粮，人没了你没再提——它了结了，可谁也没还。
+   * 「还了」和「勾了」在日后是两件事：还过的可以再借，勾过的两家都记着。
+   * 「子还父债」（侄儿替他爹还）眼下没有一卷写它，等它来了再给「还」这一格加「谁还的」。
+   */
+  how?: '还' | '免'
 }
 
 /**
@@ -1820,6 +1828,8 @@ export type Effect =
   | { type: 'owe'; debtor: string; creditor: string; what: string; terms: string }
   /** 还清最早那一笔还没还的债 */
   | { type: 'repay'; debtor: string; creditor: string }
+  /** 勾了最早那一笔还没还的债：了结了，可谁也没还。欠债的人没了，债主不提了 */
+  | { type: 'forgive'; debtor: string; creditor: string }
   /**
    * 家人境况改写。alive 转 false 即此人不在了。
    *

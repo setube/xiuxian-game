@@ -696,16 +696,32 @@ export const usePeopleStore = defineStore(
       ]
     }
 
-    /** 还清最早那一笔还没还的债。没有欠着的就什么也不做 */
-    function repay(debtor: string, creditor: string): boolean {
+    /** 了结最早那一笔还没还的债：还了或勾了。没有欠着的就什么也不做 */
+    function settle(debtor: string, creditor: string, how: '还' | '免'): boolean {
       const open = ious.value.find(
         (one) => one.debtor === debtor && one.creditor === creditor && one.settled === null,
       )
       if (!open) return false
       ious.value = ious.value.map((one) =>
-        one.id === open.id ? { ...one, settled: world.time.year } : one,
+        one.id === open.id ? { ...one, settled: world.time.year, how } : one,
       )
       return true
+    }
+
+    /** 还清最早那一笔还没还的债 */
+    function repay(debtor: string, creditor: string): boolean {
+      return settle(debtor, creditor, '还')
+    }
+
+    /**
+     * 勾了最早那一笔还没还的债——了结了，可谁也没还。
+     *
+     * 债不随人死自动消：欠债的人没了，那笔账还在簿上，**由哪一卷来了结它是内容的事**
+     * （哥没了那一卷：他欠你的粮你没再提；你欠他的银子下葬那天交给了老屋）。
+     * 这里不看谁死了没死，只记「勾了」。
+     */
+    function forgive(debtor: string, creditor: string): boolean {
+      return settle(debtor, creditor, '免')
     }
 
     function bind(from: string, to: string, bond: Bond): void {
@@ -835,6 +851,7 @@ export const usePeopleStore = defineStore(
       knownRelations,
       owe,
       repay,
+      forgive,
       enrollHouse,
       joinHouse,
       leaveHouse,

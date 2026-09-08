@@ -487,11 +487,17 @@ export const kindredScenes: SceneLibrary = {
         ],
         next: 'debt',
       },
-      /** 那笔粮还欠着，谁也不提；你欠他的那二两银子也一样 */
+      /**
+       * 那笔粮还欠着，谁也不提；你欠他的那二两银子也一样。
+       *
+       * 「他也没提」——得他还活着。哥没了之后正月照旧回老屋（这一卷只要分了家），
+       * 而债在丧事那一卷已经了结（`brother-gone` 的 `debts` 节）；万一丧事那一卷还没轮到，
+       * 也不能让一个殁了的人「没提」。
+       */
       debt: {
         id: 'debt',
         blocks: [],
-        branches: [{ requires: [OWES_ME], next: 'debt-open' }],
+        branches: [{ requires: [OWES_ME, { bond: { kind: '兄', alive: true } }], next: 'debt-open' }],
         next: 'debt-mine',
       },
       'debt-open': {
@@ -502,7 +508,9 @@ export const kindredScenes: SceneLibrary = {
       'debt-mine': {
         id: 'debt-mine',
         blocks: [],
-        branches: [{ requires: [I_OWE_HIM], next: 'debt-mine-open' }],
+        branches: [
+          { requires: [I_OWE_HIM, { bond: { kind: '兄', alive: true } }], next: 'debt-mine-open' },
+        ],
         next: 'done',
       },
       'debt-mine-open': {
@@ -800,6 +808,7 @@ export const kindredScenes: SceneLibrary = {
             tone: 'faint',
           },
         ],
+        next: 'debts',
       },
       /** 弟弟没分出去、还住在老屋：兄终弟及 */
       uncle: {
@@ -811,6 +820,7 @@ export const kindredScenes: SceneLibrary = {
             tone: 'faint',
           },
         ],
+        next: 'debts',
       },
       /** 白发人送黑发人：爹还在，老屋就还是爹当家 */
       'father-still': {
@@ -818,14 +828,86 @@ export const kindredScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '爹还在。老屋还是他当家，只是话更少了。', tone: 'faint' },
         ],
+        next: 'debts',
       },
       heir: {
         id: 'heir',
         blocks: [{ kind: 'narration', text: '老屋如今是{call:nephew}当家。', tone: 'faint' }],
+        next: 'debts',
       },
       widow: {
         id: 'widow',
         blocks: [{ kind: 'narration', text: '老屋里只剩嫂子和孩子。', tone: 'faint' }],
+        next: 'debts',
+      },
+      /**
+       * 遗债。人没了，簿上的账不会自己消（`IOU` 不看谁死了）——由这一卷来了结它。
+       *
+       * 他欠你的那笔粮：人都没了，你没再提，**勾了**（`forgive`，簿上记「免」，不是「还」）。
+       * 你欠他的那二两银子：下葬那天交给了老屋——债主没了，钱还给他家里的人，**还了**。
+       * 两笔各是各的：第一笔了结了谁也没拿到粮，第二笔老屋真拿到了银子。
+       *
+       * 「子还父债」（侄儿替他爹把粮还上）没写：那要一个记着这笔账、也还得起的侄儿，
+       * 眼下没有一卷把这两件事摆到一起。等它来了再给「还」加「谁还的」。
+       */
+      debts: {
+        id: 'debts',
+        blocks: [],
+        branches: [{ requires: [OWES_ME], next: 'grain-forgiven' }],
+        next: 'silver',
+      },
+      'grain-forgiven': {
+        id: 'grain-forgiven',
+        onEnter: [
+          { type: 'forgive', debtor: 'brother', creditor: 'me' },
+          { type: 'chronicle', text: '哥没了。他欠你的那笔粮，你没再提。' },
+        ],
+        blocks: [{ kind: 'narration', text: '他欠你的那笔粮，人没了，你没再提。', tone: 'faint' }],
+        next: 'silver',
+      },
+      silver: {
+        id: 'silver',
+        blocks: [],
+        branches: [
+          {
+            requires: [I_OWE_HIM, { family: { id: 'brother-wife', alive: true, present: true } }],
+            next: 'silver-widow',
+          },
+          { requires: [I_OWE_HIM], next: 'silver-house' },
+        ],
+        next: 'done',
+      },
+      'silver-widow': {
+        id: 'silver-widow',
+        onEnter: [
+          { type: 'repay', debtor: 'me', creditor: 'brother' },
+          { type: 'household', standing: -6 },
+          { type: 'chronicle', text: '哥下葬那天，你把欠他的二两银子交给了嫂子。' },
+        ],
+        blocks: [
+          {
+            kind: 'narration',
+            text: '下葬那天，你把欠他的二两银子交给了{call:brother-wife}。她没数，收进了袖子里。',
+            tone: 'faint',
+          },
+        ],
+        next: 'done',
+      },
+      'silver-house': {
+        id: 'silver-house',
+        onEnter: [
+          { type: 'repay', debtor: 'me', creditor: 'brother' },
+          { type: 'household', standing: -6 },
+          { type: 'chronicle', text: '哥下葬那天，你把欠他的二两银子交给了老屋。' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '下葬那天，你把欠他的二两银子交给了老屋当家的。', tone: 'faint' },
+        ],
+        next: 'done',
+      },
+      done: {
+        id: 'done',
+        blocks: [],
       },
     },
   },
