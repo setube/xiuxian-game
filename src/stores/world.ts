@@ -81,6 +81,25 @@ export interface TimeDelta {
   years?: number
   months?: number
   days?: number
+  /**
+   * 推到下一个某月。**这一格是目标，不是增量**——别的三格都是「往前走多少」，
+   * 它是「走到几月为止」。
+   *
+   * 当月就是 0（已经到了），否则往前走到下一次，最多十一个月。
+   *
+   * ## 为什么需要它：`Condition.month` 表达不了「到了那个月」
+   *
+   * 一卷「正月里」从前靠 `{ month: { in: [12, 1] } }` 守时令，那问的是
+   * **碰巧在那个月**。而成年之后一回合推两三年（`routine:adult` 两年、
+   * `routine:prime` 三年），月份几乎不动——于是「年年可能有」实际成了
+   * **按世翻的开关**：踏进成年那一刻碰巧是几月，就决定了这一世过不过得上年。
+   * 实测四十世里只有十一世到过腊月正月。
+   *
+   * 节令说的本来就是「到了那个日子」，不是「恰好在那个日子」。所以由内容
+   * 自己把日历推过去（`{ type: 'time', untilMonth: 1 }`），条件层不再管时令。
+   * 每一世都过得上年，而不是四分之一。
+   */
+  untilMonth?: number
 }
 
 /**
@@ -164,15 +183,31 @@ export const useWorldStore = defineStore(
 
     /**
      * 推进时序。年月按日历叠加，日按绝对天数叠加。
+     *
+     * `untilMonth` 先结算（它是目标，从**此刻**的月份算起），再叠加年月日。
+     * 两者同时写的话，读作「先走到那个月，再往后推这么多」。
+     *
      * @returns 跨过的年数，供角色年龄同步
      */
     function advanceTime(delta: TimeDelta): number {
       const previousYear = time.value.year
       const previousMonth = time.value.month
 
+      /*
+       * 「推到下一个某月」还差几个月。当月是 0——**已经到了就不必再等一年**。
+       *
+       * 取模写成 `(目标 - 此刻 + 12) % 12` 而不是 `目标 - 此刻`：跨年那一段
+       * （腊月走到正月）差是负的，直接用会把日历往回拨。
+       */
+      const toTarget =
+        delta.untilMonth === undefined
+          ? 0
+          : (delta.untilMonth - time.value.month + MONTHS_PER_YEAR) % MONTHS_PER_YEAR
+
       const monthIndex =
         (time.value.year - 1) * MONTHS_PER_YEAR +
         (time.value.month - 1) +
+        toTarget +
         (delta.years ?? 0) * MONTHS_PER_YEAR +
         (delta.months ?? 0)
       const shifted: GameTime = {

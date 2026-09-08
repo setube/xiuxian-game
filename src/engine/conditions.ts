@@ -6,6 +6,8 @@ import { usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
 import type { Condition, RegionKey } from '@/types/game'
 
+import { mayAsk } from './address'
+import { roleId } from './interpolate'
 import { stageOf } from './stages'
 import { isNearby } from './nearby'
 import { exists, isPresent } from './presence'
@@ -97,6 +99,16 @@ const CHECKS = {
     if (family.alive !== undefined && household.isAlive(family.id) !== family.alive) return false
     if (family.present !== undefined && isPresent(family.id) !== family.present) return false
     if (family.age !== undefined && !within(people.ageOf(family.id), family.age)) return false
+    /*
+     * 身子骨。跟 `age` 是两问：同样五十岁，有硬朗的也有垮了的。
+     * 死了的人问不出来——他的 health 停在殁的那一天，拿它判「他还撑不撑得住」
+     * 是把一个死人当活人量。
+     */
+    if (family.health !== undefined) {
+      const person = people.personOf(family.id)
+      if (person === undefined || !household.isAlive(family.id)) return false
+      if (!within(person.health, family.health)) return false
+    }
     if (family.livelihood !== undefined) {
       // 问的是他自己的营生；没有自己的就是他那一户的，死了的问不出来
       const own = people.livelihoodOf(family.id)
@@ -322,6 +334,27 @@ const CHECKS = {
   },
 
   stage: (stage, { character }) => stageOf(character.age) === stage,
+
+  /**
+   * 这个人凭什么能对你说这句话。
+   *
+   * 判定本身在 `engine/address.ts`——这里只把它接进条件层。
+   * **别把那套逻辑抄一份到这儿**：抄一份的话，正文里的判定
+   * 和别处直接调 `mayAsk` 的判定会各走各的，而两边不一致
+   * 的表现是「同一个人在同一句话上一会儿说得一会儿说不得」。
+   *
+   * 这一格只看 `can`，不看 `because`——理由那一格是给**正文**用的
+   * （「他张了张嘴，没问出口」跟「这话轮不到他说」写出来是两句话），
+   * 而条件层只需要知道这句该不该出现。
+   */
+  mayAsk: (ask) =>
+    /*
+     * `who` 可能是**角色名**（`elder` / `dam` / `child`）。跟 `{hail:}` 那处
+     * 同一个坑，也同一个修法——两处都得转，因为它们是同一层的两半：
+     * 一半管「他怎么叫你」，一半管「他能对你说什么」，写内容的人
+     * 在同一节里两个都会用，只修一处的话那一节自己跟自己矛盾。
+     */
+    mayAsk(roleId(ask.who) ?? ask.who, ask.how, ask.manner).can,
 } satisfies { [K in keyof Condition]-?: Check<K> }
 
 function matches(condition: Condition, ctx: Ctx): boolean {

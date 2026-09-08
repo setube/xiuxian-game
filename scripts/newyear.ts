@@ -16,12 +16,22 @@
  * **后者在报表上跟正常完全一样**：卷演出来了、分支走通了、一句正文也没缺，
  * 只有读到那句「正月里你回了一趟老屋」而屏幕上写着六月的玩家会觉得哪里不对。
  *
- * ## 它同时是 `Condition.month` 那一格的第一个使用者
+ * ## 时令怎么守的，2026-09-09 换过一次
  *
- * 条件层从前只问得出季节（`Condition.season`，14 做的），而**正月和三月
- * 同属「春」**——四档分不出「回老屋过年」和「清明上坟」。
- * `types/game.ts` 那条注释早写着「要问得更细就直接问月份」，
- * 而月份那一格一直没人做。这一卷是逼出它的那个使用者。
+ * 这一卷曾经是 `Condition.month` 那一格的第一个使用者——条件层从前只问得出
+ * 季节，而正月和三月同属「春」，四档分不出「回老屋过年」和「清明上坟」。
+ *
+ * 那一版守住了「不在六月演」，却守出了另一个毛病：`Condition.month` 问的是
+ * **碰巧**在那个月，而成年后一回合推两三年、月份几乎不动，于是「年年可能有」
+ * 成了**按世翻的开关**（实测四十世只有十一世到过腊月正月）。
+ *
+ * 现在时令写在那一卷自己的 `onEnter`：`{ type: 'time', untilMonth: 1 }`——
+ * **到了正月**，不是碰巧在正月。`requires` 里一个字也不提时令。
+ *
+ * 所以这一支现在守两件事：那一卷真的把日历推过去了（第一条，按比例判——
+ * 观测通道有噪声，见循环里那一段），以及 `untilMonth` 的算术本身对
+ * （尺子自检）。**`Condition.month` 从此零使用者**，底下那几条直接问条件层
+ * 的自检因此成了它唯一的守卫，别删。
  *
  * 跑法：bun scripts/newyear.ts
  */
@@ -82,9 +92,7 @@ import { useWorldStore } from '../src/stores/world'
  *
  * ## 所以拆成两个数，各自写明为谁服务
  *
- * 第一条要的是**检出力**：一卷里某个分支丢了 `month` 条件，违例率大概一两成，
- * 这种局部回归才是它真正该抓的（整条被删是率接近 100%，几个样本就够）。
- * 要以九成把握至少抓到一次：
+ * 第一条要的是**检出力**。要以九成把握至少抓到一次（`n ≥ ln(0.1)/ln(1-p)`）：
  *
  *     违例率    需要样本
  *       30%        7
@@ -96,6 +104,31 @@ import { useWorldStore } from '../src/stores/world'
  * 而那个量级已经接近「偶发」而非「回归」——留给下一个真撞上的人抬。
  *
  * 反过来读这张表也有用：**报表上采到 14 次时，它只抓得住 15% 以上的违例率**。
+ *
+ * ## ⚠️ 这个 22 要抓的坏法，2026-09-09 换了一种
+ *
+ * 定它的时候写的是「**一卷里某个分支丢了 `month` 条件**，违例率大概一两成」。
+ * 那句话现在描述的是一个**不存在的坏法**——这一卷已经不用 `Condition.month` 了
+ * （用户拍板走「内容自己把日历推过去」那条路），条件层一个字也不提时令，
+ * 时令写在那一卷自己的 `onEnter`：`{ type: 'time', untilMonth: 1 }`。
+ *
+ * 新机制下第一条要抓的是这三种：
+ *
+ *     那一行被删了　　　　　　  卷又变回随时演，违例率接近 100%——几个样本就够
+ *     `untilMonth` 算错了月　　 推到了别的月份，违例率也接近 100%
+ *     两条 time 的顺序写反了　  只在月底那几天分道，**违例率很低，一两成上下**
+ *
+ * **第三种是 22 现在真正在为之付钱的那一个**，而它恰好跟旧那种同量级，
+ * 所以这个数不必改。但**理由必须换**——a8 2026-09-09 指出：那段注释写得详细
+ * （有表、有取舍、有「留给下一个真撞上的人抬」），读起来像经过论证的，
+ * 而它论证的是一个已经拿掉的机制。**数还在、理由死了，比数本身错更难查。**
+ *
+ * ⚠️ **这张表把每一次演出当独立一掷**。上面第三种坏法正是这个形状
+ * （每次演出各自撞一次月底），所以成立。但**世级**的回归不是——
+ * 比如某面旗一旦立起来、这一世后面每次演出都跳过时令，
+ * 那么违例会**按世聚簇**，有效独立样本是「贡献了演出的世数」而不是演出次数，
+ * 25 次演出可能只来自十七八个世，抓得住的违例率从 8.8% 退到 12% 上下。
+ * 拿这张表去套一个聚簇的现象会高估检出力。（xiuxian-game-17 指出的边界。）
  */
 const WANTED_NONZERO = 12
 const WANTED_FOR_SEASON = 22
@@ -108,6 +141,27 @@ const RATE_FLOOR = 0.005
 /** 演出来的那些卷，各在几月 */
 const when: { scene: string; month: number; after: number }[] = []
 let worlds = 0
+/**
+ * 库里所有「会把日历推到某月」的卷，各自入口那句正文。
+ *
+ * 判别式直接从内容取（入口 `onEnter` 里有没有 `untilMonth`），**不写死一张表**：
+ * 新加一个节令不必回来改这儿。写死的话第六个节令进来那天这里会静默漏掉它，
+ * 而漏掉的表现是噪声上涨，看着像内容坏了。
+ */
+const PUSHER_LINES: readonly string[] = Object.values(lifeScenes)
+  .filter((scene) => {
+    const open = scene.nodes[scene.entry]
+    return (open?.onEnter ?? []).some((one) => one.type === 'time' && one.untilMonth !== undefined)
+  })
+  .map((scene) => {
+    const first = (scene.nodes[scene.entry]?.blocks ?? []).find((one) => 'text' in one)
+    return first && 'text' in first ? first.text : ''
+  })
+  .filter((one) => one.length > 0)
+/** 年节那一卷入口那句。判据找的就是它 */
+const NEW_YEAR = '正月里你回了一趟老屋'
+/** 同一步里还演了别的节令、因而排除的回数。必须印出来——扔掉的样本跟没有过的长得一样 */
+let ambiguous = 0
 
 /** 跑 n 世，往 `when` / `worlds` 里累加。探路和正式跑走的是同一条路 */
 function run(n: number): void {
@@ -158,20 +212,25 @@ function run(n: number): void {
        * `sceneId` 在两次 `choose` 之间从来没停在它上面。绕了四轮才明白，
        * `kindred-lives.ts` 那句注释早写着：「无选项的卷进去就出来」。
        *
-       * ## 月份要取「这一步的前后两头」，不是其中一头
+       * ## 同一步里还演了别的节令的话，步末的月份是**它**留下的
        *
-       * 那一卷是在 `choose` **之中**被年表掷中的：先验 `requires`（此刻是腊月
-       * 或正月），再跑 `onEnter`（`{ type: 'time', days: 2 }` 推两天）。
-       * 于是两头都不是「它演出的那一刻」：
+       * 中秋进库那天这条噪声从 1.4% 涨到 10.6%（7/66 报「正月里演在八月」，
+       * 而八月正是中秋推过去的）——**往后每加一个节令它都会涨**。
        *
-       *     选之前　　上一步留下的日子，那一卷还没发生　　400 世里 12 次落在时令外
-       *     选之后　　推完两天的日子，正月廿九会变成二月　1115 世里 6 次落在二月
+       * 推日历的卷从内容自动推导（入口 `onEnter` 里有 `untilMonth` 的），
+       * 不写死一张表：新加节令不必回来改这儿，否则漏掉的表现是噪声上涨，
+       * 看着像内容坏了。跟 `scripts/festival.ts` 用的是同一把尺子。
        *
-       * 两头取并集才对——**只要有一头在腊月正月，那一卷就是在年下演的**。
-       * 一月三十日，推两天正好能跨月，那不是内容的错，是「一步之内时序会走」。
+       * （从前这儿还有一段讲「月份要取这一步的前后两头」——那是条件层守时令
+       * 时代的事：年表在一步**之中**掷中那一卷，而观测在两端。那一卷改成
+       * 自己推日历之后，演出那一刻的月份是确定的，那段话跟着 `coversFeast`
+       * 一起撤了。**注释跟着机制走，留在原地的会被下一个人当成还在生效的约束。**）
        */
-      if (drain().some((line) => line.includes('正月里你回了一趟老屋'))) {
-        when.push({ scene: 'kindred:newyear', month: monthBefore, after: world.time.month })
+      const fresh = drain()
+      if (fresh.some((line) => line.includes(NEW_YEAR))) {
+        const pushers = PUSHER_LINES.filter((line) => fresh.some((one) => one.includes(line)))
+        if (pushers.length > 1) ambiguous += 1
+        else when.push({ scene: 'kindred:newyear', month: monthBefore, after: world.time.month })
       }
     }
   }
@@ -188,48 +247,52 @@ console.log(`\n=== 「正月里」演在几月（${RUNS} 世）===\n`)
 let bad = 0
 
 /*
- * 一、演出来的那些，全都得在年下。
+ * 一、演出来的那些，绝大多数落在正月。
  *
- * 判据问的是**演出来的那一刻是几月**，不是「requires 里写没写 month」——
- * 后者是看代码，前者是看它跑出来的样子。写了条件而条件没生效
- * （比如 `month` 那一格的判据函数漏进 `CHECKS`），只有前者查得出来。
+ * 判据问的是**演出来的那一刻是几月**，不是「代码里写没写时令」——
+ * 后者是看代码，前者是看它跑出来的样子。写了那一行而它没生效
+ * （`untilMonth` 的判据漏进 `advanceTime`），只有前者查得出来。
  *
- * ## 「那一刻」要按一步的**区间**算，不是按两端的点
+ * ## 2026-09-09：机制换了，这一条跟着换，`coversFeast` 退休
  *
- * 成年之后 `routine:adult` 一回合推两年、`routine:prime` 推三年
- * （22 量的：22 岁起一世见过的不同月份中位只有 2–5 个）。年表在这一步的
- * **内部**掷中那一卷、验 `requires`、跑 `onEnter`——而我在步的两端观测，
- * 那一刻在两端之间，两端都看不到。实测落在时令外的两次正是这个形状：
+ * 从前那一卷靠 `Condition.month` 守时令，年表在一步的**内部**掷中它、
+ * 验 `requires`——而观测在步的两端，那一刻在两端之间。所以从前判的是
+ * 「这一步有没有**覆盖**腊月正月」（`coversFeast`，跨年的步算覆盖）。
  *
- *     47 岁　选前 11 月 → 选后 2 月　（跨三个月，中间必经腊月正月）
- *     35 岁　选前 10 月 → 选后 9 月　（跨将近一年）
+ * 现在那一卷**自己把日历推到正月**（`onEnter` 的 `untilMonth: 1`），
+ * 演出那一刻的月份不再靠碰巧，而是确定的。`coversFeast` 因此从
+ * 「按区间判」变成了一条**几乎恒真**的尺子：从任何月份往前走到正月附近，
+ * 路上都经过腊月正月。**它守的那个不确定性已经不存在了。**
  *
- * **这不是内容演错了时候，是判据的观测粒度粗于系统的推进粒度。**
- * 一步跨过了年下，条件就是在年下成立的。所以判「这一步有没有覆盖腊月正月」，
- * 而不是「两端是不是腊月正月」——跨年的步（11 月 → 2 月）算覆盖。
+ * ## 换成按比例判「选完之后是不是正月」
  *
- * 剩下真正该红的形状是：**一步之内没跨过年下，却演了年节**。
+ * 跟 `scripts/festival.ts` 同一把尺子，理由也同一条：**测量通道有噪声**。
+ * 步末读到的月份是那一步里最后一个推日历的卷留下的，而年节不一定是最后一个
+ * （库里三百多处 `type: 'time'`，枚举「还有谁会推」追不完）。
+ *
+ *     untilMonth 好着　　步末绝大多数是正月（`days: 2` 溢进二月的算对）
+ *     untilMonth 坏了　　随机落月，正二月合计 1/6 上下
+ *
+ * 门槛取九成，不贴着实测标——贴着标的阈值会把噪声的正常起伏判成红。
  */
-const inFeast = (m: number): boolean => m === 12 || m === 1
-/** 这一步从 `from` 月走到 `to` 月，路上经过腊月或正月吗。跨年按环形算 */
-function coversFeast(from: number, to: number): boolean {
-  if (inFeast(from) || inFeast(to)) return true
-  // 一步跨了一年以上，十二个月全经过了
-  if (to === from) return true
-  for (let m = from; m !== to; m = (m % 12) + 1) {
-    if (inFeast(m)) return true
-  }
-  return false
-}
-const offSeason = when.filter((one) => !coversFeast(one.month, one.after))
-if (offSeason.length > 0) {
+const IN_FEAST_FLOOR = 0.9
+const inFeast = (m: number): boolean => m === 1 || m === 2
+const landed = when.filter((one) => inFeast(one.after))
+const offSeason = when.filter((one) => !inFeast(one.after))
+const feastRate = when.length === 0 ? 0 : landed.length / when.length
+if (when.length > 0 && feastRate < IN_FEAST_FLOOR) {
   const byMonth = new Map<number, number>()
-  for (const one of offSeason) byMonth.set(one.month, (byMonth.get(one.month) ?? 0) + 1)
-  console.log(`  ✗ ${offSeason.length} 次「正月里」演在了别的月份：`)
+  for (const one of offSeason) byMonth.set(one.after, (byMonth.get(one.after) ?? 0) + 1)
+  console.log(
+    `  ✗ 只有 ${landed.length} / ${when.length}（${(feastRate * 100).toFixed(1)}%）落在正二月，不足九成：`,
+  )
   for (const [m, n] of [...byMonth.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6)) {
     console.log(`      ${String(m).padStart(2)} 月　${n} 次`)
   }
-  console.log(`    那一卷的正文第一句写着「正月里你回了一趟老屋」，只该在腊月或正月演。`)
+  console.log(
+    `    那一卷的 onEnter 里有 { type: 'time', untilMonth: 1 }，它该把日历推到正月。` +
+      `\n    正文第一句写着「正月里你回了一趟老屋」。`,
+  )
   bad += 1
 }
 
@@ -254,7 +317,10 @@ if (offSeason.length > 0) {
  *
  * 现在 `RUNS` 按走到率倒推（见上），采不到就是真的有问题，恢复成硬判据。
  */
-console.log(`  覆盖：${worlds} 世 / 「正月里」演了 ${when.length} 次`)
+console.log(
+  `  覆盖：${worlds} 世 / 「正月里」月份可判的 ${when.length} 次` +
+    `（另有 ${ambiguous} 次同步演了别的节令，排除）、落在正二月的 ${(feastRate * 100).toFixed(1)}%`,
+)
 if (when.length === 0) {
   console.log(
     `  ✗ ${RUNS} 世里一次也没演到「正月里」，第一条根本没被验过。` +
@@ -291,49 +357,88 @@ if (when.length === 0) {
   if (!spanning) failed.push('腊月里问「腊月或正月」答了假——`in` 那一支不通')
 
   /*
-   * 那一卷自己那条时令条件，摆到六月必须不成立。
+   * 那一卷自己那条时令，摆到跟前必须真的在把日历往前推。
    *
    * **真跑采不到的时候，守着这件事的就只剩这一条。** 上面四条验的是
-   * `month` 这一格本身，这一条验的是**那一卷真的收了这一格**——
-   * 有人把 `requires` 里那一行删掉，上面四条照样全绿。
+   * `Condition.month` 那一格本身（它现在零使用者了，见下），
+   * 这一条验的是**那一卷真的在推日历**——有人把 `onEnter` 里那一行删掉，
+   * 上面四条照样全绿。
    *
-   * 条件直接从内容里取，不在这儿抄一份：抄一份就成了两处各自漂，
-   * 而判据抄错了的表现是「误报」，比漏报更能骗人。
+   * ## 2026-09-09 改了守的东西，没改守的语义
+   *
+   * 从前这里问的是「`requires` 里还有没有 `month` 条件」。那一卷现在不用
+   * 条件层守时令了（`Condition.month` 问的是「碰巧在那个月」，而成年后
+   * 一回合推两三年、月份几乎不动，拿它守时令等于把「年年可能有」
+   * 变成按世翻的开关）。时令改由那一卷自己推。
+   *
+   * **所以这一条跟着挪，但守的仍是同一件事：时令没被人悄悄拿掉。**
+   * 条件直接从内容里取，不在这儿抄一份——抄一份就成了两处各自漂，
+   * 而判据抄错了的表现是误报，比漏报更能骗人。
    */
-  const newyear = lifeEvents.find((one) => one.id === 'kindred-newyear')
-  if (newyear === undefined) {
-    failed.push('库里找不到 kindred-newyear 这一卷了')
+  const scene = lifeScenes['kindred:newyear']
+  if (scene === undefined) {
+    failed.push('库里找不到 kindred:newyear 这一卷了')
   } else {
-    const timing = newyear.requires?.filter((one) => 'month' in one) ?? []
-    if (timing.length === 0) {
-      failed.push('kindred-newyear 的 requires 里没有时令条件——它又变回随时可演了')
-    } else {
-      world.time.month = 6
-      if (meetsAll(timing)) failed.push('六月里那一卷的时令条件照样成立')
-      world.time.month = 1
-      if (!meetsAll(timing)) failed.push('正月里那一卷的时令条件反而不成立')
+    const open = scene.nodes[scene.entry]
+    const pushes = (open?.onEnter ?? []).filter(
+      (one) => one.type === 'time' && one.untilMonth === 1,
+    )
+    if (pushes.length === 0) {
+      failed.push('kindred:newyear 的 onEnter 里没有 untilMonth: 1——它又变回碰巧演了')
+    }
+    /*
+     * 顺序也要守：`untilMonth` 是目标、`days` 是增量，两者不满足交换律
+     * （`engine/effects.ts` 里那段改过的注释）。写反了只在月底那几天分道，
+     * **违例率低到上面那个 22 才抓得住**——这一条是它的兜底。
+     */
+    const times = (open?.onEnter ?? []).filter((one) => one.type === 'time')
+    const targetAt = times.findIndex((one) => one.type === 'time' && one.untilMonth !== undefined)
+    const deltaAt = times.findIndex((one) => one.type === 'time' && one.days !== undefined)
+    if (targetAt >= 0 && deltaAt >= 0 && targetAt > deltaAt) {
+      failed.push('untilMonth 写在了 days 后面——先推天数再推到正月，月底那几天会差一年')
     }
   }
 
   /*
-   * `coversFeast` 自己得分得开对错——它是第一条判据的尺子，
-   * 而**一条「跨一年就恒真」的尺子等于没有尺子**。
-   *
-   * 成年段一步能推两三年，那种步确实覆盖了年下，判它真是对的；
-   * 可要是连「三月走到五月」也判真，第一条就再也红不了了。
+   * `Condition.month` 那一格眼下**零使用者**（年节改用 untilMonth 之后）。
+   * 上面那四条问条件层的自检因此从「顺带验一下」升级成了**它唯一的守卫**：
+   * 没有内容在用它，坏了也没有任何报表会变。别删。
    */
-  const covers: [number, number, boolean, string][] = [
-    [12, 12, true, '腊月原地'],
-    [1, 1, true, '正月原地'],
-    [11, 2, true, '十一月跨到二月，路上经过腊月正月'],
-    [1, 2, true, '正月演完推进二月'],
-    [3, 5, false, '三月走到五月，没到年下'],
-    [6, 9, false, '六月走到九月，没到年下'],
-    [2, 11, false, '二月走到十一月，正好绕开年下'],
+
+  /*
+   * `untilMonth` 那一格的算术自己得对——它是第一条判据的尺子。
+   *
+   * 从前这儿站着 `coversFeast` 的七条用例（判「这一步有没有覆盖腊月正月」）。
+   * 那把尺子 2026-09-09 退休了：那一卷改成自己把日历推到正月之后，
+   * 「一步之内跨没跨过年下」这个不确定性不存在了，`coversFeast` 变成了
+   * 一条几乎恒真的尺子。**用例跟着被测对象一起走，不留在原地**——
+   * 一组没有被测对象的用例照样全绿，而且看着像还在守什么。
+   *
+   * 换成直接量 `advanceTime`：**四种形状，第三行是最容易写错的地方**——
+   * 腊月推到正月，`目标 - 此刻` 是 -11，不取模的话日历会往回拨十一个月。
+   */
+  const jump = (from: number, untilMonth: number): { month: number; years: number } => {
+    world.time.year = 10
+    world.time.month = from
+    world.time.day = 5
+    const years = world.advanceTime({ untilMonth })
+    return { month: world.time.month, years }
+  }
+  const jumps: { from: number; to: number; month: number; years: number; why: string }[] = [
+    { from: 1, to: 1, month: 1, years: 0, why: '当月就是 0——已经到了不必再等一年' },
+    { from: 6, to: 1, month: 1, years: 1, why: '六月推到正月，跨年' },
+    { from: 12, to: 1, month: 1, years: 1, why: '腊月推到正月（这一格最容易写反）' },
+    { from: 2, to: 1, month: 1, years: 1, why: '二月推到正月，要等到明年' },
   ]
-  for (const [from, to, want, why] of covers) {
-    if (coversFeast(from, to) !== want) {
-      failed.push(`${why}：coversFeast(${from}, ${to}) 该是 ${want}`)
+  for (const one of jumps) {
+    const got = jump(one.from, one.to)
+    if (got.month !== one.month) {
+      failed.push(
+        `${one.why}：${one.from} 月推到 ${one.to} 月该落在 ${one.month} 月，落在了 ${got.month} 月`,
+      )
+    }
+    if (got.years !== one.years) {
+      failed.push(`${one.why}：该跨 ${one.years} 年，跨了 ${got.years} 年`)
     }
   }
 
@@ -344,8 +449,9 @@ if (when.length === 0) {
   } else {
     console.log(
       `\n  ✓ 尺子自检：正月里问正月为真、问腊月为假；腊月里问腊月为真、` +
-        `问「腊月或正月」为真；\n` +
-        `    六月里那一卷的时令条件不成立、正月里成立——它真的收了这一格。`,
+        `问「腊月或正月」为真（Condition.month 零使用者，这几条是它唯一的守卫）；\n` +
+        `    untilMonth 的算术四种形状都对，而那一卷的 onEnter 里真的有 untilMonth: 1、` +
+        `\n    且排在 days 前面。`,
     )
   }
 }

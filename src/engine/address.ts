@@ -1,7 +1,8 @@
 import { rankCallFor, registerFor, titleFor, type Register } from '@/content/address'
 import { useCharacterStore } from '@/stores/character'
 import { useHouseholdStore } from '@/stores/household'
-import type { Bond, Manner } from '@/types/game'
+import { usePeopleStore } from '@/stores/people'
+import type { Bond, Intimacy, Manner } from '@/types/game'
 
 /**
  * 他学的是哪一套话。
@@ -100,6 +101,131 @@ export function titleNow(): string {
   return titleFor(useCharacterStore().identity, useHouseholdStore().gender)
 }
 
+/**
+ * **这个人**此刻会怎么称呼你。
+ *
+ * ## `titleNow` 少问了一件事：谁在叫
+ *
+ * 16.md 那一节点的正是这个：
+ *
+ * > 不能写死：`identity = 官员` → 所有人统一叫「大人」。
+ * > 同一时刻可以存在多个称呼——邻居「张老爷」，旧友「三哥」，
+ * > 下属「大人」，孩子「父亲」。
+ *
+ * `titleNow()` 只读 `character.identity`，**跟谁在说话无关**，
+ * 于是中了秀才那天全村人一起改口，包括你娘。
+ *
+ * ## 三层，近的盖远的
+ *
+ *     一　家里人　　不改口。娘、哥、妻子、孩子叫的还是他们一直叫的那个
+ *     二　旧交　　　**不称呼**。开口就说事——见下
+ *     三　其余人　　按你此刻的身份走 `HONORIFICS`
+ *
+ * 顺序不能倒：倒过来的话身份永远赢，而那正是这一层要推翻的东西。
+ *
+ * ## 第二层为什么返回 `undefined`，而不是一个词
+ *
+ * 头一版我让它返回「你」，想表达「旧友不改口」。可那是个假答案：
+ * **旧友叫的是你的名字或小名，而这个世界里玩家没有名字。**
+ * 硬凑一个词出来，等于替这个人编了一句他说不出的话。
+ *
+ * 而 `undefined` 恰恰是真的：**中文里熟人开口本来就不带称呼。**
+ *
+ *     生人　「相公留步。」
+ *     旧交　「你这是打哪儿来？」
+ *
+ * 后面那句一个称呼也没有，而它比任何称呼都更说明两人的关系。
+ * 所以这一层交付的不是一个词，是「**这个人不必称呼你**」这件事——
+ * 正文照着它决定要不要在句首放那两个字。
+ *
+ * ## 这一层落地的是文档里那条硬规则
+ *
+ * > 身份变化不得删除人物既有经历与关系历史。
+ *
+ * 而它在代码里的样子恰恰是**前两层没有读 `identity`**：
+ * 你考中也好、革了功名也好、削爵也好，第一层第二层一个字不动。
+ * 「旧关系不会因为你发迹而消失」不是一句设定，是这两层里没有那个变量。
+ *
+ * ## 十六年这个数
+ *
+ * 取的是「从小一起长大」——一个认了你十六年的人，见你的第一眼
+ * 是你还光着屁股的时候。半路认识的（掌柜、同僚、路上遇见的）
+ * 到不了这个数，他们叫的就是你现在这个身份。
+ *
+ * 用 `boundFor` 而不是好感：**一个跟你处得不好的发小照样不叫你相公**，
+ * 而且那种时候那份不客气更扎人。这一层跟好感无关。
+ *
+ * @param speakerId 说话的那个人。不在人口册上的（陌生人）按第三层
+ * @param manner 场合。礼上一律走身份那一层——**当着众人，你哥也得叫你相公**
+ * @returns 他称呼你的那个词；`undefined` 表示**他开口不必称呼你**
+ */
+export function callMeBy(speakerId: string, manner: Manner = '家常'): string | undefined {
+  const people = usePeopleStore()
+  const character = useCharacterStore()
+  const household = useHouseholdStore()
+  const byTitle = titleFor(character.identity, household.gender)
+
+  /*
+   * 场合先问。
+   *
+   * 这一条是三层之上的：**祠堂里、公堂上、有外人在的席面上，
+   * 家里人也得用那个称呼**。明代礼法在这一点上很硬，
+   * 而它恰恰让第一层更有分量——正因为外头得那么叫，
+   * 关起门来那声旧称才是私底下的东西。
+   */
+  if (manner === '礼上') return byTitle
+
+  const bonds = people.bondsWith(speakerId)
+
+  // —— 一、家里人不改口 ——
+  const call = HOUSE_CALLS.find(([bond]) => bonds.includes(bond))
+  if (call) return call[1](household.gender)
+
+  // —— 二、认识够久的，开口不称呼 ——
+  if (bonds.some((bond) => people.boundFor(speakerId, bond) >= OLD_ENOUGH)) return undefined
+
+  // —— 三、其余人按你此刻的身份 ——
+  return byTitle
+}
+
+/**
+ * 认识多少年算「从小」。
+ *
+ * 十六年。到这个数的人见过你还不成人的样子，而那件事**改不掉**——
+ * 这正是它跟身份的分别：身份是一道旨意、一张榜就能换的，
+ * 「他见过你小时候」谁也拿不走。
+ */
+const OLD_ENOUGH = 16
+
+/**
+ * 家里人叫你什么。
+ *
+ * 排在前面的先命中——一个人可能同时是好几样（姐姐也是抚养人），
+ * 那就按最贴身的那一层叫。
+ *
+ * ## 兄姐爹娘不在这张表里，那不是漏写
+ *
+ * **他们叫的是你的名字，而这个世界里玩家没有名字。**
+ * 硬填一个词进去就是替他们编话。他们落到第二层（`undefined`）——
+ * 而那正是对的：**你哥开口不会先叫你一声。**
+ *
+ * 表里这几行是反过来的：儿女叫「爹」、妻子叫「当家的」、
+ * 弟妹叫「哥」、徒弟叫「师傅」——这些**不是名字的替代品，
+ * 就是那个称呼本身**，一辈子不换。
+ *
+ * ⚠️ 这张表**一个字也不读 `identity`**，那是它存在的全部理由。
+ * 哪天有人想在这里加一行「他中了秀才之后妻子改叫相公」，
+ * 先回去读 16.md 那句：身份变化不得删除既有关系。
+ */
+const HOUSE_CALLS: readonly [Bond, (gender: '男' | '女') => string][] = [
+  ['子', (g) => (g === '男' ? '爹' : '娘')],
+  ['女', (g) => (g === '男' ? '爹' : '娘')],
+  ['配偶', (g) => (g === '男' ? '当家的' : '娘子')],
+  ['弟', (g) => (g === '男' ? '哥' : '姐')],
+  ['妹', (g) => (g === '男' ? '哥' : '姐')],
+  ['徒', () => '师傅'],
+]
+
 // ============================================================
 // 社会称谓：人怎么叫人
 // ============================================================
@@ -181,3 +307,123 @@ export function neighbourCall(
   // 对方还是个孩子：谁叫都叫「王家的」——名字要玩过才知道，那是另一格
   return `${where}${surname}家的`
 }
+
+// ============================================================
+// 谁有资格对你说什么
+// ============================================================
+
+/**
+ * 这个人凭什么能对你说这句话。
+ *
+ * ## 16.md 里唯一一句加粗的话
+ *
+ * > **对话系统真正需要控制的不是「能不能出现这句话」，
+ * > 而是「这个人凭什么能对你说这句话」。**
+ *
+ * 那一节举的例子是同一句话落在不同人嘴里：
+ *
+ *     普通百姓　「你家这几年过得怎么样？」　　　　　　寻常寒暄
+ *     关系一般的官员　　　　　　　　　　　　　　　　　不太适合随意问
+ *     下属　　　　　　　　　　　　　　　　　　　　　　更不会这么直接问
+ *     旧日好友　　　　　　　　　　　　　　　　　　　　可以直接问
+ *     父母　　　甚至可以训斥
+ *     妻子　　　可以说更私人的话
+ *     敌人　　　可能故意当众羞辱你
+ *
+ * ## 这一层不是权限表，是「凭什么」
+ *
+ * 关键在于**它答的是「凭哪一条」，不只是「行不行」**。
+ * 一句话被挡下来的时候，挡它的那条理由本身就是内容：
+ *
+ *     「这话轮不到他说」　　　　跟你不熟的人问你家私事
+ *     「当着人他不会这么说」　　旧友在席面上
+ *
+ * 所以返回的不是布尔值，是 `Standing`——**允许的时候也说得出凭什么**。
+ * 正文可以拿这个理由去写「他张了张嘴，没问出口」那种句子，
+ * 而一个布尔值只能让那句话消失。
+ *
+ * ## 为什么不做成 `requires`
+ *
+ * `Condition` 问的是**世界的状态**（他还活着吗、你多大了、粮价多少）。
+ * 这一层问的是**两个人之间的位置**，而那不是任何一格状态。
+ * 硬塞进 `Condition` 就得为每一种话各加一格，那正是 16.md
+ * 批评的「不要做称谓表」的另一种形状。
+ */
+export type Standing =
+  /** 说得，而且本来就该由他说 */
+  | { can: true; because: '家里人' | '旧交' | '师徒' }
+  /** 说得，可这话在他嘴里是有分量的 */
+  | { can: true; because: '生人之间的客套' }
+  /** 说不得，各有各的缘故 */
+  | { can: false; because: '轮不到他' | '当着人不便' }
+
+/**
+ * 他能不能对你说这一档的话。
+ *
+ * ## 三条线，从近到远
+ *
+ *     家里人　　　三档全说得。爹娘可以训斥你，那是他们的位置
+ *     旧交　　　　到家常。**发小可以问你过得怎么样，但劝你别做那件事
+ *                 就越界了**——那是爹娘和妻子的位置
+ *     其余人　　　只到寒暄
+ *
+ * ## 场合是横着切一刀
+ *
+ * `礼上` 把每个人往外推一档：**当着众人，你哥也不会问你手头紧不紧。**
+ * 这跟 `callMeBy` 里那一条是同一件事的两面——正因为外头要守着，
+ * 关起门来那句才是私底下的。
+ *
+ * 而它推的是**话**，不是人：家里人在礼上仍旧是家里人，
+ * 只是那句体己话得留到散了席再说。
+ *
+ * @param speakerId 说话的那个人
+ * @param how 这话有多贴身
+ * @param manner 场合
+ */
+export function mayAsk(speakerId: string, how: Intimacy, manner: Manner = '家常'): Standing {
+  const people = usePeopleStore()
+  const bonds = people.bondsWith(speakerId)
+  const ceremonial = manner === '礼上'
+
+  const kin = bonds.some((bond) => HOUSEHOLD.includes(bond))
+  const master = bonds.includes('师') || bonds.includes('徒')
+  const old = bonds.some((bond) => people.boundFor(speakerId, bond) >= OLD_ENOUGH)
+
+  // 能走到哪一档。礼上一律往回收一档
+  const reach: Intimacy = kin ? '体己' : master || old ? '家常' : '寒暄'
+  const allowed: Intimacy = ceremonial ? STEP_BACK[reach] : reach
+
+  if (RANK[how] <= RANK[allowed]) {
+    if (kin) return { can: true, because: '家里人' }
+    if (master) return { can: true, because: '师徒' }
+    if (old) return { can: true, because: '旧交' }
+    return { can: true, because: '生人之间的客套' }
+  }
+  /*
+   * 挡下来的两种缘故，分得开才有用。
+   *
+   * 「当着人不便」说的是**这个人本来说得**，是场合挡住了——
+   * 那种时候正文可以写他把话咽回去。「轮不到他」是位置不够，
+   * 换个场合也一样。两种写出来的句子完全不同。
+   */
+  return { can: false, because: ceremonial && RANK[how] <= RANK[reach] ? '当着人不便' : '轮不到他' }
+}
+
+/** 一家人。**这张表不读 `identity`**，理由同 `HOUSE_CALLS` */
+const HOUSEHOLD: readonly Bond[] = [
+  '生父',
+  '生母',
+  '抚养',
+  '配偶',
+  '兄',
+  '姐',
+  '弟',
+  '妹',
+  '子',
+  '女',
+]
+
+const RANK: Readonly<Record<Intimacy, number>> = { 寒暄: 0, 家常: 1, 体己: 2 }
+
+/** 礼上往回收一档。收到头就是只剩寒暄 */
+const STEP_BACK: Readonly<Record<Intimacy, Intimacy>> = { 体己: '家常', 家常: '寒暄', 寒暄: '寒暄' }

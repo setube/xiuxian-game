@@ -194,6 +194,31 @@ const PATHS: readonly Path[] = [
     steps: [{ scene: 'reunion:apprentice', node: 'open', choice: 'go' }],
   },
   {
+    /**
+     * 出了师的人回去给师傅打下手。
+     *
+     * 这一条跟上面那条「自己去镇上做工」看着都是 `hired`，
+     * 分的是**方向**：那一条是往外走（他自己出去挣饭吃），
+     * 这一条是往回退（他在外头没做成，回到当年学手艺的地方）。
+     *
+     * 两条都落 `hired` 恰恰是对的——`content/living.ts` 那一格
+     * 的注释里早写着「不是穷人的固定职业，是当前的生计状态」。
+     * 一个主动出去挣钱的少年和一个破了产退回来的中年人，
+     * 每天早上面对的是同一件事：活是别人的，力气是自己的。
+     *
+     * 走两步：`arrive` 那一节是纯分岔（问师傅的生死、身子骨、岁数），
+     * 换日子的是它底下的 `taken`。只走 `open` 的话停在出门那一刻，
+     * 日子一格没动。
+     */
+    id: 'refuge',
+    label: '出了师的人回师傅铺子里帮工',
+    origin: 'farm',
+    steps: [
+      { scene: 'refuge:master', node: 'open', choice: 'go' },
+      { scene: 'refuge:master', node: 'taken' },
+    ],
+  },
+  {
     id: 'farm',
     label: '对照：农户的孩子，一辈子没换过日子',
     origin: 'farm',

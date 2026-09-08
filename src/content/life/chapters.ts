@@ -19,12 +19,15 @@ import { meetingEvents, meetingScenes } from './meeting'
 import { awayEvents, awayScenes } from './away'
 import { nephewEvents, nephewScenes } from './nephew'
 import { reunionEvents, reunionScenes } from './reunion'
+import { refugeEvents, refugeScenes } from './refuge'
+import { regardEvents, regardScenes } from './regard'
 import { rivermanEvents, rivermanScenes } from './riverman'
 import { afterwardsEvents, afterwardsScenes } from './afterwards'
 import { apprenticeEvents, apprenticeScenes } from './apprentice'
 import { attemptEvents, attemptScenes } from './attempt'
 import { bearingEvents, bearingScenes } from './bearing'
 import { candourEvents, candourScenes } from './candour'
+import { festivalEvents, festivalScenes } from './festival'
 import { matchEvents, matchScenes } from './match'
 import { mourningEvents, mourningScenes } from './mourning'
 import { routineScenes } from './routine'
@@ -285,6 +288,34 @@ export const CHAPTERS: readonly Chapter[] = [
   },
 
   /**
+   * 节令：到了那个日子，不是碰巧在那个日子。
+   *
+   * **这一章是 `{ type: 'time', untilMonth }` 的第一个使用者。**
+   * 从前节令靠 `Condition.month` 守时令，那问的是「碰巧在那个月」——
+   * 而成年后一回合推两三年、月份几乎不动，于是「年年可能有」成了
+   * **按世翻的开关**（实测四十世只有十一世到过腊月正月），
+   * 一卷本该年年有的内容四分之三的人读不到。现在由内容自己把日历推过去。
+   *
+   * 眼下只有中秋一卷，它说的是**今晚不在跟前的那些人**——跟年节
+   * （`kindred:newyear`，回老屋走一趟）分工清楚。上元、端午、中元、
+   * 除夕、祭灶进这一章时，各得先说清自己说的是什么：
+   * 六卷都写成「过节了，一家人聚在一起」等于同一卷演了六遍。
+   *
+   * `marks` 是空的：这一卷一格好感也不改、不落旗、不进编年——
+   * **它只让玩家看见一个空位**。空着不是漏了，是这一章确实什么也不改。
+   */
+  {
+    id: 'festival',
+    scenes: festivalScenes,
+    events: festivalEvents,
+    called: ['年表'],
+    to: [],
+    age: [22, 80],
+    purpose: ['节令说的是「到了那个日子」，所以时令由内容自己推，不靠碰巧'],
+    marks: [],
+  },
+
+  /**
    * 添丁：等着的那几年。
    *
    * 跟婚事那一册是同一个立场的第二次落地——**这个时代里最要紧的那几件事，
@@ -537,6 +568,61 @@ export const CHAPTERS: readonly Chapter[] = [
       '回来了还是老屋的人：伤了手、老了做不动了，自己的营生清掉落回老屋的；儿子回不回来看父子那条边',
     ],
     marks: ['owe', 'repay', 'person', 'flag', 'chronicle'],
+  },
+
+  /**
+   * 去投奔：走投无路的时候想起一个人，走两天路去找他。
+   *
+   * 这一章要证的是 14.md 那一句——**「NPC 好感度 100 所以必定帮助你」是假的**。
+   * 三条分岔一次也没读过好感：读的是他还在不在、他多大年纪了。
+   * 同一个师傅、同一份情分，你可能扑空、可能撞上他自己的难处、
+   * 也可能一句话不问就被留下。
+   *
+   * 三档背后是同一件事在走：**时间**。他比你大二十岁，
+   * 你二十几岁去他还硬朗，四十几岁去他做不动了，五十几岁去多半太晚。
+   */
+  {
+    id: 'refuge',
+    scenes: refugeScenes,
+    events: refugeEvents,
+    called: ['年表'],
+    to: [],
+    age: [30, 62],
+    purpose: [
+      '同一个人对你的答复由他的处境决定，不由好感决定——三条分岔读的是他的生死和年纪，不读好感',
+      '扑空不是失败分支：他比你大二十岁，你想起他的时候可能已经太晚',
+      '留下你不等于好结局：出了师的人回来打下手，日子真的换了（living: hired），可那是降格',
+    ],
+    marks: ['living', 'household', 'chronicle'],
+  },
+
+  /**
+   * 回村那一天：中了秀才之后，别人怎么叫你。
+   *
+   * 这一章是 16.md 那一句加粗的话的落点——**不是「能不能出现这句话」，
+   * 是「这个人凭什么能对你说这句话」**。
+   *
+   * `exam` 那一节里「村里人见你改了称呼」躺了很久，而在这一章之前
+   * **没有任何一个人真的改口**。现在同一句正文，邻家的妇人读出
+   * 「相公，你可算回来了」，家里的大人读出「你可算回来了」——
+   * 后者一个称呼也没有，而那正是「熟」的样子。
+   *
+   * 这一章什么也不给：没有属性、没有旗标、没有家底。
+   * **一个人的身份变了，最先变的从来不是他自己。**
+   */
+  {
+    id: 'regard',
+    scenes: regardScenes,
+    events: regardEvents,
+    called: ['年表'],
+    to: [],
+    age: [16, 70],
+    purpose: [
+      '同一时刻可以存在多个称呼：跟你没交情的按身份叫，认了你一辈子的开口不称呼',
+      '一句话该不该说出口，看的是说话的人凭什么——邻家的妇人问不出那句家常，家里的大人张口就问',
+      '这一章不给任何东西：身份该给的 exam 已经给过，这里只让它在别人身上发生一次',
+    ],
+    marks: ['chronicle'],
   },
 
   /**
