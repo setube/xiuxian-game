@@ -4,7 +4,7 @@ import { usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
 import type { Bond, Manner, NarrativeBlock } from '@/types/game'
 
-import { kinCall, titleNow } from './address'
+import { callMeBy, kinCall, titleNow } from './address'
 import { describeAge } from './describe'
 import { isNearby } from './nearby'
 
@@ -51,7 +51,7 @@ import { isNearby } from './nearby'
  * 而「此刻在不在行礼」根本不是一种状态，它是一句话的属性。
  */
 const TOKENS =
-  /\{(name|home|province|prefecture|here|livelihood|elder|elders|dam|chore|putsAway|title|era|bornEra|call|house|place|age|nearbyVillage|nearbyCounty)(?::([\w-]+))?\}/g
+  /\{(name|home|province|prefecture|here|livelihood|elder|elders|dam|chore|putsAway|title|era|bornEra|call|house|hail|place|age|nearbyVillage|nearbyCounty)(?::([\w-]+))?\}/g
 
 /**
  * 挑一个还在身边的关系人，按给定的优先次序。
@@ -139,7 +139,9 @@ function snapshotCall(id: string | undefined, role: RoleId, manner: Manner): str
   const people = usePeopleStore()
   for (const bond of ROLE_ORDER[role]) {
     if (!people.kinOf(bond).includes(id)) continue
-    return kinCall(bond, people.personOf(id)?.rank, manner) ?? people.known[id]?.calls ?? '家里的大人'
+    return (
+      kinCall(bond, people.personOf(id)?.rank, manner) ?? people.known[id]?.calls ?? '家里的大人'
+    )
   }
   return people.known[id]?.calls ?? '家里的大人'
 }
@@ -250,7 +252,8 @@ export function fillString(text: string, manner: Manner = '家常', roles?: Role
 
   return text.replace(TOKENS, (_, token: string, arg: string | undefined) => {
     // 效果批次里带着快照：那一批开头认下的人，哪怕这一批里他殁了，说的还是他
-    if (token === 'elder') return roles ? snapshotCall(roles.elder, 'elder', manner) : elderCall(manner)
+    if (token === 'elder')
+      return roles ? snapshotCall(roles.elder, 'elder', manner) : elderCall(manner)
     if (token === 'dam') return roles ? snapshotCall(roles.dam, 'dam', manner) : damCall(manner)
     if (token === 'elders') return eldersCall(manner)
     if (token === 'chore') return choreCall()
@@ -270,6 +273,45 @@ export function fillString(text: string, manner: Manner = '家常', roles?: Role
      */
     if (token === 'call') return usePeopleStore().callOf(arg ?? '')
     if (token === 'house') return houseCall(arg ?? '')
+    /*
+     * `{hail:east-wife}`——**那个人开口时怎么称呼你**，连着后面那个逗号。
+     *
+     * 跟上面 `{call:}` 朝相反的方向：那个是「你怎么叫他」（跟着你的教养走），
+     * 这个是「他怎么叫你」（跟着你的身份和你们的关系走）。
+     * 削爵那一卷早就写明了这两个方向会同时朝相反的地方脱节。
+     *
+     * ## 为什么把逗号也吞进来
+     *
+     * 因为**它可能什么也没有**。`callMeBy` 对旧交返回 `undefined`——
+     * 熟人开口本来就不带称呼，那正是「熟」的样子。
+     *
+     *     生人　「相公，听说你中了。」
+     *     旧交　「听说你中了。」
+     *
+     * 逗号留在正文里的话，第二种就成了「，听说你中了」。
+     * 所以这个记号交付的是**整个招呼**，有就连标点一起给，没有就是空的——
+     * 同一句正文，两种人读出来都通顺。
+     */
+    if (token === 'hail') {
+      /*
+       * ⚠️ `arg` 可能是**角色名**（`elder` / `dam` / `child`），不是人口册 id。
+       *
+       * 头一版直接把它传了下去，于是 `callMeBy('elder')` 查 `bondsWith('elder')`
+       * 查了个空——**家里的大人被当成生人**，落到第三层，管自己的孩子叫「相公」。
+       * 900 世实测印出来是这样的：
+       *
+       *     80 ×「相公，回来了。」   ← 全是家里的大人说的
+       *      4 ×「你可算回来了。」   ← 本该是这一句
+       *
+       * 而这条错**看着完全正常**：句子通顺、称呼也是个真词，
+       * 只有把两种人的话并排印出来才看得见它一直在叫错。
+       *
+       * `roleId` 把角色名换成此刻在身边的那个人；换不到就按原样传下去
+       * （那多半本来就是个 id）。
+       */
+      const word = callMeBy(roleId(arg ?? '') ?? arg ?? '', manner)
+      return word === undefined ? '' : `${word}，`
+    }
     // 他今年多大。「侄儿已经十一岁了」——岁数从生年现算，不存；孩子是几个月就说几个月
     if (token === 'age') {
       const people = usePeopleStore()

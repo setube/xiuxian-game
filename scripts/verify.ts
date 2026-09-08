@@ -552,6 +552,15 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
      * 时令反倒是从它算出来的。两格都不由任何一条效果打出来。
      */
     month: null,
+    /*
+     * 「谁有资格对你说这句话」没有出处表可查。
+     *
+     * 它问的是**两个人之间的位置**，由关系边、场合、身份三样现算
+     * （`engine/address.ts` 的 `mayAsk`）。里头点到的那个 `who` 是人口册上的 id，
+     * 而人名那一关另有一支在查（底下第 27 行那 27 个人名）——
+     * **同一件事不在两张表里各查一遍。**
+     */
+    mayAsk: null,
   } satisfies {
     [K in keyof Condition]-?:
       ((value: NonNullable<Condition[K]>) => [Map<string, string[]>, string] | null) | null
