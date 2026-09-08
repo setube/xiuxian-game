@@ -51,18 +51,31 @@ function lines(scene: string, node: string): number {
  *
  * **反着定门槛**：别处量厚度是「不许差太多」，这一支要求落第 ≥ 中了。
  * 八成的人落在没中那一路，它是这一册的正文。
+ *
+ * ## 一路可能不止一节
+ *
+ * `f691361` 把「中了」那一路拆成了 `passed` + `thank` / `thank-gone`
+ * （先生还在不在，二选一），**而这一条还按单节点数**，
+ * 于是「中了」那一路只数到 `passed` 那两句，凭空瘦了一半。
+ *
+ * 现在收一组节点，把整条路的正文加起来——**判据该量的是「这条路」，
+ * 不是「这个节点」**。内容层把一节拆成两节是常事，
+ * 判据跟着节点名走就会在下一次拆分时又错一遍。
  */
 {
-  const pairs: { win: [string, string]; lose: [string, string]; what: string }[] = [
-    { win: ['exam:first', 'passed'], lose: ['exam:first', 'failed'], what: '头一回' },
-    { win: ['exam:again', 'xiucai'], lose: ['exam:again', 'again-failed'], what: '往上考' },
+  const pairs: { win: string[]; lose: string[]; what: string; scene: string }[] = [
+    // 中了那一路：passed 之后按先生在不在分岔，两支各一句，取较长的那支
+    { scene: 'exam:first', win: ['passed', 'thank'], lose: ['failed'], what: '头一回' },
+    { scene: 'exam:again', win: ['xiucai'], lose: ['again-failed'], what: '往上考' },
   ]
 
   const thin: string[] = []
   console.log('  中了 / 没中，各有几句正文：')
   for (const one of pairs) {
-    const win = lines(...one.win)
-    const lose = lines(...one.lose)
+    // 一路可能不止一节，加起来算
+    const sum = (nodes: string[]) => nodes.reduce((n, node) => n + lines(one.scene, node), 0)
+    const win = sum(one.win)
+    const lose = sum(one.lose)
     console.log(`      ${one.what.padEnd(6)} 中了 ${win} 句　没中 ${lose} 句`)
     if (lose < win) thin.push(`${one.what}（中了 ${win} 句，没中才 ${lose} 句）`)
   }
@@ -127,11 +140,23 @@ const RUNS = 500
 
   console.log(`\n  ${RUNS} 次头一场考试落在哪儿：`)
   for (const [end, n] of [...ends].sort((a, b) => b[1] - a[1])) {
-    console.log(`      ${end.padEnd(8)} ${n.toString().padStart(3)}　${((n / RUNS) * 100).toFixed(1)}%`)
+    console.log(
+      `      ${end.padEnd(8)} ${n.toString().padStart(3)}　${((n / RUNS) * 100).toFixed(1)}%`,
+    )
   }
 
-  const passed = ends.get('passed') ?? 0
-  const failed = ends.get('failed') ?? 0
+  /*
+   * 「中了」那一路的落点有两个：`thank`（先生还在，你去谢他）和
+   * `thank-gone`（他不在了）。**判据不能只认其中一个**——
+   * `f691361` 拆节点之后这里只数 `passed`，而那个节点已经不是终点了，
+   * 于是「中了 0 次」，判据当场报「有一路走不到」。
+   *
+   * 收一组终点，不收一个节点名。**内容层拆一节是常事，
+   * 而判据跟着单个节点名走，下一次拆分它还会错一遍。**
+   */
+  const endsOf = (nodes: string[]) => nodes.reduce((n, id) => n + (ends.get(id) ?? 0), 0)
+  const passed = endsOf(['passed', 'thank', 'thank-gone'])
+  const failed = endsOf(['failed'])
 
   if (passed === 0 || failed === 0) {
     console.log(`\n  ✗ 有一路走不到（中了 ${passed} 次，没中 ${failed} 次）。`)
@@ -141,7 +166,9 @@ const RUNS = 500
     console.log('    明代一个县三年取十几二十个童生，而应试的以百计。')
     bad += 1
   } else {
-    console.log(`\n  ✓ 没中的是多数（${failed} : ${passed}，中了 ${((passed / RUNS) * 100).toFixed(1)}%）。`)
+    console.log(
+      `\n  ✓ 没中的是多数（${failed} : ${passed}，中了 ${((passed / RUNS) * 100).toFixed(1)}%）。`,
+    )
   }
 }
 
