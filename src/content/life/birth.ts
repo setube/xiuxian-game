@@ -33,6 +33,14 @@ const NAMING: Record<OriginId, readonly NarrativeBlock[]> = {
     { kind: 'narration', text: '老先生在纸上写了两个字：{name}。' },
     { kind: 'narration', text: '父亲看不懂，但收好了那张纸。那张纸后来一直压在箱底。' },
   ],
+  // 佃户家取名跟农户一样去求村东的老先生——识不识字这件事上，租地的和自耕的没有差别
+  tenant: [
+    { kind: 'narration', text: '满月那天，父亲抱着你走了二里地，去村东找识字的老先生。' },
+    { kind: 'narration', text: '老先生问：想要个什么意思的？' },
+    { kind: 'dialogue', speaker: '父亲', text: '好养活就行。' },
+    { kind: 'narration', text: '老先生在纸上写了两个字：{name}。' },
+    { kind: 'narration', text: '父亲看不懂，但收好了那张纸。那张纸后来一直压在箱底。' },
+  ],
   hunt: [
     { kind: 'narration', text: '你的名字是{dam}叫出来的。' },
     { kind: 'narration', text: '她在灶前哄你，随口叫了一声，就那么叫下去了：{name}。' },

@@ -5,6 +5,7 @@ import type {
   Livelihood,
   NarrativeBlock,
   OriginId,
+  Sideline,
   Station,
   Tenure,
 } from '@/types/game'
@@ -36,14 +37,14 @@ import { CAPITAL } from './geography'
  * 现在四格分开写，各自回答一个问题（见 `types/game.ts` 里那一段）。
  * 看这张表最快的读法是竖着看某一列：
  *
- *     census      十二行里只有四种值，因为籍本来就粗
+ *     census      十三行里只有四种值，因为籍本来就粗
  *     livelihood  九种，这是这张表真正的骨架
- *     business    四行有铺面，八行是 null——null 那八行整段不成立
+ *     business    四行有铺面，九行是 null——null 那九行整段不成立
  *     station     只有三种，而它是唯一一格人生中途还会变的
  *
  * 竖着看还能看出一件不那么显眼的事：**`livelihood` 一列已经把 `census`
  * 一列决定死了**（务农→民户、木工→匠户、行医→医户、食禄→宗室，
- * 十二行没有例外）。所以籍这一格今天不靠取值养活自己，它靠的是
+ * 十三行没有例外）。所以籍这一格今天不靠取值养活自己，它靠的是
  * 削爵那天不跟着 `station` 走——静态上它是冗余的，动态上它不是。
  * 哪天「世代军籍那一家」写出来，这句话才会连静态那一半也成立。
  */
@@ -61,8 +62,17 @@ export interface Origin {
   livelihood: Livelihood
   /** 产：家里那一处铺面。没有就是 null */
   business: Business | null
-  /** 田：种的地是不是自家的。不靠地过活的人家是 null。生下来就是佃户的那一行还没写 */
+  /** 田：种的地是不是自家的。不靠地过活的人家是 null。生下来就是佃户的是 `tenant` 那一行 */
   tenure: Tenure | null
+  /**
+   * 生下来就靠着的那一样贴补，以及有几成人家如此。
+   *
+   * 4.md「一家不止靠一样过活」的头一个出处就在这张表上：农家和佃户家 `mother` 那一句
+   * 写着「也接些针线活」，从前没有一个读者。现在它落到 `household.sideline`——
+   * 不是每家都如此（那样它就成了出身的同义词），是几成人家如此；没填的出身生下来只靠那一行。
+   * 荒年那一卷是第二个来源（爹挑柴进镇去卖、娘接邻家的针线活）。
+   */
+  sideline?: { of: Sideline; chance: number }
   /** 家世：这是什么样的人家 */
   station: Station
   weight: number
@@ -109,6 +119,7 @@ export const ORIGINS: readonly Origin[] = [
     livelihood: '务农',
     business: null,
     tenure: '自耕',
+    sideline: { of: '针线', chance: 0.4 },
     station: '寻常',
     weight: 78,
     locales: ['柳溪村', '下河屯', '青石铺', '杏花坞', '王家庄', '桑园里', '芦花荡'],
@@ -120,6 +131,39 @@ export const ORIGINS: readonly Origin[] = [
     opening: [
       { kind: 'narration', text: '你生在{province}{prefecture}城外三十里，{here}。' },
       { kind: 'narration', text: '家里有六亩薄田，一头牛是跟邻家合养的。' },
+      { kind: 'narration', text: '你出生那日下着雨。母亲第二天就下了地。' },
+    ],
+  },
+  /**
+   * 佃户。
+   *
+   * 11.md：「有牛、有田、有余粮的自耕户」和「没田、租地、欠租、遇旱就借粮的佃户」
+   * 都叫农户，但人生完全不同。这一行跟农户四格全同（民户／务农／无铺面／寻常），
+   * 差在第五格：田是租的。立基时立那个田主（`birth.ts` `settleLandlord`）——
+   * 他是人口册上的真人，有性情：荒年租子交不上，求他缓一年，他缓不缓从性情里出。
+   *
+   * 权重 30 对农户 78：农家里三成上下是佃户，明中后期南方更高——这个数是给分布看形状的，
+   * 不是史料里抄来的准数（陈宝良《明代社会生活史》「农民及其生活」那一章，区域差异很大）。
+   */
+  {
+    id: 'tenant',
+    census: '民户',
+    livelihood: '务农',
+    business: null,
+    tenure: '佃',
+    // 租地的人家更靠这一样：五成对农家的四成。给分布看形状的数，不是史料里的
+    sideline: { of: '针线', chance: 0.5 },
+    station: '寻常',
+    weight: 30,
+    locales: ['柳溪村', '下河屯', '青石铺', '杏花坞', '王家庄', '桑园里', '芦花荡'],
+    standing: { from: 16, to: 28 },
+    attributes: { memory: 30, insight: 30, body: 44, will: 42, fortune: 26 },
+    given: ['禾', '石', '根', '田', '来', '福'],
+    father: '在地里。地不是自家的，秋后先量租子。',
+    mother: '操持家里租的那几亩，也接些针线活。',
+    opening: [
+      { kind: 'narration', text: '你生在{province}{prefecture}城外三十里，{here}。' },
+      { kind: 'narration', text: '家里没有一垄自己的地。种的八亩田是{house:landlord}的，秋后先量租子。' },
       { kind: 'narration', text: '你出生那日下着雨。母亲第二天就下了地。' },
     ],
   },

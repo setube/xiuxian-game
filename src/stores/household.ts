@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 import { type Living, livingById, livingOfOrigin } from '@/content/living'
 import { ORIGINS, SURNAMES, originById, type Origin } from '@/content/origins'
 import { PREFECTURES, type Prefecture } from '@/content/geography'
-import { pick, pickWeighted, randomBetween } from '@/engine/random'
+import { chance, pick, pickWeighted, randomBetween } from '@/engine/random'
 
 import { usePeopleStore } from './people'
 import { useWorldStore } from './world'
@@ -17,6 +17,7 @@ import type {
   Livelihood,
   NarrativeBlock,
   OriginId,
+  Sideline,
   Station,
   Tenure,
 } from '@/types/game'
@@ -34,6 +35,18 @@ function clamp(value: number, min: number, max: number): number {
 /** 掷定这一世的出身。玩家看不到这一步，只会读到「你生在柳溪村」。 */
 function rollOrigin(): Origin {
   return pickWeighted(ORIGINS, (origin) => origin.weight) ?? ORIGINS[0]!
+}
+
+/**
+ * 生下来这家靠不靠第二样过活。
+ *
+ * 出身表 `sideline` 那一格说的是「有几成这样的人家」，不是「这样的人家都如此」：
+ * 农家四成、佃户五成生下来娘就接着针线活——那是出身表 `mother` 那一句从前没有读者的话，
+ * 现在落到格子上。没填那一格的出身一律 null，贴补是人生里再添的（荒年那一卷）。
+ * 门禁摆局用 `beOf` 换出身时也走这一步，不然开 pinia 时随机掷到的那一行的贴补会留在一个布庄人家身上。
+ */
+export function rollSideline(origin: Origin): Sideline | null {
+  return origin.sideline !== undefined && chance(origin.sideline.chance) ? origin.sideline.of : null
 }
 
 /** 男女各一半。跟出身一样，这一掷玩家也参与不了 */
@@ -93,6 +106,10 @@ export const useHouseholdStore = defineStore(
     const livelihood = ref<Livelihood>(rolled.livelihood)
     const business = ref<Business | null>(rolled.business)
     const tenure = ref<Tenure | null>(rolled.tenure)
+    // 租谁的地：出身表不填，田主是立基时立的真人（`birth.ts` `settleLandlord`）
+    const landlord = ref<string | null>(null)
+    // 还靠什么贴补：出身表说这家有几成可能生下来就靠着那一样，人生里还会添（荒年那一卷）
+    const sideline = ref<Sideline | null>(rollSideline(rolled))
     const station = ref<Station>(rolled.station)
     const gender = ref<Gender>(rollGender())
     /**
@@ -251,6 +268,8 @@ export const useHouseholdStore = defineStore(
       livelihood.value = next.livelihood
       business.value = next.business
       tenure.value = next.tenure
+      landlord.value = null
+      sideline.value = rollSideline(next)
       station.value = next.station
       gender.value = rollGender()
       province.value = nextSeat.province
@@ -267,6 +286,8 @@ export const useHouseholdStore = defineStore(
       livelihood,
       business,
       tenure,
+      landlord,
+      sideline,
       station,
       gender,
       province,
@@ -298,6 +319,8 @@ export const useHouseholdStore = defineStore(
         'livelihood',
         'business',
         'tenure',
+        'landlord',
+        'sideline',
         'station',
         'gender',
         'province',

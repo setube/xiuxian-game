@@ -17,10 +17,12 @@ export const childhoodScenes: SceneLibrary = {
         id: 'open',
         blocks: [{ kind: 'narration', text: '你能记住的第一件事，是一个很平常的下午。' }],
         branches: [
-          // 十一行出身各去各的院子。这里问的是主键而不是业或产，
+          // 十三行出身各去各的院子。这里问的是主键而不是业或产，
           // 因为这一节要的是**这孩子睁开眼看见的那个院子**——
           // 同样是经商，布庄的孩子看见的是柜台，客栈的孩子看见的是天井
           { requires: [{ origin: 'farm' }], next: 'farm' },
+          // 佃户的孩子睁开眼看见的也是那块田——田是谁的，三岁的孩子分不出
+          { requires: [{ origin: 'tenant' }], next: 'farm' },
           { requires: [{ origin: 'hunt' }], next: 'hunt' },
           { requires: [{ origin: 'cloth' }], next: 'shop' },
           { requires: [{ origin: 'inn' }], next: 'inn' },

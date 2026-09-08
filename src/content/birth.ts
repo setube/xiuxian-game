@@ -46,6 +46,7 @@ const FEMALE_GIVEN = [
 /** 男子的名，按出身取字。名字本身就是家世 */
 const MALE_GIVEN: Record<OriginId, readonly string[]> = {
   farm: ['怀山', '大有', '长根', '春发', '守田'],
+  tenant: ['怀山', '大有', '长根', '春发', '守田'],
   hunt: ['铁山', '虎生', '老岩', '青松', '得胜'],
   craft: ['文柏', '守成', '直方', '斧头', '砚生'],
   cloth: ['敬堂', '万金', '瑞丰', '通海', '德昌'],
@@ -240,6 +241,9 @@ export function beBorn(id: OriginId, home: string): Birth {
   // 自家这一户：一出生就在的那些人。头是爹，没有爹就是养你的那个人
   settleOwnHouse({ people, id, circumstance, surname: finalSurname })
 
+  // 生在佃户家：种的地是谁的，那个人得先在。他不是邻居，是这一家秋后先量租子给他的那个人
+  if (origin.tenure === '佃') settleLandlord({ people, id, home, bornYear, surname: finalSurname })
+
   // 王府里的人。乳母、管事、门房、婢女、小厮——他们是真人，不是一个 servantCount
   // 住在王府里才有：被寺里收留的那个孩子身边是老僧，不是乳母
   if (id === 'manor' && useWorldStore().residenceKind() === '王府') {
@@ -428,7 +432,7 @@ function settlePlaces(input: {
     within: 'prefecture',
   })
 
-  const rural = id === 'farm' || id === 'hunt'
+  const rural = id === 'farm' || id === 'tenant' || id === 'hunt'
   let parent: string
   if (rural) {
     world.enrollPlace({
@@ -495,6 +499,63 @@ function settlePlaces(input: {
 
 /** 东邻、西邻。两户，不多不少——第一批内容只用得着这两户 */
 const NEIGHBOUR_SIDES = ['east', 'west'] as const
+
+/**
+ * 立田主。
+ *
+ * 生在佃户家的孩子，家里种的那几亩是别人的——「别人」得是人口册上的一个人，
+ * 不然「秋后先量租子挑到镇上」交给谁、荒年租子交不上去求谁、他肯不肯缓，全写不出来。
+ * 他有姓有名有年纪有性情，会老会死（`people.live`），跟邻居一样是真人；
+ * 他有自己的一户（`landlord`）和一处宅，挂在同一个村下，**不跟你家相邻**——同村不等于挨着。
+ *
+ * 一出生就认得，叫他「田主」；名字要另外知道。好感零：租佃是一笔账，不是一段情分。
+ * `household.landlord` 指着他——那是「租谁的地」那一格的第一个写手。
+ */
+function settleLandlord(input: {
+  people: ReturnType<typeof usePeopleStore>
+  id: OriginId
+  home: string
+  bornYear: number
+  surname: string
+}): void {
+  const { people, id, home, bornYear, surname } = input
+  const world = useWorldStore()
+  /*
+   * 他家那处宅挂在跟你家同一个村下。你家没有宅的时候（讨饭的、逃难的没有居所；
+   * 寺里收留的住在寺里）挂在聚落下——他的宅是真宅，得有上一级，`dwelling` 那一支
+   * 六百棵树里抓到两处「方家没有上一级」，正是这两种人生里的佃户家
+   */
+  const lane =
+    (world.residence ? world.placeOf(world.residence)?.within : null) ?? world.settlement ?? null
+  const taken = new Set([surname, ...Object.values(people.houses).map((house) => house.surname)])
+  let family = pick(SURNAMES) ?? '王'
+  for (let guard = 0; taken.has(family) && guard < 20; guard += 1) family = pick(SURNAMES) ?? '王'
+  const head = makePerson({
+    id: 'landlord',
+    surname: family,
+    given: pick(MALE_GIVEN[id]) ?? '大有',
+    gender: '男',
+    // 跟邻家的户主一个年纪段：地是他置下的，或者他爹置下的。头一版 34–56，
+    // 立起来就五十来岁，十世里一世在孩子五岁前就老病没了（人口册照凡人的公式老死）
+    bornYear: bornYear - randomBetween(26, 50),
+    doing: '田主，收租',
+    place: home,
+    health: randomBetween(45, 85),
+    history: rollPast(randomBetween(1, 2)),
+  })
+  people.enroll(head)
+  people.meet(head.id, '田主', 0)
+  world.enrollPlace({ id: 'landlord-house', name: `${family}家`, kind: '宅', within: lane })
+  people.enrollHouse({
+    id: 'landlord',
+    surname: family,
+    head: head.id,
+    members: [head.id],
+    residence: 'landlord-house',
+    livelihood: '务农',
+  })
+  useHouseholdStore().landlord = head.id
+}
 
 /**
  * 立东邻西舍。

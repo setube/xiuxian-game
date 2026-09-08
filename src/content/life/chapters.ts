@@ -217,7 +217,7 @@ export const CHAPTERS: readonly Chapter[] = [
       '把「家里少个劳力」变成后面事件读得到的事实，而不是一句旁白',
       '家道中落要赶得上七岁那道入学的门槛，否则它只改得了后半生',
     ],
-    marks: ['person', 'household', 'identity'],
+    marks: ['person', 'household', 'identity', 'meet'],
     /*
      * 这一章落两个身份，都是终点：
      *
@@ -240,8 +240,8 @@ export const CHAPTERS: readonly Chapter[] = [
     called: ['年表'],
     to: [],
     age: [5, 16],
-    purpose: ['同一场旱灾落在不同人家身上，是四种样子'],
-    marks: ['household'],
+    purpose: ['同一场旱灾落在不同人家身上，是四种样子', '佃户家还压着租子：田主缓不缓从性情里出；农家靠第二样进项撑过去'],
+    marks: ['household', 'owe', 'flag'],
   },
 
   /** 你问了个大人答不上来的问题 */
