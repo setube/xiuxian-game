@@ -552,6 +552,11 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
      * 不由任何一条效果打出来。**世界自己在走，不需要谁去设它。**
      */
     season: null,
+    /*
+     * 月份同理，而且比时令更直接——`GameTime.month` 本来就在那儿，
+     * 时令反倒是从它算出来的。两格都不由任何一条效果打出来。
+     */
+    month: null,
   } satisfies {
     [K in keyof Condition]-?:
       ((value: NonNullable<Condition[K]>) => [Map<string, string[]>, string] | null) | null

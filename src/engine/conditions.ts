@@ -286,6 +286,14 @@ const CHECKS = {
     return true
   },
 
+  month: (month, { world }) => {
+    const now = world.time.month
+    if (month.is !== undefined && now !== month.is) return false
+    // 「腊月正月都算年下」——跨年那两个月不连号（12 和 1），`in` 才说得出
+    if (month.in !== undefined && !month.in.includes(now)) return false
+    return true
+  },
+
   stage: (stage, { character }) => stageOf(character.age) === stage,
 } satisfies { [K in keyof Condition]-?: Check<K> }
 

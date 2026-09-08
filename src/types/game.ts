@@ -1579,6 +1579,21 @@ export interface Condition {
    * 那种是月份的事，四档分不出来，也不该分。
    */
   season?: { is?: Season; in?: readonly Season[] }
+  /**
+   * 此刻是几月（`world.time.month`，1–12）。
+   *
+   * 跟 `season` 并列而不是塞进它里头——隔壁那一格自己划了这条界：
+   * 「要问得更细就直接问月份」。四档分不出正月和三月，而**那两个月
+   * 在这个世界里是两件事**：正月里回老屋过年，三月里清明上坟。
+   *
+   * 第一个使用者是 `kindred:newyear`（`life/kindred.ts`）。那一卷标题
+   * 写着「正月里」、正文第一句写着「正月里你回了一趟老屋」，可它的
+   * `requires` 从前一个字也没提时令——散事件掷中那天是几月就是几月，
+   * **一卷「正月里」可能在六月演出来**。
+   *
+   * `is` 问一个，`in` 问一组（腊月和正月连着过年，写成两条 `is` 说不出「或者」）。
+   */
+  month?: { is?: number; in?: readonly number[] }
   stage?: LifeStage
 }
 

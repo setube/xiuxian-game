@@ -1198,7 +1198,26 @@ export const kindredEvents: readonly LifeEvent[] = [
     // 哥没了照样走动——老屋是一户，不是哥一个人
     id: 'kindred-newyear',
     window: { from: 22, to: 75 },
-    requires: [...OLD_HOUSE, { family: { id: 'nephew', alive: true, age: { atLeast: 3 } } }],
+    /*
+     * **只在年下演。** 这一卷标题写着「正月里」、正文第一句写着
+     * 「正月里你回了一趟老屋」——从前这里一个字也没提时令，
+     * 散事件掷中那天是几月就是几月，于是它可能在六月演出来。
+     *
+     * `month` 那一格是这一卷逼出来的（`types/game.ts`）：条件层从前
+     * 只问得出季节，而正月和三月同属「春」，四档分不出「回老屋过年」
+     * 和「清明上坟」。
+     *
+     * 收「腊月或正月」而不是只收正月，是实测出来的：前置齐备
+     * （分了家 + 侄儿满三岁）的那些时刻里，**正月只占 0.4%**——
+     * 各卷推进的天数不一样，月份分布并不均匀，只收正月等于收了一条
+     * 几乎掷不中的死条件。而年下本来就横跨这两个月：腊月备年货、
+     * 正月里走动，说「正月里回了一趟老屋」在腊月廿几也说得过去。
+     */
+    requires: [
+      ...OLD_HOUSE,
+      { month: { in: [12, 1] } },
+      { family: { id: 'nephew', alive: true, age: { atLeast: 3 } } },
+    ],
     scene: 'kindred:newyear',
     weight: 5,
     repeatable: true,
