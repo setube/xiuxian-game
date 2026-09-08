@@ -48,13 +48,9 @@
  */
 import './lib/seeded'
 
-import { createPinia, setActivePinia } from 'pinia'
-
 import { CHAPTERS } from '../src/content/life/chapters'
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
-import { useStory } from '../src/engine/story'
-import { useCharacterStore } from '../src/stores/character'
-import { useNarrativeStore } from '../src/stores/narrative'
+import { mapShards, sumTallies } from './lib/parallel'
+import { type IdentityShard } from './tasks/identity-lives'
 
 /** 走多少世。身份变化不算稀有，但「到死还挂着」要看分布，少了看不准 */
 const RUNS = 1200
@@ -115,6 +111,23 @@ const MIN_SAMPLES = 30
  * 一次是我在坏基线上定线。它变红的时候先问一句「是内容退化了，还是
  * **这条线本来就画在噪声里**」——判据的阈值也是判据的一部分（同
  * `gate-thresholds-drift`）。**在一个刚修好的基线上定阈值，比在坏的基线上定强得多。**
+ *
+ * ## 这条线是在什么基线上画的（下一个人判断它过期没有，靠这一段）
+ *
+ *     日子　　2026-09-08
+ *     主干　　`540fdff` 之前那一版（含 `262f54b` 修完 `exam-first`、
+ *             `0dc09c0` 修完 `candour` 挤占候选池、`dc268d8` 行为史与 `LifeEvent.chance`）
+ *     量法　　四颗种子 b1–b4，每颗 1200 世，`scripts/identity.ts` 主进程直跑
+ *     基线　　伙计 6 / 8 / 7 / 9%，学童 0 / 0 / 0 / 0%，学徒 0%，农家子 0–4%
+ *
+ * **写下来是为了让「它过期了」这件事可查。** 半年后有人看到伙计跑到 15%，
+ * 他该先问「这中间往库里加了什么」，而不是「阈值该不该调」——
+ * 没有这一段的话，那两个问题分不开。
+ *
+ * ⚠️ **判它红了先看实际数字，别先动这个阈值**：
+ *
+ *     伙计 12% 以上　多半是主干上加了新东西（那不是阈值的问题）
+ *     伙计 9.5% 上下　那才是这条线定低了，重量四颗种子再抬
  */
 const TOLERANCE = 0.2
 
@@ -200,32 +213,16 @@ let bad = 0
     for (const one of identitiesOf(chapter)) transient.add(one)
   }
 
-  const 到死 = new Map<string, number>()
-  const 出现过 = new Map<string, number>()
-
-  for (let i = 0; i < RUNS; i += 1) {
-    setActivePinia(createPinia())
-    const narrative = useNarrativeStore()
-    const character = useCharacterStore()
-    const story = useStory(lifeScenes, {
-      events: lifeEvents,
-      routine: lifeRoutine,
-      finale: lifeFinale,
-    })
-    story.begin()
-
-    const seen = new Set<string>()
-    let turns = 0
-    while (!narrative.ended && turns < 200) {
-      const open = narrative.options.filter((one) => !one.locked)
-      if (open.length === 0) break
-      story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-      turns += 1
-      seen.add(character.identity)
-    }
-    for (const id of seen) 出现过.set(id, (出现过.get(id) ?? 0) + 1)
-    到死.set(character.identity, (到死.get(character.identity) ?? 0) + 1)
-  }
+  /*
+   * 这一段的单世模拟搬去了 `tasks/identity-lives.ts`，走法和采样点一步没动
+   * （每落一次笔记一次 `character.identity`，不是每卷记一次——一个身份
+   * 可能在一卷之内换掉，按卷采会漏）。判据全留在这儿。
+   */
+  const worn = sumTallies(
+    await mapShards<IdentityShard>({ task: 'scripts/tasks/identity-lives.ts', runs: RUNS }),
+  )
+  const 出现过 = worn.everWorn
+  const 到死 = worn.woreToDeath
 
   if (transient.size === 0) {
     console.log('\n  ✗ 一个「正在做的事」型身份也没标到——第三问什么也没量。')
