@@ -22,6 +22,7 @@ import { reunionEvents, reunionScenes } from './reunion'
 import { refugeEvents, refugeScenes } from './refuge'
 import { regardEvents, regardScenes } from './regard'
 import { investEvents, investScenes } from './invest'
+import { unrestEvents, unrestScenes } from './unrest'
 import { rivermanEvents, rivermanScenes } from './riverman'
 import { afterwardsEvents, afterwardsScenes } from './afterwards'
 import { apprenticeEvents, apprenticeScenes } from './apprentice'
@@ -595,6 +596,35 @@ export const CHAPTERS: readonly Chapter[] = [
       '留下你不等于好结局：出了师的人回来打下手，日子真的换了（living: hired），可那是降格',
     ],
     marks: ['living', 'household', 'chronicle'],
+  },
+
+  /**
+   * 夜里那趟：有人来敲门，问你听没听见后山的动静。
+   *
+   * 19.md 给的是一整条政治道路（不满 → 结社 → 聚众 → 起事 → 镇压），
+   * 整条做出来是另一个游戏。这一章取的是同一节里的另一句——
+   * **「你本人没有参加起事，但因为知情不报，被牵连。」**
+   *
+   * 所以它不写造反，写**造反从你门口经过**。一个普通人要做的
+   * 不是「加不加入」，是「说不说」。
+   *
+   * 四种结局一个好的也没有，而它们不是选择的报应，是选择跟世界的交叉：
+   * 散还是闹在他开口之前就掷定了。**六成二的人生里什么也没发生**——
+   * 那一格最要紧，没有它「不说」就成了一场赌。
+   */
+  {
+    id: 'unrest',
+    scenes: unrestScenes,
+    events: unrestEvents,
+    called: ['年表'],
+    to: [],
+    age: [18, 42],
+    purpose: [
+      '造反不是一种职业，是从你门口经过的一件事——你要做的不是加不加入，是说不说',
+      '散还是闹在他开口之前就掷定：他报不报官改变不了几十个饿肚子的人会不会跟着走',
+      '六成二什么也没发生：担了三个月的心，没换来任何东西，那三个月本来就是白担的',
+    ],
+    marks: ['roll', 'flag', 'household', 'chronicle'],
   },
 
   /**
