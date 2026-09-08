@@ -483,6 +483,8 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     business: null,
     /** 田那一格同上：出身行给初值，父债链尾改它，条件问它不必有人「给」 */
     tenure: null,
+    // 兼业跟田同理：出身行给初值（农家四成生下来就有），荒年那一卷改它，条件问它不必有人「给」
+    sideline: null,
     station: null,
     /**
      * 「他过的是哪一种日子」**从前不需要有人给，现在需要了**。
@@ -1959,6 +1961,8 @@ console.log('=== 称呼验收（玩家读到的字里有英文吗）===\n')
   console.log('\n=== 四个名字各归各；历史不封顶（静态穷举全库）===\n')
 
   const ENGINE_IDS = [
+    // 田主：生在佃户家的孩子立基时立的（`birth.ts` `settleLandlord`）
+    'landlord',
     'east-head',
     'east-wife',
     'west-head',

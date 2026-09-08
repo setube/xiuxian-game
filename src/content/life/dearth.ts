@@ -1,4 +1,4 @@
-import type { LifeEvent, SceneLibrary } from '@/types/game'
+import type { Choice, LifeEvent, SceneLibrary, SceneNode } from '@/types/game'
 
 /**
  * 米贵了。
@@ -22,6 +22,72 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  * 于是同一个世界事件，在四种家庭里长出四种不同的东西。
  * **这才是「世界事件改变条件，不替玩家决定结果」的样子。**
  */
+/**
+ * 兼业的第一个写手：荒年靠第二样进项撑过去。
+ *
+ * 「父亲种田，农闲时进镇做木工；母亲纺纱」（11.md）——从前只有卖、借、送孩子做工
+ * 三条路，一家人靠第二样进项撑过去这一条写不出来：`Livelihood` 一格一值。
+ * 现在多的是一格 `sideline`，不是把业改成数组：业还是务农，外人照旧叫这家农家，
+ * 家里自己知道多了一样贴补。它从此留在这一家身上（成年那一卷读它），
+ * 不像做工那一年，年底回来就完了。
+ *
+ * 紧一年、有得选两档都开这两条路（抽成常量，两处各引一次）：探针量进卷那一刻，
+ * 农家荒年掷中的多半落在「紧一年」，「有得选」那一档十世里一世——只挂后者，
+ * 这两条路在真世里就成了摆设（`scripts/seen.ts` 抓到「没人读到」）。
+ *
+ * 生下来娘就接着针线活的人家（出身表那一格，农家四成）没有「接邻家的针线活」这条路——
+ * 接的就是那个；爹挑柴那条路照开，走了之后格子里记的是挑柴，针线那一样不再记
+ * （一格装不下两样，见 `Sideline` 那段注释）。
+ */
+const SIDELINE_CHOICES: readonly Choice[] = [
+  {
+    id: 'peddle',
+    label: '{elder}农闲挑柴进镇去卖',
+    hint: '来回二十里，换回的米不多，可日子不用塌',
+    requires: [{ livelihood: '务农' }, { family: { id: 'father', alive: true } }],
+    echo: '{elder}天不亮就挑着担子出门了。',
+    effects: [
+      { type: 'time', months: 5 },
+      { type: 'household', standing: 3, sideline: '挑柴' },
+      { type: 'attribute', key: 'will', delta: 2 },
+      { type: 'flag', key: 'took-up-sideline', value: true },
+      { type: 'chronicle', text: '那年米贵，家里开始挑柴进镇去卖。' },
+    ],
+    next: 'after-peddle',
+  },
+  {
+    id: 'needle',
+    label: '{dam}接邻家的针线活',
+    hint: '一针一线换不来多少米',
+    requires: [{ livelihood: '务农' }, { family: { id: 'mother', alive: true } }, { sideline: null }],
+    echo: '{dam}接了邻家的针线活。',
+    effects: [
+      { type: 'time', months: 5 },
+      { type: 'household', standing: 2, sideline: '针线' },
+      { type: 'flag', key: 'took-up-sideline', value: true },
+      { type: 'chronicle', text: '那年米贵，家里接起了针线活。' },
+    ],
+    next: 'after-needle',
+  },
+]
+
+/**
+ * 家里本来就靠着的那一样，荒年里撑得更狠。
+ *
+ * 生下来娘就接着针线活的人家（出身表那一格）荒年没有「接针线」那条路，可那一样贴补
+ * 不是没在——它在这一年比往年更要紧。紧一年、有得选两档各挂一遍，都是同一个读者。
+ */
+const LEANING_ON_SIDELINE: NonNullable<SceneNode['seen']> = [
+  {
+    requires: [{ sideline: '针线' }, { family: { id: 'mother', alive: true } }],
+    text: '{dam}的针线活那年接得比往常多。灯常常亮到半夜。',
+  },
+  {
+    requires: [{ sideline: '挑柴' }, { family: { id: 'father', alive: true } }],
+    text: '{elder}那年挑柴进镇的趟数，比往常多了一倍。',
+  },
+]
+
 export const dearthScenes: SceneLibrary = {
   'dearth:price': {
     id: 'dearth:price',
@@ -65,13 +131,78 @@ export const dearthScenes: SceneLibrary = {
             text: '傍晚，{call:east-wife}站在门外，没像往常一样进来，只在门口低声问{dam}：「你家……还有没有余粮？」',
           },
         ],
-        // 同一个消息，落在不同的家里是不同的东西
+        /*
+         * 佃户家先过租子那一关，再按家境分档。
+         *
+         * 头一版把租子挂在「有得选」那一档（家境 18–38）上——佃户初值 16–28，看着正对。
+         * 探针量**进卷那一刻**（2026-09-09，三百世佃户有心人，掷中 23 世）：家境中位 57、
+         * 四分位 49–63，落那一档的几乎没有（童年那几年家境涨上去了）。门槛写在一个早就不成立的
+         * 数上，是那两天里第五次「量的时刻 ≠ 用的时刻」。所以租子不挂档：家底不到宽裕（≤61，
+         * 「家里照常开饭」那一档的下沿）的佃户家，米价一涨租子就压上来；宽裕的交得起，不出这一节。
+         */
+        branches: [
+          {
+            requires: [
+              { tenure: '佃' },
+              { family: { id: 'landlord', alive: true } },
+              { standing: { atMost: 61 } },
+            ],
+            next: 'rent-due',
+          },
+        ],
+        next: 'tiers',
+      },
+
+      /** 同一个消息，落在不同的家里是不同的东西 */
+      tiers: {
+        id: 'tiers',
+        blocks: [],
         branches: [
           { requires: [{ standing: { atLeast: 62 } }], next: 'comfortable' },
           { requires: [{ standing: { atLeast: 38 } }], next: 'tighten' },
           { requires: [{ standing: { atLeast: 18 } }], next: 'choose' },
         ],
         next: 'desperate',
+      },
+
+      /**
+       * 租子。
+       *
+       * 11.md 说的「没田、租地、欠租、遇旱就借粮的佃户」，从前写不出来——「租谁的地」
+       * 没有格，田主不是人。现在他是人口册上的真人（`household.landlord`），有性情，会老会死：
+       * 他没了，这一节不出（上面那条分流要他活着）。
+       *
+       * 求他缓不缓，从他的性情里出（NPC 没有好人／坏人标签，有的是性情、处境、利益）：
+       * 温和、谨慎的缓一年，簿上记一笔欠租（`IOU`，欠的是家里当家的那个人）；
+       * 木讷的什么也没说，秋后照收；刚硬、精明、暴躁的当场把粮量走。
+       * **同一场荒年，租的是谁的地，是四种样子。** 过了这一关，荒年还在——接着按家境分档。
+       */
+      'rent-due': {
+        id: 'rent-due',
+        blocks: [
+          { kind: 'narration', text: '米价涨了，租子照旧。' },
+          { kind: 'narration', text: '{house:landlord}的人来过一趟，站在门口没进来，说的是租子。' },
+        ],
+        choices: [
+          {
+            id: 'beg-rent',
+            label: '去求{house:landlord}缓一年租',
+            hint: '他缓不缓，你不知道',
+            echo: '{elder}去了{house:landlord}一趟。',
+            effects: [{ type: 'time', months: 1 }],
+            next: 'rent',
+          },
+          {
+            id: 'pay-rent',
+            label: '照交。租子先量走，家里紧一紧',
+            echo: '租子照旧量走了。',
+            effects: [
+              { type: 'time', months: 1 },
+              { type: 'household', standing: -3 },
+            ],
+            next: 'tiers',
+          },
+        ],
       },
 
       comfortable: {
@@ -115,6 +246,23 @@ export const dearthScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '粥比往常稀了些。' },
           { kind: 'narration', text: '过年没有割肉。{elder}说明年再说。' },
+        ],
+        seen: LEANING_ON_SIDELINE,
+        choices: [
+          {
+            id: 'endure',
+            label: '紧一紧，等年景回来',
+            echo: '紧了一年。',
+            effects: [{ type: 'time', months: 5 }],
+            next: 'tightened',
+          },
+          ...SIDELINE_CHOICES,
+        ],
+      },
+
+      tightened: {
+        id: 'tightened',
+        blocks: [
           { kind: 'narration', text: '也就是紧了一年。第二年秋天，日子又回去了。' },
         ],
       },
@@ -132,7 +280,9 @@ export const dearthScenes: SceneLibrary = {
           { kind: 'narration', text: '家里的米撑不到开春。' },
           { kind: 'narration', text: '晚饭后没有人说话。{elder}坐在门口，坐了很久。' },
         ],
+        seen: LEANING_ON_SIDELINE,
         choices: [
+          ...SIDELINE_CHOICES,
           {
             id: 'sell',
             label: '把值钱的东西卖了',
@@ -213,6 +363,95 @@ export const dearthScenes: SceneLibrary = {
             tone: 'faint',
           },
         ],
+      },
+
+      'after-peddle': {
+        id: 'after-peddle',
+        blocks: [
+          {
+            kind: 'narration',
+            text: '{elder}天不亮就走，挑一担柴走二十里到镇上，回来时担子里是半升米。',
+          },
+          { kind: 'narration', text: '那年冬天家里没有断过炊。' },
+          {
+            kind: 'narration',
+            text: '开春之后他没有歇。农闲的日子里，那副担子一直在门后靠着。',
+            tone: 'faint',
+          },
+        ],
+      },
+
+      'after-needle': {
+        id: 'after-needle',
+        blocks: [
+          { kind: 'narration', text: '灯下多了一样活。{dam}把邻家送来的衣裳一件件补好，第二天送回去。' },
+          { kind: 'narration', text: '换回来的米不多，可米缸一直没有见底。' },
+          { kind: 'narration', text: '此后家里的灯总比别家熄得晚一点。', tone: 'faint' },
+        ],
+      },
+
+      /** 求他缓一年租。缓不缓在他的性情里 */
+      rent: {
+        id: 'rent',
+        blocks: [{ kind: 'narration', text: '{elder}回来的时候天已经黑了。' }],
+        branches: [
+          {
+            requires: [{ temper: { id: 'landlord', in: ['温和', '谨慎'] } }],
+            next: 'rent-deferred',
+          },
+          { requires: [{ temper: { id: 'landlord', in: ['木讷'] } }], next: 'rent-silent' },
+        ],
+        next: 'rent-refused',
+      },
+
+      'rent-deferred': {
+        id: 'rent-deferred',
+        onEnter: [
+          { type: 'household', standing: 4 },
+          {
+            type: 'owe',
+            debtor: 'elder',
+            creditor: 'landlord',
+            what: '一年的租子',
+            terms: '来年秋后一并交',
+          },
+          { type: 'chronicle', text: '荒年租子交不上，田主缓了一年。' },
+          { type: 'flag', key: 'rent-answer', value: '缓' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '他说，缓一年。来年秋后一并交。' },
+          { kind: 'narration', text: '{elder}回来的路上没有说话。到家把这句话说了一遍，就去睡了。' },
+          { kind: 'narration', text: '那笔租子从此挂在家里，谁也没有再提，谁也没有忘。', tone: 'faint' },
+        ],
+        next: 'tiers',
+      },
+
+      'rent-silent': {
+        id: 'rent-silent',
+        onEnter: [
+          { type: 'household', standing: -4 },
+          { type: 'flag', key: 'rent-answer', value: '照收' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '他听完了，什么也没说。' },
+          { kind: 'narration', text: '秋后来量租子的人照旧来了，一升也没有少量。' },
+          { kind: 'narration', text: '{elder}后来再没提过那一趟。', tone: 'faint' },
+        ],
+        next: 'tiers',
+      },
+
+      'rent-refused': {
+        id: 'rent-refused',
+        onEnter: [
+          { type: 'household', standing: -6 },
+          { type: 'chronicle', text: '荒年去求田主缓租，他当场把粮量走了。' },
+          { type: 'flag', key: 'rent-answer', value: '量走' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '他说，缓不了。' },
+          { kind: 'narration', text: '第二天{house:landlord}的人来了，把缸里剩的粮先量走了一半。' },
+        ],
+        next: 'tiers',
       },
 
       desperate: {

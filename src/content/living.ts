@@ -293,6 +293,8 @@ const HIRED: Living = {
  */
 export const LIVINGS: Record<OriginId, Living> = {
   farm: HOMESTEAD,
+  // 佃户过的也是靠地吃饭的日子——地是谁的，是田那一格的事，不是日子的事
+  tenant: HOMESTEAD,
   hunt: HUNT,
   craft: CRAFT,
   cloth: SHOP,

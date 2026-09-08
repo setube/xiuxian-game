@@ -101,14 +101,24 @@ const PERSON_EFFECTS: ReadonlySet<Effect['type']> = new Set([
  */
 function aimAtPerson<T extends Effect>(effect: T, roles: RoleSnapshot | undefined): T | null {
   // 「跟谁的这件事」也指人：守孝记的得是爹，不是「elder」两个字母——服满那一卷要按他的死因分话
-  const field = effect.type === 'undertake' ? 'who' : PERSON_EFFECTS.has(effect.type) ? 'id' : null
-  if (field === null) return effect
+  // 债的两头也指人：荒年欠田主的租子，欠的是家里当家的那个人，不是「elder」
+  const fields: readonly string[] =
+    effect.type === 'undertake'
+      ? ['who']
+      : effect.type === 'owe' || effect.type === 'repay' || effect.type === 'forgive'
+        ? ['debtor', 'creditor']
+        : PERSON_EFFECTS.has(effect.type)
+          ? ['id']
+          : []
+  if (fields.length === 0) return effect
   const draft: Record<string, unknown> = { ...effect }
-  const role = draft[field]
-  if (!isRole(role)) return effect
-  const real = roles === undefined ? undefined : roles[role]
-  if (real === undefined) return null
-  draft[field] = real
+  for (const field of fields) {
+    const role = draft[field]
+    if (!isRole(role)) continue
+    const real = roles === undefined ? undefined : roles[role]
+    if (real === undefined) return null
+    draft[field] = real
+  }
   return draft as T
 }
 
@@ -392,10 +402,26 @@ function applyOne(
        */
       if (effect.station !== undefined) household.station = effect.station
       // 业与产。分家那一卷头一回写它们：铺子归了哥，你改去给人做工，产是 null
-      if (effect.livelihood !== undefined) household.livelihood = effect.livelihood
+      if (effect.livelihood !== undefined) {
+        /*
+         * 换了业，农闲的贴补跟着断。
+         *
+         * 兼业眼下那两个值（挑柴、针线）都是种地人家农闲的事；这一家改去做木工、去给人做工，
+         * 「农闲挑柴进镇去卖」那句话就不再成立——六问里「你如今木工。农闲的时候挑柴进镇去卖」
+         * 是穿帮（`scripts/tenancy.ts` 四抓到的）。规矩写在这儿一处，不散给每个改业的写手：
+         * 他们不知道这一家荒年挑过柴。哪天有一样贴补跟业无关（开铺子的人家也接针线），
+         * 再把这一条改成按值分。
+         */
+        if (effect.livelihood !== '务农' && effect.livelihood !== household.livelihood)
+          household.sideline = null
+        household.livelihood = effect.livelihood
+      }
       if (effect.business !== undefined) household.business = effect.business
       // 田。地抵了债那一卷是第一个写手：自耕变佃，日子照旧，家业没了
       if (effect.tenure !== undefined) household.tenure = effect.tenure
+      // 租谁的地、还靠什么贴补。两格都是 null 有分量：不再租谁的地、那样贴补断了
+      if (effect.landlord !== undefined) household.landlord = effect.landlord
+      if (effect.sideline !== undefined) household.sideline = effect.sideline
       return null
     case 'family': {
       /**

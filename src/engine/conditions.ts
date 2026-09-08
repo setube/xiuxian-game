@@ -23,7 +23,8 @@ interface Ctx {
 /**
  * 一格条件怎么验。拿到的值保证不是 undefined——空着的格子由 `matches` 跳过。
  */
-type Check<K extends keyof Condition> = (value: NonNullable<Condition[K]>, ctx: Ctx) => boolean
+// 去掉的是「没写」（undefined），不去 null：`sideline: null` 是一条真条件（这家没有贴补）
+type Check<K extends keyof Condition> = (value: Exclude<Condition[K], undefined>, ctx: Ctx) => boolean
 
 /** 闭区间，两端都可以不写 */
 function within(value: number, range: { atLeast?: number; atMost?: number }): boolean {
@@ -189,6 +190,7 @@ const CHECKS = {
   livelihood: (livelihood, { household }) => household.livelihood === livelihood,
   business: (business, { household }) => household.business === business,
   tenure: (tenure, { household }) => household.tenure === tenure,
+  sideline: (sideline, { household }) => household.sideline === sideline,
   station: (station, { household }) => household.station === station,
 
   /**

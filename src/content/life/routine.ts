@@ -371,6 +371,20 @@ export const routineScenes: SceneLibrary = {
             requires: [{ flag: { key: 'heard-of-cultivators', equals: true } }],
             text: '关于那些人的说法，你偶尔还会想起来。这些年你没再见过第二回。',
           },
+          // 兼业留在这一家身上：荒年挑起的那副担子，到你成年了还在门后靠着
+          {
+            requires: [{ sideline: '挑柴' }],
+            text: '农闲的时候，挑柴进镇那一趟如今是你去。',
+          },
+          // 贴补是这一家的，不是娘一个人的：娘没了，灯下那点活计换了人接着做
+          {
+            requires: [{ sideline: '针线' }, { family: { id: 'mother', alive: true } }],
+            text: '家里还接着针线活。灯下那点活计，多半是{dam}的。',
+          },
+          {
+            requires: [{ sideline: '针线' }, { family: { id: 'mother', alive: false } }],
+            text: '家里还接着针线活。娘不在了，灯下那点活计换了人。',
+          },
         ],
         choices: [
           {

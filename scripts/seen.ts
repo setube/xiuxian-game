@@ -28,6 +28,12 @@
  * 一支三十批响一次假警报的门禁，比没有门禁更坏。
  * `hit === 0` 换来的是零假警报，代价就是这条缝。
  *
+ * 可 `hit === 0` 在三百世上**不是**零假警报——对千分之几的句子不是。成年那一卷读
+ * 「挑柴进镇那一趟如今是你去」：兼业只在荒年那一卷长出来，全库半数世里有一两个人读到，
+ * 三百世期望一两人，两三成机会一个也没有。**内容一个字没坏，五批里红一批。**
+ * 所以「没人读到」跟底下「没人走到」一样处置：三百世里零，再掷到出现为止（上限十倍），
+ * 出现了只印一行「稀」，补掷的不进百分比（2026-09-09，`tenancy` 那一片撞上的）。
+ *
  * 原先还有第四条「组合不能只有一种」。删了：**造不出只让它红的反例**。
  * 每句都满足 `0 < hit < 总数`，就必然有人读到有人读不到，组合数必然大于一。
  * 它被前两条整个盖住，留着只是在制造「我们检查了」的假象。
@@ -44,7 +50,7 @@
 import './lib/seeded'
 
 import { lifeScenes } from '../src/content/life'
-import type { Condition, NarrativeBlock } from '../src/types/game'
+import type { Condition, NarrativeBlock, SceneNode } from '../src/types/game'
 import { mapShards } from './lib/parallel'
 
 /**
@@ -141,14 +147,25 @@ for (const [sceneId, scene] of Object.entries(lifeScenes)) {
       for (const block of n?.blocks ?? []) if ('text' in block) return block.text
       return null
     }
+    /**
+     * 分流去的那一节自己也可能没有正文——只是再分一次流的路由节
+     * （`dearth:price#tiers`：先过租子那一关，再按家境分档）。
+     * 只看一层的话，走路由节过去的人一个也认不出来：荒年开场那一节从二十来世掉到两世，
+     * 而它只会「判不了」、不会红——**一把量不到人的尺子，长得跟没人走到一模一样**。
+     * 所以顺着没正文的节往下找，直到碰上有正文的为止。
+     */
+    const onwardOf = (n: SceneNode | undefined, depth: number): string[] => {
+      if (!n || depth > 4) return []
+      const text = firstText(n)
+      if (text !== null) return [text]
+      return [...(n.branches ?? []).map((b) => b.next), n.next ?? '']
+        .filter((id): id is string => id.length > 0)
+        .flatMap((id) => onwardOf(scene.nodes[id.replace(/^.*#/, '')], depth + 1))
+    }
     const own = firstText(node)
-    const onward = [...(node.branches ?? []).map((b) => b.next), node.next ?? '']
-      .filter((id): id is string => id.length > 0)
-      .map((id) => firstText(scene.nodes[id]))
-      .filter((text): text is string => text !== null)
     watched.push({
       where: `${sceneId}#${nodeId}`,
-      arrivals: own ? [own] : onward,
+      arrivals: own ? [own] : onwardOf(node, 0),
       lines: node.seen.map((one) => ({ text: one.text, requires: describe(one.requires) })),
     })
   }
@@ -177,7 +194,7 @@ const lives = (
  * 「有没有人走到」跟「多少人走到」是两个问题，分开量。
  *
  * 分布用固定三百世；存在性掷到出现为止，上限十倍（`day.ts` 定下的老规矩，
- * `portrait.ts` 也是这么改的）。补掷的那些世**不进百分比**——它们只回答「到得了吗」。
+ * `portrait.ts` 也是这么改的）。补掷的那些世**不进百分比**——它们只回答「到得了吗」「读得到吗」。
  *
  * 逼出这一段的是 `kindred:mourning#sour`：三百世里期望一个半人（分了家、娘留在老屋、
  * 婆媳不睦、娘殁，四件事叠在一起），`=== 0` 的概率两成出头。**内容一个字没坏，五批里红一批**；
@@ -189,7 +206,20 @@ let extraLives: string[][] = []
 {
   const reached = (node: Watched, pool: readonly string[][]): boolean =>
     pool.some((life) => node.arrivals.some((a) => landed(life, a)))
-  const missing = (): Watched[] => watched.filter((node) => !reached(node, lives) && !reached(node, extraLives))
+  const arrivedAt = (node: Watched, pool: readonly string[][]): string[][] =>
+    pool.filter((life) => node.arrivals.some((a) => landed(life, a)))
+  /** 这一节判得动（走到的够六十世），可有一句三百世里没人读到、补掷的里也没人 */
+  const unread = (node: Watched): boolean => {
+    const base = arrivedAt(node, lives)
+    if (base.length < ENOUGH) return false
+    const extra = arrivedAt(node, extraLives)
+    return node.lines.some(
+      (line) =>
+        !base.some((life) => landed(life, line.text)) && !extra.some((life) => landed(life, line.text)),
+    )
+  }
+  const missing = (): Watched[] =>
+    watched.filter((node) => (!reached(node, lives) && !reached(node, extraLives)) || unread(node))
   const step = Math.max(300, Math.floor(RUNS / 2))
   while (missing().length > 0 && extraLives.length < CAP) {
     const more = (
@@ -226,12 +256,20 @@ for (const node of watched) {
 
   const thin = arrived.length < ENOUGH
   const pct = (n: number) => ((n / arrived.length) * 100).toFixed(1).padStart(5)
+  const extraArrived = extraLives.filter((life) => node.arrivals.some((a) => landed(life, a)))
   for (const line of node.lines) {
     const hit = arrived.filter((life) => landed(life, line.text)).length
-    const bad = !thin && (hit === 0 || hit === arrived.length)
-    const flag = !bad ? '  ' : hit === 0 ? '✗ 没人读到' : '✗ 人人都读到'
+    // 三百世里没人读到的，看补掷的那些世里有没有人读到——「有没有」跟「多少」分开量
+    const later =
+      hit === 0 && !thin ? extraArrived.filter((life) => landed(life, line.text)).length : 0
+    const bad = !thin && ((hit === 0 && later === 0) || hit === arrived.length)
+    const flag = bad ? (hit === 0 ? '✗ 没人读到' : '✗ 人人都读到') : later > 0 ? '· 稀　　　' : '  '
     console.log(`    ${pct(hit)}%  ${flag}  ${line.text}`)
     console.log(`             ${line.requires}`)
+    if (later > 0)
+      console.log(
+        `             三百世没人读到；再掷 ${extraLives.length} 世有 ${later} 人读到——这一句到得了，只是稀`,
+      )
     if (bad) failed += 1
   }
 

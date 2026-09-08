@@ -1,6 +1,6 @@
 import { useHouseholdStore } from '@/stores/household'
 import { usePeopleStore } from '@/stores/people'
-import type { Livelihood, Tenure } from '@/types/game'
+import type { Livelihood, Sideline, Tenure } from '@/types/game'
 
 /**
  * 你面前有哪几条路。
@@ -62,6 +62,10 @@ export interface Paths {
    * 那地却已经归了债主（`household.tenure`，xiuxian-game-79 加的）。
    */
   tenure: Tenure | null
+  /** 租谁的地。人口册上那个人；租着地却说不上是谁的（老账）是 null */
+  landlord: string | null
+  /** 除了那一行还靠什么贴补。跟产、田同一个口径：迁出去的人不再报娘家的 */
+  sideline: Sideline | null
   /** 上头有没有人。当家的不是你，就有 */
   under: string | undefined
   /** 还在做家里原来那一行吗 */
@@ -143,6 +147,8 @@ export function pathsNow(): Paths {
      * ——79 与 14 2026-09-07 定：业产田都看此刻这一户。
      */
     tenure: movedOut ? null : household.tenure,
+    landlord: movedOut ? null : household.landlord,
+    sideline: movedOut ? null : household.sideline,
     under: head === 'me' ? undefined : head,
     /*
      * 还做不做家里原来那一行。
@@ -165,6 +171,12 @@ export function pathsNow(): Paths {
  * 跟谁一起——空着的那一格本身是信息，硬凑一句「你没有铺子」反而把
  * 一件本来无声的事说响了。
  */
+/** 兼业念出来是哪一句。照库里真写的加 */
+const SIDELINE_WORDS: Readonly<Record<Sideline, string>> = {
+  挑柴: '农闲的时候挑柴进镇去卖。',
+  针线: '家里还接些针线活贴补。',
+}
+
 export function pathWords(now: Paths = pathsNow()): string[] {
   const people = usePeopleStore()
   const said: string[] = []
@@ -177,6 +189,8 @@ export function pathWords(now: Paths = pathsNow()): string[] {
   } else {
     said.push('你眼下没有个正经营生。')
   }
+  // 兼业紧跟着业说：外人叫这家农家，家里自己知道还靠什么贴补
+  if (now.sideline !== null) said.push(SIDELINE_WORDS[now.sideline])
 
   // 二、上头有没有人。当着家的不必说——那是常态，说了反而像在强调
   if (now.under !== undefined) {
@@ -203,7 +217,11 @@ export function pathWords(now: Paths = pathsNow()): string[] {
   if (now.tenure === '自耕') {
     said.push('那几亩地是自家的。')
   } else if (now.tenure === '佃') {
-    said.push('种着别人的地，秋后先量租子。')
+    // 租的是谁的地，说得出就说：田主是人口册上的真人，姓是明摆着的（他叫什么另说）
+    const owner = now.landlord === null ? undefined : people.personOf(now.landlord)?.surname
+    said.push(
+      owner === undefined ? '种着别人的地，秋后先量租子。' : `种着${owner}家的地，秋后先量租子。`,
+    )
   }
 
   // 五、跟谁一起过。一个人过要说——那件事得说出来才成立

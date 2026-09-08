@@ -9,7 +9,7 @@
 import './lib/seeded'
 
 import { ORIGINS, originById, type Origin } from '../src/content/origins'
-import { useHouseholdStore } from '../src/stores/household'
+import { rollSideline, useHouseholdStore } from '../src/stores/household'
 import type { Condition, OriginId } from '../src/types/game'
 
 /**
@@ -46,6 +46,9 @@ export function beOf(id: OriginId): void {
   household.business = row.business
   household.tenure = row.tenure
   household.station = row.station
+  // 贴补不是挑出身的五格之一，可它由行决定：不照表重掷，开 pinia 时随机掷到的那一行的
+  // 针线活会留在一个布庄人家身上。要一户「还没有贴补」的农家，摆局之后自己归零
+  household.sideline = rollSideline(row)
 }
 
 /**

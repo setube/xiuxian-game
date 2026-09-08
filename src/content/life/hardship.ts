@@ -528,7 +528,24 @@ export const hardshipScenes: SceneLibrary = {
       signed: {
         id: 'signed',
         onEnter: [
-          { type: 'household', debt: -FATHER_LOAN, standing: -8, tenure: '佃' },
+          /*
+           * 债主成了田主。他是镇上的人，从此这一家秋后先量租子给他——
+           * 「租谁的地」那一格（`household.landlord`）的第二个写手，第一个是生在佃户家。
+           * 他不进这一户，也不在村里；他有性情，荒年去求他缓租，缓不缓从性情里出。
+           */
+          {
+            type: 'meet',
+            id: 'landlord',
+            calls: '田主',
+            who: { surname: '王', given: '守业', gender: '男', age: 48, doing: '放债，收租' },
+          },
+          {
+            type: 'household',
+            debt: -FATHER_LOAN,
+            standing: -8,
+            tenure: '佃',
+            landlord: 'landlord',
+          },
           { type: 'chronicle', text: '地抵了债。从此种的是别人的地。', tone: 'deep' },
         ],
         blocks: [
