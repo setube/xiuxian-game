@@ -38,14 +38,24 @@ import { useWorldStore } from '../src/stores/world'
 /**
  * 走多少世。
  *
- * 这一支要等的是**「正月里」那一卷真的演出来**——它压着分家、侄儿满三岁
- * 两组条件，再加上现在这一条「此刻是正月」，一世里未必轮得到。
- * 三百世下采得到几十次，第三条会把实际采到多少印出来，采不够会红。
+ * ## 这个数是倒推出来的，不是拍的
+ *
+ * 「正月里」那一卷压着三组条件：分了家（约 4.5%）、侄儿满三岁、
+ * 此刻是腊月或正月。三条叠起来，`kindred` 那一支实测走到率约 **1.4%**
+ * （`scripts/kindred.ts` 的 `NEWYEAR_RATE`，1115 世采到 46 次）。
+ *
+ * 头一版拍了 600 世，期望 8 次——**实际抽到 0 次**。8 不是「大概率有」，
+ * 是「一半的批次会低于它」，而这一支只要一次没采到，第一条判据就是空的。
+ *
+ * 要 12 次垫底、留 1.3 倍余量：`12 / 0.014 × 1.3 ≈ 1114`。
+ * 跟 `kindred` 同一条算式——**它们等的是同一件稀事**，那边改了率这边也得跟。
  */
-const RUNS = 600
+const NEWYEAR_RATE = 0.014
+const WANTED = 12
+const RUNS = Math.ceil((WANTED / NEWYEAR_RATE) * 1.3)
 
 /** 演出来的那些卷，各在几月 */
-const when: { scene: string; month: number }[] = []
+const when: { scene: string; month: number; after: number }[] = []
 let worlds = 0
 
 for (let i = 0; i < RUNS; i += 1) {
@@ -61,33 +71,54 @@ for (let i = 0; i < RUNS; i += 1) {
   story.begin()
   worlds += 1
   let turns = 0
-  let seen = narrative.stream.length
+  /*
+   * 收正文用「见过的块 id」而不是下标切片。
+   *
+   * 一步之内可能推进好几块，而 `stream` 是累积的；按下标切要自己维护
+   * 游标，漏一次就丢一段。`kindred-lives.ts` 用的就是这个写法。
+   */
+  const kept = new Set<string>()
+  const drain = (): string[] => {
+    const fresh: string[] = []
+    for (const item of narrative.stream) {
+      if (kept.has(item.id)) continue
+      kept.add(item.id)
+      if ('text' in item.block) fresh.push(item.block.text)
+    }
+    return fresh
+  }
+  drain()
 
-  while (!narrative.ended && turns < 200) {
+  while (!narrative.ended && turns < 240) {
     const open = narrative.options.filter((o) => !o.locked)
     if (open.length === 0) break
 
-    /*
-     * 选之前先记下此刻是几月。
-     *
-     * **采样点是判据的一部分**：那一卷的正文是在它被推进屏幕的那一刻
-     * 成立的，而 `onEnter` 里的 `{ type: 'time' }` 会把时序往后推
-     * （「正月里」那一卷推三天）。选完再读月份，读到的是演完之后的日子，
-     * 腊月演的那一卷会被读成正月——判据反而变松。
-     */
-    const monthNow = world.time.month
+    const monthBefore = world.time.month
     story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
     turns += 1
 
-    // 这一步推出了新正文，看看里头有没有那句「正月里」
-    const fresh = narrative.stream.slice(seen)
-    seen = narrative.stream.length
-    for (const one of fresh) {
-      // `NarrativeBlock` 是联合类型，不是每一种都有 `text`（`heading` 只有标题）
-      const text = 'text' in one.block ? one.block.text : ''
-      if (text.includes('正月里你回了一趟老屋')) {
-        when.push({ scene: 'kindred:newyear', month: monthNow })
-      }
+    /*
+     * 走没走到那一卷，**看正文，不看 `sceneId`**。
+     *
+     * `kindred:newyear` 全卷只有 `blocks` 和 `next`/`branches`，
+     * **一个 `choices` 也没有**——引擎一步就把整卷走完，
+     * `sceneId` 在两次 `choose` 之间从来没停在它上面。绕了四轮才明白，
+     * `kindred-lives.ts` 那句注释早写着：「无选项的卷进去就出来」。
+     *
+     * ## 月份要取「这一步的前后两头」，不是其中一头
+     *
+     * 那一卷是在 `choose` **之中**被年表掷中的：先验 `requires`（此刻是腊月
+     * 或正月），再跑 `onEnter`（`{ type: 'time', days: 2 }` 推两天）。
+     * 于是两头都不是「它演出的那一刻」：
+     *
+     *     选之前　　上一步留下的日子，那一卷还没发生　　400 世里 12 次落在时令外
+     *     选之后　　推完两天的日子，正月廿九会变成二月　1115 世里 6 次落在二月
+     *
+     * 两头取并集才对——**只要有一头在腊月正月，那一卷就是在年下演的**。
+     * 一月三十日，推两天正好能跨月，那不是内容的错，是「一步之内时序会走」。
+     */
+    if (drain().some((line) => line.includes('正月里你回了一趟老屋'))) {
+      when.push({ scene: 'kindred:newyear', month: monthBefore, after: world.time.month })
     }
   }
 }
@@ -97,13 +128,40 @@ console.log(`\n=== 「正月里」演在几月（${RUNS} 世）===\n`)
 let bad = 0
 
 /*
- * 一、演出来的那些，全都得在正月。
+ * 一、演出来的那些，全都得在年下。
  *
  * 判据问的是**演出来的那一刻是几月**，不是「requires 里写没写 month」——
  * 后者是看代码，前者是看它跑出来的样子。写了条件而条件没生效
  * （比如 `month` 那一格的判据函数漏进 `CHECKS`），只有前者查得出来。
+ *
+ * ## 「那一刻」要按一步的**区间**算，不是按两端的点
+ *
+ * 成年之后 `routine:adult` 一回合推两年、`routine:prime` 推三年
+ * （22 量的：22 岁起一世见过的不同月份中位只有 2–5 个）。年表在这一步的
+ * **内部**掷中那一卷、验 `requires`、跑 `onEnter`——而我在步的两端观测，
+ * 那一刻在两端之间，两端都看不到。实测落在时令外的两次正是这个形状：
+ *
+ *     47 岁　选前 11 月 → 选后 2 月　（跨三个月，中间必经腊月正月）
+ *     35 岁　选前 10 月 → 选后 9 月　（跨将近一年）
+ *
+ * **这不是内容演错了时候，是判据的观测粒度粗于系统的推进粒度。**
+ * 一步跨过了年下，条件就是在年下成立的。所以判「这一步有没有覆盖腊月正月」，
+ * 而不是「两端是不是腊月正月」——跨年的步（11 月 → 2 月）算覆盖。
+ *
+ * 剩下真正该红的形状是：**一步之内没跨过年下，却演了年节**。
  */
-const offSeason = when.filter((one) => one.month !== 12 && one.month !== 1)
+const inFeast = (m: number): boolean => m === 12 || m === 1
+/** 这一步从 `from` 月走到 `to` 月，路上经过腊月或正月吗。跨年按环形算 */
+function coversFeast(from: number, to: number): boolean {
+  if (inFeast(from) || inFeast(to)) return true
+  // 一步跨了一年以上，十二个月全经过了
+  if (to === from) return true
+  for (let m = from; m !== to; m = (m % 12) + 1) {
+    if (inFeast(m)) return true
+  }
+  return false
+}
+const offSeason = when.filter((one) => !coversFeast(one.month, one.after))
 if (offSeason.length > 0) {
   const byMonth = new Map<number, number>()
   for (const one of offSeason) byMonth.set(one.month, (byMonth.get(one.month) ?? 0) + 1)
@@ -120,28 +178,31 @@ if (offSeason.length > 0) {
  *
  * 一次也没演的话第一条会安安静静地全绿——**没查到和查过了长得一模一样**。
  *
- * ## 这一条第一次跑就红了，而且红对了
+ * ## 这一条红过两次，两次的病根不一样
  *
- * 头一版给那一卷收的是「只在正月演」（`month: { is: 1 }`），1200 世
- * 一次也没演出来。当时以为是采样率，加大世数照样零。量了才知道：
- * 前置齐备（分了家 + 侄儿满三岁）的那些时刻里，**各月份的机会数差得很远**——
+ * **头一次**：那一卷收的是「只在正月演」（`month: { is: 1 }`），1200 世
+ * 一次也没演。量出来前置齐备的那些时刻里各月份机会数差得很远
+ * （二月 36、六月 55，而**正月 1**）——各卷推进的天数不一样，
+ * 世界并不均匀地停在十二个月上。只收正月是一条几乎掷不中的死条件。
+ * 改收「腊月或正月」。
  *
- *     二月 36　六月 55　七月 29　八月 28　……　**正月 1**
+ * **第二次**：改完仍是 0 次，我先归因到那一卷的 `weight: 5` 太低，
+ * 还照这个理由把这一条降成了报数。**那个归因是错的**——`kindred`
+ * 那一支同期实测 1115 世采到年节走动 46 次（4.1%），它跑得出来，
+ * 我跑不出来。差别不在权重也不在采法，**在世数**：我拍了 600 世，
+ * 期望 8 次，而 8 是「一半的批次会低于它」。
  *
- * 各卷推进的天数不一样，世界并不均匀地停在十二个月上。只收正月
- * 等于收了一条几乎掷不中的死条件——**那一卷会从库里静默消失，
- * 而报表上只会说「覆盖 0 次」**。
- *
- * 改收「腊月或正月」之后才采得到。年下本来就横跨这两个月。
+ * 现在 `RUNS` 按走到率倒推（见上），采不到就是真的有问题，恢复成硬判据。
  */
 console.log(`  覆盖：${worlds} 世 / 「正月里」演了 ${when.length} 次`)
 if (when.length === 0) {
   console.log(
-    `  ⚠ ${RUNS} 世里一次也没演到「正月里」，第一条这一批没被验到。` +
-      `\n    原因不在时令那一格：不加时令条件，600 世同样是 0 次（对照跑过）。` +
-      `\n    那一卷的 weight 是 5，同册其余是 14–60，它掷不过邻居。` +
-      `\n    权重是内容层的事，等它调上去或换个采法，这一条自动恢复成硬判据。`,
+    `  ✗ ${RUNS} 世里一次也没演到「正月里」，第一条根本没被验过。` +
+      `\n    世数是按走到率 ${NEWYEAR_RATE} 倒推的（要 ${WANTED} 次垫底、留 1.3 倍余量），` +
+      `\n    这一批一次也没采到，说明那个率过期了或者那一卷的条件又紧了一层。` +
+      `\n    先跑 scripts/kindred.ts 看它的「年节走动」采到几次，两边对一下。`,
   )
+  bad += 1
 }
 
 /**
@@ -191,6 +252,28 @@ if (when.length === 0) {
       if (meetsAll(timing)) failed.push('六月里那一卷的时令条件照样成立')
       world.time.month = 1
       if (!meetsAll(timing)) failed.push('正月里那一卷的时令条件反而不成立')
+    }
+  }
+
+  /*
+   * `coversFeast` 自己得分得开对错——它是第一条判据的尺子，
+   * 而**一条「跨一年就恒真」的尺子等于没有尺子**。
+   *
+   * 成年段一步能推两三年，那种步确实覆盖了年下，判它真是对的；
+   * 可要是连「三月走到五月」也判真，第一条就再也红不了了。
+   */
+  const covers: [number, number, boolean, string][] = [
+    [12, 12, true, '腊月原地'],
+    [1, 1, true, '正月原地'],
+    [11, 2, true, '十一月跨到二月，路上经过腊月正月'],
+    [1, 2, true, '正月演完推进二月'],
+    [3, 5, false, '三月走到五月，没到年下'],
+    [6, 9, false, '六月走到九月，没到年下'],
+    [2, 11, false, '二月走到十一月，正好绕开年下'],
+  ]
+  for (const [from, to, want, why] of covers) {
+    if (coversFeast(from, to) !== want) {
+      failed.push(`${why}：coversFeast(${from}, ${to}) 该是 ${want}`)
     }
   }
 
