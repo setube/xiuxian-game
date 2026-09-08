@@ -218,6 +218,42 @@ export interface Outcome {
    * 跟一册书那次一模一样：正文说给了，实际没给。
    */
   teaches?: { id: string; title: string; summary: string; category: KnowledgeCategory }
+  /**
+   * 这一趟他认识了一个人。
+   *
+   * 跟 `grants` / `teaches` 是同一条规矩的第三半：**世界给的必须由结果携带**。
+   * 而这一半也是漏的——**山道上那个人从来没进过人口册**。
+   *
+   * 查证（2026-09-08）：这一卷落了物（册子）、认知（「山道上那个人」）、
+   * 旗标，**唯独没有人**。于是 14.md 举的那个例子——
+   * 「十五岁被救过，二十年后成逃犯去投奔恩人」——在这个库里无从谈起：
+   * **没有「恩人」这个人**，只有一条叫「山道上那个人」的认知。
+   *
+   * 而它看起来是完整的：玩家读得到那条认知，正文也演完了，
+   * `present.ts` 不报（没有人死）、`verify.ts` 不报（跳转都对）。
+   *
+   * ## 不是每一档都该认识
+   *
+   * 分界是**他有没有醒过来跟你打过交道**：
+   *
+   *     后来找上门来 / 躺了三天教了你 / 守了一夜第二天有人来   → 认识了
+   *     碰一下就睁眼、给了册书然后不见了                      → 不认识
+   *     叫人抬走的 / 死人 / 只是看了看                        → 不认识
+   *
+   * 「给了你一册书然后不见了」那一档尤其不能算——**那正是这一卷
+   * 最要紧的一次相遇，而它的分量恰恰在于「你不知道他是谁」**。
+   */
+  acquaints?: {
+    id: string
+    /** 玩家怎么称呼他。不知道姓名时用描述性的叫法 */
+    calls: string
+    surname: string
+    given: string
+    age: number
+    doing: string
+    /** 初识的好感。救过命，但也就是萍水相逢 */
+    delta: number
+  }
   /** 这一趟在他身上留下的、日后还会被人看见的痕迹 */
   marks?: string
 }
@@ -472,6 +508,12 @@ function resolveLift(truth: WoundedTruth, body: number, will: number, reading: R
       id: 'lift-disciple',
       summary: '你把他弄到草棚里守了一夜。第二天来了两个人，给了你两块碎银子。',
       learnedTruth: true,
+      /*
+       * ⚠️ 这一档**故意不给 `acquaints`**：守了一夜，可**他本人没跟你打过交道**
+       * ——来的是另外两个人，给了银子就把他抬走了。
+       *
+       * 分界是「他有没有醒过来跟你说过话」，不是「你出了多少力」。
+       */
       blocks: [
         { kind: 'narration', text: '还有气。是个年轻人，比你大不了几岁，衣裳很干净。' },
         { kind: 'narration', text: '你把他弄到路边的草棚里，守了一夜。' },
@@ -521,6 +563,20 @@ function resolveLift(truth: WoundedTruth, body: number, will: number, reading: R
       id: 'lift-fighter',
       summary: '你把他背到破庙里。他躺了三天，教了你一个呼吸的法子。',
       learnedTruth: true,
+      /*
+       * 三天。他醒着、说了话、手把手教了两遍——**这一档是这一卷里
+       * 关系最实的一次相遇**，比给了册书就走的那一档实得多。
+       */
+      acquaints: {
+        id: 'road-fighter',
+        calls: '破庙里那个挎刀的',
+        surname: '安',
+        given: '五',
+        age: 34,
+        doing: '带着刀走远路',
+        // 三天的照料。这个数比猎户那档高，因为他们真的相处过
+        delta: 22,
+      },
       /**
        * 他真的学会了一样东西。
        *
@@ -571,6 +627,21 @@ function resolveLift(truth: WoundedTruth, body: number, will: number, reading: R
     id: 'lift-hunter',
     summary: '你把他弄下了山。半个月后他提着一只野兔找上门来。',
     learnedTruth: true,
+    /*
+     * 他自己说了「往后进山有事，到山那边打听我」——**而在这一格加上之前，
+     * 那句话指着一个不存在的人**。提着野兔找上门来的人不进人口册，
+     * 于是二十年后没有任何一卷内容能让玩家去找他。
+     */
+    acquaints: {
+      id: 'road-hunter',
+      calls: '山那边那个猎户',
+      surname: '苗',
+      given: '三',
+      age: 38,
+      doing: '在山那边打猎',
+      // 救过命，可也就是萍水相逢——他提了只野兔，说了句话，就回山那边去了
+      delta: 14,
+    },
     blocks: [
       { kind: 'narration', text: '还有气。你把他翻过来，是个中年汉子，腿上一道大口子。' },
       { kind: 'dialogue', text: '……野猪。' },

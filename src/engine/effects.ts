@@ -777,6 +777,41 @@ function applyOne(
         })
       }
       if (outcome.marks) world.setFlag(outcome.marks, true)
+      /*
+       * 他从这一趟里认识的那个人。
+       *
+       * 跟 `grants` / `teaches` 是同一条规矩的第三半：**世界给的必须由结果携带**。
+       * 而这一半原先是漏的——**山道上那个人从来没进过人口册**：
+       * 物进了行囊、认知进了知识库、旗标也落了，唯独没有人。
+       *
+       * 于是猎户那一档正文里他自己说的那句「往后进山有事，到山那边打听我」
+       * **指着一个不存在的人**，而 14.md 要的「二十年后去投奔恩人」无从谈起。
+       *
+       * 走 `meet` 不直接调 store：那一条会把人立起来、把边牵上、把称呼记进
+       * 玩家的认知库，还会按 `bond` 连到该连的人——**同一件事只该有一条路**。
+       */
+      if (outcome.acquaints) {
+        const one = outcome.acquaints
+        applyOne(
+          {
+            type: 'meet',
+            id: one.id,
+            calls: one.calls,
+            delta: one.delta,
+            who: {
+              surname: one.surname,
+              given: one.given,
+              gender: '男',
+              age: one.age,
+              doing: one.doing,
+            },
+          },
+          world,
+          character,
+          household,
+          people,
+        )
+      }
       // 弄明白那人是谁了，认知才升档；没弄明白的，他记住的仍是自己那个判断
       character.learn({
         id: 'the-man-on-the-road',
