@@ -69,7 +69,9 @@ export const OLD_HOME_FARMS = { house: { id: 'old-home', livelihood: '务农' } 
  * 哥自己还在种地。问的是人不是户：没有自己的营生就是老屋的营生；他去镇上做了木匠，
  * 老屋仍是务农的户，这一条却不成立了。死了的人也不成立——死了的人不种地
  */
-export const BROTHER_FARMS = { family: { id: 'brother', alive: true, livelihood: ['务农'] } } as const
+export const BROTHER_FARMS = {
+  family: { id: 'brother', alive: true, livelihood: ['务农'] },
+} as const
 /** 哥在镇上做木匠 */
 export const BROTHER_CARPENTER = {
   family: { id: 'brother', alive: true, livelihood: ['木工'] },
@@ -737,8 +739,22 @@ export const kindredScenes: SceneLibrary = {
         onEnter: [
           { type: 'time', days: 9 },
           // 死讯先是听说（捎话来），守了七天是见过。世界事实（他殁了）跟你知道这件事是两条
-          { type: 'knowledge', id: 'death:brother', title: '哥没了', summary: '老屋捎话来，哥没了。', category: '人物', contact: '听说' },
-          { type: 'knowledge', id: 'death:brother', title: '哥没了', summary: '哥没了。你回老屋守了七天。', category: '人物', contact: '见过' },
+          {
+            type: 'knowledge',
+            id: 'death:brother',
+            title: '哥没了',
+            summary: '老屋捎话来，哥没了。',
+            category: '人物',
+            contact: '听说',
+          },
+          {
+            type: 'knowledge',
+            id: 'death:brother',
+            title: '哥没了',
+            summary: '哥没了。你回老屋守了七天。',
+            category: '人物',
+            contact: '见过',
+          },
           { type: 'chronicle', text: '哥没了。你回老屋守了七天。', tone: 'cinnabar' },
         ],
         blocks: [
@@ -1077,8 +1093,22 @@ export const kindredScenes: SceneLibrary = {
         onEnter: [
           { type: 'time', days: 9 },
           { type: 'flag', key: 'old-home-mother', value: false },
-          { type: 'knowledge', id: 'death:mother', title: '娘没了', summary: '老屋捎话来，娘没了。', category: '人物', contact: '听说' },
-          { type: 'knowledge', id: 'death:mother', title: '娘没了', summary: '娘在老屋没了。你回去守了七天。', category: '人物', contact: '见过' },
+          {
+            type: 'knowledge',
+            id: 'death:mother',
+            title: '娘没了',
+            summary: '老屋捎话来，娘没了。',
+            category: '人物',
+            contact: '听说',
+          },
+          {
+            type: 'knowledge',
+            id: 'death:mother',
+            title: '娘没了',
+            summary: '娘在老屋没了。你回去守了七天。',
+            category: '人物',
+            contact: '见过',
+          },
           { type: 'chronicle', text: '娘在老屋没了。你回去守了七天。', tone: 'cinnabar' },
           // 娘没了也守孝：这三年里家里不添丁、不议亲（`bearing`、`match` 都问 `not mourning`）
           { type: 'undertake', undertaking: 'mourning', who: 'mother' },
