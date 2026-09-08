@@ -40,19 +40,14 @@ import './lib/seeded'
  * 已经是日常那一卷——走没走到得看正文里那句话，不能看卷名。
  * `apart.ts` 把 kindred:wedding#open 与 kindred:nephew#open 移交到这儿：领进门的人得进老屋。
  */
-import { createPinia, setActivePinia } from 'pinia'
-
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
+import { lifeEvents, lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
-import { useStory } from '../src/engine/story'
-import { useHouseholdStore } from '../src/stores/household'
-import { useNarrativeStore } from '../src/stores/narrative'
-import { usePeopleStore } from '../src/stores/people'
-import { useWorldStore } from '../src/stores/world'
 import type { Livelihood, Temper, Terms } from '../src/types/game'
 import { effectsOf } from './refs'
+import { mapShards, sumTallies } from './lib/parallel'
 import { type Staged, ageTo, grownUp, marryIn, play, stage, weather } from './lib/staged'
+import { type KindredShard, type Lived } from './tasks/kindred-lives'
 
 const LIVES = 240
 const CAP = 5000
@@ -63,6 +58,19 @@ const DIVIDES_WANTED = 24
  * 才凑够两条路各两世。所以第四条的判据改在摆好的局上量（下面），随机人生里的只报数。
  */
 const BORROWS_WANTED = 0
+
+/**
+ * 补掷最多几轮。
+ *
+ * 每轮摊开掷一批（批量按还差多少估），收回来看够不够。四轮之后还不够，
+ * 多半不是运气不好而是内容出了事——那时该让第一条判据报出来，不是无限掷下去。
+ * `CAP` 仍然管着世数上限，两道闸各管一头。
+ */
+const ROUNDS = 4
+
+/** 摊开掷一批。判据留在这个文件里，任务只把 `Lived` 取回来 */
+const roll = (runs: number): Promise<{ lives: Lived[] }> =>
+  mapShards<KindredShard>({ task: 'scripts/tasks/kindred-lives.ts', runs }).then(sumTallies)
 
 const COLD: readonly Temper[] = ['暴躁', '刚硬']
 
@@ -85,43 +93,6 @@ function termsFor(wife: Temper, mother: Temper): Terms {
  */
 // 摆局的工具（`stage` / `play` / `weather` / `ageTo` / `marryIn` / `grownUp`）在 `lib/staged.ts`，`away.ts` 也用它
 
-interface Lived {
-  divided: boolean
-  /** 分家那一刻哥的好感，和之后每一个「老屋没事发生的年」采到的好感 */
-  brotherAtDivide: number | null
-  quietYears: { year: number; affinity: number }[]
-  wifeHouse: string | null
-  nephewHouse: string | null
-  nephewAges: number[]
-  /** 随机人生里走到了哪几步：侄儿成人、第三代、哥改行——只报数，不作判据 */
-  nephewGrown: boolean
-  thirdGeneration: boolean
-  brotherTurned: boolean
-  nephewRestless: boolean
-  nephewWent: boolean
-  newyearLines: string[]
-  wifeTemper: Temper | null
-  wifeCold: boolean | null
-  brotherAffinity: number | null
-  wifeAffinity: number | null
-  lent: boolean | null
-  brotherBeforeBorrow: number | null
-  brotherAfterBorrow: number | null
-  mourned: boolean
-  mournedOk: boolean
-  mournNote: string
-  /** 娶亲那天嫂子跟娘之间的边：从谁出发、处法、两个人的性情 */
-  inlaws: { from: string | null; terms: Terms | null; wife: Temper; mother: Temper } | null
-  /** 娶亲那一步前后，你跟娘的好感 */
-  motherAcrossWedding: { before: number | null; after: number | null } | null
-  quarrel: { before: Terms | null; after: Terms | null } | null
-  mourningLine: { line: 'fond' | 'sour' | 'none'; terms: Terms | null } | null
-  iouAfterLend: boolean | null
-  iouAfterRefuse: boolean | null
-  repaid: { kind: '粮' | '银子'; back: boolean; settled: boolean; oldLivelihood: string } | null
-  debtLineRight: number
-  debtLineWrong: number
-}
 
 /** 「不见面不减分」：没事发生的那些年好感有没有动。写成函数，是为了自检能喂坏数据 */
 function driftOf(
@@ -137,232 +108,57 @@ function coldnessWrong(rows: readonly { temper: Temper; cold: boolean }[]): numb
   return rows.filter((r) => COLD.includes(r.temper) !== r.cold).length
 }
 
-/** 这一册的卷。`apart.ts` 把 kindred:wedding 与 kindred:nephew 领人进门那两处移交到这儿 */
-const KINDRED_SCENES = [
-  'kindred:wedding',
-  'kindred:nephew',
-  'kindred:newyear',
-  'kindred:borrow',
-  'kindred:mourning',
-] as const
 
-function live(): Lived {
-  setActivePinia(createPinia())
-  const household = useHouseholdStore()
-  const narrative = useNarrativeStore()
-  const people = usePeopleStore()
-  const world = useWorldStore()
-  const story = useStory(lifeScenes, {
-    events: lifeEvents,
-    routine: lifeRoutine,
-    finale: lifeFinale,
-  })
-  story.begin()
-
-  const out: Lived = {
-    divided: false,
-    brotherAtDivide: null,
-    quietYears: [],
-    wifeHouse: null,
-    nephewHouse: null,
-    nephewAges: [],
-    nephewGrown: false,
-    thirdGeneration: false,
-    brotherTurned: false,
-    nephewRestless: false,
-    nephewWent: false,
-    newyearLines: [],
-    wifeTemper: null,
-    wifeCold: null,
-    brotherAffinity: null,
-    wifeAffinity: null,
-    lent: null,
-    brotherBeforeBorrow: null,
-    brotherAfterBorrow: null,
-    mourned: false,
-    mournedOk: true,
-    mournNote: '',
-    inlaws: null,
-    motherAcrossWedding: null,
-    quarrel: null,
-    mourningLine: null,
-    iouAfterLend: null,
-    iouAfterRefuse: null,
-    repaid: null,
-    debtLineRight: 0,
-    debtLineWrong: 0,
-  }
-  const fired = (id: string): boolean => world.hasFlag(`event:${id}`)
-  const kept = new Set<string>()
-  const drain = (): string[] => {
-    const fresh: string[] = []
-    for (const item of narrative.stream) {
-      if (kept.has(item.id)) continue
-      kept.add(item.id)
-      if ('text' in item.block) fresh.push(item.block.text)
-    }
-    return fresh
-  }
-  drain()
-  const KINDRED_TEXT = /老屋|嫂子|侄儿|侄孙|侄媳|正月里|喜酒/
-  let lastYear = world.time.year
-  for (let turns = 0; !narrative.ended && turns < 240; turns += 1) {
-    const open = narrative.options.filter((o) => !o.locked)
-    if (open.length === 0) break
-    const pick = open[Math.floor(Math.random() * open.length)]!
-    const sceneBefore = narrative.sceneId ?? ''
-    const nodeBefore = narrative.nodeId ?? ''
-    const brotherBefore = people.known['brother']?.affinity ?? null
-    const motherBefore = people.known['mother']?.affinity ?? null
-    const termsBefore = people.termsBetween('brother-wife', 'mother') ?? null
-
-    story.choose(pick.choice)
-
-    const fresh = drain()
-    const chose = `${sceneBefore}#${nodeBefore}:${pick.choice.id}`
-    const brotherNow = people.known['brother']?.affinity ?? null
-
-    // 分家那一刻。**这一步不跳**：分完家的同一步里年表就可能接着抽到娶亲、添丁
-    if (!out.divided && people.houses['old-home'] !== undefined) {
-      out.divided = true
-      lastYear = world.time.year
-    }
-    if (!out.divided) continue
-
-    // 一、老屋的事发生了没：看正文，不看卷名（无选项的卷进去就出来）
-    const kindredStep =
-      fresh.some((l) => KINDRED_TEXT.test(l)) || chose.startsWith('kindred:') || chose.startsWith('nephew:')
-    if (kindredStep || out.brotherAtDivide === null) {
-      // 这一步动没动好感是这一步的事；从这一步起按新的基线量「没事的年」——
-      // 旧基线下采的那些年作废，不然基线一挪，早先采的就都成了「动过」
-      out.brotherAtDivide = brotherNow
-      out.quietYears = []
-    } else if (world.time.year !== lastYear && brotherNow !== null) {
-      out.quietYears.push({ year: world.time.year, affinity: brotherNow })
-    }
-    lastYear = world.time.year
-
-    // 四、借粮
-    if (chose === 'kindred:borrow#open:lend' || chose === 'kindred:borrow#open:refuse') {
-      out.lent = chose.endsWith('lend')
-      out.brotherBeforeBorrow = brotherBefore
-      out.brotherAfterBorrow = brotherNow
-    }
-
-    if (!out.nephewGrown && fired('kindred-nephew-grown')) out.nephewGrown = true
-    if (!out.thirdGeneration && fired('kindred-grandnephew')) out.thirdGeneration = true
-    if (!out.brotherTurned && fired('kindred-brother-turns')) out.brotherTurned = true
-    if (!out.nephewRestless && (fired('nephew-restless') || fired('nephew-restless-hungry'))) out.nephewRestless = true
-    if (!out.nephewWent && world.hasFlag('nephew-went')) out.nephewWent = true
-
-    // 二、老屋在过日子。头一回见到他们时量住在哪一户；这一步里就夭折了的（时序跨了年）不量——
-    // 殁了的人不在户里，那是对的
-    if (
-      out.wifeHouse === null &&
-      people.personOf('brother-wife') &&
-      people.isAlive('brother-wife')
-    ) {
-      out.wifeHouse = people.houseOf('brother-wife')?.id ?? '（无）'
-      out.wifeTemper = people.personOf('brother-wife')?.temper ?? null
-    }
-    if (out.nephewHouse === null && people.personOf('nephew') && people.isAlive('nephew')) {
-      out.nephewHouse = people.houseOf('nephew')?.id ?? '（无）'
-    }
-    // 年节：正文里那句「正月里你回了一趟老屋」到了，就是走到了
-    if (fresh.some((l) => l.includes('正月里你回了一趟老屋'))) {
-      for (const line of fresh) if (line.includes('已经')) out.newyearLines.push(line)
-      out.nephewAges.push(people.ageOf('nephew'))
-    }
-    void brotherBefore
-    // 三、嫂子的脸色（娶亲那一卷）
-    if (
-      out.wifeCold === null &&
-      fresh.some((l) => l.includes('没说几句话') || l.includes('留你吃了晚饭'))
-    ) {
-      out.wifeCold = fresh.some((l) => l.includes('没说几句话'))
-    }
-    // 六、嫂子跟娘那条边
-    if (out.inlaws === null && fresh.some((l) => l.includes('喜酒'))) {
-      const wife = people.personOf('brother-wife')
-      const mother = people.personOf('mother')
-      if (wife && mother && people.isAlive('mother')) {
-        const edge = people.relations.find(
-          (r) => r.to === 'mother' && r.from !== 'me' && r.until === null && r.terms !== undefined,
-        )
-        out.inlaws = {
-          from: edge?.from ?? null,
-          terms: edge?.terms ?? null,
-          wife: wife.temper,
-          mother: mother.temper,
-        }
-        out.motherAcrossWedding = { before: motherBefore, after: people.known['mother']?.affinity ?? null }
-      }
-    }
-    if (out.quarrel === null && fresh.some((l) => l.includes('翻了脸'))) {
-      out.quarrel = { before: termsBefore, after: people.termsBetween('brother-wife', 'mother') ?? null }
-    }
-    if (out.mourningLine === null && fresh.some((l) => l.includes('老屋捎话来，娘没了'))) {
-      const line = fresh.some((l) => l.includes('是嫂子在跟前'))
-        ? 'fond'
-        : fresh.some((l) => l.includes('饭是自己烧的'))
-          ? 'sour'
-          : 'none'
-      out.mourningLine = { line, terms: people.termsBetween('brother-wife', 'mother') ?? null }
-    }
-
-    // 七、债
-    const owes = (): boolean =>
-      people.ious.some((one) => one.debtor === 'brother' && one.creditor === 'me' && one.settled === null)
-    if (chose === 'kindred:borrow#open:lend') out.iouAfterLend = owes()
-    if (chose === 'kindred:borrow#open:refuse') out.iouAfterRefuse = owes()
-    if (out.repaid === null) {
-      const grainBack = fresh.some((l) => l.includes('把粮送了回来'))
-      const silverBack = fresh.some((l) => l.includes('折了银子送来'))
-      const grainShort = fresh.some((l) => l.includes('秋后他没来'))
-      const silverShort = fresh.some((l) => l.includes('年底他没来'))
-      if (grainBack || silverBack || grainShort || silverShort) {
-        out.repaid = {
-          kind: grainBack || grainShort ? '粮' : '银子',
-          back: grainBack || silverBack,
-          settled: !owes(),
-          oldLivelihood: people.houses['old-home']?.livelihood ?? '（无）',
-        }
-      }
-    }
-    if (fresh.some((l) => l.includes('正月里你回了一趟老屋'))) {
-      const said = fresh.some((l) => l.includes('那笔粮，谁也没提'))
-      if (said === owes()) out.debtLineRight += 1
-      else out.debtLineWrong += 1
-    }
-
-    // 五、守孝
-    if (!out.mourned && fired('kindred-mourning')) {
-      out.mourned = true
-      const mother = people.kinOf('生母')[0]
-      if (mother === undefined || people.isAlive(mother)) {
-        out.mournedOk = false
-        out.mournNote = '守了孝，娘还活着'
-      } else if (world.getFlag('old-home-mother') !== false) {
-        out.mournedOk = false
-        out.mournNote = '守了孝，旗还写着娘在老屋'
-      }
-    }
-  }
-  out.brotherAffinity = people.known['brother']?.affinity ?? null
-  out.wifeAffinity = people.known['brother-wife']?.affinity ?? null
-  void household
-  void KINDRED_SCENES
-  return out
-}
 
 console.log(`\n=== 老屋：分家以后的两家（${LIVES} 世，分家至少 ${DIVIDES_WANTED} 世）===\n`)
 let bad = 0
 
-const lives: Lived[] = []
-for (let i = 0; i < LIVES; i += 1) lives.push(live())
-// 四、六到十一、十三、十四不靠随机掷到（见上面「摆好的局」），所以这儿只等分家够数
+/**
+ * 头一批掷多少世。
+ *
+ * ## 这个数是从分家率倒推的，不是拍的
+ *
+ * 判据要 `DIVIDES_WANTED`（24）户分家，而分家率实测约 4.5%——所以够数需要
+ * 五百多世，240 世**必然不够**。改造前那一版靠「一世一世补到够」兜住了这件事，
+ * 补出来的世实测 450–823 世，也就是说**三分之二的工作量在补掷里**。
+ *
+ * 摊开跑之后这一点变成了性能问题：补掷是一轮一轮串行的，摊不开。头一版
+ * 首批仍照 240 世，结果三颗种子里两颗比改造前**更慢**（12.0s→15.5s、
+ * 10.3s→14.0s）——并行省下的时间全被串行的补掷轮吃掉了。
+ *
+ * 所以首批直接按分家率倒推着掷够，让补掷退化成罕见的兜底。
+ * 留三成余量吸收方差（实测分家数 24–37，波动不小）。
+ *
+ * 报数那一行仍然印实际掷了多少世，所以这个数漂了看得见。
+ */
+const FIRST_BATCH = Math.ceil((DIVIDES_WANTED / 0.045) * 1.3)
+
+const lives: Lived[] = [...(await roll(FIRST_BATCH)).lives]
+/*
+ * 四、六到十一、十三、十四不靠随机掷到（见上面「摆好的局」），所以这儿只等分家够数。
+ *
+ * ## 摊开之后这一步的形状变了
+ *
+ * 原来是 `for (tries < CAP && !enough()) lives.push(live())`——一个每掷一世
+ * 就回头看一次全局计数的循环，掷够那一刻立刻停。摊开跑之后每一片只看得见
+ * 自己那几世，**没法问「大家一共够了没有」**，只能一轮一轮地补。
+ *
+ * 而补掷是串行的，摊不开——所以真正的办法是**首批就掷够**（见 `FIRST_BATCH`），
+ * 把这个循环留成兜底。批量按「还差多少 ÷ 实测命中率」估，命中率就从这一批
+ * 自己身上取，不写死一个会过期的常数。
+ *
+ * 掷出来的世一个不少，判据读到的 `lives` 跟从前是同一批东西——**只是更多**，
+ * 所以各条判据报的世数会比改造前大一些，那是多掷出来的，不是算错了。
+ */
 const enough = (): boolean => lives.filter((l) => l.divided).length >= DIVIDES_WANTED
-for (let tries = 0; tries < CAP && !enough(); tries += 1) lives.push(live())
+for (let round = 0; round < ROUNDS && !enough() && lives.length < CAP; round += 1) {
+  const got = lives.filter((l) => l.divided).length
+  const short = DIVIDES_WANTED - got
+  // 命中率从这一批自己身上取。一世也没中就按最小批量走，不做除零
+  const rate = got / lives.length
+  const need = rate > 0 ? Math.ceil(short / rate) : LIVES
+  lives.push(...(await roll(Math.min(CAP - lives.length, Math.max(24, need)))).lives)
+}
 const divided = lives.filter((l) => l.divided)
 const wedded = divided.filter((l) => l.wifeHouse !== null)
 const nephews = divided.filter((l) => l.nephewHouse !== null)

@@ -273,7 +273,9 @@ export const useCharacterStore = defineStore(
      */
     const undertakings = shallowRef<Undertaking[]>([])
     const realm = ref<Realm>(INITIAL_REALM)
-    const attributes = shallowRef<Attributes>(withConstitution(rollAttributes(), constitution.value))
+    const attributes = shallowRef<Attributes>(
+      withConstitution(rollAttributes(), constitution.value),
+    )
     /**
      * 天年：这一世能活多少年。
      *
@@ -460,7 +462,8 @@ export const useCharacterStore = defineStore(
     }
 
     /** 改写角色对自己某一面的看法。 */
-    function note(key: AspectKey, self: string | null): void {      aspects.value = { ...aspects.value, [key]: { ...aspects.value[key], self } }
+    function note(key: AspectKey, self: string | null): void {
+      aspects.value = { ...aspects.value, [key]: { ...aspects.value[key], self } }
     }
 
     /** 记下别人的评说。只增不改——认知的错位就靠这份先后顺序显形。 */
