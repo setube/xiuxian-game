@@ -132,6 +132,22 @@ const DYNASTIES: readonly string[] = [
  */
 const SCAN_DIRS: readonly string[] = ['src/content', 'src/engine', 'src/stores']
 
+/**
+ * ## `scripts/` 和 `design/` 为什么不在里头——这是判断，不是遗漏
+ *
+ * 查过了，两个都该在外面：
+ *
+ * - **`scripts/`**：那五个文件里的「明代」几乎全在这一支自己的文件头里
+ *   （「『明代』两个字不算出处」「一个作者看过某个宋代材料……」）。
+ *   **门禁在讨论什么算史实主张，纳进来等于让尺子量自己。**
+ * - **`design/ming-society.md`**：25 处朝代名，而它自己有 **70 处**
+ *   `【史料·待核原文】`/`【推断】`/`【抽象】` 标注——**它就是那份审查表**，
+ *   标得比代码还严。拿同一套规矩去量它是重复劳动。
+ *
+ * 记在这儿是为了**下一个人不必重做这次调查**：看见「怎么不扫那两个目录」，
+ * 答案在这里，不用再 grep 一遍。
+ */
+
 /** 已经登记过出处的文件。这些文件里提朝代是正当的——它们的出处在第一道里查 */
 const REGISTERED_FILES: readonly string[] = ['address.ts', 'attest.ts']
 
