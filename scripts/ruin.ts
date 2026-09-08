@@ -107,15 +107,18 @@ const canRuin = (): boolean => meetsAll(eventOf('debt-fields')?.requires)
 // ============================================================
 {
   const wrong: string[] = []
-  // 父亲回来了
-  const a = inDebt()
-  if (!a) wrong.push('掷不出局')
-  else {
+  // 父亲回来了。从旱到回来推了近三年，他也在老：health 掷得低的那几局链尾已经老病没了，
+  // 那不是这一条要验的事——掷到他真回来为止（十二局），不是让他不死
+  let back: Staged | null = null
+  for (let tries = 0; tries < 12 && back === null; tries += 1) {
+    const s = inDebt()
+    if (!s) continue
     applyEffects([{ type: 'flag', key: 'father-fate', value: '归' }])
     play('debt:return')
-    if (!a.people.isAlive('father')) wrong.push('摆局：回来那一卷演完父亲不在')
-    else if (canRuin()) wrong.push('父亲回来了，抵债那一卷还进得来')
+    if (s.people.isAlive('father')) back = s
   }
+  if (!back) wrong.push('十二局里父亲没有一局活着回来，摆不出局')
+  else if (canRuin()) wrong.push('父亲回来了，抵债那一卷还进得来')
   // 布庄人家：父亲没了也没有地可抵
   const b = born('cloth', 9, ['father', 'mother'])
   if (!b) wrong.push('掷不出布庄的局')

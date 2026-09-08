@@ -172,7 +172,7 @@ function fatherDiesAway(s: Staged, ask: boolean): string[] {
     { who: 'mother', temper: '精明', want: '药方', forbid: '哭了好几夜' },
     { who: 'mother', temper: '木讷', want: '不到十句', forbid: '药方' },
     { who: 'brother', temper: '暴躁', want: '把郎中骂了一顿', forbid: '一句话也没说' },
-    { who: 'brother', temper: '温和', want: '一句话也没说', forbid: '把郎中骂了一顿' },
+    { who: 'brother', temper: '温和', want: '留下的活全接了过去', forbid: '把郎中骂了一顿' },
   ]
   for (const one of cases) {
     const s = one.who === 'brother' ? born('farm', 10, ['father', 'mother', 'brother']) : child()
