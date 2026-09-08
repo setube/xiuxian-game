@@ -159,7 +159,7 @@ export const schoolingScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '开蒙的日子是{elder}定的。那天前殿有客，他没有来。' },
           { kind: 'narration', text: '教授姓周，长史司的属官，每日辰时到书房，酉时回自己家。' },
-          { kind: 'narration', text: '书房里只有你一个人。乳母在门外，一步没走开。' },
+          { kind: 'narration', text: '书房里只有你一个人。' },
           { kind: 'dialogue', speaker: '周教授', text: '世子请把手伸出来。' },
           { kind: 'narration', text: '他看了看你的手，什么也没说。' },
           { kind: 'event', text: '你开始认字了。' },
@@ -167,6 +167,40 @@ export const schoolingScenes: SceneLibrary = {
             kind: 'narration',
             text: '窗外是园子。隔着一道墙，听得见街上有人在卖东西。',
             tone: 'faint',
+          },
+        ],
+        /*
+         * 那句「乳母在门外，一步没走开」从 `blocks` 挪到这儿来了。
+         *
+         * ## 它是一条 15% 复现的红，抓了十三次才抓住
+         *
+         * 从前它硬写着「乳母」二字，而**这一节没有任何条件问她在不在**。
+         * 于是她殁了（或者这一世根本没立她）的那些世界里，
+         * `present.ts` 报「不在了的人还在露面」——而它只在
+         * 恰好掷到那种世界时才红，跑十次绿八次。
+         *
+         * 抓它花了三轮：头两次红都没抄到种子（一次 `grep -E "✗|共 "`
+         * 把种子行滤掉了，一次 `grep -B4 -A10` 够不着文件开头的种子）——
+         * **正是「取证的 grep 不加过滤」那条**。第三轮改成全量存文件、
+         * 红了再从文件里找，第五次撞上：`SEED=hmnd6dhmuu2p`。
+         *
+         * ## 修法跟 `royal:dismissal` 那两处同源
+         *
+         * 不改成 `{call:nurse}`——她不在的时候 `callOf` 落回「一个陌生人」，
+         * 那句话会变成「一个陌生人在门外一步没走开」，比原来更糟。
+         *
+         * 也不给整节加 requires——**为了一句陪衬，整个开蒙那一节
+         * 对没有乳母的孩子关掉**，那是拿更大的洞去补小洞。
+         *
+         * `seen` 才是这一层的位置：她在就有这句，不在就没有，
+         * 而开蒙照旧。同一天我在 `royal:dismissal` 上做了两次一样的判断
+         * （`steward` 写替代分支、`nurse` 挪进 `seen`），三处是同一件事：
+         * **一句陪衬的话不该决定一整节的存亡。**
+         */
+        seen: [
+          {
+            requires: [{ family: { id: 'nurse', alive: true } }],
+            text: '{call:nurse}在门外，一步没走开。',
           },
         ],
         next: 'lessons',
