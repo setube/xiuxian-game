@@ -1,4 +1,4 @@
-import type { LifeEvent, SceneLibrary } from '@/types/game'
+import type { Choice, LifeEvent, SceneLibrary } from '@/types/game'
 
 /**
  * 县试那几年。
@@ -47,6 +47,48 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
 /** 应考这件事在 `character.undertakings` 里的 id */
 const SITTING = 'sitting-exams'
 
+/**
+ * 去考还是不去，两节共用。
+ *
+ * 提出来是因为**先生在与不在是两段正文，可选项是同一对**——
+ * 一个人决定去不去考县试，跟劝他的那个人还在不在没有关系。
+ */
+const CHOICES = {
+  go: {
+    id: 'go',
+    label: '你说好',
+    hint: '家里供了这些年，总要有个说法',
+    echo: '你说好。',
+    effects: [
+      { type: 'undertake', undertaking: SITTING },
+      { type: 'time', months: 6 },
+    ],
+    next: 'sat',
+  },
+  /**
+   * 不去考。
+   *
+   * **这不是「放弃」**，是一个具体的算计：县试要盘缠、要保结、要误农时。
+   * 家里穷的人算得过这笔账——念书是一回事，应考是另一回事，中间隔着钱。
+   *
+   * 年表那一笔从前写「先生劝你去考，你没有去」，**而先生殁了那一路说不通**
+   * ——没有人劝他。改成只说他自己的决定。
+   */
+  no: {
+    id: 'no',
+    label: '你说家里离不开人',
+    hint: '考一趟要花的，够买半年的粮',
+    critical: true,
+    echo: '你说家里离不开人。',
+    effects: [
+      { type: 'time', years: 1 },
+      { type: 'flag', key: 'never-sat-exams', value: true },
+      { type: 'chronicle', text: '那年县里考童生，你没有去。' },
+    ],
+    next: 'stayed',
+  },
+} as const satisfies Record<string, Choice>
+
 export const examScenes: SceneLibrary = {
   /**
    * 先生说你可以去试试。
@@ -62,44 +104,56 @@ export const examScenes: SceneLibrary = {
       open: {
         id: 'open',
         onEnter: [{ type: 'time', months: 4 }],
+        blocks: [],
+        /*
+         * 先生还在不在，是两段不同的话。
+         *
+         * **头一版这一卷只写了先生活着那一版**，于是事件的 `requires` 里
+         * 挂着 `{ family: { id: 'teacher', alive: true } }`——
+         * 正文里他开口说话，条件当然得问他还在不在。那条推理没错，
+         * **错在我只写了一半正文，然后拿条件去迁就它。**
+         *
+         * 后果是 79 用 `identity` 那支门禁量出来的：五颗种子里四颗有
+         * **10–15% 的人死时还挂着「学童」**，而那批人里 **96% 是先生已殁**——
+         * 先生一没，整章对他关闭，「学童」就成了无期的。
+         * 那批人平均死龄只有 33 岁：不是没等到，**是门被锁上了**。
+         *
+         * 现在两版都写。**念过书这件事不因先生死了而消失**——
+         * 这句话是我自己在 `stayed` 那一节写的，而我没把它用在这儿。
+         */
+        branches: [{ requires: [{ family: { id: 'teacher', alive: true } }], next: 'told' }],
+        next: 'alone',
+      },
+
+      /** 先生还在，他劝你去试试 */
+      told: {
+        id: 'told',
         blocks: [
           { kind: 'narration', text: '你把《四书》念完的那一年，先生留你多坐了一会儿。' },
           { kind: 'dialogue', speaker: '先生', text: '开春县里考童生，你去试试。' },
           { kind: 'narration', text: '他说得很平常，像是说明天下雨。' },
         ],
-        choices: [
+        choices: [CHOICES.go, CHOICES.no],
+      },
+
+      /**
+       * 先生已经不在了。
+       *
+       * **没有人劝你**——这一节的分量正在这儿。念完书的第二年、第五年，
+       * 你自己想起这件事，而当初那个说「你去试试」的人已经没了。
+       */
+      alone: {
+        id: 'alone',
+        blocks: [
+          { kind: 'narration', text: '先生殁了以后，那些书还在。' },
+          { kind: 'narration', text: '开春县里考童生，你听人说起，忽然想起他从前提过一句。' },
           {
-            id: 'go',
-            label: '你说好',
-            hint: '家里供了这些年，总要有个说法',
-            echo: '你说好。',
-            effects: [
-              { type: 'undertake', undertaking: SITTING },
-              { type: 'time', months: 6 },
-            ],
-            next: 'sat',
-          },
-          {
-            /*
-             * 不去考。
-             *
-             * **这不是「放弃」**，是一个具体的算计：县试要盘缠、要保结、
-             * 要误农时。家里穷的人算得过这笔账——念书是一回事，
-             * 应考是另一回事，中间隔着钱。
-             */
-            id: 'no',
-            label: '你说家里离不开人',
-            hint: '考一趟要花的，够买半年的粮',
-            critical: true,
-            echo: '你说家里离不开人。',
-            effects: [
-              { type: 'time', years: 1 },
-              { type: 'flag', key: 'never-sat-exams', value: true },
-              { type: 'chronicle', text: '先生劝你去考，你没有去。' },
-            ],
-            next: 'stayed',
+            kind: 'narration',
+            text: '没有人劝你去，也没有人拦着你。',
+            tone: 'faint',
           },
         ],
+        choices: [CHOICES.go, CHOICES.no],
       },
 
       /**
@@ -463,13 +517,27 @@ export const examScenes: SceneLibrary = {
 export const examEvents: readonly LifeEvent[] = [
   {
     /**
-     * 先生说你可以去试试。
+     * 到了该去考的年纪。
      *
-     * 三条 requires：
+     * 两条 requires：
      *
      *   念过书　　`knowledge: literacy`——这一册的全部前提
-     *   先生还在　`family teacher alive`——**正文里点名说先生，条件就得问先生**
      *   没在考　　`undertaking not: sitting-exams`
+     *
+     * ## 从前还有第三条，而它锁死了一整章
+     *
+     * 头一版写着 `{ family: { id: 'teacher', alive: true } }`——
+     * 因为正文里先生开口说话，条件当然得问他还在不在。
+     *
+     * **那条推理没错，错在我只写了一半正文，然后拿条件去迁就它。**
+     *
+     * 后果是 xiuxian-game-79 用 `identity` 那支门禁量出来的：
+     * 五颗种子里四颗有 **10–15% 的人死时还挂着「学童」**，
+     * 而那批人里 **96% 是先生已殁**——先生一没，整章对他关闭。
+     * 那批人平均死龄只有 33 岁：不是没等到，**是门被锁上了**。
+     *
+     * 现在 `exam:first` 分两支（`told` / `alone`），条件这一层不再问先生死活。
+     * **念过书这件事不因先生死了而消失。**
      *
      * 十四起：`schooling` 那一册到十三岁，念完《四书》才谈得上应考。
      */
@@ -477,7 +545,6 @@ export const examEvents: readonly LifeEvent[] = [
     window: { from: 14, to: 30 },
     requires: [
       { knowledge: 'literacy' },
-      { family: { id: 'teacher', alive: true } },
       { undertaking: { not: SITTING } },
       { undertaking: { not: 'mourning' } },
       { flag: { key: 'never-sat-exams', absent: true } },
