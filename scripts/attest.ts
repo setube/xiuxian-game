@@ -114,7 +114,23 @@ const DYNASTIES: readonly string[] = [
  * 只扫 `src/content/`——那儿是内容层，一句「明代农家冬天……」写在这儿
  * 就是在给世界定调。引擎和门禁里提到朝代多半是在讨论判据本身，不是在写世界。
  */
-const CONTENT_DIR = 'src/content'
+/**
+ * 扫哪几个目录。
+ *
+ * 头一版只扫 `src/content`，理由是「那儿是内容层，一句『明代农家冬天』写在那儿
+ * 就是在给世界定调」。**那个理由站得住，但范围划窄了。**
+ *
+ * `src/engine/dynasty.ts` 里有一份**真实的史料数据表**——明代十五帝各活了多少岁，
+ * 中位三十七，王朝生成的在位年数直接从它来。那是这个库里史实性最强的一处，
+ * 而它整整齐齐地在头一版的射程之外。
+ *
+ * （查的时候它是**合规**的：`【史料·待核原文，《明史·本纪》】`，还老实写了
+ * 「数字是通识，没有逐个对过实录」。写的人守着纪律，是尺子够不着他。）
+ *
+ * 引擎和 store 里的朝代名多半在讨论判据本身，误报率会高些——所以第二道
+ * 那几条豁免（`CITED`、`RULE_BLOCKS`）比在内容层更要紧。
+ */
+const SCAN_DIRS: readonly string[] = ['src/content', 'src/engine', 'src/stores']
 
 /** 已经登记过出处的文件。这些文件里提朝代是正当的——它们的出处在第一道里查 */
 const REGISTERED_FILES: readonly string[] = ['address.ts', 'attest.ts']
@@ -156,7 +172,22 @@ const RULE_FILES: readonly string[] = ['eras.ts']
  * 而真正那两条也一起淹掉——**一支没人看的门禁等于没有。**
  */
 const CITED =
-  /[一二三四五六七八九十百]+年|卷[一二三四五六七八九十百]+|《[^》]+》|元年|年间|待核|存疑|design\/|不如[^，。]*明确|合制|##\s*出处/
+  /[一二三四五六七八九十百]+年|卷[一二三四五六七八九十百]+|《[^》]+》|元年|年间|待核|存疑|design\/|不如[^，。]*明确|合制|##\s*出处|【推断】|【史料/
+
+/**
+ * 这一块是在**为克制找理由**，不是在声称史实。
+ *
+ * `address.ts` 那一块写着「明代同一称谓受地域、亲疏、年龄、身份、语境影响，
+ * 眼下写的是第一批真实邻居内容逼出来的几格，别的等内容来逼」——
+ * **它提到明代，是为了说明「所以现在不把那张表编码死」。**
+ *
+ * 这跟 `eras.ts` 整个文件豁免同一个道理：那儿的「明代」是在**防止**世界被读成
+ * 换皮明朝，这儿的「明代」是在防止一张表被过早写死。**两者都不是在给世界定调。**
+ *
+ * 分界线跟第五种形状那条一样：**清理和克制不是同一件事。**
+ * 已经写下的史实主张要查出处；而「所以我不写」是一个决定，不是一条主张。
+ */
+const RESTRAINT = /不要现在就|别的等内容来逼|等第一个|眼下写的是|不许|不进游戏/
 
 interface Claim {
   file: string
@@ -213,22 +244,24 @@ function commentBlocks(text: string): { line: number; body: string }[] {
 
 function unregisteredClaims(): Claim[] {
   const found: Claim[] = []
-  const dir = join(ROOT, CONTENT_DIR)
-  for (const name of readdirSync(dir)) {
-    if (!name.endsWith('.ts')) continue
-    if (REGISTERED_FILES.includes(name)) continue
-    if (RULE_FILES.includes(name)) continue
-    const text = readFileSync(join(dir, name), 'utf8')
-    for (const block of commentBlocks(text)) {
-      const hit = DYNASTIES.find((one) => block.body.includes(one))
-      if (hit === undefined) continue
-      if (CITED.test(block.body)) continue
-      found.push({
-        file: `${CONTENT_DIR}/${name}`,
-        line: block.line,
-        dynasty: hit,
-        text: block.body.replace(/^\/\*+\s*/, '').replace(/\s*\*+\/$/, ''),
-      })
+  for (const dir of SCAN_DIRS) {
+    for (const name of readdirSync(join(ROOT, dir))) {
+      if (!name.endsWith('.ts')) continue
+      if (REGISTERED_FILES.includes(name)) continue
+      if (RULE_FILES.includes(name)) continue
+      const text = readFileSync(join(ROOT, dir, name), 'utf8')
+      for (const block of commentBlocks(text)) {
+        const hit = DYNASTIES.find((one) => block.body.includes(one))
+        if (hit === undefined) continue
+        if (CITED.test(block.body)) continue
+        if (RESTRAINT.test(block.body)) continue
+        found.push({
+          file: `${dir}/${name}`,
+          line: block.line,
+          dynasty: hit,
+          text: block.body.replace(/^\/\*+\s*/, '').replace(/\s*\*+\/$/, ''),
+        })
+      }
     }
   }
   return found
@@ -321,7 +354,7 @@ function main(): void {
 
   const claims = unregisteredClaims()
   if (claims.length === 0) {
-    console.log(`\n  ✓ ${CONTENT_DIR} 的散文里没有点着朝代却没登记出处的句子`)
+    console.log(`\n  ✓ ${SCAN_DIRS.join('、')} 的散文里没有点着朝代却没登记出处的句子`)
   } else {
     console.log(`\n  ⚠ 点了朝代但没来登记出处的 ${claims.length} 处：`)
     for (const one of claims) {
