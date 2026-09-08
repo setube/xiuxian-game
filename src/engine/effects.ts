@@ -308,6 +308,10 @@ function applyOne(
       if (effect.done === true) character.finish(effect.undertaking, effect.who)
       else character.begin(effect.undertaking, effect.who)
       return null
+    case 'deed':
+      // 只记事实：做了这件事。记到几回换正文，是那一卷 `deeds` 条件的事；`text` 已由 localize 填好
+      character.record(effect.kind, effect.text)
+      return null
     case 'aspect':
       character.note(effect.key, effect.self)
       return null
@@ -1369,6 +1373,8 @@ const PHASE = {
   forgive: '事实',
   // 「这件事开始了/完了」是世界里的一桩事实，跟 living 同一档
   undertake: '事实',
+  // 「他做了这件事」也是一桩事实，跟 undertake 同一档
+  deed: '事实',
 } satisfies { [K in Effect['type']]: '上下文' | '事实' }
 
 /**

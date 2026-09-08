@@ -4,7 +4,7 @@ import type { LifeEvent } from '@/types/game'
 
 import { meetsAll } from './conditions'
 import { flagKey } from './facts'
-import { pickWeighted } from './random'
+import { chance, pickWeighted } from './random'
 
 /** 事件发生过就在旗标里留个记号，于是它天然随存档走，也随重开清空。键的拼法登记在 `facts.ts` */
 function firedKey(id: string): string {
@@ -37,6 +37,9 @@ function chainStarted(
  *    接下来该来的是他去外地做工，不是随机撞上的一场庙会。
  * 3. **条件即因果**。事件靠前一件事留下的旗标串起来。
  *    链是长出来的，不是编号排出来的。
+ * 4. **长尾有发条**。有候选就出事件、没候选才过日常，所以一件哪天都可能发生的小事
+ *    会成为唯一候选、回回都来，把日常挤光——`chance` 让它多数回合根本不来。
+ *    权重管的是候选之间分高下，管不了这个。
  *
  * @returns 无事发生时返回 null——那一年就真的什么也没发生
  */
@@ -52,7 +55,8 @@ export function pickEvent(events: readonly LifeEvent[]): LifeEvent | null {
       age >= event.window.from &&
       age <= event.window.to &&
       (event.repeatable === true || !hasFired(event.id)) &&
-      meetsAll(event.requires),
+      meetsAll(event.requires) &&
+      (event.chance === undefined || chance(event.chance)),
   )
   if (candidates.length === 0) return null
 

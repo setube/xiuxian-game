@@ -20,9 +20,18 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  * 查证（2026-09-08）：`grep 撒谎|骗|偷|赌|救人|背叛 src/content/life/` **零命中**。
  * 那句话今天仍然成立。
  *
- * **所以这一册不做「习惯形成机制」，它只做那个前置**：
- * 一件真会反复发生的小事，落一笔可以被累加的痕迹。
- * 机制等这一册跑起来、真的攒出次数之后再谈。
+ * **所以这一册先做那个前置**：一件真会反复发生的小事，落一笔可以被累加的痕迹。
+ * 痕迹落在行为史（`Deed`，`character.deeds`）：每说一回追加一笔，「做过几次」数出来。
+ *
+ * ## 习惯形成落在哪
+ *
+ * 不落在数字上，落在**同一件事的正文变了**（`after-lie` 那一节）：
+ *
+ *     前三回　　那天晚上你睡得比平常晚一点。第二天你绕开了那个人。
+ *     第四回起　你转身去做别的事了。那天晚上你睡得跟平常一样。
+ *
+ * 引擎不说「你变了」，玩家自己发现那天晚上睡得跟平常一样。
+ * 阈值四是按实测定的（见下面 `WORN`），不是「十次」——十次太稀，多数人一辈子到不了。
  *
  * ## 为什么是「说了不是实话」
  *
@@ -49,8 +58,15 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  *     以及那件事在他身上留下了什么痕迹（手心出汗、第二天绕开那个人）。
  */
 
-/** 说了不是实话，这件事在旗标里的键。数次数的那一格 */
-const LIED = 'times-lied'
+/**
+ * 磨平了：说不是实话这件事，做到第几回起不再留痕迹。
+ *
+ * 这一卷一世演 1–15 回、中位 6（`chance: 0.25` 下 80 世实测，2026-09-08，数行为史笔数），
+ * 玩家还不是回回都选那一条：随机选的 80 世里到了第四回的 37 世。
+ * 取四：一半上下的人这辈子到得了，又不是第二回就麻木。它是内容定的一个数，
+ * 不是引擎里的「习惯阈值」——别的事该几回，等那一卷自己量。
+ */
+const WORN = { deeds: { kind: 'lie', atLeast: 4 } } as const
 
 export const candourScenes: SceneLibrary = {
   /**
@@ -99,7 +115,7 @@ export const candourScenes: SceneLibrary = {
             hint: '这话说出口比你想的容易',
             echo: '你说都花完了。',
             effects: [
-              { type: 'flag', key: LIED, value: true },
+              { type: 'deed', kind: 'lie', text: '{elder}问那笔钱花在哪儿了，你说都花完了。' },
               { type: 'time', months: 2 },
             ],
             next: 'after-lie',
@@ -109,7 +125,7 @@ export const candourScenes: SceneLibrary = {
             label: '你说留了一半',
             echo: '你说留了一半。',
             effects: [
-              { type: 'flag', key: 'times-truthful', value: true },
+              { type: 'deed', kind: 'truth', text: '{elder}问那笔钱花在哪儿了，你说留了一半。' },
               { type: 'time', months: 2 },
             ],
             next: 'after-truth',
@@ -131,7 +147,7 @@ export const candourScenes: SceneLibrary = {
             hint: '没有人会去查',
             echo: '你说在家。',
             effects: [
-              { type: 'flag', key: LIED, value: true },
+              { type: 'deed', kind: 'lie', text: '有人问你昨天下午去了哪儿，你说在家。' },
               { type: 'time', months: 2 },
             ],
             next: 'after-lie',
@@ -141,7 +157,7 @@ export const candourScenes: SceneLibrary = {
             label: '你照实说了',
             echo: '你照实说了。',
             effects: [
-              { type: 'flag', key: 'times-truthful', value: true },
+              { type: 'deed', kind: 'truth', text: '有人问你昨天下午去了哪儿，你照实说了。' },
               { type: 'time', months: 2 },
             ],
             next: 'after-truth',
@@ -168,7 +184,11 @@ export const candourScenes: SceneLibrary = {
             hint: '你没有指名道姓',
             echo: '你说当时那人也在。',
             effects: [
-              { type: 'flag', key: LIED, value: true },
+              {
+                type: 'deed',
+                kind: 'lie',
+                text: '那件事办砸了，有人问是怎么回事，你说当时那人也在。',
+              },
               { type: 'time', months: 2 },
             ],
             next: 'after-lie',
@@ -178,7 +198,11 @@ export const candourScenes: SceneLibrary = {
             label: '你说是自己疏忽',
             echo: '你说是自己疏忽。',
             effects: [
-              { type: 'flag', key: 'times-truthful', value: true },
+              {
+                type: 'deed',
+                kind: 'truth',
+                text: '那件事办砸了，有人问是怎么回事，你说是自己疏忽。',
+              },
               { type: 'time', months: 2 },
             ],
             next: 'after-truth',
@@ -196,6 +220,14 @@ export const candourScenes: SceneLibrary = {
        */
       'after-lie': {
         id: 'after-lie',
+        blocks: [],
+        branches: [{ requires: [WORN], next: 'worn' }],
+        next: 'fresh',
+      },
+
+      /** 前三回：话说出去了，可它在他身上留下了点什么 */
+      fresh: {
+        id: 'fresh',
         blocks: [
           { kind: 'narration', text: '话说出去了，没有人追问。' },
           { kind: 'narration', text: '那天晚上你睡得比平常晚一点。' },
@@ -204,6 +236,22 @@ export const candourScenes: SceneLibrary = {
             text: '第二天你绕开了那个人。也说不上为什么。',
             tone: 'faint',
           },
+        ],
+      },
+
+      /**
+       * 第四回起：什么也没留下。
+       *
+       * **这一节就是习惯形成。** 没有一句「你已经习惯了」——只是上一节里
+       * 那两句痕迹不见了，换成他转身去做别的事。玩家要过很久才反应过来，
+       * 那天晚上自己睡得跟平常一样。
+       */
+      worn: {
+        id: 'worn',
+        blocks: [
+          { kind: 'narration', text: '话说出去了，没有人追问。' },
+          { kind: 'narration', text: '你转身去做别的事了。' },
+          { kind: 'narration', text: '那天晚上你睡得跟平常一样。', tone: 'faint' },
         ],
       },
 
@@ -249,16 +297,20 @@ export const candourEvents: readonly LifeEvent[] = [
     /*
      * 权重 7，跟别的可反复事件同档（`day-ordinary` 是 9，`kindred` 那条是 5）。
      *
-     * **实测（300 世，用年表反推不是按 `sceneId` 采样）**：
-     * 一世演 1–13 回，中位 6，一次也没演的 0 世。
+     * **但权重挡不住它。** 库里别的可反复事件要么窗口窄（`day-ordinary` 到十六）要么有前提
+     * （要侄儿、要师父），这一卷 12–70 只要不在服丧，从十六岁起它几乎是唯一候选，
+     * 而 `pickEvent` 有候选就不过日常——头一版没有 `chance`，一世演 137–199 回、最长连演 192 回
+     * （2026-09-08，8 世，数正文里开场那三句），十二岁之后的日常被它挤光了。
      *
-     * 六回上下正是这一册要的：**够攒出「做过很多次」，又不至于每年都在撒谎**。
-     * 习惯形成那一层要建在这个次数上，太少攒不出来，太多就成了骗子模拟器。
+     * ⚠️ 当天报出来的「一世演 1–13 回、中位 6」是数错了：按 `sceneId` 翻面数「进入这一卷」的次数，
+     * 而它演完紧接着又是它，`sceneId` 不翻面，连演一百多回只记一段。再往前一版按 `sceneId`
+     * 逐步采样，数出 60973 次——一卷有好几个节点，一次演出被数成好几次。
+     * **数一卷演了几回，数它留下的痕迹**：行为史的笔数，或正文里那一卷独有的那句。
      *
-     * ⚠️ 头一版按 `narrative.sceneId` 逐步采样，数出 **60973 次**——
-     * 一卷有好几个节点，一次演出被数成好几次。**用它留下的痕迹反推才对**，
-     * 这个办法我当天刚跟别人说过，转头自己又用错了一次。
+     * 六回上下是这一册要的：**够攒出「做过很多次」，又不至于每年都在撒谎**。
+     * 太少攒不出来，太多就成了骗子模拟器——`scripts/deeds.ts` 守着上限。
      */
     weight: 7,
+    chance: 0.25,
   },
 ]

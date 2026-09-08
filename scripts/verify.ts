@@ -527,6 +527,8 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
      * 已经由底下那张效果表登记。**同一件事不在两张表里各查一遍。**
      */
     undertaking: null,
+    // 「做过几回」同理：来源是 `deed` 效果，由底下那张效果表登记，不在两张表里各查一遍
+    deeds: null,
     /*
      * 时令没有出处表可查：它是从 `time.month` 算出来的（`stores/world.ts`），
      * 不由任何一条效果打出来。**世界自己在走，不需要谁去设它。**
@@ -703,6 +705,8 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
      * **它引用人，不创造人**。跟 `relation` 那一格同一个道理。
      */
     undertake: null,
+    // 「做了一件事」产出的是行为史里的一笔，不是名字
+    deed: null,
   } satisfies {
     [K in Effect['type']]: ((effect: Extract<Effect, { type: K }>) => [Set<string>, string]) | null
   }
