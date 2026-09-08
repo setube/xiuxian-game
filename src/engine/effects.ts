@@ -594,6 +594,9 @@ function applyOne(
     case 'repay':
       people.repay(effect.debtor, effect.creditor)
       return null
+    case 'forgive':
+      people.forgive(effect.debtor, effect.creditor)
+      return null
     case 'meet': {
       /**
        * 换了地方过日子，会遇见新的人。
@@ -1363,6 +1366,7 @@ const PHASE = {
   tie: '事实',
   owe: '事实',
   repay: '事实',
+  forgive: '事实',
   // 「这件事开始了/完了」是世界里的一桩事实，跟 living 同一档
   undertake: '事实',
 } satisfies { [K in Effect['type']]: '上下文' | '事实' }

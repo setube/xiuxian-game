@@ -192,13 +192,23 @@ console.log('\n=== ④ 你十四岁以后，再也没有替家里下过地 ===\n
   const { world, diary } = fresh(10)
 
   // 十岁到十四岁，年年下地。每天掷到哪个 work 片段是随机的，只有一部分带「替家里下地」，
-  // 而 `whatStopped` 要同标签至少三天——十五天卡在阈值附近，八回里红一回。掷到够数为止
+  // 而 `whatStopped` 要同标签至少三天——十五天卡在阈值附近，八回里红一回。掷到够数为止。
+  //
+  // 三天要摊在一年里，不能挤在同一周：时令那一格（`season`）建起来之后，「替家里下地」
+  // 只在春夏秋掷得到，冬天地是冻着的（`days.ts` 冬闲那一段）。从前这里三天连着过、再推一年，
+  // 四十五天全落在同一个季节——种子掷到腊月起局，一天地也下不了，这一条就红
+  // （种子 ap2r372x9h4k：「下过 45 天地」其实一天带标签的都没有）。一年下三回地，各隔四个月
   const farmed = (): number => diary.days.filter((day) => day.tags.includes('替家里下地')).length
   for (let year = 0; year < 5; year += 1) {
-    for (let n = 0; n < 3; n += 1) liveADay(['work'])
-    world.advanceTime({ years: 1 })
+    for (let n = 0; n < 3; n += 1) {
+      liveADay(['work'])
+      world.advanceTime({ months: 4 })
+    }
   }
-  for (let extra = 0; farmed() < 3 && extra < 30; extra += 1) liveADay(['work'])
+  for (let extra = 0; farmed() < 3 && extra < 30; extra += 1) {
+    liveADay(['work'])
+    world.advanceTime({ months: 2 })
+  }
   const farmDays = diary.days.length
   // 十五岁起改成往镇上跑
   for (let year = 0; year < 4; year += 1) {
@@ -207,7 +217,9 @@ console.log('\n=== ④ 你十四岁以后，再也没有替家里下过地 ===\n
     world.advanceTime({ years: 1 })
   }
 
-  console.log(`  下过 ${farmDays} 天地，此后 ${diary.days.length - farmDays} 天都在别处。\n`)
+  console.log(
+    `  头 ${farmDays} 天里下过 ${farmed()} 天地，此后 ${diary.days.length - farmDays} 天都在别处。\n`,
+  )
   const gone = whatStopped()
   for (const item of gone) {
     console.log(`  ${describeGone(item)}`)
@@ -295,13 +307,26 @@ if (failed > 0) {
 console.log('=== ⑥ 真实人生里真的长出来了吗 ===\n')
 {
   const N = 150
+  /**
+   * 「有没有人经历过」和「多少人经历过」分开量。
+   *
+   * 头一版只有一条 `hindsightPct < 20` 判红。那个 20 是 2026-09-03 定的，那天库里还没有
+   * 分章、内容不到今天的一半；到 2026-09-08 库里三十一册，四颗种子量出来 16 / 21 / 25 / 27——
+   * **门槛贴在水位下沿上**，谁再加一册内容分母就涨一点，它就红一次，而红的跟内容质量无关
+   * （52 加了县试那一册，对照树 20% 不红、它的树 16% 红）。
+   *
+   * 「只是个日志系统」说的是**从来不会发生**，那是存在性：掷到出现为止，上限十倍。
+   * 分布另守一条地板，取现在水位下沿的三分之一（5%），离水位远到内容再翻两倍也碰不着；
+   * 跌破了先重量再说，**别把它调回水位边上**。这个数是哪天、多大的库量的，写在上面。
+   */
+  const FLOOR = 5
+  const CAP = N * 10
   let totalDays = 0
   let withHindsight = 0
   let withGone = 0
   let ended = 0
   const counts: number[] = []
-
-  for (let i = 0; i < N; i += 1) {
+  const liveOne = (): { days: number; hindsight: boolean; gone: boolean; ended: boolean } => {
     setActivePinia(createPinia())
     const narrative = useNarrativeStore()
     const story = useStory(lifeScenes, {
@@ -317,12 +342,30 @@ console.log('=== ⑥ 真实人生里真的长出来了吗 ===\n')
       story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
       turns += 1
     }
-    if (narrative.ended) ended += 1
     const diary = useDiaryStore()
-    counts.push(diary.days.length)
-    totalDays += diary.days.length
-    if (diary.days.some((day) => (day.hindsight?.length ?? 0) > 0)) withHindsight += 1
-    if (whatStopped().length > 0) withGone += 1
+    return {
+      days: diary.days.length,
+      hindsight: diary.days.some((day) => (day.hindsight?.length ?? 0) > 0),
+      gone: whatStopped().length > 0,
+      ended: narrative.ended,
+    }
+  }
+  for (let i = 0; i < N; i += 1) {
+    const one = liveOne()
+    if (one.ended) ended += 1
+    counts.push(one.days)
+    totalDays += one.days
+    if (one.hindsight) withHindsight += 1
+    if (one.gone) withGone += 1
+  }
+  // 存在性：一百五十世里一个也没有，再掷到出现为止。补掷的世不进上面那几个百分比
+  let extraLives = 0
+  let extraHindsight = 0
+  while (withHindsight + extraHindsight === 0 && extraLives < CAP) {
+    for (let i = 0; i < 50; i += 1) {
+      if (liveOne().hindsight) extraHindsight += 1
+      extraLives += 1
+    }
   }
 
   counts.sort((a, b) => a - b)
@@ -332,15 +375,25 @@ console.log('=== ⑥ 真实人生里真的长出来了吗 ===\n')
   console.log(
     `  日录条数　　　　　　中位 ${counts[Math.floor(N / 2)]}，平均 ${(totalDays / N).toFixed(1)}`,
   )
-  console.log(`  有过「多年以后才明白」${hindsightPct.toFixed(0)}%`)
+  console.log(
+    `  有过「多年以后才明白」${hindsightPct.toFixed(0)}%（地板 ${FLOOR}%；2026-09-08 三十一册时量的水位 16–27%）`,
+  )
   console.log(`  有过「再也没有」　　${gonePct.toFixed(0)}%`)
 
   console.log()
   if (counts[Math.floor(N / 2)]! < 8) {
     console.log('  ✗ 日录太少——「一天」在年表里发生得不够，这一层等于没有。')
     process.exitCode = 1
-  } else if (hindsightPct < 20) {
-    console.log('  ✗ 几乎没人经历过「多年以后才明白」——那这只是个日志系统。')
+  } else if (withHindsight + extraHindsight === 0) {
+    console.log(
+      `  ✗ ${N} 世里没有一个人经历过「多年以后才明白」，再掷 ${extraLives} 世也没有——那这只是个日志系统。`,
+    )
+    process.exitCode = 1
+  } else if (hindsightPct < FLOOR) {
+    console.log(
+      `  ✗ 经历过「多年以后才明白」的只有 ${hindsightPct.toFixed(0)}%，跌破了 ${FLOOR}% 的地板——` +
+        '先重量水位（哪一天、几册），别直接调地板。',
+    )
     process.exitCode = 1
   } else if (ended / N < 0.95) {
     console.log('  ✗ 有人生走不完——日录这一层把年表卡住了。')
