@@ -440,6 +440,9 @@ export const routineScenes: SceneLibrary = {
               { type: 'attribute', key: 'fortune', delta: 4 },
               { type: 'attribute', key: 'will', delta: 3 },
               { type: 'flag', key: 'still-asking', value: true },
+              // 打听了两年，心里那个念头该长一回——成年段没有一卷收日，念头层不在这儿点就一辈子冻着
+              // （`leanings.ts` 的 `kept-asking` 那条火种读 `still-asking`）
+              { type: 'reflect' },
             ],
             next: null,
           },

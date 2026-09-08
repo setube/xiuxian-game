@@ -27,10 +27,24 @@ export interface AscentPayload {
 /**
  * 有心人会选的那些选项。链上各卷里「往前走」的那一条，照库里的 `id` 抄。
  *
+ * **按先后排**：同一回合开着好几条时挑排在前面的。先打听（喂念头——成年段没有一卷收日，
+ * 念头只靠这一条长）、再往外走（涨命数——渡口那道门槛是走出来的），再是链上各卷的动作。
+ * 头一版不排序、也没有「往外走」那几条，于是有心人守着地打听，命数十六到二十八岁间
+ * 最高中位 42，渡口门槛 55 一辈子够不着（2026-09-08 实测）。
+ *
  * 同名的 `id` 别的卷也有（`ask` 在十来卷里），有心人在那些卷里也会选它——
  * 那是「一个什么都想问一句的人」，正好是这条路上的人。
  */
 export const KEEN_CHOICES: readonly string[] = [
+  // 成年、壮年日常：接着打听、还在琢磨
+  'ask',
+  'seek',
+  // 往外走：远处走一趟、再走一趟远路、往城里跑、往山里跑、到处乱跑
+  'far',
+  'once-more',
+  'town',
+  'hills',
+  'wander',
   // 山道伤者：扶他起来（书只在这一条上）
   'lift',
   'inspect',
@@ -39,8 +53,7 @@ export const KEEN_CHOICES: readonly string[] = [
   'recognize',
   'shake',
   'call',
-  // 找人：接着问、跑一趟、说你是来找他们的
-  'ask',
+  // 找人：跑一趟、说你是来找他们的
   'go',
   'enter',
   'follow-him',
@@ -154,7 +167,6 @@ function liveALife(policy: Policy): AscentLife {
     routine: lifeRoutine,
     finale: lifeFinale,
   })
-  const keen = new Set(KEEN_CHOICES)
   story.begin()
   let attemptAt: number | null = null
   for (let turns = 0; !narrative.ended && turns < 220 && character.died === null; turns += 1) {
@@ -163,8 +175,12 @@ function liveALife(policy: Policy): AscentLife {
     if (attemptAt === null && world.hasFlag('event:attempt-first')) attemptAt = character.age
     let pick = open[Math.floor(Math.random() * open.length)]!
     if (policy === 'keen') {
-      const wanted = open.find((o) => keen.has(o.choice.id))
-      if (wanted) pick = wanted
+      // 开着好几条时挑 KEEN_CHOICES 里排得最前的那一条
+      const ranked = open
+        .map((o) => ({ o, rank: KEEN_CHOICES.indexOf(o.choice.id) }))
+        .filter((one) => one.rank >= 0)
+        .sort((a, b) => a.rank - b.rank)
+      if (ranked[0]) pick = ranked[0].o
     }
     story.choose(pick.choice)
   }

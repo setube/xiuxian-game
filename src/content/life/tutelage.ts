@@ -1,4 +1,4 @@
-import { GROWN_UP } from '@/engine/stages'
+import { GROWN_UP, PRIME_UP } from '@/engine/stages'
 import type { LifeEvent, SceneLibrary } from '@/types/game'
 
 /**
@@ -635,8 +635,9 @@ export const tutelageEvents: readonly LifeEvent[] = [
      *
      * `chance` 是要害。它在 `tutelage` 那条链上，链一开了头它就排在所有散事件前面
      * （`pickEvent` 第二道闸），少了 `chance` 就是**回回都去**——`candour` 那一册挤光十二岁
-     * 之后日常的坑（`LifeEvent.chance` 的注释）。0.12 是按十二到十六岁一年五到八个回合算的：
-     * 一个念头不退的孩子四年里回去两三趟，成年段再回去一趟上下。
+     * 之后日常的坑（`LifeEvent.chance` 的注释）。头一版 0.12 是按「成年段再回去一趟上下」算的；
+     * 用户拍板拜师那条要走得通（2026-09-08），改 0.4：一个念头不退的人成年段回去三趟上下——
+     * 他要的本来就是回来的人，回来得勤一点不算送分，门槛那一关还在。
      */
     id: 'tutor-shed-again',
     repeatable: true,
@@ -649,23 +650,38 @@ export const tutelageEvents: readonly LifeEvent[] = [
     scene: 'tutor:shed#again',
     chain: 'tutelage',
     weight: 7,
-    chance: 0.12,
+    chance: 0.4,
   },
   {
+    /**
+     * 使唤、带一段这两件，头一版一辈子只来一回。
+     *
+     * 那是照「分数够了就过，去一回就挪一格」写的——摆好的局里心志 94，够是必然的。
+     * 真世里他量到的数在门槛上下飘（同一个人今天 66 明天 61），那一回没够着，
+     * 旗标不动、事件已经落过、再也不来：**一天的坏运气把整条链锁死**。
+     * 使唤那一卷自己就写着「第二天还去」「明天再来」，不能来第二回的话那两句是空话——
+     * 跟下面「那五句」为什么要 `repeatable` 是同一个理由。
+     * 落了下一格它的条件自然落空，不用别的开关；`chance` 免得链一开头回回都去。
+     */
     id: 'tutor-errand',
-    window: { from: 12, to: GROWN_UP },
+    repeatable: true,
+    // 续上的那几件开到壮年末（`PRIME_UP`）：关系已经开始了，不因过了二十九就断
+    window: { from: 12, to: PRIME_UP },
     requires: [{ flag: { key: 'footing:herbalist-at-the-shed', equals: '搭话' } }],
     scene: 'tutor:errand',
     chain: 'tutelage',
     weight: 9,
+    chance: 0.6,
   },
   {
     id: 'tutor-walk',
-    window: { from: 13, to: GROWN_UP },
+    repeatable: true,
+    window: { from: 13, to: PRIME_UP },
     requires: [{ flag: { key: 'footing:herbalist-at-the-shed', equals: '使唤' } }],
     scene: 'tutor:walk',
     chain: 'tutelage',
     weight: 9,
+    chance: 0.6,
   },
   {
     /**
@@ -685,13 +701,13 @@ export const tutelageEvents: readonly LifeEvent[] = [
      */
     id: 'tutor-words',
     repeatable: true,
-    window: { from: 13, to: GROWN_UP },
+    window: { from: 13, to: PRIME_UP },
     requires: [{ flag: { key: 'footing:herbalist-at-the-shed', equals: '带一段' } }],
     scene: 'tutor:words',
     chain: 'tutelage',
     weight: 9,
     // 窗口到成年段之后要有发条：它在链上、可反复、一回只推三个月，没有发条就是回回都去
-    chance: 0.4,
+    chance: 0.6,
   },
   {
     /**
@@ -710,12 +726,13 @@ export const tutelageEvents: readonly LifeEvent[] = [
      * 拉长了就是往一个不存在的年纪里塞事。等那一段有了，
      * 把 `to` 往后挪就行，机制一个字不用动。
      *
-     * 那一段有了（`4f2ba6d`，六个人生阶段各有一卷日常），`to` 挪到了成年段末——
-     * `GROWN_UP` 从 `engine/stages.ts` 那张段表取，不在这儿写死一个 29。
+     * 那一段有了（`4f2ba6d`，六个人生阶段各有一卷日常），`to` 先挪到成年段末，
+     * 又挪到壮年末——`PRIME_UP` 从 `engine/stages.ts` 那张段表取，不在这儿写死一个 49；
+     * 「练了三年也没有动静」这种人生，从此写得出来了。
      */
     id: 'tutor-alone',
     repeatable: true,
-    window: { from: 14, to: GROWN_UP },
+    window: { from: 14, to: PRIME_UP },
     requires: [{ flag: { key: 'rite:quiet-breath' } }],
     scene: 'tutor:alone',
     weight: 6,

@@ -257,6 +257,27 @@ export const SPARKS: readonly Spark[] = [
     chance: 0.2,
     text: '你坐着想了半天事。',
   },
+  /**
+   * 成年之后接着打听。
+   *
+   * 「想弄明白」这个念头从前只在十二到十六岁之间长——那几年天天收日、火种在跑；
+   * 成年段没有一卷收日，念头层几乎冻在十六岁那一刻（300 世里十六岁后变过的 166 世，
+   * 变的都只是一两分）。而成年日常里明明有一条「接着打听修行的事」，一个人选了它
+   * 两年、四年、六年，心里那个念头一分也不长——写入端有（`still-asking`），读取端只有
+   * 壮年那一句「还在琢磨那件事」。这一条火种是它的第二个读者：他自己的行动，攒够了
+   * 才起念头，跟别的火种同一条规矩（念头从人生里长出来，不是另一套剧本）。
+   *
+   * 不写 `once`：他每选一回，念头长一回——问了几年才起的念头，正是它该有的样子。
+   * 权重 6：十六岁时典型五到十分，两三回打听过「反复」那一档（18）。
+   */
+  {
+    id: 'kept-asking',
+    leaning: 'know',
+    weight: 6,
+    requires: [{ flag: { key: 'still-asking' } }],
+    chance: 0.7,
+    text: '这几年你逢人就绕着弯问那件事。问着问着，你自己也说不清想问的是什么了。',
+  },
 
   // ============================================================
   // 不想再被人按住
@@ -488,7 +509,10 @@ export const SPARKS: readonly Spark[] = [
     id: 'went-where-he-went',
     leaning: 'leave',
     weight: 3,
-    requires: [{ family: { id: 'father', alive: false, cause: ['客死'] } }, { flag: { key: 'knows-grave' } }],
+    requires: [
+      { family: { id: 'father', alive: false, cause: ['客死'] } },
+      { flag: { key: 'knows-grave' } },
+    ],
     once: true,
     text: '你记着那人说的那个地名。',
   },
