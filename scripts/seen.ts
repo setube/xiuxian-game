@@ -173,13 +173,47 @@ const lives = (
   await mapShards<string[][]>({ task: 'scripts/tasks/seen-lives.ts', runs: RUNS })
 ).flat()
 
+/**
+ * 「有没有人走到」跟「多少人走到」是两个问题，分开量。
+ *
+ * 分布用固定三百世；存在性掷到出现为止，上限十倍（`day.ts` 定下的老规矩，
+ * `portrait.ts` 也是这么改的）。补掷的那些世**不进百分比**——它们只回答「到得了吗」。
+ *
+ * 逼出这一段的是 `kindred:mourning#sour`：三百世里期望一个半人（分了家、娘留在老屋、
+ * 婆媳不睦、娘殁，四件事叠在一起），`=== 0` 的概率两成出头。**内容一个字没坏，五批里红一批**；
+ * 别人加一册内容、随机流挪一格，那一个半人就掉到零——正是「我改了 A，A 相关的判据红了」
+ * 不构成因果的那种红。
+ */
+const CAP = RUNS * 10
+let extraLives: string[][] = []
+{
+  const reached = (node: Watched, pool: readonly string[][]): boolean =>
+    pool.some((life) => node.arrivals.some((a) => landed(life, a)))
+  const missing = (): Watched[] => watched.filter((node) => !reached(node, lives) && !reached(node, extraLives))
+  const step = Math.max(300, Math.floor(RUNS / 2))
+  while (missing().length > 0 && extraLives.length < CAP) {
+    const more = (
+      await mapShards<string[][]>({ task: 'scripts/tasks/seen-lives.ts', runs: step })
+    ).flat()
+    extraLives = [...extraLives, ...more]
+  }
+}
+
 for (const node of watched) {
   const arrived = lives.filter((life) => node.arrivals.some((a) => landed(life, a)))
   console.log(`\n  【${node.where}】${arrived.length} / ${RUNS} 世走到了这一节\n`)
 
   if (arrived.length === 0) {
-    console.log('    ✗ 三百世没有一个人走到这一节，底下的话都是白写的。')
-    failed += 1
+    const later = extraLives.filter((life) => node.arrivals.some((a) => landed(life, a))).length
+    if (later === 0) {
+      console.log(`    ✗ 三百世没有一个人走到这一节，再掷 ${extraLives.length} 世也没有——底下的话都是白写的。`)
+      failed += 1
+      continue
+    }
+    console.log(
+      `    · 三百世没人走到；再掷 ${extraLives.length} 世有 ${later} 人到了——这一节到得了，只是稀。` +
+        '底下的话样本不够，判不了。',
+    )
     continue
   }
 

@@ -269,7 +269,7 @@ export const illnessScenes: SceneLibrary = {
               { family: { id: 'brother', alive: true, present: true } },
               { temper: { id: 'brother', in: ['刚硬', '木讷', '谨慎', '温和', '精明'] } },
             ],
-            text: '哥那几天把爹的活全接了过去，一句话也没说。',
+            text: '哥那几天把爹留下的活全接了过去，一句话也没说。',
           },
         ],
       },
