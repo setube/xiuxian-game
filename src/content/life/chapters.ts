@@ -18,6 +18,8 @@ import { awayEvents, awayScenes } from './away'
 import { nephewEvents, nephewScenes } from './nephew'
 import { reunionEvents, reunionScenes } from './reunion'
 import { rivermanEvents, rivermanScenes } from './riverman'
+import { afterwardsEvents, afterwardsScenes } from './afterwards'
+import { apprenticeEvents, apprenticeScenes } from './apprentice'
 import { attemptEvents, attemptScenes } from './attempt'
 import { bearingEvents, bearingScenes } from './bearing'
 import { matchEvents, matchScenes } from './match'
@@ -246,6 +248,29 @@ export const CHAPTERS: readonly Chapter[] = [
   },
 
   /**
+   * 出师。跟服丧同一个道理：**让学徒有个尽头。**
+   *
+   * 在这一章之前，`youth.ts` 落的那一笔 `identity: '学徒'` **全库没有一处改掉它**
+   * ——一个人十六七岁拜师，到六十岁咽气那天，面板上还写着学徒。
+   * 守孝那件事的坑早就填过了，学徒这件是同一个坑，只是没人回来填。
+   *
+   * 跟服丧最大的不同：**守孝的对象必然已经死了，而师傅可能还活着。**
+   * 所以这一卷有两支——师傅在，他把家什给你，说一句「往后是自己的活计了」；
+   * 师傅没了，没有人给你出师，你只是有一天发现活都是自己在做了。
+   * **没有仪式的结束也是结束**，分不出这两种，那个死掉的师傅就白死了。
+   */
+  {
+    id: 'apprentice',
+    scenes: apprenticeScenes,
+    events: apprenticeEvents,
+    called: ['年表'],
+    to: [],
+    age: [19, 34],
+    purpose: ['学徒有始也有终，而出师那天手艺才成了他自己的营生'],
+    marks: ['undertake'],
+  },
+
+  /**
    * 试着照书上说的做。修仙第一条纵切的最后一段。
    *
    * 前面几步库里都有：听说（`kin`）、找（`seeking`）、照面（`meeting`）、
@@ -264,6 +289,32 @@ export const CHAPTERS: readonly Chapter[] = [
     age: [16, 60],
     purpose: ['修行不是拿到功法就会了——他试了一年，多半什么也没有'],
     marks: ['undertake', 'roll'],
+  },
+
+  /**
+   * 那一点热，后来怎么样了。
+   *
+   * `attempt` 里三成的人「觉出了一点什么」，落下 `felt-something` 那面旗
+   * 和「那一点热」那条认知——**然后全库没有一处读它们**
+   * （查证：`grep felt-something` 除 `attempt.ts` 外零命中）。
+   *
+   * 这一册补的就是那个空洞。它不写「继续修炼」，写的是
+   * **一个人揣着一件说不清的事过了很多年**——27.md 拍板的
+   * 「修仙以后，你还是那个人」在这儿落地：他照旧种地、娶亲、送走爹娘，
+   * 变的只有一样，夜里睡不着的时候他会想起那个清早。
+   *
+   * `marks` 里有 `flag`：三条路各落一面旗（再来过 / 再没有 / 没再试），
+   * **而「没再试」那一路一样要留痕**——它跟另外两条是同一层的结局。
+   */
+  {
+    id: 'afterwards',
+    scenes: afterwardsScenes,
+    events: afterwardsEvents,
+    called: ['年表'],
+    to: [],
+    age: [22, 90],
+    purpose: ['他这辈子唯一一次碰到修行的边，此后再没有答案，而他已经不需要答案了'],
+    marks: ['undertake', 'roll', 'flag'],
   },
 
   /** 手艺。铁匠、木匠、药铺 */
