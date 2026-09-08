@@ -436,8 +436,44 @@ export const royalScenes: SceneLibrary = {
     title: '逐出府',
     entry: 'open',
     nodes: {
+      /**
+       * 这一节由谁来查，看老管家还在不在。
+       *
+       * ## 这一支是 `scripts/doors.ts` 逼出来的
+       *
+       * 从前这一卷的 `requires` 里挂着 `{ family: { id: 'steward', alive: true } }`
+       * ——理由充分：他在正文里说了两句话，而**这一卷的决定就是他做的**。
+       *
+       * 可他比玩家大 42–60 岁，而窗口是玩家九到十三岁：**那时他五十五到七十三**。
+       * 79 实测 2000 世：九岁那年三人全在世 68%，到十三岁只剩 44%，
+       * 十三岁那年殁掉的十九次里十九次都是他。
+       *
+       * **一半以上的府里孩子读不到这一卷，而没有任何东西会报错。**
+       *
+       * 所以不是放宽那条 requires（去掉它，死人就会在正文里说话），
+       * 是**给「他没了」写一支**——而那一支本身就是内容：
+       * 老管家不在了，府里的事由谁做主，这件事在削藩之前就已经在变。
+       *
+       * ## 两支不是同一件事换个说法
+       *
+       * 老管家查案是**一个人凭多年积威做的决定**：他说留不得，就留不得。
+       * 换成两个管事的商量，那是**一群人凭规矩做的决定**——
+       * 没有人担这个责，也没有人替小厮说得上话。
+       *
+       * 于是「替他说一句」在两支里落到不同的地方：对老管家说，
+       * 他不接你的话（那是一个具体的人在生你的气）；对两个管事说，
+       * 他们记下了（那是流程，你的话进了案卷，改不了任何事）。
+       */
       open: {
         id: 'open',
+        blocks: [],
+        branches: [{ requires: [{ family: { id: 'steward', alive: false } }], next: 'no-steward' }],
+        next: 'by-steward',
+      },
+
+      /** 老管家还在。他查了三天，他说的话就是结论 */
+      'by-steward': {
+        id: 'by-steward',
         blocks: [
           {
             kind: 'narration',
@@ -477,6 +513,56 @@ export const royalScenes: SceneLibrary = {
           },
         ],
       },
+      /**
+       * 老管家不在了。
+       *
+       * **这一节里一个「管家」也不出现**，理由跟 `apprentice.ts` 那一卷同源：
+       * `present.ts` 按称呼字面匹配，认不出「追述」和「在场」的分别。
+       *
+       * 而绕开那个词写出来更好：**府里没有一个人担得起这个决定。**
+       * 两个管事的商量了半天，谁也不肯先说那句话，最后是「按规矩」——
+       * 规矩是不用谁负责的东西。
+       *
+       * 这一节的重心在最后那句话上：**老管家在的时候，这件事三天就查完了。**
+       * 他不在了，不是没人管，是没人担着。而这句话玩家读得懂，
+       * 因为他见过老管家怎么办事——**要是他从来没见过，那一句就白写了**，
+       * 所以它只在 `steward` 立过之后才成立，而这一卷的入场券本来就管着这件事。
+       */
+      'no-steward': {
+        id: 'no-steward',
+        blocks: [
+          { kind: 'narration', text: '前院丢了东西。' },
+          { kind: 'narration', text: '两个管事的问了一圈，问到{call:page}头上。' },
+          { kind: 'narration', text: '他跪在廊下，没有辩。' },
+          { kind: 'narration', text: '那两个人商量了半天，谁也不肯先开口。' },
+          { kind: 'narration', text: '后来说，按规矩，这样的人留不得。' },
+        ],
+        choices: [
+          {
+            id: 'plead',
+            label: '替他说一句',
+            echo: '你说，他平日老实。',
+            effects: [
+              { type: 'time', days: 3 },
+              { type: 'attribute', key: 'insight', delta: 3 },
+              { type: 'relation', id: 'page', name: '小厮', delta: 10 },
+            ],
+            // 你的话进了案卷，改不了任何事——这跟老管家那支不是同一种「被驳回」
+            next: 'gone-by-rule',
+          },
+          {
+            id: 'silent',
+            label: '没说话',
+            echo: '你站在廊上，什么也没说。',
+            effects: [
+              { type: 'time', days: 3 },
+              { type: 'attribute', key: 'insight', delta: 2 },
+            ],
+            next: 'gone-by-rule',
+          },
+        ],
+      },
+
       gone: {
         id: 'gone',
         onEnter: [
@@ -493,8 +579,61 @@ export const royalScenes: SceneLibrary = {
         ],
         blocks: [
           { kind: 'narration', text: '第二天他就不在府里了。' },
-          { kind: 'narration', text: '{call:nurse}说，听说他在城里给人做事。', tone: 'faint' },
           { kind: 'narration', text: '你替他说没说话，他都是走了。', tone: 'faint' },
+        ],
+        /*
+         * 乳母那一句挪到这儿，从 `blocks` 改成 `seen`。
+         *
+         * 从前它硬写在正文里，于是这一卷的 `requires` 得挂一条
+         * `{ family: { id: 'nurse', alive: true } }`——**为了一句闲话，
+         * 整卷对没有乳母的人关着**。而 79 实测她在这个窗口里几乎不会殁（3%），
+         * 所以那条 requires 挡掉的主要不是「她殁了」，是「这一世根本没立她」。
+         *
+         * `seen` 是这一层正确的位置：她在就有这句，不在就没有，
+         * 而这一卷照演。
+         */
+        seen: [
+          {
+            requires: [{ family: { id: 'nurse', alive: true } }],
+            text: '{call:nurse}说，听说他在城里给人做事。',
+          },
+        ],
+      },
+
+      /**
+       * 按规矩逐的。
+       *
+       * 跟 `gone` 落的东西一模一样（同一个人走了，同一面旗，同一笔年表），
+       * **分别只在最后那两句**——而那两句是这一整支存在的理由：
+       * 没有人不接你的话，因为根本没有人在跟你说话。
+       */
+      'gone-by-rule': {
+        id: 'gone-by-rule',
+        onEnter: [
+          {
+            type: 'person',
+            id: 'page',
+            place: '城里 · 街上',
+            doing: '在城里给人做事',
+            leavesHouse: true,
+          },
+          { type: 'flag', key: 'page-dismissed', value: true },
+          { type: 'chronicle', text: '府里逐了一个小厮。' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '第二天他就不在府里了。' },
+          { kind: 'narration', text: '没有人告诉你这件事是怎么定下来的。' },
+          {
+            kind: 'narration',
+            text: '你后来想起，从前查一件事，三天就查完了。',
+            tone: 'faint',
+          },
+        ],
+        seen: [
+          {
+            requires: [{ family: { id: 'nurse', alive: true } }],
+            text: '{call:nurse}说，听说他在城里给人做事。',
+          },
         ],
       },
     },
@@ -658,12 +797,24 @@ export const royalEvents: readonly LifeEvent[] = [
     // 王府里逐一个小厮。小厮、管事、乳母都得还在——正文点名说谁，条件就问谁
     id: 'royal-dismissal',
     window: { from: 9, to: 13 },
+    /**
+     * ## 只剩两条，而这不是放宽
+     *
+     * 从前还要 `steward` 和 `nurse` 都活着。79 实测 2000 世：
+     * **九岁那年三人全在世 68%，到十三岁只剩 44%**——
+     * 而十三岁那年殁掉的十九次里十九次都是老管家（他比玩家大 42–60 岁）。
+     *
+     * 一半以上的府里孩子读不到这一卷，**而没有任何东西会报错**。
+     *
+     *     steward  改成分岔：他不在了，两个管事的按规矩办（`no-steward` 那一支）
+     *     nurse    改成 `seen`：她只在最后说一句闲话，不该挡住整卷
+     *
+     * `page` 那条留着——**他是这一卷的主角**，没有他这一卷说的不是任何事。
+     */
     requires: [
       { origin: 'manor' },
       { dwelling: { kind: ['王府'] } },
       { family: { id: 'page', alive: true } },
-      { family: { id: 'steward', alive: true } },
-      { family: { id: 'nurse', alive: true } },
     ],
     scene: 'royal:dismissal',
     weight: 60,
