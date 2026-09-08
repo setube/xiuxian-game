@@ -10,111 +10,95 @@
  */
 import './lib/seeded'
 
-import { createPinia, setActivePinia } from 'pinia'
-
 import { ORIGINS } from '../src/content/origins'
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
-import { useStory } from '../src/engine/story'
-import { useCharacterStore } from '../src/stores/character'
-import { useHouseholdStore } from '../src/stores/household'
-import { useNarrativeStore } from '../src/stores/narrative'
-import { usePeopleStore } from '../src/stores/people'
-import { useWorldStore } from '../src/stores/world'
 
-import { beOf } from './origin'
+import { mapShards, shardsOf, sumTallies } from './lib/parallel'
+import { type TokensShard } from './tasks/tokens-lives'
 
 const RUNS = 400
-const leaks: string[] = []
 
-function check(where: string, text: string | null | undefined): void {
-  if (typeof text === 'string' && text.includes('{')) leaks.push(`${where}: ${text}`)
-}
+// 这一段原样搬去了 tasks/tokens-lives.ts，走法一步没动。
+// 判据留在这儿——「什么算漏」和「十一种出身扫全了没有」是这支门禁要说的话
+const sizes = shardsOf(RUNS)
+const tally = sumTallies(
+  await mapShards<TokensShard, readonly number[]>({
+    task: 'scripts/tasks/tokens-lives.ts',
+    runs: RUNS,
+    payload: sizes,
+  }),
+)
+const leaks = tally.leaks
 
-for (let i = 0; i < RUNS; i += 1) {
-  setActivePinia(createPinia())
-  const narrative = useNarrativeStore()
-  const world = useWorldStore()
-  const character = useCharacterStore()
-  const household = useHouseholdStore()
-  const people = usePeopleStore()
-  // 轮着钉死出身，好让十一种都被扫到
-  beOf(ORIGINS[i % ORIGINS.length]!.id)
-  const story = useStory(lifeScenes, {
-    events: lifeEvents,
-    routine: lifeRoutine,
-    finale: lifeFinale,
-  })
-  story.begin()
+console.log(`\n=== 占位符走查（${RUNS} 世，${ORIGINS.length} 种出身轮流钉死）===\n`)
+let bad = 0
 
-  let turns = 0
-  while (!narrative.ended && turns < 200) {
-    // 选项上的字也要查——它和正文一样是给玩家读的
-    for (const option of narrative.options) {
-      check('选项', option.choice.label)
-      check('选项提示', option.choice.hint)
-      check('锁定提示', option.choice.lockedHint)
-    }
-    const open = narrative.options.filter((o) => !o.locked)
-    if (open.length === 0) break
-    story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-    turns += 1
-  }
-
-  // 正文
-  for (const item of narrative.stream) {
-    const block = item.block
-    if ('text' in block) check('正文', block.text)
-    if (block.kind === 'heading') check('标题', block.title)
-    if (block.kind === 'dialogue') check('说话人', block.speaker)
-  }
-  // 状态栏与足迹
-  check('所在', world.place)
-  for (const place of world.visited) check('足迹', place)
-  // 各个面板
-  check('身份', character.identity)
-  check('姓名', character.name)
-  check('家乡', household.home)
-  for (const entry of world.chronicle) check('编年', entry.text)
-  for (const k of character.knowledge) {
-    check('见闻标题', k.title)
-    check('见闻', k.summary)
-  }
-  for (const it of character.inventory) {
-    check('物件', it.name)
-    check('物件注', it.note)
-    check('物件旧名', it.formerName)
-  }
-  // 人际现在只有一个来源：人口册。玩家自己也是图里的一个节点
-  for (const [id, acquaintance] of Object.entries(household ? people.known : {})) {
-    check('称呼', acquaintance.calls)
-    check('人际注', acquaintance.note)
-    const person = people.personOf(id)
-    if (person) {
-      check('姓', person.surname)
-      check('名', person.given)
-      check('手上的活', person.doing)
-      check('所在', person.place)
-      for (const chapter of person.history) check('往事', chapter.what)
-    }
-  }
-  for (const m of household.members) check('家人', m.relation)
-  for (const aspect of Object.values(character.aspects)) {
-    check('自述', aspect.self)
-    for (const claim of aspect.claims) {
-      check('评说', claim.text)
-      check('评说来源', claim.source)
-      check('疑问', claim.doubt)
-    }
-  }
-}
-
-console.log(`\n=== 占位符走查（${RUNS} 世，十一种出身轮流钉死）===\n`)
+/**
+ * 一、会上界面的字里没有漏网的占位符。
+ */
 if (leaks.length === 0) {
-  console.log('  没有漏网的占位符。\n')
+  console.log('  ✓ 一、没有漏网的占位符。')
 } else {
   const unique = [...new Set(leaks)]
-  console.log(`  漏了 ${leaks.length} 处（去重后 ${unique.length} 种）：\n`)
+  console.log(`  ✗ 一、漏了 ${leaks.length} 处（去重后 ${unique.length} 种）：\n`)
   for (const leak of unique.slice(0, 40)) console.log(`    ${leak}`)
-  console.log()
+  bad += 1
+}
+
+/**
+ * 二、尺子自检：每种出身扫到的世数是匀的。
+ *
+ * ## 这一条是摊开跑之后才需要的，而且我头一版问错了问题
+ *
+ * 原来出身按循环变量轮（`ORIGINS[i % ORIGINS.length]`），一个循环从头数到尾，
+ * 每种必然轮匀。摊开之后**每一片的 `i` 都从 0 重来**——各片都从第一种开始轮，
+ * 靠前的出身被多扫、靠后的被少扫。
+ *
+ * 头一版这一条问的是「每种出身都扫到了没有」，然后我把偏移改回片内序号
+ * 去打断它——**判据没红**。因为 400 世分三片、每片一百三十多世，
+ * `133 % 12` 早绕完好几圈，每片自己就能扫全十二种。
+ * 「有没有扫到」在这个世数下是个**不会失败的问题**。
+ *
+ * 真正会坏的是**每种各扫多少世**。十二种出身的内容厚薄差得远
+ * （`court` 那一册比 `farm` 长得多），分布一偏，某几册的占位符就查得比别册稀，
+ * 而报表照样干净。所以判据量的是最多与最少之差。
+ *
+ * 门槛取「相差不超过一轮」：轮转法本来就可能让前几种多扫一世（400 除以 12
+ * 除不尽），但**只可能差一世**。差到两世以上，那就不是除不尽，是偏移错了。
+ */
+{
+  const counts = ORIGINS.map((one) => tally.origins.get(one.id) ?? 0)
+  const most = Math.max(...counts)
+  const least = Math.min(...counts)
+  if (most - least > 1) {
+    const worst = ORIGINS.map((one, i) => `${one.id} ${counts[i]}`).join('、')
+    console.log(`  ✗ 二、各出身扫到的世数不匀（最多 ${most}，最少 ${least}）：${worst}`)
+    bad += 1
+  } else {
+    console.log(
+      `  ✓ 二、尺子自检：${ORIGINS.length} 种出身各扫 ${least}–${most} 世，分布没因为分片而偏。`,
+    )
+  }
+}
+
+/**
+ * 三、尺子自检：跑满了这么多世。
+ *
+ * 分片合并最容易错的地方是分母——某一片没报数、或者 `runs` 抄成了全量，
+ * 都会让实际跑的世数跟报表上那个数对不上，而**两种都不报错**。
+ */
+{
+  if (tally.runs !== RUNS) {
+    console.log(`  ✗ 三、报表说 ${RUNS} 世，各片加起来却是 ${tally.runs} 世。`)
+    bad += 1
+  } else {
+    console.log(`  ✓ 三、尺子自检：各片世数加起来正好 ${tally.runs} 世。`)
+  }
+}
+
+console.log()
+if (bad > 0) {
+  console.log(`  ✗ ${bad} 项不成立。\n`)
   process.exitCode = 1
+} else {
+  console.log('  上界面的字都过了那一道加工。\n')
 }
