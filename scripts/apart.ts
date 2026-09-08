@@ -307,6 +307,23 @@ const PATHS: readonly Path[] = [
     origin: 'farm',
     steps: [{ scene: 'youth:apprentice', node: 'open', choice: 'craft' }],
   },
+  {
+    /**
+     * 之国那天，身边的人换了一批。
+     *
+     * 这一处一次改动三样：搬家（`home` + 举家）、换日子、认一个新人（长史）。
+     * **三样都改「谁在你身边」**，所以它必须由这一支走一遍。
+     *
+     * 跟削爵那一卷正好是反向的一对：那边府邸收回、府里的人各找活路
+     * （四个 `leavesHouse`），这边府邸新盖、人从各处拨来。
+     * 而**这一支要问的那件事在两边是同一句**：搬走的人还在不在世上，
+     * 那条边断没断。答案在两边都该是「人在，边在，只是不在身边了」。
+     */
+    id: 'invest',
+    label: '受封之国：搬到两个月路程之外，认下一个长史',
+    origin: 'court',
+    steps: [{ scene: 'royal:invest', node: 'arrive' }],
+  },
 ]
 
 /** 一个人在某一刻的样子 */

@@ -21,6 +21,7 @@ import { nephewEvents, nephewScenes } from './nephew'
 import { reunionEvents, reunionScenes } from './reunion'
 import { refugeEvents, refugeScenes } from './refuge'
 import { regardEvents, regardScenes } from './regard'
+import { investEvents, investScenes } from './invest'
 import { rivermanEvents, rivermanScenes } from './riverman'
 import { afterwardsEvents, afterwardsScenes } from './afterwards'
 import { apprenticeEvents, apprenticeScenes } from './apprentice'
@@ -594,6 +595,38 @@ export const CHAPTERS: readonly Chapter[] = [
       '留下你不等于好结局：出了师的人回来打下手，日子真的换了（living: hired），可那是降格',
     ],
     marks: ['living', 'household', 'chronicle'],
+  },
+
+  /**
+   * 之国：受了封，离开京城，到一座新盖的府里去。
+   *
+   * 这一章补的是**「什么也不发生」那五成八**——开蒙那一节掷 `court-fate`
+   * 安 58 / 倾 42，掷「倾」的有下文（废、削爵、迁出），
+   * 而掷「安」的此后一辈子什么也不会发生，到死还挂着「皇子」。
+   *
+   * 9.md 那句「不是简单：皇宫 → 换地图 → 王府」，落到具体处就是**府是空的**：
+   * 墙是新的，一府上下叫他王爷叫得很齐整，而这里头没有一个人认得他小时候。
+   * **整齐本身就是距离。**
+   *
+   * 跟 `royal:demote` 是同一件事的两头：那边爵没了、府邸收回、府里的人散了；
+   * 这边爵封了、府邸新盖、人从各处拨来。**方向不改变那件事本身有多难受。**
+   */
+  {
+    id: 'invest',
+    scenes: investScenes,
+    events: investEvents,
+    called: ['年表'],
+    to: [],
+    age: [16, 24],
+    purpose: [
+      '掷「安」的那五成八第一次有下文：受封、之国、开府，而不是到死还挂着「皇子」',
+      '受封不是换地图：府是新盖的，人是新拨的，一府上下叫得很齐整而没有一个人认得他小时候',
+      '带谁走是真的有得选，而讨来了不等于就在身边——她坐在后头的车上，两个月说不上几句话',
+    ],
+    marks: ['identity', 'living', 'home', 'meet', 'chronicle'],
+    // 「亲王」是终点：受了封不会因为任何事情不再是亲王——**夺走它的是另一道旨意**
+    // （`royal:demote` 那一卷），那跟「这件事做完了」是两回事
+    identityKind: '终点',
   },
 
   /**
