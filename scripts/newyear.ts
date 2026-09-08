@@ -40,88 +40,115 @@ import { useWorldStore } from '../src/stores/world'
  *
  * ## 这个数是倒推出来的，不是拍的
  *
- * 「正月里」那一卷压着三组条件：分了家（约 4.5%）、侄儿满三岁、
- * 此刻是腊月或正月。三条叠起来，`kindred` 那一支实测走到率约 **1.4%**
- * （`scripts/kindred.ts` 的 `NEWYEAR_RATE`，1115 世采到 46 次）。
+ * 「正月里」那一卷压着三组条件：分了家、侄儿满三岁、此刻是腊月或正月。
  *
  * 头一版拍了 600 世，期望 8 次——**实际抽到 0 次**。8 不是「大概率有」，
  * 是「一半的批次会低于它」，而这一支只要一次没采到，第一条判据就是空的。
  *
- * 要 12 次垫底、留 1.3 倍余量：`12 / 0.014 × 1.3 ≈ 1114`。
- * 跟 `kindred` 同一条算式——**它们等的是同一件稀事**，那边改了率这边也得跟。
+ * 要 12 次垫底、留 1.3 倍余量：`12 / 率 × 1.3`。
+ *
+ * ## 这个率不写死，先探路——写死的那个当天就过期了
+ *
+ * 原来这儿写死 `NEWYEAR_RATE = 0.014`，抄的是 `kindred` 那支的常数。
+ * 两件事让它当场失准：
+ *
+ * 一、**那个率一天之内变了三次**（4% →（加 `month` 条件）1.4% →
+ *     （candour 独占回合）3.5% →（`LifeEvent.chance` 上发条）3.3%）。
+ *
+ * 二、**这一支的采法跟 `kindred` 不一样，率本来就不该相等。** 那边数的是
+ *     「有几世走到过年节」（一世算一次），这一支数的是「那一卷演了几次」
+ *     （一世里演三回就是三次）。2026-09-08 实测：1115 世演了 80 次，
+ *     **7.2%，跟写死的 1.4% 差五倍**——按 1.4% 算要 1115 世，按实测只需 216 世。
+ *
+ * 抄别人的常数比自己写死更危险：**它连「什么时候该重量」都指向了别处**。
+ * 所以改成先掷 `SCOUT` 世量自己的率，再按它算总世数。探路那批不浪费，
+ * 它本来就是要跑的世。
+ *
+ * 探路批的大小由方差定：目标事件期望出现十次左右，少了估的是噪声。
+ * 率 7% 时 150 世期望撞十次上下，够了。
  */
-const NEWYEAR_RATE = 0.014
 const WANTED = 12
-const RUNS = Math.ceil((WANTED / NEWYEAR_RATE) * 1.3)
+const SCOUT = 150
+/** 探到 0 也不至于把总世数算成天文数字 */
+const RATE_FLOOR = 0.005
 
 /** 演出来的那些卷，各在几月 */
 const when: { scene: string; month: number; after: number }[] = []
 let worlds = 0
 
-for (let i = 0; i < RUNS; i += 1) {
-  setActivePinia(createPinia())
-  const narrative = useNarrativeStore()
-  const world = useWorldStore()
-  const story = useStory(lifeScenes, {
-    events: lifeEvents,
-    routine: lifeRoutine,
-    finale: lifeFinale,
-  })
+/** 跑 n 世，往 `when` / `worlds` 里累加。探路和正式跑走的是同一条路 */
+function run(n: number): void {
+  for (let i = 0; i < n; i += 1) {
+    setActivePinia(createPinia())
+    const narrative = useNarrativeStore()
+    const world = useWorldStore()
+    const story = useStory(lifeScenes, {
+      events: lifeEvents,
+      routine: lifeRoutine,
+      finale: lifeFinale,
+    })
 
-  story.begin()
-  worlds += 1
-  let turns = 0
-  /*
-   * 收正文用「见过的块 id」而不是下标切片。
-   *
-   * 一步之内可能推进好几块，而 `stream` 是累积的；按下标切要自己维护
-   * 游标，漏一次就丢一段。`kindred-lives.ts` 用的就是这个写法。
-   */
-  const kept = new Set<string>()
-  const drain = (): string[] => {
-    const fresh: string[] = []
-    for (const item of narrative.stream) {
-      if (kept.has(item.id)) continue
-      kept.add(item.id)
-      if ('text' in item.block) fresh.push(item.block.text)
-    }
-    return fresh
-  }
-  drain()
-
-  while (!narrative.ended && turns < 240) {
-    const open = narrative.options.filter((o) => !o.locked)
-    if (open.length === 0) break
-
-    const monthBefore = world.time.month
-    story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-    turns += 1
-
+    story.begin()
+    worlds += 1
+    let turns = 0
     /*
-     * 走没走到那一卷，**看正文，不看 `sceneId`**。
+     * 收正文用「见过的块 id」而不是下标切片。
      *
-     * `kindred:newyear` 全卷只有 `blocks` 和 `next`/`branches`，
-     * **一个 `choices` 也没有**——引擎一步就把整卷走完，
-     * `sceneId` 在两次 `choose` 之间从来没停在它上面。绕了四轮才明白，
-     * `kindred-lives.ts` 那句注释早写着：「无选项的卷进去就出来」。
-     *
-     * ## 月份要取「这一步的前后两头」，不是其中一头
-     *
-     * 那一卷是在 `choose` **之中**被年表掷中的：先验 `requires`（此刻是腊月
-     * 或正月），再跑 `onEnter`（`{ type: 'time', days: 2 }` 推两天）。
-     * 于是两头都不是「它演出的那一刻」：
-     *
-     *     选之前　　上一步留下的日子，那一卷还没发生　　400 世里 12 次落在时令外
-     *     选之后　　推完两天的日子，正月廿九会变成二月　1115 世里 6 次落在二月
-     *
-     * 两头取并集才对——**只要有一头在腊月正月，那一卷就是在年下演的**。
-     * 一月三十日，推两天正好能跨月，那不是内容的错，是「一步之内时序会走」。
+     * 一步之内可能推进好几块，而 `stream` 是累积的；按下标切要自己维护
+     * 游标，漏一次就丢一段。`kindred-lives.ts` 用的就是这个写法。
      */
-    if (drain().some((line) => line.includes('正月里你回了一趟老屋'))) {
-      when.push({ scene: 'kindred:newyear', month: monthBefore, after: world.time.month })
+    const kept = new Set<string>()
+    const drain = (): string[] => {
+      const fresh: string[] = []
+      for (const item of narrative.stream) {
+        if (kept.has(item.id)) continue
+        kept.add(item.id)
+        if ('text' in item.block) fresh.push(item.block.text)
+      }
+      return fresh
+    }
+    drain()
+
+    while (!narrative.ended && turns < 240) {
+      const open = narrative.options.filter((o) => !o.locked)
+      if (open.length === 0) break
+
+      const monthBefore = world.time.month
+      story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
+      turns += 1
+
+      /*
+       * 走没走到那一卷，**看正文，不看 `sceneId`**。
+       *
+       * `kindred:newyear` 全卷只有 `blocks` 和 `next`/`branches`，
+       * **一个 `choices` 也没有**——引擎一步就把整卷走完，
+       * `sceneId` 在两次 `choose` 之间从来没停在它上面。绕了四轮才明白，
+       * `kindred-lives.ts` 那句注释早写着：「无选项的卷进去就出来」。
+       *
+       * ## 月份要取「这一步的前后两头」，不是其中一头
+       *
+       * 那一卷是在 `choose` **之中**被年表掷中的：先验 `requires`（此刻是腊月
+       * 或正月），再跑 `onEnter`（`{ type: 'time', days: 2 }` 推两天）。
+       * 于是两头都不是「它演出的那一刻」：
+       *
+       *     选之前　　上一步留下的日子，那一卷还没发生　　400 世里 12 次落在时令外
+       *     选之后　　推完两天的日子，正月廿九会变成二月　1115 世里 6 次落在二月
+       *
+       * 两头取并集才对——**只要有一头在腊月正月，那一卷就是在年下演的**。
+       * 一月三十日，推两天正好能跨月，那不是内容的错，是「一步之内时序会走」。
+       */
+      if (drain().some((line) => line.includes('正月里你回了一趟老屋'))) {
+        when.push({ scene: 'kindred:newyear', month: monthBefore, after: world.time.month })
+      }
     }
   }
 }
+
+// 先探路量自己的率，再按它算总世数——理由见 WANTED 那一段
+run(SCOUT)
+const scoutRate = Math.max(when.length / SCOUT, RATE_FLOOR)
+const RUNS = Math.max(SCOUT, Math.ceil((WANTED / scoutRate) * 1.3))
+run(RUNS - SCOUT)
 
 console.log(`\n=== 「正月里」演在几月（${RUNS} 世）===\n`)
 
@@ -198,8 +225,8 @@ console.log(`  覆盖：${worlds} 世 / 「正月里」演了 ${when.length} 次
 if (when.length === 0) {
   console.log(
     `  ✗ ${RUNS} 世里一次也没演到「正月里」，第一条根本没被验过。` +
-      `\n    世数是按走到率 ${NEWYEAR_RATE} 倒推的（要 ${WANTED} 次垫底、留 1.3 倍余量），` +
-      `\n    这一批一次也没采到，说明那个率过期了或者那一卷的条件又紧了一层。` +
+      `\n    世数是先探 ${SCOUT} 世量出率、再按它倒推的（要 ${WANTED} 次垫底、留 1.3 倍余量），` +
+      `\n    连探路那批也一次没采到，说明那一卷的条件又紧了一层，或者它根本演不出来了。` +
       `\n    先跑 scripts/kindred.ts 看它的「年节走动」采到几次，两边对一下。`,
   )
   bad += 1
