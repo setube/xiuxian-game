@@ -102,7 +102,7 @@ export const afterwardsScenes: SceneLibrary = {
             id: 'try-blind',
             label: '照着记忆里的样子坐',
             hint: '书上的字你认不全，可那年的姿势还记得',
-            requires: [{ flag: { key: 'read-the-book', equals: false } }],
+            requires: [{ flag: { key: 'read-the-book', absent: true } }],
             echo: '你照着记忆里的样子坐了下来。',
             effects: [
               { type: 'undertake', undertaking: PRACTISING },
@@ -355,9 +355,9 @@ export const afterwardsEvents: readonly LifeEvent[] = [
     window: { from: 22, to: 55 },
     requires: [
       { flag: { key: 'felt-something', equals: true } },
-      { flag: { key: 'let-the-warmth-go', equals: false } },
-      { flag: { key: 'warmth-never-again', equals: false } },
-      { flag: { key: 'warmth-came-back', equals: false } },
+      { flag: { key: 'let-the-warmth-go', absent: true } },
+      { flag: { key: 'warmth-never-again', absent: true } },
+      { flag: { key: 'warmth-came-back', absent: true } },
       { undertaking: { not: PRACTISING } },
       { undertaking: { not: 'mourning' } },
     ],

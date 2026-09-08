@@ -54,9 +54,31 @@ function within(value: number, range: { atLeast?: number; atMost?: number }): bo
  * 少登记一格，`vue-tsc --build` 当场红。
  */
 const CHECKS = {
-  flag: (flag, { world }) =>
-    // 未指定 equals 时，只要求旗标为「真」
-    flag.equals === undefined ? world.hasFlag(flag.key) : world.getFlag(flag.key) === flag.equals,
+  /**
+   * 一面旗。
+   *
+   * 三问，各答一件事：
+   *
+   *     absent: true   这面旗没有
+   *     equals: 值      这面旗的值是不是它
+   *     两个都不写      这面旗在不在（真值）
+   *
+   * ## `equals: false` 表达不了「没有」
+   *
+   * 没设过的旗 `getFlag` 读出来是 `undefined`，而 `undefined === false` 是**假**。
+   * 所以 `{ equals: false }` 那一条对没设过这面旗的人**永远不成立**，
+   * 整卷从库里静默消失——`afterwards` 和 `exam` 两册各写了三四条，
+   * **400 世零次演出**，而两册各自四条判据全绿（它们都是摆局跑的）。
+   *
+   * `absent` 那一格就是为此加的。
+   */
+  flag: (flag, { world }) => {
+    if (flag.absent !== undefined && world.hasFlag(flag.key) === flag.absent) return false
+    if (flag.equals !== undefined) return world.getFlag(flag.key) === flag.equals
+    // 只问了 absent 的，上面那一行已经判完；两问都没问才是「这面旗在不在」
+    if (flag.absent !== undefined) return true
+    return world.hasFlag(flag.key)
+  },
 
   attribute: (attribute, { character }) => within(character.attributes[attribute.key], attribute),
 

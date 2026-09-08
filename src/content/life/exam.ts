@@ -439,8 +439,8 @@ export const examEvents: readonly LifeEvent[] = [
       { family: { id: 'teacher', alive: true } },
       { undertaking: { not: SITTING } },
       { undertaking: { not: 'mourning' } },
-      { flag: { key: 'never-sat-exams', equals: false } },
-      { flag: { key: 'is-tongsheng', equals: false } },
+      { flag: { key: 'never-sat-exams', absent: true } },
+      { flag: { key: 'is-tongsheng', absent: true } },
     ],
     scene: 'exam:first',
     weight: 10,
@@ -452,11 +452,22 @@ export const examEvents: readonly LifeEvent[] = [
      * 只有中过童生的人才往上考——`is-tongsheng` 那面旗是它的门。
      * `repeatable` 让它可以演好几回：**多数人的功名之路就是一直在考。**
      */
+    /*
+     * 窗口从十六起，不是十八。
+     *
+     * **实测逼出来的**：中童生的年龄挤在 14–17 岁（400 世里 36 世中过，
+     * 岁数分布 `14×7 15×22 16×3 17×1 23 25 26`），
+     * 而头一版窗口写 18–55，**中间隔着的那几年把它挤掉了**——
+     * 400 世零次演出。
+     *
+     * 十六是接得上的最早点：`exam-first` 那一卷最早十四岁演，
+     * 中了之后要过一两年才谈得上再考。
+     */
     id: 'exam-again',
-    window: { from: 18, to: 55 },
+    window: { from: 16, to: 55 },
     requires: [
       { flag: { key: 'is-tongsheng', equals: true } },
-      { flag: { key: 'is-xiucai', equals: false } },
+      { flag: { key: 'is-xiucai', absent: true } },
       { undertaking: { not: SITTING } },
       { undertaking: { not: 'mourning' } },
     ],
@@ -475,7 +486,7 @@ export const examEvents: readonly LifeEvent[] = [
     window: { from: 35, to: 65 },
     requires: [
       { knowledge: 'literacy' },
-      { flag: { key: 'never-sat-exams', equals: false } },
+      { flag: { key: 'never-sat-exams', absent: true } },
       { undertaking: { not: SITTING } },
     ],
     scene: 'exam:done',

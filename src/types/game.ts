@@ -1336,7 +1336,20 @@ export interface StreamItem {
 // ============================================================
 
 export interface Condition {
-  flag?: { key: string; equals?: FlagValue }
+  /**
+   * 一面旗。
+   *
+   * `equals` 比的是**值**，而没设过的旗读出来是 `undefined`——
+   * 所以 `equals: false` **不等于「这面旗没有」**：`undefined === false` 是假，
+   * 于是那一条永远不成立，整卷从库里静默消失。
+   *
+   * ⚠️ 这不是推演出来的隐患，是量出来的：`afterwards` 和 `exam` 两册
+   * 各写了三条 `equals: false`，**400 世零次演出**——而两册各自的四条判据
+   * 全绿，因为它们都是摆局跑的，从不问「真世里演不演得到」。
+   *
+   * 要问「这面旗没有」用 `absent: true`。要问「这面旗有」不写 `equals` 就是。
+   */
+  flag?: { key: string; equals?: FlagValue; absent?: boolean }
   /**
    * 天赋闭区间，两端都可以不写。
    *
