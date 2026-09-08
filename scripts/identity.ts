@@ -48,13 +48,9 @@
  */
 import './lib/seeded'
 
-import { createPinia, setActivePinia } from 'pinia'
-
 import { CHAPTERS } from '../src/content/life/chapters'
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
-import { useStory } from '../src/engine/story'
-import { useCharacterStore } from '../src/stores/character'
-import { useNarrativeStore } from '../src/stores/narrative'
+import { mapShards, sumTallies } from './lib/parallel'
+import { type IdentityShard } from './tasks/identity-lives'
 
 /** 走多少世。身份变化不算稀有，但「到死还挂着」要看分布，少了看不准 */
 const RUNS = 1200
@@ -115,6 +111,23 @@ const MIN_SAMPLES = 30
  * 一次是我在坏基线上定线。它变红的时候先问一句「是内容退化了，还是
  * **这条线本来就画在噪声里**」——判据的阈值也是判据的一部分（同
  * `gate-thresholds-drift`）。**在一个刚修好的基线上定阈值，比在坏的基线上定强得多。**
+ *
+ * ## 这条线是在什么基线上画的（下一个人判断它过期没有，靠这一段）
+ *
+ *     日子　　2026-09-08
+ *     主干　　`540fdff` 之前那一版（含 `262f54b` 修完 `exam-first`、
+ *             `0dc09c0` 修完 `candour` 挤占候选池、`dc268d8` 行为史与 `LifeEvent.chance`）
+ *     量法　　四颗种子 b1–b4，每颗 1200 世，`scripts/identity.ts` 主进程直跑
+ *     基线　　伙计 6 / 8 / 7 / 9%，学童 0 / 0 / 0 / 0%，学徒 0%，农家子 0–4%
+ *
+ * **写下来是为了让「它过期了」这件事可查。** 半年后有人看到伙计跑到 15%，
+ * 他该先问「这中间往库里加了什么」，而不是「阈值该不该调」——
+ * 没有这一段的话，那两个问题分不开。
+ *
+ * ⚠️ **判它红了先看实际数字，别先动这个阈值**：
+ *
+ *     伙计 12% 以上　多半是主干上加了新东西（那不是阈值的问题）
+ *     伙计 9.5% 上下　那才是这条线定低了，重量四颗种子再抬
  */
 const TOLERANCE = 0.2
 
@@ -200,31 +213,59 @@ let bad = 0
     for (const one of identitiesOf(chapter)) transient.add(one)
   }
 
-  const 到死 = new Map<string, number>()
-  const 出现过 = new Map<string, number>()
+  /*
+   * 这一段的单世模拟搬去了 `tasks/identity-lives.ts`，走法和采样点一步没动
+   * （每落一次笔记一次 `character.identity`，不是每卷记一次——一个身份
+   * 可能在一卷之内换掉，按卷采会漏）。判据全留在这儿。
+   */
+  const worn = sumTallies(
+    await mapShards<IdentityShard>({ task: 'scripts/tasks/identity-lives.ts', runs: RUNS }),
+  )
+  const 出现过 = worn.everWorn
+  const 到死 = worn.woreToDeath
 
-  for (let i = 0; i < RUNS; i += 1) {
-    setActivePinia(createPinia())
-    const narrative = useNarrativeStore()
-    const character = useCharacterStore()
-    const story = useStory(lifeScenes, {
-      events: lifeEvents,
-      routine: lifeRoutine,
-      finale: lifeFinale,
-    })
-    story.begin()
+  /**
+   * 尺子自检：分片合回来的数没有走样。
+   *
+   * ## 这一条是 xiuxian-game-79 的打断实验逼出来的
+   *
+   * 它把任务里的 `woreToDeath.set(k, (get(k) ?? 0) + 1)` 改成 `set(k, 1)`
+   * ——每片只记一个 1，不累加。**判据没红**：`sumTallies` 把五片的 1 加起来
+   * 正好是 5，跟真实值撞上了，比例只是变小，没越过 `TOLERANCE`。
+   *
+   * 它判断这不值得修（要有人手改代码才会发生）。我不同意：**这不是「故意写错」
+   * 才会撞上的洞，任何让某一片少记、漏记、或者 `sumTallies` 挑错合并分支的
+   * 情形都会落在同一处**，而上面那条比例判据对它是瞎的——因为
+   * `比例 = d / n` 的分子分母来自两张独立的表，一起变小就看不出来。
+   *
+   * 而堵它只要一行：**每个人只死一次**，所以「到死」各身份加起来必然等于世数。
+   * 这个恒等式一句话就验完了分片合并、`runs` 分母、和数据完整性三件事。
+   *
+   * `出现过` 那张表没有同样强的恒等式（一世可挂几个身份，只能验 `>= 世数`），
+   * 所以只顺带验个下界。
+   */
+  {
+    let 死了几世 = 0
+    for (const [, n] of 到死) 死了几世 += n
+    let 挂过几次 = 0
+    for (const [, n] of 出现过) 挂过几次 += n
 
-    const seen = new Set<string>()
-    let turns = 0
-    while (!narrative.ended && turns < 200) {
-      const open = narrative.options.filter((one) => !one.locked)
-      if (open.length === 0) break
-      story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-      turns += 1
-      seen.add(character.identity)
+    if (死了几世 !== worn.runs) {
+      console.log(
+        `\n  ✗ 分片合回来的数走样了：各身份「挂到死」加起来 ${死了几世}，而跑了 ${worn.runs} 世。` +
+          `\n    每个人只死一次，这两个数必须相等——比例判据看不出这种坏法（分子分母一起变小）。`,
+      )
+      bad += 1
+    } else if (挂过几次 < worn.runs) {
+      console.log(
+        `\n  ✗ 分片合回来的数走样了：各身份「出现过」加起来才 ${挂过几次}，少于 ${worn.runs} 世。`,
+      )
+      bad += 1
+    } else {
+      console.log(
+        `\n  ✓ 尺子自检：${worn.runs} 世，「挂到死」各身份加起来正好 ${死了几世}——分片没合丢。`,
+      )
     }
-    for (const id of seen) 出现过.set(id, (出现过.get(id) ?? 0) + 1)
-    到死.set(character.identity, (到死.get(character.identity) ?? 0) + 1)
   }
 
   if (transient.size === 0) {

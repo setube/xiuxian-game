@@ -209,25 +209,48 @@ export const examScenes: SceneLibrary = {
         /*
          * 去谢先生——**得他还在**。
          *
-         * 这一处是我修「先生殁了整章不开」（`262f54b`）时**漏掉的那一半**：
-         * 我把事件的 `requires` 放宽了、开头那一节分了两支，
-         * 可**正文里另外两处提到先生的句子没跟着加守**，
-         * 于是先生殁了之后他照旧在这儿说话（`present` 那一支抓到的）。
+         * ## 这里换过两次机制，第一次用错了
          *
-         * 教训：**放宽一条 `requires` 之前，先查这一册里还有多少句是靠它成立的。**
-         * 我当时只看了它挡住的那一节，没看它罩着的整册。
+         * 这一处是我修「先生殁了整章不开」（`262f54b`）时漏掉的那一半：
+         * 我放宽了事件的 `requires`、开头那一节分了两支，
+         * 可正文里另外两处提到先生的句子没跟着加守，
+         * 于是先生殁了之后他照旧在这儿说话（`present` 抓到的）。
          *
-         * 用 `seen` 不用 `blocks`：`NarrativeBlock` 收不了 `requires`，
-         * 条件正文这个项目一律走 `seen`（`illness.ts` 那几句是现成的样板）。
+         * 头一版的修法是给两句各配一条 `seen`（带 `requires`）。
+         * **而 `seen` 是「所见」那一层，它的判据要求同一个节点在不同人生里
+         * 长出不同的话**——两句二选一必然违反，`seen` 那一支当场红：
+         *
+         *     ✗ 过半的人读到的是同一种组合（67.3%）
+         *
+         * 判据说得对：那两句只有两种可能，**这一节对多数人就是同一段**。
+         *
+         * 二选一的条件正文该走 `branches` 分节点，跟这一册开头
+         * `told` / `alone` 那一对同一个手法。**「所见」和「分岔」是两层东西**：
+         * 前者是同一件事被不同的人读出不同的味道，后者是这件事本来就有两种。
          */
-        seen: [
+        branches: [{ requires: [{ family: { id: 'teacher', alive: true } }], next: 'thank' }],
+        next: 'thank-gone',
+      },
+
+      /** 先生还在，你去谢他 */
+      thank: {
+        id: 'thank',
+        blocks: [
           {
-            requires: [{ family: { id: 'teacher', alive: true } }],
+            kind: 'narration',
             text: '你去谢先生。他说，往上还有院试，别当自己已经是个人物了。',
           },
+        ],
+      },
+
+      /** 先生不在了，那句话你替他说了 */
+      'thank-gone': {
+        id: 'thank-gone',
+        blocks: [
           {
-            requires: [{ family: { id: 'teacher', alive: false } }],
+            kind: 'narration',
             text: '红纸贴出去那天你想起先生。他要是还在，大概会说别当自己是个人物了。',
+            tone: 'faint',
           },
         ],
       },
@@ -296,15 +319,32 @@ export const examScenes: SceneLibrary = {
            */
           { kind: 'narration', text: '家里的活照旧，书还在箱子里。' },
         ],
-        // 先生没再提——**得他还在**。跟「你去谢先生」那处是同一处漏，见那段注释
-        seen: [
+        // 先生没再提——**得他还在**。跟「你去谢先生」那处是同一处漏，
+        // 也跟它一样换过两次机制（`seen` → `branches`），理由见那段注释
+        branches: [{ requires: [{ family: { id: 'teacher', alive: true } }], next: 'let-be' }],
+        next: 'let-be-gone',
+      },
+
+      /** 先生还在，他没再提这件事 */
+      'let-be': {
+        id: 'let-be',
+        blocks: [
           {
-            requires: [{ family: { id: 'teacher', alive: true } }],
+            kind: 'narration',
             text: '后来先生也没再提这件事。他大概是明白的。',
+            tone: 'faint',
           },
+        ],
+      },
+
+      /** 先生不在了，那些书是他留下的 */
+      'let-be-gone': {
+        id: 'let-be-gone',
+        blocks: [
           {
-            requires: [{ family: { id: 'teacher', alive: false } }],
+            kind: 'narration',
             text: '那些书还是先生留下的。他没能看见你去不去。',
+            tone: 'faint',
           },
         ],
       },
