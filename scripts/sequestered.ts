@@ -57,12 +57,9 @@
  */
 import './lib/seeded'
 
-import { createPinia, setActivePinia } from 'pinia'
+import { mapShards, sumTallies } from './lib/parallel'
+import { SEP, type SequesteredShard } from './tasks/sequestered-lives'
 
-import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
-import { useStory } from '../src/engine/story'
-import { useCharacterStore } from '../src/stores/character'
-import { useNarrativeStore } from '../src/stores/narrative'
 
 /**
  * 走多少世。高门出身稀有（court/manor 加起来不到 2%），少了采不到。
@@ -128,7 +125,23 @@ console.log(`\n=== 高墙里头的人，选项该跟外头不一样（${RUNS} �
 
 let bad = 0
 
-const 见过 = new Map<string, string>()
+/*
+ * 这一段的单世模拟搬去了 `tasks/sequestered-lives.ts`，走法和采样点一步没动
+ * （仍然每一步现读一次 `living`——削爵前后是两种人，见那边的文件头）。
+ * 判据和 `MENIAL` 那张表留在这儿：那张表是照库里真写的 `label` 抄的，
+ * 搬进 worker 之后改它的人就看不见它跟内容的关系了。
+ *
+ * 合回来的 `seen` 是 `Map<`场景#选项id␟那句话`, 次数>`——**值只能是数字**。
+ * `sumTallies` 合并 `Map` 做的是无条件加法，值放字符串会被拼成
+ * 「帮家里干活出去做工」而且不报错，所以那句话编在 key 里，这儿切回来。
+ */
+const shard = sumTallies(
+  await mapShards<SequesteredShard, readonly string[]>({
+    task: 'scripts/tasks/sequestered-lives.ts',
+    runs: RUNS,
+    payload: SEQUESTERED_LIVING,
+  }),
+)
 /**
  * 采到多少步是在高墙里头过的日子。
  *
@@ -151,44 +164,16 @@ const 见过 = new Map<string, string>()
  * （原先这儿写的理由是「样本量不足」。那个说法会招来一次白干的优化：
  * 下一个人会去把世数翻倍，跑得更久，然后发现那个数照样在动
  * ——**因为动它的不是样本量，是上游任何一层的改动**。）
+ *
+ * ⚠️ **并行化没有改变这一条。** 2026-09-09 摊开这一支时，
+ * 第一反应正是「跑得起更多世了，顺手把 RUNS 提上去」——上面那段话拦住了它。
+ * 摊开省的是墙上时间，不是样本的独立性，也不会给这个数找到一个作者。
  */
-let 高墙里的步数 = 0
-
-for (let i = 0; i < RUNS; i += 1) {
-  setActivePinia(createPinia())
-  const narrative = useNarrativeStore()
-  const character = useCharacterStore()
-  const story = useStory(lifeScenes, {
-    events: lifeEvents,
-    routine: lifeRoutine,
-    finale: lifeFinale,
-  })
-  story.begin()
-
-  let turns = 0
-  while (!narrative.ended && turns < 200) {
-    const open = narrative.options.filter((one) => !one.locked)
-    if (open.length === 0) break
-
-    /*
-     * **每一步现读一次**，不是世初读一次。
-     *
-     * 一个王府世子在削爵那一年之前之后是两种人：`living` 从 `manor` 变成
-     * `fallen`，而「出去做工」那扇门正是那一刻才该开的。
-     * 按出身采样分不出这两段人生，会把「设计如此」报成「漏了」。
-     */
-    const living = String((character as unknown as { living?: { id?: string } }).living?.id ?? '?')
-    if (SEQUESTERED_LIVING.includes(living)) {
-      高墙里的步数 += 1
-      for (const one of open) {
-        const choice = (one as unknown as { choice?: { id?: string; label?: string } }).choice
-        if (choice?.id) 见过.set(`${narrative.sceneId}#${choice.id}`, choice.label ?? '')
-      }
-    }
-
-    story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
-    turns += 1
-  }
+const 高墙里的步数 = shard.steps
+const 见过 = new Map<string, string>()
+for (const key of shard.seen.keys()) {
+  const at = key.indexOf(SEP)
+  见过.set(key.slice(0, at), key.slice(at + 1))
 }
 
 // ============================================================
