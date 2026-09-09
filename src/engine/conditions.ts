@@ -78,6 +78,10 @@ const CHECKS = {
   flag: (flag, { world }) => {
     if (flag.absent !== undefined && world.hasFlag(flag.key) === flag.absent) return false
     if (flag.equals !== undefined) return world.getFlag(flag.key) === flag.equals
+    if (flag.in !== undefined) {
+      const held = world.getFlag(flag.key)
+      return held !== undefined && flag.in.includes(held)
+    }
     // 只问了 absent 的，上面那一行已经判完；两问都没问才是「这面旗在不在」
     if (flag.absent !== undefined) return true
     return world.hasFlag(flag.key)

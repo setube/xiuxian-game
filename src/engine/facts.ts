@@ -26,7 +26,7 @@
  */
 
 /** 引擎拼出来的旗标命名空间。加一个，`FACTS` 里就得多一行 */
-export type FlagNamespace = 'event' | 'leaning' | 'spark' | 'branched' | 'footing' | 'rite'
+export type FlagNamespace = 'event' | 'leaning' | 'spark' | 'branched' | 'footing' | 'rite' | 'opened'
 
 /** 引擎拼出来的认知命名空间 */
 export type KnowledgeNamespace = 'lead' | 'rite' | 'death'
@@ -85,6 +85,18 @@ export const FLAG_FACTS = {
     consumer: 'Condition.flag（练功那几卷）、tutelage.ts 自己',
     ids: 'RITES',
     suffixes: ['hold', 'tries', 'by', 'since'],
+  },
+  /**
+   * 他肯多说两句了。`meeting` 那一格量到的数够着他的门槛那一刻置真。
+   *
+   * 从前这件事只活在那一回的正文里（他说的是 `opens` 还是 `closes`），
+   * 世界不记。山上的人隔几年再下来一趟，「上回他看了你一眼」得有地方存着——
+   * 不然第二回的正文只能重新掷一遍，而两回之间就没有任何联系。
+   */
+  opened: {
+    producer: 'engine/meeting.ts encounterCultivator——他量到的数够着 opensAt 那一刻',
+    consumer: 'Condition.flag（他再下来那一卷问「上回他理没理你」）',
+    ids: 'CULTIVATORS',
   },
 } as const satisfies Record<FlagNamespace, FactRow>
 

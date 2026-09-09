@@ -58,6 +58,8 @@ export const KEEN_CHOICES: readonly string[] = [
   'enter',
   'follow-him',
   'go-in',
+  // 山上下来的人：问那是谁
+  'ask-who',
   // 药庐：站着不走、第二天还去、明天再来、接着翻、接着去
   'just-stay',
   'ask-about-mountain',
@@ -100,6 +102,9 @@ export const STAGES: readonly Stage[] = [
   { key: 'words', label: '甲四　那五句（tutor-words）', after: 'walk' },
   { key: 'rite', label: '甲五　会了门路（rite:quiet-breath）', after: 'words' },
   { key: 'alone', label: '甲六　自己坐过（tutor-alone）', after: 'rite' },
+  // 修仙界那一片：山上下来的人。要在药庐里（使唤往后）才看得见他
+  { key: 'mountain', label: '甲七　山上下来取药的人（mountain-down）', after: 'errand' },
+  { key: 'known', label: '甲八　山上知道了你（known-on-the-mountain）', after: 'mountain' },
   // 乙、书
   { key: 'wounded', label: '乙一　山道伤者（omen-wounded）' },
   { key: 'book', label: '乙二　得了那册薄书（thin-book）', after: 'wounded' },
@@ -140,6 +145,8 @@ function hits(): Record<string, boolean> {
     words: has('event:tutor-words'),
     rite: has('rite:quiet-breath'),
     alone: has('event:tutor-alone'),
+    mountain: has('event:mountain-down'),
+    known: has('known-on-the-mountain'),
     wounded: has('event:omen-wounded'),
     book: c.has('thin-book'),
     river: has('event:riverman'),

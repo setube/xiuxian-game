@@ -229,7 +229,7 @@ let bad = 0
   if (wrong.length > 0) {
     console.log(`\n  ✗ 三、修士不老死：${wrong[0]}（共 ${wrong.length} 处）`)
     bad += 1
-  } else console.log('  ✓ 三、三位修士都带 realm；陶仲入册后推四十年还在；八十五岁的凡人照旧会没。')
+  } else console.log(`  ✓ 三、${CULTIVATORS.length} 位修士都带 realm；陶仲入册后推四十年还在；八十五岁的凡人照旧会没。`)
 }
 
 // ============================================================
@@ -307,6 +307,7 @@ let bad = 0
     ['bookriver', 'book'],
     ['walk', 'errand'],
     ['words', 'walk'],
+    ['known', 'mountain'],
     // 观里要的是那一条线索，不是对上；头一版写成 ['temple','crossed']，600 世里 2 世到了观却没对上——尺子错了
     ['temple', 'lead'],
     ['crossed', 'lead'],

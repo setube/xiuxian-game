@@ -1455,8 +1455,13 @@ export interface Condition {
    * 全绿，因为它们都是摆局跑的，从不问「真世里演不演得到」。
    *
    * 要问「这面旗没有」用 `absent: true`。要问「这面旗有」不写 `equals` 就是。
+   *
+   * `in` 问的是「值在这几个里」：山上的人下来取药那一卷要的是**跟药庐那位处到了使唤往后**
+   * （使唤／带一段／教一点三格里的任一格）——写三条事件各钉一格是一种写法，可那一卷
+   * 在三格里演的是同一件事。`temper.in`、`living.in` 早就是这个形状。
+   * 没设过的旗不在任何一组里。`equals` 和 `in` 同时写以 `equals` 为准。
    */
-  flag?: { key: string; equals?: FlagValue; absent?: boolean }
+  flag?: { key: string; equals?: FlagValue; in?: readonly FlagValue[]; absent?: boolean }
   /**
    * 天赋闭区间，两端都可以不写。
    *

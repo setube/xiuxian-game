@@ -88,6 +88,16 @@ function implies(a: Condition, b: Condition): boolean {
      * 所以 `getFlag === 真值` 成立时 `hasFlag` 必然也成立。
      * 等于 `false` 或 `undefined` 的那两种反而不蕴含，得排掉。
      */
+    // 「值在这几个里」：宽的一方是 in 时，窄的 equals 得在里头、窄的 in 得是子集
+    if (wide.in !== undefined) {
+      if (narrow.equals !== undefined) return wide.in.includes(narrow.equals)
+      if (narrow.in !== undefined) return narrow.in.every((one) => wide.in!.includes(one))
+      return false
+    }
+    if (narrow.in !== undefined) {
+      // 宽的一方只问「有这面旗」：in 里没有 false / undefined 就都算有
+      return wide.equals === undefined && narrow.in.every((one) => one !== false)
+    }
     if (wide.equals === undefined) return narrow.equals !== false && narrow.equals !== undefined
     return same(wide.equals, narrow.equals)
   }

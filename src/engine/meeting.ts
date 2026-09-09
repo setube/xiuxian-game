@@ -6,6 +6,7 @@ import { makePerson, usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
 import type { AspectKey, NarrativeBlock } from '@/types/game'
 
+import { flagKey } from './facts'
 import { observe, type Remark } from './observe'
 import { pick } from './random'
 
@@ -107,6 +108,8 @@ export function encounterCultivator(cultivatorId: string): Meeting | null {
       realm: cultivator.realm,
       temper: cultivator.temper,
       place: cultivator.place,
+      // 他的过去在他入册那一刻就是真的。`known` 一律 false——玩家要问了才知道
+      history: (cultivator.history ?? []).map((chapter) => ({ ...chapter, known: false })),
     }),
   )
   // 认识了，可不知道名字。这两件事本来就是两回事
@@ -115,6 +118,8 @@ export function encounterCultivator(cultivatorId: string): Meeting | null {
   const says = hisReading(cultivator)
   const regard = says.length === 0 ? 0 : says.reduce((sum, one) => sum + one.held, 0) / says.length
   const opened = regard >= cultivator.opensAt
+  // 他肯多说两句了，世界记下来：隔几年他再来一趟，「上回他理过你」得有地方存
+  if (opened) world.setFlag(flagKey('opened', cultivator.id), true)
 
   const noticed = yourReading(cultivator)
 
