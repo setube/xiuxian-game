@@ -68,7 +68,7 @@ export const dayScenes: SceneLibrary = {
             // 高墙里头没有「家里的活」。照 `routine.ts:258` 那条写：问 `living`
             // （他现在过什么日子）不问 `station`——削爵之后日子变成 `fallen`，
             // 这扇门自己就开了。`scripts/sequestered.ts` 抓到的三处之一
-            requires: [{ living: { notIn: ['palace', 'manor'] } }],
+            requires: [{ living: { notIn: ['palace', 'manor', 'up-there'] } }],
             echo: '你去帮家里干活。',
             effects: [{ type: 'flag', key: 'day-上午', value: 'work' }],
             next: 'morning-out',
@@ -141,7 +141,7 @@ export const dayScenes: SceneLibrary = {
             id: 'work',
             label: '帮家里干活',
             // 同上午那一条：高墙里头没有「家里的活」
-            requires: [{ living: { notIn: ['palace', 'manor'] } }],
+            requires: [{ living: { notIn: ['palace', 'manor', 'up-there'] } }],
             echo: '你去帮家里干活。',
             effects: [{ type: 'flag', key: 'day-下午', value: 'work' }],
             next: 'afternoon-out',
