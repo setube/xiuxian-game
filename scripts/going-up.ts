@@ -284,7 +284,55 @@ function bear(): void {
 }
 
 // ============================================================
-// 六、尺子自检
+// 六、被赶出来的人，不该还被叫上山
+// ============================================================
+{
+  /**
+   * **旗活得比关系久。**
+   *
+   * 30.md 第二片给药庐立了一条规矩：说出去了，往后不用来了
+   * （`mountain:shut` 那一节把 `footing` 打回「不理会」）。
+   * **可 `known-on-the-mountain` 还在**——那件事确实发生过，
+   * 它不该因为后来闹翻了就消失。
+   *
+   * 于是被赶出来的人照样满足这一卷的入口，而山上根本不会再要他。
+   * 22 报的这一条，修法是加一条排除，**不是删那面旗**。
+   *
+   * 这一问静态查：那条 requires 在不在。**不跑局，因为跑局要先掷出
+   * 「说出去了」那一支，而它本身稀有**——而这一条的正确性跟掷不掷到无关。
+   */
+  const { readFileSync } = await import('node:fs')
+  const src = readFileSync('src/content/life/going-up.ts', 'utf8')
+
+  const 排除了 = /key:\s*'shut-out-by-the-shed'\s*,\s*absent:\s*true/.test(src)
+
+  /*
+   * 尺子自检的一半：那面旗得真的存在于 `mountain.ts`，否则这一条排除的是
+   * 一个不存在的东西——**而那种条件恒为真，长得跟守住了一模一样**。
+   */
+  const 那面旗还在 = /key:\s*'shut-out-by-the-shed'/.test(
+    readFileSync('src/content/life/mountain.ts', 'utf8'),
+  )
+
+  const wrong: string[] = []
+  if (!排除了) {
+    wrong.push('没排除 `shut-out-by-the-shed`——被药庐赶出来的人还会被叫上山')
+  }
+  if (!那面旗还在) {
+    wrong.push('`mountain.ts` 不再落 `shut-out-by-the-shed` 了——那条排除正在守一个不存在的东西')
+  }
+
+  if (wrong.length > 0) {
+    console.log(`\n  ✗ ${wrong.length} 处：`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += 1
+  } else {
+    console.log('  ✓ 被赶出来的人不会再被叫上山——旗记着那件事发生过，而关系断了是另一面旗。')
+  }
+}
+
+// ============================================================
+// 七、尺子自检
 // ============================================================
 {
   const broken: string[] = []

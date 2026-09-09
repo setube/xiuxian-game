@@ -350,8 +350,27 @@ export const goingUpEvents: readonly LifeEvent[] = [
      *
      *   上头问起过你　`flag known-on-the-mountain`——`mountain.ts` 那一册的落点，
      *                 这一片全部的前提
+     *   没被赶出来　　`flag shut-out-by-the-shed absent`——见下
      *   还没上去过　　`flag went-up-the-mountain absent`——这一趟只有一次
      *   没在议这件事　`undertaking not: going-up`
+     *
+     * ## ⚠️ 「没被赶出来」那一条：旗活得比关系久
+     *
+     * 30.md 第二片（`3ff4cea`）给药庐立了一条规矩：**说出去了，往后不用来了。**
+     * 那一节把 `footing` 打回「不理会」，人也不再理他。
+     *
+     * **可 `known-on-the-mountain` 还在。** 旗记的是「那年他确实被上头问起过」
+     * ——那件事真的发生过，它不该因为后来闹翻了就消失。于是**被赶出来的人
+     * 照样会被叫上山**，而山上根本不会再要他。
+     *
+     * 这正是 [[flag-outlives-the-person]] 那一族的第三种形状：
+     *
+     *     旗活得比人久　　先生殁了，「他教过我」那面旗还在
+     *     旗活得比事久　　当时的打算变了，旗记的还是当时
+     *     旗活得比关系久　闹翻了，「他看重过我」那面旗还在　← 这一处
+     *
+     * **修法是加一条排除，不是删那面旗**——那件事发生过是真的，
+     * 变的是「后来他不认你了」，而那该由另一面旗说。22 报的这一条。
      *
      * ⚠️ **窗口和分母**：`known-on-the-mountain` 在随机人生里是 0.3%
      * （2026-09-09 实测 800 世 2 世，主干 `7b441e1`）。这一支的分母是它的子集，
@@ -370,6 +389,7 @@ export const goingUpEvents: readonly LifeEvent[] = [
     window: { from: 15, to: PRIME_UP },
     requires: [
       { flag: { key: 'known-on-the-mountain' } },
+      { flag: { key: 'shut-out-by-the-shed', absent: true } },
       { flag: { key: 'went-up-the-mountain', absent: true } },
       { undertaking: { not: GOING_UP } },
     ],
