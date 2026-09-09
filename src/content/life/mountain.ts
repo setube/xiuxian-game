@@ -354,6 +354,34 @@ export const mountainScenes: SceneLibrary = {
             requires: [{ family: { id: 'father', alive: false } }],
             text: '你鬓角去年起有了白的。',
           },
+          {
+            /*
+             * **`Condition.unaged` 的第一个使用者。**
+             *
+             * 这一句问的是世界事实——「他看着比岁数年轻二十年以上」，
+             * 而在这一格之前引擎答不出这个问题：`span: 200` 只说得了
+             * 「他能活很久」，说不了「他不老」（`cultivators.ts` 那段注释）。
+             *
+             * ## 为什么这一句要问，而上头那一卷是写死的
+             *
+             * `mountain:unaged` 整卷绑死了药庐那位（入场条件写着他的 id），
+             * 所以正文里说「他还是那个样子」不会说错人。**可那是靠
+             * 内容作者记得，不是靠引擎知道**——换一个不老的人来演这一卷，
+             * 它一个字也不认得他。
+             *
+             * 这一句是引擎第一次自己认出「这个人不老」。它落在 `seen` 上
+             * 而不是 `branches`：这一节人人都到（`mountain:unaged`
+             * 是走到药庐的人都会碰上的），而这句话只给察觉得到的那些人。
+             *
+             * ⚠️ 门槛 20 年不是拍的：药庐那位 `bornBefore` 让他初见时
+             * 八十四、`seemsAge: 45`，差距一开始就有三十九年——
+             * **这一句从第一次见面起就成立**，而它偏偏要等到这一卷
+             * （玩家二十多年后再进那扇门）才读得到。**世界事实先成立，
+             * 玩家察觉在很多年以后**，那正是这一片要写的东西。
+             */
+            requires: [{ unaged: { who: SHED, by: { atLeast: 20 } } }],
+            text: '他手上没有老人斑。你想起你爹那双手，最后那几年上头全是。',
+          },
         ],
         branches: [{ requires: [{ knowledge: 'the-mountain-above' }], next: 'he-is-of-it' }],
         next: 'hardy',

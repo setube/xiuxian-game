@@ -110,6 +110,14 @@ export function encounterCultivator(cultivatorId: string): Meeting | null {
       // 修士的底子厚：`(50 - health)` 那一截老病不该落在他身上。这句话从前是假设，现在是数据
       health: 80,
       span: cultivator.span,
+      /*
+       * 他看着多大。**不写的那位（秦守拙）看着就是他实际的岁数**，
+       * 而那正是「延寿」跟「不老」的分别——它整个落在这一格的有无上。
+       *
+       * 传下去之后 `people.seemsOf(id)` 才答得出这个问题；
+       * 在这之前引擎只有 `bornYear`，看不见不老（`cultivators.ts` 那段注释）。
+       */
+      ...(cultivator.seemsAge === undefined ? {} : { seemsAge: cultivator.seemsAge }),
       temper: cultivator.temper,
       place: cultivator.place,
       // 他的过去在他入册那一刻就是真的。`known` 一律 false——玩家要问了才知道

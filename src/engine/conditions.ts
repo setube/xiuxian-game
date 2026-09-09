@@ -448,6 +448,23 @@ const CHECKS = {
 
   along: (along) => along.includes(currentAlong()),
 
+  /**
+   * 他看着比岁数年轻多少。**问的是世界事实，不是玩家的认知。**
+   *
+   * `seemsOf` 对绝大多数人就等于 `ageOf`（样子跟岁数一起走），
+   * 只有 `seemsAge` 写过的人不一样——库里今天是三个不老的修士，
+   * 而秦守拙**故意不写**：他一百零八岁，看着就是一百零八岁。
+   *
+   * 不在册上的人一律不成立：还没见过面的人，「他看着多大」无从谈起。
+   */
+  unaged: (ask) => {
+    const people = usePeopleStore()
+    if (people.roster[ask.who] === undefined) return false
+    const gap = people.ageOf(ask.who) - people.seemsOf(ask.who)
+    if (ask.by.atLeast !== undefined && gap < ask.by.atLeast) return false
+    if (ask.by.atMost !== undefined && gap > ask.by.atMost) return false
+    return true
+  },
   mayAsk: (ask) =>
     /*
      * `who` 可能是**角色名**（`elder` / `dam` / `child`）。跟 `{hail:}` 那处

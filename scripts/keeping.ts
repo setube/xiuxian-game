@@ -42,7 +42,7 @@ import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
 import { useCharacterStore } from '../src/stores/character'
 import { useWorldStore } from '../src/stores/world'
-import type { Effect } from '../src/types/game'
+import type { Choice, Condition, Effect, SceneNode } from '../src/types/game'
 
 const SCENE = 'keeping:years'
 
@@ -61,7 +61,14 @@ function stage(hurt: boolean, pick: 'keep' | 'ask'): Run {
   setActivePinia(createPinia())
   const character = useCharacterStore()
   const world = useWorldStore()
-  character.begin()
+  /*
+   * ⚠️ 这儿原先写着 `character.begin()`，而**那是「开始做一件事」
+   * （`begin(id, who)`），不是「开始一世」**——门禁一直绿着，
+   * 因为 `character.span` 在 store 初始化时就掷好了，那一行纯属多余。
+   *
+   * 是 `vue-tsc --build --force` 查出来的：增量构建读着陈年
+   * `.tsbuildinfo`，漏报了这条「Expected 1-2 arguments, but got 0」。
+   */
 
   world.setFlag('felt-something', true)
   if (hurt) world.setFlag('first-attempt', 'hurt')
@@ -73,19 +80,34 @@ function stage(hurt: boolean, pick: 'keep' | 'ask'): Run {
   let id: string | undefined = scene.entry
 
   for (let step = 0; step < 20 && id; step += 1) {
-    const node = scene.nodes[id]
+    const node: SceneNode | undefined = scene.nodes[id]
     if (!node) break
     nodes.push(id)
     applyEffects((node.onEnter ?? []) as readonly Effect[])
-    for (const block of node.blocks ?? []) lines.push(block.text)
+    /*
+     * ⚠️ **不能只取 `block.text`。** `NarrativeBlock` 是联合类型，
+     * `heading` 那一支用的是 `title`／`subtitle`，`divider` 一个字也没有。
+     * 只取 `text` 的话，写在标题里的年数**这一支判据看不见**——
+     * 而它正是「正文里不许出现年数」那一问的输入。
+     *
+     * （`vue-tsc --build --force` 查出来的：增量构建漏报了这条。）
+     */
+    for (const block of node.blocks ?? []) {
+      if ('text' in block) lines.push(block.text)
+      if ('title' in block) lines.push(block.title)
+      if ('subtitle' in block && block.subtitle !== undefined) lines.push(block.subtitle)
+    }
 
-    const choice = (node.choices ?? []).find((one) => one.id === pick) ?? node.choices?.[0]
+    const choices: readonly Choice[] = node.choices ?? []
+    const choice: Choice | undefined = choices.find((one) => one.id === pick) ?? choices[0]
     if (choice) {
       applyEffects((choice.effects ?? []) as readonly Effect[])
       id = choice.next ?? undefined
       continue
     }
-    const branch = (node.branches ?? []).find((one) => meetsAll(one.requires))
+    const branch = (node.branches ?? []).find((one: { requires: readonly Condition[] }) =>
+      meetsAll(one.requires),
+    )
     id = branch?.next ?? node.next ?? undefined
   }
 
@@ -106,9 +128,7 @@ for (let i = 0; i < TRIES; i += 1) {
 console.log(`\n【${SCENE}】摆了 ${TRIES} 局，走出 ${byShape.size} 种形状\n`)
 for (const [key, run] of [...byShape.entries()].sort()) {
   const delta = run.spanAfter - run.spanBefore
-  console.log(
-    `  ${key.padEnd(20)} ${run.nodes.join('→')}　天年 ${delta >= 0 ? '+' : ''}${delta}`,
-  )
+  console.log(`  ${key.padEnd(20)} ${run.nodes.join('→')}　天年 ${delta >= 0 ? '+' : ''}${delta}`)
 }
 
 const wrong: string[] = []
@@ -134,7 +154,9 @@ if (notHeld.some((r) => r.spanAfter !== r.spanBefore)) {
 const NUMBERS = /[一二三四五六七八九十百千万\d]+\s*年|寿命|天年|阳寿/
 const leaked = runs.flatMap((r) => r.lines.filter((line) => NUMBERS.test(line)))
 if (leaked.length > 0) {
-  wrong.push(`正文里写出了年数，玩家不该知道加了多少：${[...new Set(leaked)].slice(0, 2).join(' / ')}`)
+  wrong.push(
+    `正文里写出了年数，玩家不该知道加了多少：${[...new Set(leaked)].slice(0, 2).join(' / ')}`,
+  )
 }
 
 /*
@@ -162,9 +184,7 @@ const bothSigns = runs.filter(
 if (bothSigns.length > 0) {
   wrong.push(`${bothSigns.length} 局同时走过两条征象——它们该是互斥的两种人`)
 }
-const sweatWithoutHurt = runs.filter(
-  (r, i) => r.nodes.includes('sign-sweat') && i % 2 !== 0,
-)
+const sweatWithoutHurt = runs.filter((r, i) => r.nodes.includes('sign-sweat') && i % 2 !== 0)
 if (sweatWithoutHurt.length > 0) {
   wrong.push('没有那处旧伤的人读到了「盗汗停了」——一句话默认了他没有的东西')
 }
