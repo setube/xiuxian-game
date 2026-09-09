@@ -104,6 +104,16 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
 const CHILD_AWAY = { bond: { kind: '子', alive: true, near: false } } as const
 const BROTHER_AWAY = { bond: { kind: '兄', alive: true, near: false } } as const
 const PARENT_AWAY = { bond: { kind: '生母', alive: true, near: false } } as const
+/**
+ * 娘还在。
+ *
+ * **这一条是 `present.ts` 逼出来的**：哥不在那一支的正文里点了两个人
+ * （哥没回来、娘留了半块瓜），而 `requires` 只问了哥——
+ * 于是娘殁了的那些世里，**一个不在了的人还在留瓜**。
+ *
+ * 「正文点名说谁，条件就得问谁」——一句话里两个人，就得两个都问。
+ */
+const MOTHER_HERE = { family: { id: 'mother', alive: true } } as const
 
 /**
  * 年底还欠着的账。
@@ -150,7 +160,18 @@ export const festivalScenes: SceneLibrary = {
         ],
         branches: [
           { requires: [CHILD_AWAY], next: 'child-away' },
-          { requires: [BROTHER_AWAY], next: 'brother-away' },
+          /*
+           * 哥不在，而娘还在。**两条分支，因为那一句点了两个人。**
+           *
+           * 头一版只有一支，正文写着「哥今年没回来。娘留了半块瓜在碗里」，
+           * 而 `requires` 只问了哥——`present.ts` 抓到了：娘殁了那些世里，
+           * **一个不在了的人还在留瓜**。
+           *
+           * 这是「正文点名说谁，条件就得问谁」的又一次：一句话里两个人，
+           * 就得两个都问。分支多一支不算重复——它们说的是两种不同的年。
+           */
+          { requires: [BROTHER_AWAY, MOTHER_HERE], next: 'brother-away' },
+          { requires: [BROTHER_AWAY], next: 'brother-away-alone' },
           { requires: [PARENT_AWAY], next: 'parent-away' },
         ],
         next: 'together',
@@ -171,7 +192,7 @@ export const festivalScenes: SceneLibrary = {
         next: 'done',
       },
       /**
-       * 哥不在。
+       * 哥不在，娘还在。
        *
        * 不写他在哪、也不写他好不好——**你不知道**。这一卷不是探亲，
        * 是坐在院子里想起一个不在的人。世界里他此刻在做什么由别的册子管
@@ -181,6 +202,27 @@ export const festivalScenes: SceneLibrary = {
         id: 'brother-away',
         blocks: [
           { kind: 'narration', text: '哥今年没回来。娘留了半块瓜在碗里，谁也没动。' },
+          {
+            kind: 'narration',
+            text: '月亮爬过屋脊的时候，你想起小时候也是这张桌子，那会儿人是齐的。',
+            tone: 'faint',
+          },
+        ],
+        next: 'done',
+      },
+      /**
+       * 哥不在，娘也已经不在了。
+       *
+       * **不是上一支去掉一句**——留瓜那个动作没了，缺的那个位置就换了人：
+       * 从前是娘替不在的儿子留着，如今**没有人替谁留**。
+       *
+       * 这一支是 `present.ts` 逼出来的（娘殁了那些世里，上一支让她还在留瓜）。
+       * 而它逼出来的不是一个补丁，是这一卷本来就该有的第二种年。
+       */
+      'brother-away-alone': {
+        id: 'brother-away-alone',
+        blocks: [
+          { kind: 'narration', text: '哥今年没回来。桌上摆的还是那几样，没有人多摆一副碗。' },
           {
             kind: 'narration',
             text: '月亮爬过屋脊的时候，你想起小时候也是这张桌子，那会儿人是齐的。',
