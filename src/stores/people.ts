@@ -634,6 +634,8 @@ export const usePeopleStore = defineStore(
           knowsName: false,
           affinity: Math.min(100, Math.max(-100, delta)),
           ...(note ? { note } : {}),
+          // 哪一年认识的。「二十年没变样」那类话要它才写得出来
+          metInYear: world.time.year,
         },
       }
       return true

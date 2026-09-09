@@ -39,6 +39,7 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import { CULTIVATORS } from '../src/content/cultivators'
 import { lifeScenes } from '../src/content/life'
+import { meetsAll } from '../src/engine/conditions'
 import { makePerson, usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 import type { Condition } from '../src/types/game'
@@ -56,6 +57,14 @@ const wrong: string[] = []
  * 0 岁那年问出来「看着比实际还老 3 岁」，而正文一个字没错。
  */
 const MET_AT = 30
+
+/**
+ * 玩家几岁头一回进药庐。
+ *
+ * `mountain` 那几卷写的是「你头一回进这扇门的时候得踮着脚才看得见戥子上的星」
+ * ——十三岁。第六问拿它算「认识多少年」。
+ */
+const MET_THE_SHED_AT = 13
 
 console.log('\n【库里的修士，各自看着多大】\n')
 for (const one of CULTIVATORS) {
@@ -180,6 +189,85 @@ if (asked.length === 0) {
     }
     if (one.seemsAge !== undefined && gap <= 0) {
       wrong.push(`${one.given} 写了 seemsAge=${one.seemsAge}，可引擎说他年轻 ${gap} 岁`)
+    }
+  }
+}
+
+/*
+ * 六、三层察觉：认识得越久，同一件事读出来的越重。
+ *
+ * 用户 2026-09-10 指出的那个用法——**「他不老」头一次见面就成立，
+ * 可察觉它要花很多年**：
+ *
+ *     十年后    「他怎么一点没变？」
+ *     二十年后  「还是这个样子。」
+ *     三十年后  「这人怕是有问题。」
+ *
+ * 这一问验的是那几句真读得到，而且**顺序对**：认识得久的人
+ * 读到的句数不该比认识得短的少。
+ *
+ * ⚠️ 摆局验，不真世跑——`mountain:unaged` 那一卷本身就稀，
+ * 真世凑不齐样本（「稀卷里的分句归摆局验」那条）。
+ */
+{
+  const SHED = 'herbalist-at-the-shed'
+  const shed = CULTIVATORS.find((one) => one.id === SHED)
+  if (shed === undefined) {
+    wrong.push(`人物库里没有 ${SHED}——三层察觉那几句挂在他身上`)
+  } else {
+    /** 玩家十三岁认识他。到 age 岁那年读得到几句 */
+    const readAt = (age: number): number => {
+      setActivePinia(createPinia())
+      const people = usePeopleStore()
+      const world = useWorldStore()
+      people.enroll(
+        makePerson({
+          id: shed.id,
+          surname: shed.surname,
+          given: shed.given,
+          gender: shed.gender,
+          bornYear: world.time.year - shed.bornBefore,
+          realm: shed.realm,
+          health: 80,
+          span: shed.span,
+          ...(shed.seemsAge === undefined ? {} : { seemsAge: shed.seemsAge }),
+          place: shed.place,
+        }),
+      )
+      people.meet(SHED, shed.calls)
+      world.advanceTime({ years: age - MET_THE_SHED_AT })
+      const node = lifeScenes['mountain:unaged']?.nodes.open
+      if (node === undefined) return -1
+      return (node.seen ?? []).filter(
+        (one) =>
+          one.requires.some((r) => r.unaged !== undefined) && meetsAll(one.requires),
+      ).length
+    }
+
+    const steps = [20, 35, 45, 60].map((age) => ({ age, read: readAt(age) }))
+    console.log('\n【认识得越久，读出来的越重】\n')
+    for (const one of steps) {
+      console.log(
+        `  玩家 ${String(one.age).padStart(2)} 岁　认识 ${String(one.age - MET_THE_SHED_AT).padStart(2)} 年　读到 ${one.read} 句`,
+      )
+    }
+    if (steps.some((one) => one.read < 0)) {
+      wrong.push('`mountain:unaged` 那一卷找不到了——三层察觉挂在它的 open 节点上')
+    } else {
+      if (steps[0]!.read >= steps[3]!.read) {
+        wrong.push(
+          `认识 ${steps[0]!.age - MET_THE_SHED_AT} 年读 ${steps[0]!.read} 句、` +
+            `认识 ${steps[3]!.age - MET_THE_SHED_AT} 年读 ${steps[3]!.read} 句——` +
+            `察觉不该跟年头无关`,
+        )
+      }
+      for (let i = 1; i < steps.length; i += 1) {
+        if (steps[i]!.read < steps[i - 1]!.read) {
+          wrong.push(
+            `${steps[i]!.age} 岁读到的比 ${steps[i - 1]!.age} 岁少——察觉的层次倒过来了`,
+          )
+        }
+      }
     }
   }
 }

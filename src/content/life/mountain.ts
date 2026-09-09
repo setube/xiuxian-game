@@ -382,6 +382,36 @@ export const mountainScenes: SceneLibrary = {
             requires: [{ unaged: { who: SHED, by: { atLeast: 20 } } }],
             text: '他手上没有老人斑。你想起你爹那双手，最后那几年上头全是。',
           },
+          /*
+           * ## 同一件事，认识得越久读出来的越重
+           *
+           * 用户 2026-09-10 指出的那个用法：**「他不老」这件事头一次
+           * 见面就成立，可察觉它要花很多年。**
+           *
+           * 玩家十三岁头一回进药庐，这一卷最早三十岁——认识十七年起步。
+           * 三句话各自要一段够长的交情才读得到，而它们说的是同一件事：
+           *
+           *     认识 20 年   还在拿他跟自己比
+           *     认识 30 年   开始拿他跟别人比（同辈的都老了）
+           *     认识 40 年   不再找解释了
+           *
+           * ⚠️ 三条都在 `seen` 里，`seen` 是全都判、都成立就都读到——
+           * 所以门槛高的那句读到时，底下两句也在。**那正是对的**：
+           * 一个认识他四十年的人，二十年前那个念头并没有消失，
+           * 只是又压上了两层。
+           */
+          {
+            requires: [{ unaged: { who: SHED, by: { atLeast: 20 }, knownFor: { atLeast: 20 } } }],
+            text: '你认识他二十年了。这二十年里你换了两回住处，他还在这间屋子里称药。',
+          },
+          {
+            requires: [{ unaged: { who: SHED, by: { atLeast: 20 }, knownFor: { atLeast: 30 } } }],
+            text: '跟他同一辈的人，你能想起来的都已经拄拐了。',
+          },
+          {
+            requires: [{ unaged: { who: SHED, by: { atLeast: 20 }, knownFor: { atLeast: 40 } } }],
+            text: '你不再去想这是为什么。你只是每回来都看他一眼，看他还是不是那个样子。',
+          },
         ],
         branches: [{ requires: [{ knowledge: 'the-mountain-above' }], next: 'he-is-of-it' }],
         next: 'hardy',

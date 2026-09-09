@@ -463,6 +463,21 @@ const CHECKS = {
     const gap = people.ageOf(ask.who) - people.seemsOf(ask.who)
     if (ask.by.atLeast !== undefined && gap < ask.by.atLeast) return false
     if (ask.by.atMost !== undefined && gap > ask.by.atMost) return false
+    if (ask.knownFor !== undefined) {
+      /*
+       * 认识他多少年了。**没认识过的人一律不成立**——
+       * 「他怎么一点没变」这句话的前提是「我从前见过他」。
+       *
+       * 老存档没有 `metInYear`（`undefined`）也不成立：
+       * **不知道哪年认识的，跟刚认识是两回事**，
+       * 不能拿 0 顶上去（那会让老存档突然读到「认识三十年」那句）。
+       */
+      const met = people.known[ask.who]?.metInYear
+      if (met === undefined) return false
+      const years = useWorldStore().time.year - met
+      if (ask.knownFor.atLeast !== undefined && years < ask.knownFor.atLeast) return false
+      if (ask.knownFor.atMost !== undefined && years > ask.knownFor.atMost) return false
+    }
     return true
   },
   mayAsk: (ask) =>
