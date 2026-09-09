@@ -21,6 +21,10 @@
  *       不许太好走（有心人下来过 ≤ 40%、随机 ≤ 5%——山上几年才下来一趟人）。
  *       第二片：多嘴的人（有心 + 有人问就说）掷到「跟配偶说了」「他不再让你去了」各至少一世；
  *       有心人一世也没说出去；被赶出去的咽气那年跟他处在「不理会」；说了 ⇒ 被嘱咐过。
+ *   六、摆好的局（第三片，他不老）：三十岁还在药庐的人，爹在的读「爹背驼了」、爹不在的读「鬓角白了」；
+ *       知道山上的落见过·确信「跟山上有关」，不知道的落见过·猜想「山里人硬朗」；
+ *       落了那条认知，「想活得久一点」的火种点着；被赶出来的人这一卷不开；二十岁不开。
+ *       随机人生里：发觉了 ⇒ 到过药庐；确信 ⇒ 知道山上；有心人掷到发觉为止。
  *   五、摆好的局（第二片，「别出去乱说」是一条规矩）：没被嘱咐过的人，夜里、巷口两卷不开；
  *       嘱咐过了，配偶在夜里问、邻家户主在巷口问；跟配偶说了留在家里（他知道那一卷不开）；
  *       跟邻家说了他知道（footing 回不理会、师承那条链上的事全落空、山上不会再问起你）；
@@ -52,8 +56,8 @@ let bad = 0
  * 农家要爹娘都在：寺里收留、路上长大的境况没有宅，也就没有东邻那一户——第五条摆局
  * 要问巷口那一卷开不开，局得先有东邻。宫里长大的（`court`）反过来，要的正是没有东邻。
  */
-function atShed(footing: string | null, origin: OriginId = 'farm'): Staged | null {
-  const s = born(origin, 20, origin === 'farm' ? ['father', 'mother'] : [])
+function atShed(footing: string | null, origin: OriginId = 'farm', years = 20): Staged | null {
+  const s = born(origin, years, origin === 'farm' ? ['father', 'mother'] : [])
   if (!s) return null
   applyEffects([{ type: 'meeting', who: SHED }])
   if (footing !== null) s.world.setFlag(FOOTING, footing)
@@ -327,6 +331,24 @@ function withMind(level: 'high' | 'low'): void {
   secrecy('有心人', firstKeen)
   secrecy('多嘴的人', firstTalkers)
   if (talkers.length > firstTalkers.length) console.log(`  · 多嘴的人补掷到 ${talkers.length} 世`)
+  // 第三片：他不老。掷到有心人里有一世发觉为止
+  const noticed = (all: MountainLife[]) => all.some((one) => one.unaged !== null)
+  while (!noticed(keen) && keen.length < CAP) keen = [...keen, ...(await batch('keen', LIVES))]
+  const unagedRow = (label: string, all: MountainLife[]) =>
+    console.log(
+      `  · ${label} ${all.length} 世：发觉他不老 ${count(all, (o) => o.unaged !== null)}` +
+        `（确信 ${count(all, (o) => o.unaged?.interpretation === '确信')}、猜想 ${count(all, (o) => o.unaged?.interpretation === '猜想')}），` +
+        `点着长生那根火种 ${count(all, (o) => o.sparked)}，壮年读到「还是那个样子」${count(all, (o) => o.readUnaged)}`,
+    )
+  unagedRow('随机', random)
+  unagedRow('有心人', firstKeen)
+  if (!noticed(keen)) wrong.push(`${keen.length} 世有心人里没有一世发觉他不老——这一卷在真世里走不到`)
+  for (const one of [...random, ...keen, ...talkers]) {
+    if (one.unaged && !one.atShed) wrong.push('发觉他不老，可这一世没进过药庐')
+    if (one.unaged?.interpretation === '确信' && one.knowledge === null) wrong.push('确信「跟山上有关」，可这一世不知道山上有人')
+    if (one.sparked && !one.unaged) wrong.push('长生那根火种点着了，可他没发觉过他不老')
+    if (one.readUnaged && !one.unaged) wrong.push('壮年读到「还是那个样子」，可他没发觉过')
+  }
 
   // 掷到出现为止
   if (!keen.some((one) => one.down)) wrong.push(`${keen.length} 世有心人里没有一世山上下来过——这一卷在真世里走不到`)
@@ -369,7 +391,7 @@ function withMind(level: 'high' | 'low'): void {
     bad += 1
   } else
     console.log(
-      `  ✓ 四、有心人 ${keen.length} 世里，山上下来过、答了「山上的」、上头问起了各至少一世；链单调；有心人 ${Math.round(keenDown * 100)}%、随机 ${Math.round(randomDown * 100)}% 撞见下山的人——走得到，不算好走；多嘴的人 ${talkers.length} 世里跟配偶说了、被赶出来各至少一世，有心人一世也没说出去。`,
+      `  ✓ 四、有心人 ${keen.length} 世里，山上下来过、答了「山上的」、上头问起了、发觉他不老各至少一世；链单调；有心人 ${Math.round(keenDown * 100)}%、随机 ${Math.round(randomDown * 100)}% 撞见下山的人——走得到，不算好走；多嘴的人 ${talkers.length} 世里跟配偶说了、被赶出来各至少一世，有心人一世也没说出去。`,
     )
 }
 
@@ -490,6 +512,94 @@ function withMind(level: 'high' | 'low'): void {
   } else
     console.log(
       '  ✓ 五、「别出去乱说」是一条规矩：没被嘱咐过两卷不开；跟配偶说了留在家里；跟邻家说了他知道——footing 回不理会、师承那条链全落空、编年一笔；瞒住了不再问、年表也留一笔；没有东邻那一户巷口不开。',
+    )
+}
+
+// ============================================================
+// 六、摆好的局（第三片）：他不老
+// ============================================================
+{
+  const wrong: string[] = []
+  const eventOf = (id: string) => lifeEvents.find((one) => one.id === id)
+  const opens = (id: string): boolean => {
+    const event = eventOf(id)
+    if (!event) throw new Error(`年表上没有 ${id}`)
+    return meetsAll(event.requires)
+  }
+  const unagedOf = () => useCharacterStore().knowledge.find((one) => one.id === 'he-does-not-age')
+  /**
+   * `opens` 只问 requires；年龄窗口是 `pickEvent` 另判的（`engine/chronology.ts`）。
+   * 问「二十岁开不开」得连窗口一起问——头一版没问，二十岁的局 requires 全满足，报了假红。
+   */
+  const openable = (id: string): boolean => {
+    const event = eventOf(id)
+    if (!event) throw new Error(`年表上没有 ${id}`)
+    const age = useCharacterStore().age
+    return age >= event.window.from && age <= event.window.to && opens(id)
+  }
+  // 二十岁：不开——二十岁看不出一个五十岁的人有没有老
+  {
+    const s = atShed('使唤')
+    if (!s) wrong.push('掷不出局')
+    else if (openable('mountain-unaged')) wrong.push('二十岁那一卷就开了——二十岁看不出一个五十岁的人有没有老')
+  }
+  // 三十岁、爹在、不知道山上：读「爹背驼了」，落见过·猜想「山里人硬朗」，火种点着。
+  // 爹要在：直接掷一个三十岁爹娘都在的局（`born` 掷到要的人还在为止），别推十年——推十年爹会老死
+  {
+    const s = atShed('使唤', 'farm', 30)
+    if (!s) wrong.push('掷不出第二局')
+    else {
+      {
+        if (!openable('mountain-unaged')) wrong.push('三十岁、还在药庐，那一卷却不开')
+        const texts = play('mountain:unaged')
+        if (!texts.some((line) => line.includes('你爹背驼了'))) wrong.push(`爹在的该读「爹背驼了」：${texts.join(' / ')}`)
+        if (texts.some((line) => line.includes('鬓角'))) wrong.push('爹在的读到了「鬓角白了」')
+        if (!texts.some((line) => line.includes('山里人身子骨硬朗'))) wrong.push(`不知道山上的该读「山里人硬朗」：${texts.join(' / ')}`)
+        const entry = unagedOf()
+        if (!entry) wrong.push('发觉了，认知没落')
+        else if (entry.contact !== '见过' || entry.interpretation !== '猜想')
+          wrong.push(`不知道山上的该落见过·猜想，落的是 ${entry.contact}·${entry.interpretation}`)
+        if (!s.world.chronicle.some((one) => one.text.includes('没有老'))) wrong.push('发觉了，编年没记')
+        // 火种：想活得久一点。那一卷自己 reflect，卷演完火种就该点着
+        if (!s.world.hasFlag('spark:saw-one-who-does-not-age')) wrong.push('发觉他不老了，「想活得久一点」那根火种没点着')
+      }
+    }
+  }
+  // 三十岁、爹不在、知道山上：读「鬓角白了」，落见过·确信「跟山上有关」
+  {
+    const s = atShed('带一段', 'farm', 30)
+    if (!s) wrong.push('掷不出第三局')
+    else {
+      play('mountain:down', 'ask-who')
+      s.people.die('father', '老病')
+      const texts = play('mountain:unaged')
+      if (!texts.some((line) => line.includes('鬓角'))) wrong.push(`爹不在的该读「鬓角白了」：${texts.join(' / ')}`)
+      if (texts.some((line) => line.includes('你爹背驼了'))) wrong.push('爹不在了，却读到「爹背驼了」')
+      if (!texts.some((line) => line.includes('这两件事是一件事'))) wrong.push(`知道山上的该读「这两件事是一件事」：${texts.join(' / ')}`)
+      const entry = unagedOf()
+      if (!entry) wrong.push('第二局发觉了，认知没落')
+      else if (entry.contact !== '见过' || entry.interpretation !== '确信')
+        wrong.push(`知道山上的该落见过·确信，落的是 ${entry.contact}·${entry.interpretation}`)
+    }
+  }
+  // 被赶出来的人：这一卷不开
+  {
+    const s = atShed('带一段', 'farm', 30)
+    if (!s) wrong.push('掷不出第四局')
+    else {
+      s.world.setFlag('shut-out-by-the-shed', true)
+      s.world.setFlag(FOOTING, '不理会')
+      if (openable('mountain-unaged')) wrong.push('被赶出来的人，那一卷还开着')
+    }
+  }
+  if (wrong.length > 0) {
+    console.log(`
+  ✗ 六、他不老：${wrong[0]}（共 ${wrong.length} 处）`)
+    for (const one of wrong.slice(1)) console.log(`      ${one}`)
+    bad += 1
+  } else
+    console.log(
+      '  ✓ 六、他不老：三十岁还在药庐的人看见差——爹在的读爹背驼了、爹不在的读鬓角白了；知道山上的落见过·确信、不知道的落见过·猜想；火种点着；被赶出来的、二十岁的不开。',
     )
 }
 

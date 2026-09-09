@@ -186,4 +186,19 @@ export const WISH_SPARKS: readonly Spark[] = [
     chance: 0.1,
     text: '你半夜醒过一次，听了很久屋里的动静。',
   },
+  {
+    /**
+     * 见过一个不老的人（`mountain:unaged`）。
+     *
+     * 28.md：凡人认为修仙是为了长生。这是那句话在凡间的第一个入口——不是听说，是亲眼见过
+     * 一个二十多年没变样的人。它点的是「想活得久一点」，不是修行：一个见过不老的人的农夫，
+     * 先想到的是自己的爹背驼了，不是去学什么。
+     */
+    id: 'saw-one-who-does-not-age',
+    leaning: 'live-long',
+    weight: 5,
+    requires: [{ knowledge: 'he-does-not-age' }],
+    once: true,
+    text: '你想起药庐那位二十多年没变过的样子，又想起你爹今年春上背驼了。',
+  },
 ]

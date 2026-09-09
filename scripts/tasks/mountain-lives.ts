@@ -74,6 +74,12 @@ export interface MountainLife {
   shutOut: boolean
   /** 咽气那年跟药庐那位处在哪一格 */
   footingAtEnd: string | null
+  /** 第三片：发觉他不老（认知 he-does-not-age 落成什么） */
+  unaged: { contact: Contact; interpretation: Interpretation } | null
+  /** 「想活得久一点」那个愿望被这件事点过 */
+  sparked: boolean
+  /** 壮年那一卷读到「还是那个样子」 */
+  readUnaged: boolean
 }
 
 const AT_SHED: readonly string[] = ['使唤', '带一段', '教一点']
@@ -103,6 +109,7 @@ function liveALife(policy: Policy): MountainLife {
   let readAsked = false
   let askedHome = false
   let askedLane = false
+  let readUnaged = false
   for (let turns = 0; !narrative.ended && turns < 240 && character.died === null; turns += 1) {
     const open = narrative.options.filter((o) => !o.locked)
     if (open.length === 0) break
@@ -124,6 +131,7 @@ function liveALife(policy: Policy): MountainLife {
       if (text.includes('山上的人问起过你')) readAsked = true
       if (text.includes('镇西那边，到底是个什么去处')) askedHome = true
       if (text.includes('我怎么没见它挂过招牌')) askedLane = true
+      if (text.includes('你已经不去想这件事了')) readUnaged = true
     }
     let pick = open[Math.floor(Math.random() * open.length)]!
     if (policy !== 'random') {
@@ -143,6 +151,7 @@ function liveALife(policy: Policy): MountainLife {
   }
   const footing = world.getFlag('footing:herbalist-at-the-shed')
   const entry = character.knowledge.find((one) => one.id === 'the-mountain-above')
+  const unagedEntry = character.knowledge.find((one) => one.id === 'he-does-not-age')
   const visitor = people.personOf('the-one-who-comes-down')
   return {
     footing: typeof footing === 'string' ? footing : null,
@@ -173,6 +182,11 @@ function liveALife(policy: Policy): MountainLife {
     kept: world.hasFlag('kept-the-mountain'),
     shutOut: world.hasFlag('shut-out-by-the-shed'),
     footingAtEnd: typeof footing === 'string' ? footing : null,
+    unaged: unagedEntry
+      ? { contact: unagedEntry.contact, interpretation: unagedEntry.interpretation }
+      : null,
+    sparked: world.hasFlag('spark:saw-one-who-does-not-age'),
+    readUnaged,
   }
 }
 

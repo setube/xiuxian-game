@@ -591,6 +591,11 @@ export const routineScenes: SceneLibrary = {
             requires: [{ flag: { key: 'known-on-the-mountain' } }],
             text: '山上的人问起过你。此后再没有下文，你也没有去问。',
           },
+          // 见过一个不老的人（`mountain:unaged`）。稀卷的收尾写在卷上，这儿只留一句，样本凑得齐再判
+          {
+            requires: [{ knowledge: 'he-does-not-age' }],
+            text: '药庐那位还是那个样子。你已经不去想这件事了。',
+          },
           /*
            * 「别出去乱说」那条规矩的三种下场（跟配偶说了、瞒住了、被赶出来了）**不写在这儿**：
            * 那三面旗随机人生里千分之一以下，`seen.ts` 那一层判的是「常到的节上哪一句没人读到」，
