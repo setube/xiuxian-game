@@ -25,6 +25,8 @@
  * 摆局验的是「这四条路各自站不站得住」，真世验的是「演不演得到」，
  * 两者答不了同一个问题，这一卷两样都做了。
  */
+import { readFileSync, readdirSync } from 'node:fs'
+
 import './lib/seeded'
 
 import { createPinia, setActivePinia } from 'pinia'
@@ -171,7 +173,13 @@ function run(cell: Cell): Ran {
     lines,
     lost: household.standing - before,
     flags: [
-      'unrest-kept',
+      /*
+       * `unrest-kept` 从这张表里删了，同时也从内容里删了。
+       *
+       * 它内容层零读取，**唯一读它的是这支门禁自己**——而那意味着
+       * 判据在守一条内容根本没用上的东西。「没报官」是 `unrest-told`
+       * 的补集，内容里的分岔一直读的是后者。
+       */
       'unrest-said-yes',
       'unrest-told',
       'unrest-implicated',
@@ -355,11 +363,95 @@ function ruler(): string[] {
   return wrong
 }
 
+// ============================================================
+// 五、这一卷落的旗，有没有下家
+// ============================================================
+
+/**
+ * 每面旗的表态。**这是一张人写的表，等于作者签个字。**
+ *
+ * 机器守得住「这面旗没人读」，守不住「它该不该有人读」——
+ * 所以判据只问一件事：**不在这张表里的旗，有没有别处在读它**。
+ *
+ * ## 为什么这一问只管自己这一卷
+ *
+ * xiuxian-game-79 扫过全库：写入端 151 面、无人读 66 面。**而那 66 面
+ * 里多少该有读者，谁也说不出**——一支说不出期望值的门禁，
+ * 报出来的每一条都要人去判，那不如不报。
+ *
+ * 限定在一卷里就不一样了：**这一卷的作者知道每面旗是干什么的。**
+ *
+ * ## ⚠️ 门禁读不算读取端
+ *
+ * 只扫 `src/`。一面**只有 `scripts/` 在读**的旗比没人读更坏——
+ * 那意味着判据在守一条内容层根本没用上的东西。
+ *
+ * 这一条是踩出来的：`unrest-kept` 从落下起内容层就零读取，
+ * 唯一的读者是这支门禁自己。79 扫全库时把它归进无人读那批，
+ * 而我自查时读岔了一行（把 `unrest-said-yes` 那处 `requires`
+ * 当成了它的读者），**偏偏没拿自己刚提的这条标准去判自己那一面**。
+ * 现在它删了，而这一问替我记着。
+ */
+const FLAGS: Readonly<Record<string, '结论' | '要有下家'>> = {
+  // 应下那一句，只在 `quiet` 那一节自己读一次——它是他心里的事，不往外走
+  'unrest-said-yes': '结论',
+  // 报没报官。这一卷内部的分岔靠它，而它同时也是往外的入口
+  'unrest-told': '要有下家',
+  // 「往后再有事，册子上有你的名字」——那句话承诺了下文
+  'unrest-implicated': '要有下家',
+  // 「没有人当面提过这件事」——那句话的意思恰恰是它会在别处出现
+  'unrest-marked': '要有下家',
+}
+
+function flagsHaveFuture(): string[] {
+  const wrong: string[] = []
+  for (const [key, kind] of Object.entries(FLAGS)) {
+    // 只扫 src/，且只算 requires 那一侧（写入端是 `type: 'flag'`）
+    const readers = grepReaders(key)
+    if (kind === '要有下家' && readers.length === 0) {
+      wrong.push(
+        `${key} 承诺了下文，可全库没有一处 requires 读它——` +
+          '那是一张空头支票（正文里明写着「往后……」而没有往后）',
+      )
+    }
+    if (kind === '结论' && readers.length > 1) {
+      wrong.push(
+        `${key} 标着「结论」，却有 ${readers.length} 处在读它——` +
+          '要么它其实有下文（改标注），要么多出来的那处读错了旗',
+      )
+    }
+    console.log(`  ${key.padEnd(20)} ${kind}　读它的：${readers.length} 处`)
+  }
+  return wrong
+}
+
+/** 全库 `src/` 里有几处 `requires` 读这面旗。**不数 `scripts/`** */
+function grepReaders(key: string): string[] {
+  const out: string[] = []
+  const walk = (dir: string): void => {
+    for (const name of readdirSync(dir, { withFileTypes: true })) {
+      const path = `${dir}/${name.name}`
+      if (name.isDirectory()) walk(path)
+      else if (name.name.endsWith('.ts')) {
+        for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
+          // 写入端是 `type: 'flag', key: 'x'`，读取端是 `flag: { key: 'x'`
+          if (line.includes(`key: '${key}'`) && !line.includes("type: 'flag'")) {
+            out.push(`${path}:${line.trim().slice(0, 40)}`)
+          }
+        }
+      }
+    }
+  }
+  walk('src')
+  return out
+}
+
 const gates: readonly { name: string; run: () => string[] }[] = [
   { name: '一、六格各自落在该落的地方', run: landings },
   { name: '二、四种结局各留各的', run: distinct },
   { name: '三、应下和装没听懂：事一样，心里不一样', run: inHisHeart },
   { name: '四、尺子自检', run: ruler },
+  { name: '五、这一卷落的旗有没有下家', run: flagsHaveFuture },
 ]
 
 let bad = 0
@@ -376,6 +468,6 @@ if (bad > 0) {
   console.log(`共 ${bad} 处。`)
   process.exitCode = 1
 } else {
-  console.log('四道全过。造反从他门口经过，而散还是闹在他开口之前就定了。')
+  console.log('五道全过。造反从他门口经过，而散还是闹在他开口之前就定了。')
   console.log('**六成二的人生里什么也没有发生——那三个月的心是白担的。**')
 }

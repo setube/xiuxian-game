@@ -75,6 +75,40 @@ export const matchScenes: SceneLibrary = {
          * 排在后面的话永远轮不到。
          */
         branches: [
+          /**
+           * 报官那件事，村里知道是谁。
+           *
+           * ## 这是一张空头支票的兑现
+           *
+           * `life/unrest.ts` 的 `storm-told` 那一节写着：
+           *
+           * > 那年秋里，村口那棵树底下不再有人叫住你说话。
+           * > **没有人当面提过这件事。一次也没有。**
+           *
+           * 那句话承诺了一个下文——**而「没有人当面提」的意思恰恰是
+           * 它会在别处出现**。`unrest-marked` 因此零读取
+           * （xiuxian-game-79 扫全库旗标时归进「无人读」那 26 面），
+           * 而我自查才看清那是欠账不是设计。
+           *
+           * ## 为什么兑现在议亲
+           *
+           * 因为**媒人要打听为人**——这一节本来就在做这件事
+           * （底下那几条读的是说谎的行为史）。而「他报过官」跟
+           * 「他说过谎」是同一层的东西：**都不是罪，都影响说不说得成亲。**
+           *
+           * ## 排在最前，理由跟底下那几条是同一条
+           *
+           * `branches` 取第一条满足的就走，所以**更具体的要排在前面**。
+           * 一个人可能两样都占，那时该出的是这一句，因为它更重。
+           *
+           * 而这一条**不问有没有长辈**：底下那两条要长辈在场，
+           * 是因为那句话是长辈听来的。这一条不一样——**媒人自己就听得到**，
+           * 村口那棵树底下的话不用谁转述。
+           */
+          {
+            requires: [{ flag: { key: 'unrest-marked' } }],
+            next: 'heard-about-the-report',
+          },
           {
             /*
              * 媒人这半个月打听到了什么。**行为史的第一个外部读者。**
@@ -224,6 +258,83 @@ export const matchScenes: SceneLibrary = {
           {
             kind: 'narration',
             text: '你想不起来是哪一回被人记住了。这些年说过的话太多。',
+            tone: 'faint',
+          },
+        ],
+        choices: [
+          {
+            id: 'agree',
+            label: '你说，家里定就是了',
+            hint: '这门亲由长辈做主',
+            echo: '你说，家里定就是了。',
+            effects: [
+              { type: 'time', months: 4 },
+              { type: 'flag', key: 'match-deferred-to-elders', value: true },
+            ],
+            next: 'settled',
+          },
+          {
+            id: 'ask',
+            label: '想先见一面',
+            hint: '不合规矩，但也不是没有人这么做',
+            echo: '你说想先见一面。',
+            effects: [
+              { type: 'time', months: 3 },
+              { type: 'attribute', key: 'will', delta: 3 },
+            ],
+            next: 'glimpse',
+          },
+          {
+            id: 'refuse',
+            label: '你不想成这门亲',
+            critical: true,
+            echo: '你说你不想。',
+            effects: [{ type: 'time', months: 2 }],
+            next: 'refused',
+          },
+        ],
+      },
+
+      /**
+       * 媒人打听回来，听见的是报官那件事。
+       *
+       * ## 这一节跟 `elders-heard` 是同一层的两种听说
+       *
+       *     elders-heard              「话不大实在」——他说过谎
+       *     heard-about-the-report    「那年的事」——他报过官
+       *
+       * 两句都不是罪，两句都影响说不说得成亲。而这一节的写法
+       * 照着那一节的立场（xiuxian-game-79 定的，用户拍板的护栏）：
+       * **不惩罚、不外显、不做数值**——三个选项跟别处一模一样，
+       * 变的只有「他知道别人是怎么说他的」。
+       *
+       * ## 媒人不说那件事本身
+       *
+       * 她说的是「那年的事」四个字，**而这一节里没有一处点破是哪一年、
+       * 哪件事**。理由跟 `unrest` 那一册自己的立场一样：
+       * 村里人不当面提，媒人也不会。
+       *
+       * 而玩家读得懂——**因为那件事是他自己做的。**
+       *
+       * ## 最后那句是这一节的重心
+       *
+       * 「你才知道原来他们都晓得」——`storm-told` 那一节写的是
+       * 「没有人当面提过这件事，一次也没有」，**而那句话的真正意思
+       * 从来不是没人知道，是没人当着他说**。这一节把它兑现了。
+       */
+      'heard-about-the-report': {
+        id: 'heard-about-the-report',
+        blocks: [
+          { kind: 'narration', text: '这一趟她坐下就叹了口气。' },
+          {
+            kind: 'dialogue',
+            speaker: '媒人',
+            text: '那边听人说起过那年的事。倒也没说什么，就是问了两遍。',
+          },
+          { kind: 'narration', text: '她说完这句就去看茶碗，没有再往下说。' },
+          {
+            kind: 'narration',
+            text: '你才知道原来他们都晓得。这些年没有一个人当着你提过。',
             tone: 'faint',
           },
         ],

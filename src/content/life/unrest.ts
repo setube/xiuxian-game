@@ -128,8 +128,24 @@ export const unrestScenes: SceneLibrary = {
             label: '应下',
             hint: '两家挨着住了一辈子',
             echo: '你说了句「知道了」，关上门。',
+            /*
+             * 只落一面旗。
+             *
+             * ⚠️ 这儿从前还落一面 `unrest-kept`（「他没报官」），
+             * **而内容层一处也没读过它**——底下 `storm` 那一节的分岔读的是
+             * `unrest-told`（报了官的走 `storm-told`，其余走 `storm-kept`），
+             * 「没报官」是那一条的补集，不需要单独一面旗。
+             *
+             * 唯一读它的是 `scripts/unrest.ts`。而那是**尺子在量它，
+             * 不是内容在用它**——一面只有门禁读的旗，意味着
+             * **判据在守一条内容根本没用上的东西**。
+             *
+             * 两个人从两个方向漏掉了同一件事：79 扫全库旗标的探针只扫 `src/`，
+             * 看不见门禁那处；而我自查时读岔了一行（把 `unrest-said-yes`
+             * 那处 `requires` 当成了它的读者），**偏偏没拿自己刚提的
+             * 那条标准去判自己这一面**。
+             */
             effects: [
-              { type: 'flag', key: 'unrest-kept', value: true },
               // 应下和装没听懂，往后的事一模一样——不一样的只在他自己心里
               { type: 'flag', key: 'unrest-said-yes', value: true },
             ],
@@ -140,7 +156,8 @@ export const unrestScenes: SceneLibrary = {
             label: '装作没听懂',
             hint: '他也没明说什么',
             echo: '你说了句「哦」，关上门。',
-            effects: [{ type: 'flag', key: 'unrest-kept', value: true }],
+            // 什么也不落。**「装作没听懂」在世界看来就是没报官**，
+            // 而那件事由 `unrest-told` 的补集表达
             next: 'winter',
           },
           {
