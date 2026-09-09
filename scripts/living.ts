@@ -830,6 +830,15 @@ function ruler(): string[] {
     'house:divide#craft-hired': 'succession.ts',
     'house:divide#yamen': 'succession.ts',
     'house:divide#choose:town': 'succession.ts',
+    /*
+     * 上山那一节换日子（`farm` → `up-there`）。这一支走不到那儿——
+     * 入口 `known-on-the-mountain` 随机人生 0.3%，而这一节是它的子集。
+     *
+     * `going-up.ts` 第六问摆局跑，量的正是这一笔：上山前后 `living` 变了没有、
+     * `home` 跟着走了没有、那六处「干活」的排除名单里有没有他。
+     * **移交不是豁免**——那三条断言都打断验过。
+     */
+    'going-up:sent-for#arrived': 'going-up.ts',
   }
   const missed: string[] = []
   const handed: string[] = []

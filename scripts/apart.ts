@@ -1027,6 +1027,16 @@ const HANDED_OVER: Readonly<Record<string, string>> = {
   // 地抵了债那一节领进门的是债主——他成了田主，入的是人口册不是你这一户。
   // 父债链尾摆局跑走不到；tenancy.ts 第三条从 signed 那一节起演，量他入了册、成了田主、六问说他的姓
   'debt:fields#signed': 'tenancy.ts',
+  /*
+   * 上山那一节搬家（`home` 落到云台，一个人也不带）。这一支走不到那儿——
+   * 入口 `known-on-the-mountain` 随机人生 0.3%，而这一节是它的子集
+   * （2000 世实测 1 人走到）。
+   *
+   * `going-up.ts` 第六问摆局跑，量的正是这一笔：`home` 从村里变成云台没有。
+   * **移交不是豁免**——那一条打断验过（删掉 `home` 那笔效果，当场报
+   * 「上了山 home 还是「…芦花荡」——按 nearby 判的卷会继续给他演」）。
+   */
+  'going-up:sent-for#arrived': 'going-up.ts',
   // 老屋添的人（嫂子、侄儿）进的是老屋不是你这一户。kindred.ts 量他们住在哪一户
   'kindred:wedding#open': 'kindred.ts',
   'kindred:nephew#open': 'kindred.ts',
