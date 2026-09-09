@@ -585,6 +585,12 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
      * **没有写入端，也就没有出处可查。**
      */
     along: null,
+    /*
+     * 「送走过几个」没有出处表可查：它是从人口册和认知库现数的
+     * （认得的人里有几个已经不在了），不由任何一条效果打出来。
+     * **人是怎么殁的另有 `person` 那条效果登记，同一件事不查两遍。**
+     */
+    outlived: null,
   } satisfies {
     [K in keyof Condition]-?:
       ((value: NonNullable<Condition[K]>) => [Map<string, string[]>, string] | null) | null

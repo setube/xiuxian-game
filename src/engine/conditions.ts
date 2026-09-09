@@ -410,6 +410,22 @@ const CHECKS = {
    *
    * 一天之外问它恒为「独自」，那是对的：没出门就没有同伴。
    */
+  /**
+   * 他送走过几个。
+   *
+   * 数的是**认知库里已经不在的人**——他认得过、而现在殁了的。
+   * 不数世上所有的死人（那个数一直在涨，跟他没关系），
+   * 也不数关系图（关系图上没有的人他照样送走过，比如邻家的婶子）。
+   */
+  outlived: (outlived) => {
+    const people = usePeopleStore()
+    let n = 0
+    for (const id of Object.keys(people.known)) {
+      if (people.personOf(id) && !people.isAlive(id)) n += 1
+    }
+    return within(n, outlived)
+  },
+
   along: (along) => along.includes(currentAlong()),
 
   mayAsk: (ask) =>

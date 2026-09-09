@@ -217,7 +217,74 @@ function bear(): void {
 }
 
 // ============================================================
-// 五、尺子自检
+// 五、这一卷落的旗，有没有下家
+// ============================================================
+{
+  /**
+   * **这一条是替我自己问的。**
+   *
+   * 2026-09-09 全库扫过一遍：151 面旗，**66 面没有任何读取端**。
+   * 而我那天刚写完这一卷，就有一面 `said-yes-to-the-mountain` 落在那 66 面里
+   * ——**我一边在评判别人的旗，一边自己造了一面**。
+   *
+   * ## 三种旗，只有第三种该报
+   *
+   *     有读者　　　别处 requires 问得到它　　　　　　　→ 好的
+   *     无声的光杆　没人读，正文也没承诺什么　　　　　　→ 放过（那是一段人生的结论）
+   *     过路的光杆　没人读，而它本身只是个中间状态　　　→ **报**
+   *
+   * 这一卷现在两面无声光杆，各有各的理由：
+   *
+   *     could-not-go-up          「往后大概也不会知道了」——正文自己说了没有下文
+   *     turned-down-the-mountain 「你在里屋，没有出去」——同上
+   *
+   * **它们是结论，不是欠账。** 而 `said-yes-to-the-mountain` 两头都不占：
+   * 既没有下文，也不是任何一段人生的结论——它只是「答应了，还没走成」，
+   * 而那件事的结局由另外两面旗记着。
+   *
+   * ## ⚠️ 门禁读不算读取端
+   *
+   * 只有 `scripts/` 在读的旗**比没人读更坏**——那意味着
+   * **判据在守一个内容层根本没用上的东西**（2026-09-09 在 `unrest-kept` 上
+   * 实见过一次）。所以这一条只扫 `src/`。
+   */
+  const { readdirSync, readFileSync } = await import('node:fs')
+  const { join } = await import('node:path')
+
+  const mine = readFileSync('src/content/life/going-up.ts', 'utf8')
+  const 落的旗 = [...mine.matchAll(/type:\s*'flag',\s*key:\s*'([\w:-]+)'/g)].map((m) => m[1]!)
+
+  /** 正文自己说了没有下文的——这些是结论，不是欠账 */
+  const 结论: readonly string[] = ['could-not-go-up', 'turned-down-the-mountain']
+
+  let 全库 = ''
+  for (const d of ['src/content', 'src/content/life', 'src/engine', 'src/stores']) {
+    for (const f of readdirSync(d)) {
+      if (f.endsWith('.ts')) 全库 += '\n' + readFileSync(join(d, f), 'utf8')
+    }
+  }
+
+  const 没下家: string[] = []
+  for (const flag of [...new Set(落的旗)]) {
+    if (结论.includes(flag)) continue
+    const 读它的 =
+      new RegExp(`flag:\\s*\\{\\s*key:\\s*'${flag}'`).test(全库) ||
+      new RegExp(`key:\\s*'${flag}'\\s*,\\s*(?:equals|absent|in)\\b`).test(全库)
+    if (!读它的) 没下家.push(flag)
+  }
+
+  if (没下家.length > 0) {
+    console.log(`\n  ✗ ${没下家.length} 面旗落了而没人读：${没下家.join('、')}`)
+    console.log('      要么给它写个下家，要么删掉它——过路的状态本来就该由结局那几面旗记着。')
+    console.log('      （正文自己说了「没有下文」的，加进 `结论` 那张表。）')
+    bad += 1
+  } else {
+    console.log('\n  ✓ 这一卷落的旗都有下家，或者正文自己说了没有下文。')
+  }
+}
+
+// ============================================================
+// 六、尺子自检
 // ============================================================
 {
   const broken: string[] = []
