@@ -284,7 +284,83 @@ function bear(): void {
 }
 
 // ============================================================
-// 六、被赶出来的人，不该还被叫上山
+// ============================================================
+// 六、上了山，世界得知道他不在村里了
+// ============================================================
+{
+  /**
+   * **人在半山腰，而世界不知道——那是这一卷最容易留下的洞。**
+   *
+   * 头一版这一节只落旗和认知，于是：
+   *
+   *     living 还是 farm　日常照旧给他「帮家里干活」「出门做工」（六处）
+   *     home 还在村里　　 按 `nearby` 判的卷照旧演——夜里配偶问、巷口邻家问，
+   *                       而他二十年没下过山
+   *
+   * 「人在镇上、户在老屋」库里早有现成写法（`reunion.ts:77` 离家做工那处）：
+   * **户不动，住处动**，`nearby` 比的是住处。上山照抄这一套。
+   *
+   * ⚠️ 这一条**跑局验，不静态查**：静态只查得出「那两笔写在文件里」，
+   * 查不出「它们真的落下了」。而今天在别处见过一次「写了不生效」
+   * （`branches` 挂在有 `choices` 的节点上，格式全对、类型也过、永远轮不到判定）。
+   */
+  const s = sentFor(30)
+  const wrong: string[] = []
+  if (!s) wrong.push('掷不出局')
+  else {
+    const { useCharacterStore } = await import('../src/stores/character')
+    const { useHouseholdStore } = await import('../src/stores/household')
+    const ch = useCharacterStore() as unknown as { living?: { id?: string } }
+    const hh = useHouseholdStore() as unknown as { home?: string }
+
+    const 上山前 = String(ch.living?.id ?? '?')
+    play('going-up:sent-for', 'go')
+    const 上山后 = String(ch.living?.id ?? '?')
+
+    if (上山后 !== 'up-there') {
+      wrong.push(`上了山 living 还是 ${上山后}（上山前 ${上山前}）——日常会继续给他「帮家里干活」`)
+    }
+    if (!String(hh.home ?? '').includes('云台')) {
+      wrong.push(`上了山 home 还是「${String(hh.home)}」——按 nearby 判的卷会继续给他演`)
+    }
+    /*
+     * 那几处「干活/做工」的排除名单里得有他。**这一条钉的是库里的名单，
+     * 不是我自己写的数组。**
+     *
+     * ⚠️ 头一版写的是 `meetsAll([{ living: { notIn: ['palace','manor','up-there'] } }])`
+     * ——**它测的是自己**：那个数组是我在这儿现写的，跟 `day.ts` 那六处
+     * 写了什么毫无关系。打断验的时候把 `day.ts` 的名单改回两项，
+     * **判据照旧全绿**。
+     *
+     * 改成扫库：把那几处 `notIn` 的实际内容读出来，逐个问里头有没有他。
+     */
+    const { readFileSync: read2 } = await import('node:fs')
+    const 漏的: string[] = []
+    for (const f of ['day', 'illness', 'leaving', 'routine']) {
+      const text = read2(`src/content/life/${f}.ts`, 'utf8')
+      for (const m of text.matchAll(/living:\s*\{\s*notIn:\s*\[([^\]]*)\]/g)) {
+        const 名单 = m[1]!
+        // 只管那些排除了高墙里头的人的——那几处正是「干活/做工」那一族
+        if (!名单.includes('palace')) continue
+        if (!名单.includes('up-there')) 漏的.push(`${f}.ts: [${名单.replace(/\s+/g, ' ').trim()}]`)
+      }
+    }
+    if (漏的.length > 0) {
+      wrong.push(`${漏的.length} 处「干活」的排除名单里没有 up-there：${漏的.join('、')}`)
+    }
+  }
+
+  if (wrong.length > 0) {
+    console.log(`\n  ✗ ${wrong.length} 处：`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += 1
+  } else {
+    console.log('\n  ✓ 上了山 living 和 home 都跟着走了——世界知道他不在村里了。')
+  }
+}
+
+// ============================================================
+// 七、被赶出来的人，不该还被叫上山
 // ============================================================
 {
   /**

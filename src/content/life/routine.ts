@@ -266,7 +266,7 @@ export const routineScenes: SceneLibrary = {
              * **门第塌了的宗室，是真的要出去挣这口饭的**，
              * 而那正是那一册要说的话。
              */
-            requires: [{ living: { notIn: ['palace', 'manor'] } }],
+            requires: [{ living: { notIn: ['palace', 'manor', 'up-there'] } }],
             effects: [
               { type: 'time', years: 1 },
               { type: 'attribute', key: 'body', delta: 5 },
@@ -404,7 +404,7 @@ export const routineScenes: SceneLibrary = {
             hint: '在外头的日子不好过，但家里能宽裕些',
             echo: '这两年你多半在外头做工。',
             // 理由同少年那一卷：高墙里头的人不出去做工，削爵之后才开
-            requires: [{ living: { notIn: ['palace', 'manor'] } }],
+            requires: [{ living: { notIn: ['palace', 'manor', 'up-there'] } }],
             effects: [
               { type: 'time', years: 2 },
               { type: 'attribute', key: 'body', delta: 5 },
@@ -711,6 +711,50 @@ export const routineScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '是邻村的孩子，家里托了人来问。' },
           { kind: 'narration', text: '教了两年，他学得不算快，但肯下功夫。' },
+        ],
+        /**
+         * 32.md 第 11 节那句，而它不需要长生。
+         *
+         * > 有人：**开始收徒，把师徒关系作为新的家庭。**
+         *
+         * 那份文档拿它写长生者（活了几百年之后重新找人作伴），
+         * 而实测这件事**在凡人身上就是常态**：收徒那一刻（900 世，
+         * 收过徒的 855 世，中位 36 岁）——
+         *
+         *     没有子女在身边   75%
+         *     没有配偶在身边   57%
+         *     没有长辈在身边   52%
+         *     ★ 三样都没有     29%
+         *
+         * **将近三成的人，徒弟是他此刻唯一在身边的人。**
+         *
+         * ## 这一句只写事实，不写「他把他当儿子」
+         *
+         * 那是替他下结论，而这个库通篇不下结论（`descend` 那一卷同一条纪律：
+         * 32.md 说「系统绝对不能自动写『你看到自己的后代，非常亲切』」）。
+         *
+         * 所以写的是**屋子**：多一个人吃饭、多一双鞋在门口。
+         * 「新的家庭」这四个字一个也不出现，而玩家读得出来。
+         *
+         * ## 而底下那一句是它的反面，同样要有
+         *
+         * 家里满满当当的人收徒，那是另一件事——**徒弟是多出来的一个，
+         * 不是填空的那一个**。两句都在，这一节才分得出这两种人生。
+         */
+        seen: [
+          {
+            requires: [
+              { bond: { kind: '子', near: false } },
+              { bond: { kind: '女', near: false } },
+              { bond: { kind: '配偶', near: false } },
+              { bond: { kind: '抚养', near: false } },
+            ],
+            text: '屋里从此多一个人吃饭。夜里他在外间翻身，你听得见。',
+          },
+          {
+            requires: [{ bond: { kind: '子', near: true } }],
+            text: '你自己的孩子跟他差不多大。两个人一起干活，话却不多。',
+          },
         ],
         choices: [SETTLE_IN],
       },

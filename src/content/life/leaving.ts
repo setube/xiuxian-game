@@ -86,7 +86,7 @@ export const leavingScenes: SceneLibrary = {
             // （想离开的和想守家的看见同一组选项），这一条管的是**身份**
             // （做不做得出这件事）。两个维度，而且同一个立场——
             // 世界不因为你想要什么而配合你，也不因为你出身高就替你把活干了。
-            requires: [{ living: { notIn: ['palace', 'manor'] } }],
+            requires: [{ living: { notIn: ['palace', 'manor', 'up-there'] } }],
             hint: '耗 半月',
             echo: '你在货栈做了几天短工。',
             effects: [

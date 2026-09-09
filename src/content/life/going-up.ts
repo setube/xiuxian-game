@@ -288,6 +288,25 @@ export const goingUpScenes: SceneLibrary = {
           { type: 'time', months: 1 },
           { type: 'undertake', undertaking: GOING_UP, done: true },
           { type: 'flag', key: 'went-up-the-mountain', value: true },
+          /*
+           * ⚠️ **这两笔（`living` + `home`）是 2026-09-09 补的，而它们不是装饰。**
+           *
+           * 头一版这一节只落旗和认知，于是**他人在半山腰，而世界不知道**：
+           *
+           *     living 还是 farm　日常照旧给他「帮家里干活」「出门做工」
+           *                       （`day.ts` `illness.ts` `leaving.ts` `routine.ts` 六处）
+           *     home 还在村里　　 按 `nearby` 判的卷照旧演——夜里配偶问、
+           *                       巷口邻家问，而他二十年没下过山
+           *
+           * 「人在镇上、户在老屋」这件事库里早有现成写法（`reunion.ts:77`
+           * 离家做工那处：`home` 落到货栈 + `living` 换成 `market`）。
+           * **户不动，住处动**，`nearby` 比的是住处。上山照抄这一套。
+           *
+           * `place` 用 `云台`——修士们的 `place` 都是它（`cultivators.ts:221`），
+           * 不另起一个名字。这一卷不写「云台」是什么，玩家也读不到这三个字。
+           */
+          { type: 'living', living: 'up-there' },
+          { type: 'home', place: '云台' },
           {
             type: 'knowledge',
             id: 'up-there',

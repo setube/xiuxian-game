@@ -533,6 +533,22 @@ export const matchEvents: readonly LifeEvent[] = [
        */
       { undertaking: { not: 'mourning' } },
       { standing: { atLeast: 20 } },
+      /*
+       * 人得在凡间。
+       *
+       * ⚠️ **这一条是 2026-09-09 补的**，起因是 29.md 那一卷落地：
+       * 一个被叫上山、在半山腰挑水的人，**村里的媒人照旧会来给他说亲**。
+       *
+       * 实测：上山之后（`living: 'up-there'` + `home: 云台`），
+       * 窗口跨过三十四岁、要求家里人或户的三十三个事件里，
+       * **`requires` 仍然成立的只剩这一个**——别的都被那两笔顺带关上了
+       * （它们问的是户、是同住的人，而他的住处已经不在村里）。
+       *
+       * 这一条问 `living` 不问 `place`：媒人不上山，**不是因为山远，
+       * 是因为他过的不是那种日子了**。同 `sequestered.ts` 那支的立场
+       * ——判据该跟被测对象用同一个维度。
+       */
+      { living: { notIn: ['up-there'] } },
     ],
     scene: 'match:offer',
     weight: 8,

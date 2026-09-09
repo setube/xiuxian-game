@@ -98,7 +98,7 @@ export const illnessScenes: SceneLibrary = {
              * `scripts/sequestered.ts` 实测抓到的三处之一：从前王府里病倒了人，
              * 世子也会读到「照旧下地」。
              */
-            requires: [{ living: { notIn: ['palace', 'manor'] } }],
+            requires: [{ living: { notIn: ['palace', 'manor', 'up-there'] } }],
             hint: '耗 一月',
             echo: '你照旧下地。',
             effects: [
