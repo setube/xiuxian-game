@@ -27,6 +27,7 @@ import { unrestEvents, unrestScenes } from './unrest'
 import { rivermanEvents, rivermanScenes } from './riverman'
 import { afterwardsEvents, afterwardsScenes } from './afterwards'
 import { keepingEvents, keepingScenes } from './keeping'
+import { stillEvents, stillScenes } from './still'
 import { apprenticeEvents, apprenticeScenes } from './apprentice'
 import { attemptEvents, attemptScenes } from './attempt'
 import { bearingEvents, bearingScenes } from './bearing'
@@ -554,6 +555,28 @@ export const CHAPTERS: readonly Chapter[] = [
     age: [40, 78],
     purpose: ['他守着一件说不清的事十几年，某一年它头一次真的改了他的身体，而他不知道改了多少'],
     marks: ['undertake', 'roll', 'flag', 'lifespan', 'knowledge'],
+  },
+
+  /**
+   * 他还在那里称药。
+   *
+   * **写的不是他不老，是玩家自己开始进入另一个时间尺度。**
+   * 用户 2026-09-10 定的形状：参照物是玩家身边的人——爹埋在坡上、
+   * 哥耳朵背了、儿子当家了、自己头发全白了，**而他还是那个样子**。
+   *
+   * 跟 `mountain:unaged`（30–49，察觉他没变）分工：这一册在五十岁之后，
+   * 写的是察觉完了之后又过的那些年。**不需要等「长生」**——
+   * 库里三个不老的修士全都会死，可这一册照样成立。
+   */
+  {
+    id: 'still',
+    scenes: stillScenes,
+    events: stillEvents,
+    called: ['年表'],
+    to: [],
+    age: [50, 90],
+    purpose: ['他还是那个样子，而这些年里死的、老的、变样的全是你这边的人'],
+    marks: ['flag', 'chronicle', 'reflect'],
   },
 
   /** 手艺。铁匠、木匠、药铺 */

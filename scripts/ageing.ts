@@ -42,7 +42,7 @@ import { lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { makePerson, usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
-import type { Condition } from '../src/types/game'
+import type { Condition, SceneNode } from '../src/types/game'
 
 const wrong: string[] = []
 
@@ -239,8 +239,7 @@ if (asked.length === 0) {
       const node = lifeScenes['mountain:unaged']?.nodes.open
       if (node === undefined) return -1
       return (node.seen ?? []).filter(
-        (one) =>
-          one.requires.some((r) => r.unaged !== undefined) && meetsAll(one.requires),
+        (one) => one.requires.some((r) => r.unaged !== undefined) && meetsAll(one.requires),
       ).length
     }
 
@@ -263,11 +262,94 @@ if (asked.length === 0) {
       }
       for (let i = 1; i < steps.length; i += 1) {
         if (steps[i]!.read < steps[i - 1]!.read) {
-          wrong.push(
-            `${steps[i]!.age} 岁读到的比 ${steps[i - 1]!.age} 岁少——察觉的层次倒过来了`,
-          )
+          wrong.push(`${steps[i]!.age} 岁读到的比 ${steps[i - 1]!.age} 岁少——察觉的层次倒过来了`)
         }
       }
+    }
+  }
+}
+
+/*
+ * 七、「他还在那里称药」那一册：两支各走得到，而且互斥。
+ *
+ * `still:weighing` 写的不是他不老，是**玩家自己开始进入另一个时间尺度**
+ * ——参照物是玩家身边的人（爹埋在坡上、哥耳朵背了、自己头发全白了）。
+ *
+ * 两支按认识多少年分：三十年那一支他一个字没多说，
+ * 四十年那一支他提了一句四十年前的事。**更具体的排在前面**，
+ * 排反了四十年那一支永远轮不到——那是「写了走不到的分支」那一族。
+ */
+{
+  const SHED = 'herbalist-at-the-shed'
+  const shed = CULTIVATORS.find((one) => one.id === SHED)
+  const scene = lifeScenes['still:weighing']
+  if (shed === undefined || scene === undefined) {
+    wrong.push('`still:weighing` 那一卷或药庐那位找不到了')
+  } else {
+    /** 玩家十三岁认识他，此刻 age 岁：走过哪几节、读到几句 */
+    const walk = (age: number): { nodes: string[]; seen: number } => {
+      setActivePinia(createPinia())
+      const people = usePeopleStore()
+      const world = useWorldStore()
+      people.enroll(
+        makePerson({
+          id: shed.id,
+          surname: shed.surname,
+          given: shed.given,
+          gender: shed.gender,
+          bornYear: world.time.year - shed.bornBefore,
+          realm: shed.realm,
+          health: 80,
+          span: shed.span,
+          ...(shed.seemsAge === undefined ? {} : { seemsAge: shed.seemsAge }),
+          place: shed.place,
+        }),
+      )
+      people.meet(SHED, shed.calls)
+      world.advanceTime({ years: age - MET_THE_SHED_AT })
+
+      const nodes: string[] = []
+      let seen = 0
+      let id: string | undefined = scene.entry
+      for (let step = 0; step < 10 && id; step += 1) {
+        const node: SceneNode | undefined = scene.nodes[id]
+        if (node === undefined) break
+        nodes.push(id)
+        seen += (node.seen ?? []).filter((one: { requires: readonly Condition[] }) =>
+          meetsAll(one.requires),
+        ).length
+        const branches: readonly { requires: readonly Condition[]; next: string }[] =
+          node.branches ?? []
+        const branch = branches.find((one) => meetsAll(one.requires))
+        id = branch?.next ?? node.next ?? undefined
+      }
+      return { nodes, seen }
+    }
+
+    const at50 = walk(50)
+    const at60 = walk(60)
+    console.log('\n【他还在那里称药：两支各走到哪儿】\n')
+    console.log(`  玩家 50 岁（认识 ${50 - MET_THE_SHED_AT} 年）  ${at50.nodes.join('→')}　读到 ${at50.seen} 句`)
+    console.log(`  玩家 60 岁（认识 ${60 - MET_THE_SHED_AT} 年）  ${at60.nodes.join('→')}　读到 ${at60.seen} 句`)
+
+    if (!at50.nodes.includes('thirty')) {
+      wrong.push(`认识 ${50 - MET_THE_SHED_AT} 年没走到 thirty，停在 ${at50.nodes.join('→')}`)
+    }
+    if (!at60.nodes.includes('forty')) {
+      wrong.push(
+        `认识 ${60 - MET_THE_SHED_AT} 年没走到 forty，停在 ${at60.nodes.join('→')}` +
+          `——多半是 branches 把宽的那条排在了前面`,
+      )
+    }
+    if (at60.nodes.includes('thirty')) {
+      wrong.push('四十年那一支同时走过 thirty——两支该互斥')
+    }
+    /*
+     * 底下那几句要有一句是**谁都读得到**的：一个没爹没兄没子的人
+     * 走进这一卷，不该一句额外的话也读不到。
+     */
+    if (at50.seen === 0) {
+      wrong.push('五十岁那一趟一句额外的话也没读到——「头发全白」那句该谁都读得到')
     }
   }
 }
