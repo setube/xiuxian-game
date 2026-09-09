@@ -25,9 +25,12 @@
  * 摆局验的是「这四条路各自站不站得住」，真世验的是「演不演得到」，
  * 两者答不了同一个问题，这一卷两样都做了。
  */
-import { readFileSync, readdirSync } from 'node:fs'
-
 import './lib/seeded'
+
+// ⚠️ `./lib/seeded` 必须是**第一个** import：它装的是这一轮的随机种子，
+// 排在它前头的任何 import 都会先跑，而那时种子还没装上。
+// `scripts/replay.ts` 那支门禁盯着这件事（22 报的，我这一笔头一版就违了）。
+import { readFileSync, readdirSync } from 'node:fs'
 
 import { createPinia, setActivePinia } from 'pinia'
 

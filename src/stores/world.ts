@@ -241,6 +241,35 @@ export const useWorldStore = defineStore(
     }
 
     /**
+     * 这个府碰上过某件世界事件没有，最近的一次在哪一年。
+     *
+     * ## 为什么非有这一格不可
+     *
+     * `regionState()` 答的是**此刻**的光景，而世上有些事**过去了就回不来，
+     * 可它确实发生过**。治安是最典型的一个：
+     *
+     *     grain >= 140  → 囤粮  order -8
+     *     grain >= 148  → 限价  order -12
+     *     order <= 42   → 闹匪  order -16
+     *
+     * 而 `worldclock.ts` 的回弹是每年 22%——**闹过匪的第三年，
+     * `order` 已经爬回四十几**，此刻的值再也看不出那几年出过什么事。
+     *
+     * 实测（1000 世，一生极值）：治安谷底 p50/p75/p90 全是 55，
+     * 而 p99 是 18。**它是全有全无的**：链一旦走过限价那一环就穿到底，
+     * 中间态不存在。所以「问此刻的 order」永远只能抓到崩塌那一两年，
+     * 而不是「那几年不太平」。
+     *
+     * 痕迹一直在——`Region.last` 记着每件事最后发生在哪一年，
+     * **只是从来没有人问过它**。这一格就是那个读口。
+     *
+     * @returns 最近一次发生在哪一年；一次也没有过就是 `undefined`
+     */
+    function lastWorldEvent(id: string): number | undefined {
+      return regionHere().last[id]
+    }
+
+    /**
      * 让世界过若干年。
      *
      * 玩家推进时序时跟着调，出生之前也跑——
@@ -532,6 +561,7 @@ export const useWorldStore = defineStore(
       advanceTime,
       moveTo,
       regionState,
+      lastWorldEvent,
       runWorld,
       seedHistory,
       setFlag,

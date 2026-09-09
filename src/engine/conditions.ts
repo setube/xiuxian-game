@@ -417,6 +417,19 @@ const CHECKS = {
    * 不数世上所有的死人（那个数一直在涨，跟他没关系），
    * 也不数关系图（关系图上没有的人他照样送走过，比如邻家的婶子）。
    */
+  /**
+   * 这个府碰上过那件世界事件没有。
+   *
+   * 读的是 `Region.last`（`worldclock.ts` 每次结算都记一笔），
+   * **不是此刻的 `region` 值**——那两个是两个问题，见类型层那段注释。
+   */
+  befell: (befell, { world }) => {
+    const year = world.lastWorldEvent(befell.id)
+    if (year === undefined) return false
+    if (befell.within === undefined) return true
+    return world.time.year - year <= befell.within
+  },
+
   outlived: (outlived) => {
     const people = usePeopleStore()
     let n = 0
