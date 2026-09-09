@@ -1,3 +1,4 @@
+import { PRIME_UP } from '@/engine/stages'
 import type { LifeEvent, SceneLibrary } from '@/types/game'
 
 /**
@@ -140,7 +141,7 @@ export const goingUpScenes: SceneLibrary = {
        *
        * > 散修应该天然连接到你前面建立的普通社会。
        *
-       * 他要走了，而地里的活、家里的人、欠的账不会因此消失。
+       * 他要走了，而手上的活、家里的人、欠的账不会因此消失。
        * 这一节不问他愿不愿意——问的是**他走得成走不成**。
        */
       settling: {
@@ -192,7 +193,21 @@ export const goingUpScenes: SceneLibrary = {
         ],
         blocks: [
           { kind: 'narration', text: '交代到第三天你就知道交代不完。' },
-          { kind: 'narration', text: '地里的活、家里的人、年底的租子，哪一样都不是十天半月的事。' },
+          /*
+           * ⚠️ 原先写的是「地里的活、家里的人、年底的租子」——**`upbringing.ts` 当场抓到**：
+           * 那默认了这个人靠地吃饭，而他可能是铺子里的伙计、匠人、宫里出来的。
+           *
+           * 改的是措辞不是逻辑：「手上的活」对谁都成立——种地的、打铁的、
+           * 站柜台的，走之前都有一摊子事撂不下。**而这一节要说的本来就是那个**：
+           * 不是「农活多」，是**一个活人身上挂着的事，不是十天半月能交代完的**。
+           *
+           * 这跟我自己在 `scripts/sequestered.ts` 里守的是同一件事
+           * （高墙里头的人不该读到「干活」那一类选项），而我在这儿犯了。
+           */
+          {
+            kind: 'narration',
+            text: '手上的活、家里的人、年底的那几笔账，哪一样都不是十天半月的事。',
+          },
           { kind: 'divider', variant: 'dots' },
           { kind: 'narration', text: '来接的人到的那天，你在门口跟他说了几句话。' },
           { kind: 'narration', text: '他听完点了点头，什么也没说，转身走了。' },
@@ -344,10 +359,15 @@ export const goingUpEvents: readonly LifeEvent[] = [
      * 那两支门禁的规矩：有心人掷到出现为止，随机人生只报数。
      *
      * 窗口下界 15 而不是 13：`mountain.ts` 那一章从 13 岁起，
-     * 而这一片要等「上头问起」之后再隔两年多。上界跟着 `mountain` 走。
+     * 而这一片要等「上头问起」之后再隔两年多。
+     *
+     * ⚠️ 上界跟着 `mountain` 走，用 `PRIME_UP`（壮年末，49）**不写死数字**。
+     * 头一版我写了 60，而 `chapters.ts` 那一章写的是 `[15, PRIME_UP]`
+     * ——**两处我各写各的，`verify` 当场报「窗口跑出章界」**。
+     * 语义上也是 49 对：一个过了壮年的人，山上不会再叫他上去。
      */
     id: 'going-up-sent-for',
-    window: { from: 15, to: 60 },
+    window: { from: 15, to: PRIME_UP },
     requires: [
       { flag: { key: 'known-on-the-mountain' } },
       { flag: { key: 'went-up-the-mountain', absent: true } },
