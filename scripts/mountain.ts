@@ -454,8 +454,22 @@ function withMind(level: 'high' | 'low'): void {
       const texts = play('mountain:asked-lane', 'keep-mountain')
       if (!texts.some((line) => line.includes('手心有汗'))) wrong.push(`瞒住了该读到手心有汗：${texts.join(' / ')}`)
       if (!s.world.hasFlag('kept-the-mountain')) wrong.push('瞒住了，旗没落')
+      // 「没说」那条路也得在年表上留一笔——不然这一世像是没人问过
+      if (!s.world.chronicle.some((one) => one.text.includes('问起过药庐那边。你没说')))
+        wrong.push('瞒住了，年表上一个字也没有')
       if (opens('mountain-asked-lane') || opens('mountain-asked-home')) wrong.push('瞒住了，两卷却还会再问')
       if (opens('mountain-shut')) wrong.push('瞒住了，他知道那一卷却开了')
+    }
+  }
+  // 夜里瞒住了：也留一笔
+  {
+    const s = withSpouse('带一段')
+    if (!s) wrong.push('掷不出第六局')
+    else {
+      const texts = play('mountain:asked-home', 'keep-mountain')
+      if (!texts.some((line) => line.includes('睁着眼'))) wrong.push(`夜里瞒住了该读到睁着眼：${texts.join(' / ')}`)
+      if (!s.world.chronicle.some((one) => one.text.includes('问起过药庐那边。你没说')))
+        wrong.push('夜里瞒住了，年表上一个字也没有')
     }
   }
   // 没有东邻那一户（宫里长大的）：巷口那一卷不开，夜里那一卷照旧
@@ -475,7 +489,7 @@ function withMind(level: 'high' | 'low'): void {
     bad += 1
   } else
     console.log(
-      '  ✓ 五、「别出去乱说」是一条规矩：没被嘱咐过两卷不开；跟配偶说了留在家里；跟邻家说了他知道——footing 回不理会、师承那条链全落空、编年一笔；瞒住了不再问；没有东邻那一户巷口不开。',
+      '  ✓ 五、「别出去乱说」是一条规矩：没被嘱咐过两卷不开；跟配偶说了留在家里；跟邻家说了他知道——footing 回不理会、师承那条链全落空、编年一笔；瞒住了不再问、年表也留一笔；没有东邻那一户巷口不开。',
     )
 }
 

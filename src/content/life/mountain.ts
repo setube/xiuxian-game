@@ -347,6 +347,9 @@ export const mountainScenes: SceneLibrary = {
             effects: [
               { type: 'time', days: 1 },
               { type: 'flag', key: 'kept-the-mountain', value: true },
+              // 瞒住了也是这一世发生过的事：「没说」那条路也得在年表上留一笔（79 在 schooling 上抓到的形状——
+              // 五笔年表全给了「念上了」，人最多的「没念上」那条一笔也没有）
+              { type: 'chronicle', text: '{call:spouse}问起过药庐那边。你没说。' },
             ],
             next: 'kept-home',
           },
@@ -411,6 +414,7 @@ export const mountainScenes: SceneLibrary = {
             effects: [
               { type: 'time', days: 1 },
               { type: 'flag', key: 'kept-the-mountain', value: true },
+              { type: 'chronicle', text: '{house:east}的人问起过药庐那边。你没说。' },
             ],
             next: 'kept-lane',
           },
