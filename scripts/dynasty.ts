@@ -437,13 +437,23 @@ for (let tries = 0; tries < 20000 && fellSeen < COURT_FALLS; tries += 1) {
 // ============================================================
 {
   const sample = foundDynasty(-150, 100, NAMES)
-  // 把第二位改成「即位当年就改元」——第一条必须红
-  const broken: Reign[] = sample.map((r, i) =>
-    i === 1 && r.death && r.death.year !== r.accession.year
-      ? { ...r, eraFrom: { ...r.accession } }
-      : r,
+  /*
+   * 把一位改成「即位当年就改元」——第一条必须红。
+   *
+   * 掰的得是**在位跨了年**的那一位：即位当年就没了的本来就该追称到即位那个月，
+   * 改元写成即位那一月对他不是错。头一版钉死第二位、拿 `death.year !== accession.year`
+   * 当守卫——守卫不成立时什么也没掰，`broken` 跟 `sample` 逐位相同，第一条抓不到，
+   * 报出来的是「当年改元没抓到」。而第二位即位当年就崩的概率约 1.4%（第三条印着），
+   * 七十颗种子红一颗（2026-09-09 种子 tl0fcymfawfn/dynasty）。跟 kindred 十四那一族同形：
+   * 判据嘴上说的前提，代码里没立——这儿的前提是「这一位在位跨了年」。
+   */
+  const spanning = sample.findIndex(
+    (r, i) => i > 0 && r.death !== null && r.death.year !== r.accession.year,
   )
-  const caughtOne = faultsOfSuccession(broken).length > 0
+  const broken: Reign[] = sample.map((r, i) =>
+    i === spanning ? { ...r, eraFrom: { ...r.accession } } : r,
+  )
+  const caughtOne = spanning >= 0 && faultsOfSuccession(broken).length > 0
   // 词库里塞一个「万历」——第二条必须红
   const caughtTwo = faultsOfNames([...NAMES, '万历'], REAL_MING_ERAS).length > 0
   // 查法算错一年（元年算成〇年）——第四条必须红。
