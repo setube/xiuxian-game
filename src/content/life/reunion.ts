@@ -88,7 +88,13 @@ export const reunionScenes: SceneLibrary = {
                 id: 'caravan-boss',
                 calls: '货栈的管事',
                 delta: 6,
-                who: { surname: '沈', given: '大有', gender: '男', age: 41, doing: '管着镇上的货栈' },
+                who: {
+                  surname: '沈',
+                  given: '大有',
+                  gender: '男',
+                  age: 41,
+                  doing: '管着镇上的货栈',
+                },
               },
               {
                 type: 'aspect',
@@ -106,6 +112,15 @@ export const reunionScenes: SceneLibrary = {
             effects: [
               { type: 'time', days: 5 },
               { type: 'flag', key: 'turned-down-shopwork', value: true },
+              /*
+               * 年表这一笔 2026-09-09 补的，跟 `leaving.ts` 那处车队是同一形状
+               * （连 `echo` 都是同一句「你说家里离不开」）：去的那一支落了年表，
+               * 没去这一支只落一面旗，**而没去的人更多**。
+               *
+               * 分辨的是「后果落在哪一侧」：决定不去是一件事，该记；
+               * 「日子照旧」「接着翻」不是事，不记。
+               */
+              { type: 'chronicle', text: '镇上货栈要人那一回，你没有去。' },
             ],
             next: 'stayed',
           },
