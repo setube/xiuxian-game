@@ -83,8 +83,9 @@ interface Ran {
   /**
    * 依次走过的每一节。
    *
-   * ⚠️ **不能只记链尾。** `storm-kept` 和 `storm-told` 走完都汇到
+   * ⚠️ **不能只记链尾。** `storm-kept` 和 `storm-told` 走完都经过
    * `after-storm`（那一节两支共用，因为日子接着过的方式是一样的），
+   * 然后按旗各自分到 `after-storm-named` / `after-storm-known`，
    * 于是只比链尾的话，「报官和不报官落在同一节」永远成立——
    * 头一版的判据正是这么写的，当场误报。
    */
@@ -211,8 +212,29 @@ function landings(): string[] {
   for (const cell of CELLS) {
     const one = ran.get(cell.label)
     if (!one) continue
-    // 落点是链尾，而链尾在 `quiet`/`storm-*` 之后还有一节收尾
-    const wanted = cell.want === 'quiet' ? 'after-quiet' : 'after-storm'
+    /*
+     * 落点是链尾，而链尾在 `quiet`/`storm-*` 之后还有两节收尾。
+     *
+     * ## 这一行原来写死 `after-storm`，而那会让新分支走不走得到都是绿的
+     *
+     * `after-storm` 那一节从前把两支的下文写在 `seen` 里，
+     * 而 `seen` 那一层**永远凑不齐这一卷的样本**（`befell banditry`
+     * 实测 2/300，`scripts/seen.ts` 一批红一批绿）。改成 `branches`
+     * 分节点之后，两支各自往下走一节：
+     *
+     *     storm-kept → after-storm → after-storm-named   册子上有名字的人
+     *     storm-told → after-storm → after-storm-known   村里知道是谁报的
+     *
+     * **而这一行要跟着改，否则它只验到了岔路口，验不到岔路。**
+     * 那正是「不打断的话，我会把一条永远绿的判据当成守住了」——
+     * 打断验过：把 `branches` 两条的 `next` 对调，这一支立刻红。
+     */
+    const wanted =
+      cell.want === 'quiet'
+        ? 'after-quiet'
+        : cell.choice === 'tell'
+          ? 'after-storm-known'
+          : 'after-storm-named'
     if (one.landed !== wanted) {
       wrong.push(`${cell.label}：该走到 ${wanted}，实际停在 ${one.landed}`)
     }

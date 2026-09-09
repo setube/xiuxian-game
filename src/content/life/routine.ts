@@ -831,15 +831,49 @@ export const routineScenes: SceneLibrary = {
              * **后一种人屋里也多一个人吃饭，可那件事对他的意思完全不同**
              * ——他有过一屋子人，如今剩他一个。
              *
-             * 拆开之后这一句只给前一种：`bond` 什么都不问就是问
-             * 「有没有这条边」（`engine/conditions.ts` 那一段注释写着
-             * 空集合上 `some` 恒为 false，所以 `near: false` 对
-             * 「从来没有」的人也成立——两种人因此撞在一起）。
+             * ## 而分开它们要一格新的：`bond.has`
+             *
+             * 条件层从前**表达不了「一条边也没有」**：
+             *
+             *     {}                  有这条边
+             *     { near: false }     没有边 **或** 有边而人不在 ⚠️
+             *
+             * 几个 `{}` 并列是「都有」，而 `Condition` 里没有「非」。
+             * 所以加了 `has`（见 `types/game.ts` 那一段）——
+             * 这是「先有使用者再抽象」的样子：**这一节就是它的第一个使用者。**
              */
             requires: [
-              { bond: { kind: '子' } },
-              { bond: { kind: '女' } },
-              { bond: { kind: '配偶' } },
+              { bond: { kind: '子', has: false } },
+              { bond: { kind: '女', has: false } },
+              { bond: { kind: '配偶', has: false } },
+              // 爹娘还在。这一句里屋里本来就不止他一个——多的是这个孩子
+              { bond: { kind: '抚养', near: true } },
+            ],
+            text: '{elder}多添了一副碗筷，没说什么。',
+          },
+          {
+            /*
+             * 没成过家，爹娘也不在了——**屋里从前只有他一个**。
+             *
+             * ## 这一条是从原来那一句拆出来的，而拆的理由是判据
+             *
+             * `scripts/seen.ts` 报「56.1% 的人读到同一种组合」——
+             * 那 56% 是「没成过家、没有孩子」的人，**而这一档本来就该厚**
+             * （多数人一辈子没成过家）。
+             *
+             * 判据要的不是把这一档切小，是**这一节对不同的人读出不同的话**。
+             * 而这 56% 里最真实的分别是**屋里从前有没有别人**：
+             *
+             *     爹娘还在   多一副碗筷而已，屋里本来就有人
+             *     一个人过   夜里听得见另一个人翻身，那是好些年没有过的事
+             *
+             * 同一件事（收了个徒弟），两种人读出来完全不同。
+             */
+            requires: [
+              { bond: { kind: '子', has: false } },
+              { bond: { kind: '女', has: false } },
+              { bond: { kind: '配偶', has: false } },
+              { bond: { kind: '抚养', near: false } },
             ],
             text: '屋里从此多一个人吃饭。夜里他在外间翻身，你听得见。',
           },
@@ -854,9 +888,10 @@ export const routineScenes: SceneLibrary = {
              * 屋里有人是什么样，**他是知道了又没有了**。
              */
             requires: [
+              // `has: true` 是这一条跟上一条的分界：**他有过**，只是此刻都不在
+              { bond: { kind: '配偶', has: true, near: false } },
               { bond: { kind: '子', near: false } },
               { bond: { kind: '女', near: false } },
-              { bond: { kind: '配偶', near: false } },
             ],
             text: '屋里又有了动静。你有点不习惯——从前屋里也是这样的。',
           },

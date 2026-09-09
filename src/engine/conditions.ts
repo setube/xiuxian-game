@@ -212,8 +212,15 @@ const CHECKS = {
     // 这一格才需要人物库，用到时再取——别的条件不必为它初始化一个 store
     const people = usePeopleStore()
     const ids = people.kinOf(bond.kind)
-    // 四问一个也没问，那问的就是第一问：有没有这层关系
+    /*
+     * 有没有这条边。**跟 `near: false` 不是一回事**——后者在空集合上
+     * 恒为真，于是「从来没有过」和「有而不在身边」撞在一起
+     * （收徒那一节因此把两种人生混成一档）。
+     */
+    if (bond.has !== undefined && ids.length > 0 !== bond.has) return false
+    // 五问一个也没问，那问的就是第一问：有没有这层关系
     if (
+      bond.has === undefined &&
       bond.alive === undefined &&
       bond.near === undefined &&
       bond.present === undefined &&

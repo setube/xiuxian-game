@@ -362,6 +362,22 @@ export const unrestScenes: SceneLibrary = {
        * **收尾要写在那一卷自己身上**——这一节的 `seen` 只有走到
        * `storm` 的人读得到，而他们本来就是落了旗的那批。
        *
+       * ## 而搬回来之后 `seen` 又报了零，那是第二个错，跟第一个不同
+       *
+       * 头一次报零是**挂错了地方**（稀旗挂在人人都到的节点）。
+       * 这一次挂对了，可 `unrest` 这一卷**本身就稀**——
+       * `befell banditry` 实测 2/300，三百世里没有一个人走到这一节。
+       *
+       * 于是那一支「一批红一批绿」：补掷 900 世到了 1 人就打「· 稀」，
+       * 到 0 人就打「✗」。**`seen` 那一层永远凑不齐这一卷的样本**（22 的话）。
+       *
+       * 所以这两句从 `seen` 改成 `branches` 分节点：
+       *
+       *     seen       真世里量「多少人读到」——稀卷凑不齐样本
+       *     branches   摆局里验「这条路走不走得通」——`scripts/unrest.ts` 走得到
+       *
+       * **换的不是内容，是这两句归谁验。**
+       *
        * ⚠️ 那两处接口没有白写：`unrest-implicated` / `unrest-marked`
        * 仍然是旗，**别处将来要接照样接得上**。变的只是「这一卷自己
        * 先把话说完」，而不是把话赊给别人。
@@ -377,33 +393,52 @@ export const unrestScenes: SceneLibrary = {
             tone: 'faint',
           },
         ],
-        seen: [
+        // 更具体的排在前面（`branches` 取第一条满足的就走）
+        branches: [
+          { requires: [{ flag: { key: 'unrest-implicated' } }], next: 'after-storm-named' },
+          { requires: [{ flag: { key: 'unrest-marked' } }], next: 'after-storm-known' },
+        ],
+      },
+
+      /**
+       * 被记名那一支的下文。
+       *
+       * `storm-kept` 那一节写着「往后再有事，册子上有你的名字。
+       * 而你不知道有那本册子」——**这一句就是那个「往后」**。
+       *
+       * 而它刻意不说是什么事：他去办一件寻常的事，人家多问了两句、
+       * 多要了几个钱。**他到死也不知道为什么**，正如那一节说的
+       * 「你不知道有那本册子」。
+       */
+      'after-storm-named': {
+        id: 'after-storm-named',
+        onEnter: [{ type: 'time', years: 2 }],
+        blocks: [
           {
-            /*
-             * 被记名那一支的下文。
-             *
-             * `storm-kept` 那一节写着「往后再有事，册子上有你的名字。
-             * 而你不知道有那本册子」——**这一句就是那个「往后」**。
-             *
-             * 而它刻意不说是什么事：他去办一件寻常的事，人家多问了两句、
-             * 多要了几个钱。**他到死也不知道为什么**，正如那一节说的
-             * 「你不知道有那本册子」。
-             */
-            requires: [{ flag: { key: 'unrest-implicated' } }],
+            kind: 'narration',
             text: '后来有一回去县里办事，管事的翻了半天册子，多问了两句，才给盖印。',
           },
+          { kind: 'narration', text: '你没多想。那天回来天已经黑了。', tone: 'faint' },
+        ],
+      },
+
+      /**
+       * 村里知道是谁报的官，那一支的下文。
+       *
+       * `storm-told` 写的是「没有人当面提过这件事。一次也没有」——
+       * **而那句话的真正意思从来不是没人知道，是没人当着他说。**
+       *
+       * 所以这一节写的是他自己发现的那一刻：话头在他走近时停住。
+       */
+      'after-storm-known': {
+        id: 'after-storm-known',
+        onEnter: [{ type: 'time', years: 2 }],
+        blocks: [
           {
-            /*
-             * 村里知道是谁报的官，那一支的下文。
-             *
-             * `storm-told` 写的是「没有人当面提过这件事。一次也没有」——
-             * **而那句话的真正意思从来不是没人知道，是没人当着他说。**
-             *
-             * 所以这一句写的是他自己发现的那一刻：话头在他走近时停住。
-             */
-            requires: [{ flag: { key: 'unrest-marked' } }],
+            kind: 'narration',
             text: '你走近打谷场的时候，那几个人的话头停了一下，然后说起了别的。',
           },
+          { kind: 'narration', text: '你在那儿站了一会儿，也就走开了。', tone: 'faint' },
         ],
       },
     },

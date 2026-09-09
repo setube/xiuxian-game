@@ -113,7 +113,37 @@ function describe(requires: readonly Condition[]): string {
         return `${one.attribute.key} ${one.attribute.atLeast ?? ''}–${one.attribute.atMost ?? ''}`
       if (one.knowledge) return `知道〔${one.knowledge}〕`
       if (one.item) return `身上有〔${one.item}〕`
-      if (one.bond) return `有${one.bond.kind}`
+      if (one.bond) {
+        /*
+         * ⚠️ 这一行从前是 `有${kind}`，**不看 `near` / `alive` / `present`**。
+         *
+         * 于是 `{ bond: { kind: '子', near: false } }`（子女**不在身边**）
+         * 被印成「有子」——意思正好相反。而报表上那一行读起来完全正常，
+         * 只有拿它跟内容对照才看得出：
+         *
+         *     判据印的   有子 且 有女 且 有配偶 且 有抚养
+         *     内容写的   四样都不在身边
+         *
+         * **数没错，措辞反了**。而这种错比数错更难查：一个人照着报表
+         * 去改内容，会把一条对的 requires 改坏。
+         */
+        const b = one.bond
+        const how =
+          b.near === false
+            ? '不在身边'
+            : b.near === true
+              ? '在身边'
+              : b.alive === false
+                ? '不在了'
+                : b.alive === true
+                  ? '还在'
+                  : b.present === false
+                    ? '不在场'
+                    : b.present === true
+                      ? '在场'
+                      : ''
+        return how === '' ? `有${b.kind}` : `${b.kind}${how}`
+      }
       if (one.age) return `${one.age.atLeast ?? ''}–${one.age.atMost ?? ''}岁`
       // 兜底：将来新写的条件类型，至少印得出是哪一格
       return Object.keys(one).join('+')
