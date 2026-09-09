@@ -16,9 +16,15 @@
  *   二、再下来：处到教一点，「上头问起你了」（旗、认知层）；没处到，跟上回一样，什么也不落；
  *       他上回肯多说两句的（`opened:` 旗）这回进门认出你——旗由量到的数定，量不到就没有。
  *   三、壮年那一卷读得到：知道山上有人的读一句，山上问起过的读另一句，两句不同时出。
- *   四、随机人生（分片，两种走法）：有心人掷到「下来了」「答了」「上头问起了」各至少一世为止；
+ *   四、随机人生（分片，三种走法）：有心人掷到「下来了」「答了」「上头问起了」各至少一世为止；
  *       链单调（问起 ⇒ 再来 ⇒ 下来 ⇒ 在药庐；答了 ⇒ 问了；翻开那一页 ⇔ 答了；下山的人在册 ⇔ 下来过）；
  *       不许太好走（有心人下来过 ≤ 40%、随机 ≤ 5%——山上几年才下来一趟人）。
+ *       第二片：多嘴的人（有心 + 有人问就说）掷到「跟配偶说了」「他不再让你去了」各至少一世；
+ *       有心人一世也没说出去；被赶出去的咽气那年跟他处在「不理会」；说了 ⇒ 被嘱咐过。
+ *   五、摆好的局（第二片，「别出去乱说」是一条规矩）：没被嘱咐过的人，夜里、巷口两卷不开；
+ *       嘱咐过了，配偶在夜里问、邻家户主在巷口问；跟配偶说了留在家里（他知道那一卷不开）；
+ *       跟邻家说了他知道（footing 回不理会、师承那条链上的事全落空、山上不会再问起你）；
+ *       瞒住了两卷都不再问；没有东邻那一户（宫里长大的）巷口那一卷不开。
  */
 import './lib/seeded'
 
@@ -27,7 +33,7 @@ import { lifeEvents } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
 import { useCharacterStore } from '../src/stores/character'
-import type { Attributes } from '../src/types/game'
+import type { Attributes, OriginId } from '../src/types/game'
 import { mapShards } from './lib/parallel'
 import { born, play, type Staged } from './lib/staged'
 import type { MountainLife, MountainPayload, Policy } from './tasks/mountain-lives'
@@ -40,9 +46,14 @@ const OPENED = `opened:${VISITOR}`
 
 let bad = 0
 
-/** 农家的孩子二十岁，药庐那位入了册（见过他），处到某一格 */
-function atShed(footing: string | null): Staged | null {
-  const s = born('farm', 20, ['father', 'mother'])
+/**
+ * 农家的孩子二十岁，药庐那位入了册（见过他），处到某一格。
+ *
+ * 农家要爹娘都在：寺里收留、路上长大的境况没有宅，也就没有东邻那一户——第五条摆局
+ * 要问巷口那一卷开不开，局得先有东邻。宫里长大的（`court`）反过来，要的正是没有东邻。
+ */
+function atShed(footing: string | null, origin: OriginId = 'farm'): Staged | null {
+  const s = born(origin, 20, origin === 'farm' ? ['father', 'mother'] : [])
   if (!s) return null
   applyEffects([{ type: 'meeting', who: SHED }])
   if (footing !== null) s.world.setFlag(FOOTING, footing)
@@ -300,9 +311,22 @@ function withMind(level: 'high' | 'low'): void {
         `又下来 ${count(all, (o) => o.again)}（认出你 ${count(all, (o) => o.recognised)}），上头问起 ${count(all, (o) => o.known)}（进门时你正坐着 ${count(all, (o) => o.sitting)}）；` +
         `壮年读到「知道山上有人」${count(all, (o) => o.readKnows)}、「问起过你」${count(all, (o) => o.readAsked)}`,
     )
+  // 第二片：多嘴的人。掷到「跟配偶说了」「他不再让你去了」各至少一世为止
+  let talkers = await batch('talker', LIVES)
+  const firstTalkers = talkers
+  const loose = (all: MountainLife[]) => all.some((one) => one.toldSpouse) && all.some((one) => one.shutOut)
+  while (!loose(talkers) && talkers.length < CAP) talkers = [...talkers, ...(await batch('talker', LIVES))]
   row('随机', random)
   row('有心人', firstKeen)
   if (keen.length > firstKeen.length) console.log(`  · 有心人补掷到 ${keen.length} 世`)
+  const secrecy = (label: string, all: MountainLife[]) =>
+    console.log(
+      `  · ${label} ${all.length} 世：被嘱咐过 ${count(all, (o) => o.toldByShed)}，夜里被问 ${count(all, (o) => o.askedHome)}（说了 ${count(all, (o) => o.toldSpouse)}），` +
+        `巷口被问 ${count(all, (o) => o.askedLane)}（说了 ${count(all, (o) => o.talked)}），瞒住了 ${count(all, (o) => o.kept)}，他不再让你去了 ${count(all, (o) => o.shutOut)}`,
+    )
+  secrecy('有心人', firstKeen)
+  secrecy('多嘴的人', firstTalkers)
+  if (talkers.length > firstTalkers.length) console.log(`  · 多嘴的人补掷到 ${talkers.length} 世`)
 
   // 掷到出现为止
   if (!keen.some((one) => one.down)) wrong.push(`${keen.length} 世有心人里没有一世山上下来过——这一卷在真世里走不到`)
@@ -323,6 +347,16 @@ function withMind(level: 'high' | 'low'): void {
     if (one.readKnows && one.knowledge === null) wrong.push('壮年读到「知道山上有人」，认知层却没有那一条')
     if (one.knowledge?.contact === '亲历' && !one.told && !one.known) wrong.push('认知层「亲历」，可既没答过也没问起过')
   }
+  // 第二片：规矩要咬得到人；有心人守口
+  if (!talkers.some((one) => one.toldSpouse)) wrong.push(`${talkers.length} 世多嘴的人里没有一世跟配偶说过——夜里那一卷在真世里走不到`)
+  if (!talkers.some((one) => one.shutOut)) wrong.push(`${talkers.length} 世多嘴的人里没有一世被赶出来——规矩在真世里咬不到人`)
+  if (keen.some((one) => one.toldSpouse || one.talked)) wrong.push('有心人守口，却有一世说出去了——走法或选项 id 错了')
+  for (const one of [...random, ...keen, ...talkers]) {
+    if ((one.toldSpouse || one.talked || one.kept) && !one.toldByShed) wrong.push('有人问起药庐那边，可他没被嘱咐过——那两卷不该开')
+    if (one.shutOut && !one.talked) wrong.push('他不再让你去了，可这一世没跟邻家说过')
+    if (one.shutOut && one.footingAtEnd !== '不理会') wrong.push(`被赶出来了，咽气那年却还处在「${one.footingAtEnd}」`)
+    if (one.toldSpouse && one.shutOut && !one.talked) wrong.push('只跟配偶说了，他却知道了——那件事该留在家里')
+  }
   // 不许太好走：山上几年才下来一趟人
   const keenDown = count(firstKeen, (o) => o.down) / firstKeen.length
   const randomDown = count(random, (o) => o.down) / random.length
@@ -335,7 +369,113 @@ function withMind(level: 'high' | 'low'): void {
     bad += 1
   } else
     console.log(
-      `  ✓ 四、有心人 ${keen.length} 世里，山上下来过、答了「山上的」、上头问起了各至少一世；链单调；有心人 ${Math.round(keenDown * 100)}%、随机 ${Math.round(randomDown * 100)}% 撞见下山的人——走得到，不算好走。`,
+      `  ✓ 四、有心人 ${keen.length} 世里，山上下来过、答了「山上的」、上头问起了各至少一世；链单调；有心人 ${Math.round(keenDown * 100)}%、随机 ${Math.round(randomDown * 100)}% 撞见下山的人——走得到，不算好走；多嘴的人 ${talkers.length} 世里跟配偶说了、被赶出来各至少一世，有心人一世也没说出去。`,
+    )
+}
+
+// ============================================================
+// 五、摆好的局（第二片）：「别出去乱说」是一条规矩
+// ============================================================
+{
+  const wrong: string[] = []
+  const eventOf = (id: string) => lifeEvents.find((one) => one.id === id)
+  const opens = (id: string): boolean => {
+    const event = eventOf(id)
+    if (!event) throw new Error(`年表上没有 ${id}`)
+    return meetsAll(event.requires)
+  }
+  /** 处到某一格、问过那是谁、有配偶在。返回摆好的局 */
+  const withSpouse = (footing: string, origin: OriginId = 'farm'): Staged | null => {
+    const s = atShed(footing, origin)
+    if (!s) return null
+    play('mountain:down', 'ask-who')
+    applyEffects([
+      {
+        type: 'meet',
+        id: 'spouse',
+        calls: '妻子',
+        name: true,
+        who: { surname: '秦', given: '娘', gender: '女', age: 19, doing: '操持家务' },
+        bond: '配偶',
+      },
+    ])
+    return s
+  }
+  // 没被嘱咐过（处到使唤，他不答）：夜里、巷口两卷都不开
+  {
+    const s = withSpouse('使唤')
+    if (!s) wrong.push('掷不出局')
+    else {
+      if (s.world.hasFlag('told-by-the-shed')) wrong.push('处到使唤他不答，却记成嘱咐过')
+      if (opens('mountain-asked-home')) wrong.push('没被嘱咐过，夜里那一卷却开着')
+      if (opens('mountain-asked-lane')) wrong.push('没被嘱咐过，巷口那一卷却开着')
+    }
+  }
+  // 嘱咐过了：跟配偶说了留在家里
+  {
+    const s = withSpouse('带一段')
+    if (!s) wrong.push('掷不出第二局')
+    else {
+      if (!s.world.hasFlag('told-by-the-shed')) wrong.push('他答了「别出去乱说」，却没记成嘱咐过')
+      if (!opens('mountain-asked-home')) wrong.push('嘱咐过、配偶在，夜里那一卷却不开')
+      const texts = play('mountain:asked-home', 'tell-mountain')
+      if (!texts.some((line) => line.includes('别跟旁人说'))) wrong.push(`跟配偶说了，她该说「别跟旁人说」：${texts.join(' / ')}`)
+      if (!s.world.hasFlag('told-spouse-about-the-mountain')) wrong.push('跟配偶说了，旗没落')
+      if (opens('mountain-asked-home')) wrong.push('问过一回了，夜里那一卷还开着')
+      if (opens('mountain-shut')) wrong.push('只跟配偶说了，他知道那一卷却开了——那件事该留在家里')
+      if (!opens('mountain-asked-lane')) wrong.push('跟配偶说了，巷口那一卷该照旧能问')
+    }
+  }
+  // 嘱咐过了：跟邻家说了，他知道了——footing 回不理会，链上的事全落空
+  {
+    const s = withSpouse('带一段')
+    if (!s) wrong.push('掷不出第三局')
+    else {
+      if (!s.people.houses['east']) wrong.push('摆局：农家该有东邻那一户')
+      if (!opens('mountain-asked-lane')) wrong.push('嘱咐过、有东邻那一户，巷口那一卷却不开')
+      const lane = play('mountain:asked-lane', 'tell-mountain')
+      if (!lane.some((line) => line.includes('他倒想去看看'))) wrong.push(`跟邻家说了该读到他那一笑：${lane.join(' / ')}`)
+      if (!s.world.hasFlag('talked-about-the-mountain')) wrong.push('跟邻家说了，旗没落')
+      if (!opens('mountain-shut')) wrong.push('说出去了、还在药庐里，他知道那一卷却不开')
+      const shut = play('mountain:shut')
+      if (!shut.some((line) => line.includes('往后不用来了'))) wrong.push(`他该说「往后不用来了」：${shut.join(' / ')}`)
+      if (s.world.getFlag(FOOTING) !== '不理会') wrong.push(`赶出来了，footing 该回「不理会」，是「${String(s.world.getFlag(FOOTING))}」`)
+      if (!s.world.hasFlag('shut-out-by-the-shed')) wrong.push('赶出来了，旗没落')
+      for (const id of ['tutor-errand', 'tutor-walk', 'tutor-words', 'mountain-down', 'mountain-again', 'mountain-shut'])
+        if (opens(id)) wrong.push(`赶出来了，${id} 却还开着——规矩没咬到师承那条链`)
+      if (!s.world.chronicle.some((one) => one.text.includes('不再让你去了'))) wrong.push('赶出来了，编年没记')
+    }
+  }
+  // 瞒住了：两卷都不再问
+  {
+    const s = withSpouse('带一段')
+    if (!s) wrong.push('掷不出第四局')
+    else {
+      const texts = play('mountain:asked-lane', 'keep-mountain')
+      if (!texts.some((line) => line.includes('手心有汗'))) wrong.push(`瞒住了该读到手心有汗：${texts.join(' / ')}`)
+      if (!s.world.hasFlag('kept-the-mountain')) wrong.push('瞒住了，旗没落')
+      if (opens('mountain-asked-lane') || opens('mountain-asked-home')) wrong.push('瞒住了，两卷却还会再问')
+      if (opens('mountain-shut')) wrong.push('瞒住了，他知道那一卷却开了')
+    }
+  }
+  // 没有东邻那一户（宫里长大的）：巷口那一卷不开，夜里那一卷照旧
+  {
+    const s = withSpouse('带一段', 'court')
+    if (!s) wrong.push('掷不出第五局')
+    else {
+      if (s.people.houses['east']) wrong.push('摆局：宫里长大的不该有东邻')
+      if (opens('mountain-asked-lane')) wrong.push('没有东邻那一户，巷口那一卷还开着')
+      if (!opens('mountain-asked-home')) wrong.push('没有东邻，夜里那一卷该照旧')
+    }
+  }
+  if (wrong.length > 0) {
+    console.log(`
+  ✗ 五、规矩：${wrong[0]}（共 ${wrong.length} 处）`)
+    for (const one of wrong.slice(1)) console.log(`      ${one}`)
+    bad += 1
+  } else
+    console.log(
+      '  ✓ 五、「别出去乱说」是一条规矩：没被嘱咐过两卷不开；跟配偶说了留在家里；跟邻家说了他知道——footing 回不理会、师承那条链全落空、编年一笔；瞒住了不再问；没有东邻那一户巷口不开。',
     )
 }
 

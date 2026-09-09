@@ -58,8 +58,9 @@ export const KEEN_CHOICES: readonly string[] = [
   'enter',
   'follow-him',
   'go-in',
-  // 山上下来的人：问那是谁
+  // 山上下来的人：问那是谁；有人问起药庐那边，守口
   'ask-who',
+  'keep-mountain',
   // 药庐：站着不走、第二天还去、明天再来、接着翻、接着去
   'just-stay',
   'ask-about-mountain',
