@@ -52,9 +52,27 @@ export const attemptScenes: SceneLibrary = {
        *
        * 三类目的在库里早有对应物，都是从真经历里长出来的（`content/leanings.ts`）：
        *
-       *     live-long   守在旁边帮不上忙、办完丧事那一夜　→ 长生
-       *     rich        家底跌破线、看着别人家的院子　　　→ 财富
-       *     strong      被人踩、说不上话　　　　　　　　　→ 权力
+       *     rich    「你想让家里过得松快些」　→ 财富
+       *     strong  「你不想再被人按住」　　　→ 权力
+       *     heal    「你想学看病」　　　　　　→ 长生（最近的那一个）
+       *
+       * ## 长生那一格没有直接对应物，这是有意的
+       *
+       * 我头一版写的是 `live-long`，而**那是一个愿望，不是念头**——
+       * `content/wishes.ts` 开头那段把三样东西分得很清楚：
+       *
+       *     需求　有对象、有期限，逼着你做事　　　家里有人病重，要救命
+       *     愿望　没有对象也没有方向，只是想要　　想活久一点
+       *     念头　有方向，改变你注意什么　　　　　想学看病 / 想弄明白
+       *
+       * 那段注释还写着「这个区分是有代价才立起来的：从前『想活久一点』
+       * 被当成一个念头」——**我一头撞了回去**，而 `verify` 当场抓住了
+       * （「念头 live-long 没有任何地方产出」）。
+       *
+       * 「想活久一点」这个愿望通向五个地方（`heal` / `know` / `settle` /
+       * `strong` / 什么也不通向）。所以长生这一类在这儿只能取它最常走的
+       * 那一条 `heal`：一个守过病榻的人先想到的是学看病，不是修仙——
+       * 而书上那几页恰好给了他另一种答案。
        *
        * ## 这一节只改「他为什么坐下来」，不改「坐下来之后成不成」
        *
@@ -82,14 +100,17 @@ export const attemptScenes: SceneLibrary = {
         id: 'why',
         blocks: [],
         branches: [
-          { requires: [{ leaning: { id: 'live-long', atLeast: '反复' } }], next: 'for-long' },
+          { requires: [{ leaning: { id: 'heal', atLeast: '反复' } }], next: 'for-long' },
           { requires: [{ leaning: { id: 'strong', atLeast: '反复' } }], next: 'for-strong' },
           { requires: [{ leaning: { id: 'rich', atLeast: '反复' } }], next: 'for-rich' },
         ],
         next: 'open',
       },
 
-      /** 长生。他见过人怎么没的，而书上说有人能不那样 */
+      /**
+       * 长生。走到这儿的是揣着 `heal` 的人——他见过人怎么没的，
+       * 本来想学的是看病，而书上那几页说的是另一种答案。
+       */
       'for-long': {
         id: 'for-long',
         blocks: [

@@ -13,9 +13,18 @@
  * 现在那一册开头按念头分三岔（`attempt:first` 的 `why` 节点），
  * 三类目的在库里早有对应物，都是从真经历里长出来的：
  *
- *     live-long   守在旁边帮不上忙、办完丧事那一夜　→ 长生
- *     rich        家底跌破线　　　　　　　　　　　　→ 财富
- *     strong      被人踩、说不上话　　　　　　　　　→ 权力
+ *     heal    「你想学看病」　　　　　　→ 长生（最近的那一个）
+ *     rich    「你想让家里过得松快些」　→ 财富
+ *     strong  「你不想再被人按住」　　　→ 权力
+ *
+ * ⚠️ 长生那一类**没有直接对应物**。我头一版写的是 `live-long`，
+ * 而那是一个**愿望**不是念头——`content/wishes.ts` 开头把需求／愿望／念头
+ * 分得很清楚，还写着「这个区分是有代价才立起来的：从前『想活久一点』
+ * 被当成一个念头」。我一头撞了回去，`verify` 当场抓住
+ * （「念头 live-long 没有任何地方产出」）。
+ *
+ * 那个愿望通向五个地方（`heal` / `know` / `settle` / `strong` /
+ * 什么也不通向），这儿取它最常走的 `heal`。
  *
  * ## 两半各答一个问题，而它们答不了对方那个
  *
@@ -41,7 +50,7 @@ import { play, stage } from './lib/staged'
 
 /** 三类目的，和各自那一句只有他读得到的话 */
 const AIMS: readonly { leaning: string; node: string; says: string; why: string }[] = [
-  { leaning: 'live-long', node: 'for-long', says: '守在旁边', why: '长生：他见过人怎么没的' },
+  { leaning: 'heal', node: 'for-long', says: '守在旁边', why: '长生：他见过人怎么没的，本想学看病' },
   { leaning: 'strong', node: 'for-strong', says: '说了不算', why: '权力：不愿再被人那样看着' },
   { leaning: 'rich', node: 'for-rich', says: '经不起', why: '财富：家底经不起一场病' },
 ]
@@ -154,8 +163,8 @@ console.log('\n=== 他为什么坐下来（三类现实目的）===\n')
   if (!ask({ leaning: { id: 'rich', atLeast: '反复' } })) {
     failed.push('推到明白了，问「rich 至少反复」还答假——这一格没在判事')
   }
-  if (ask({ leaning: { id: 'live-long', atLeast: '反复' } })) {
-    failed.push('只推了 rich，问「live-long 至少反复」却答真——它没分辨 id')
+  if (ask({ leaning: { id: 'heal', atLeast: '反复' } })) {
+    failed.push('只推了 rich，问「heal 至少反复」却答真——它没分辨 id')
   }
   if (failed.length > 0) {
     console.log(`  ✗ 四、尺子自检：${failed[0]}`)
