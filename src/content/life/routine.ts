@@ -393,6 +393,18 @@ export const routineScenes: SceneLibrary = {
             echo: '你守着家里的活计过了这两年。',
             effects: [
               { type: 'time', years: 2 },
+              /*
+               * 这两年过去了，心里那个念头该长一回。
+               *
+               * **成年段从前一处也没有**（`illness` 8–16、`leaving` 10–16 那两册的
+               * `reflect` 都在十六岁之前收），于是处境类的念头在成年之后一根火种
+               * 也点不着——2026-09-10 实测：`rich` 八根火种总分 18、门槛正好 18，
+               * 200 世里 1 世够到「反复」；`strong` 峰值卡在 17，一次也没越过去。
+               *
+               * 那不是稀有，是**算术上就差着**：分值最大的三根是 `once`，
+               * 一辈子只点一次，而「爹不在家」「家里的债」是持续三十年的处境。
+               */
+              { type: 'reflect' },
               { type: 'attribute', key: 'body', delta: 4 },
               { type: 'attribute', key: 'will', delta: 3 },
             ],
@@ -407,6 +419,18 @@ export const routineScenes: SceneLibrary = {
             requires: [{ living: { notIn: ['palace', 'manor', 'up-there'] } }],
             effects: [
               { type: 'time', years: 2 },
+              /*
+               * 这两年过去了，心里那个念头该长一回。
+               *
+               * **成年段从前一处也没有**（`illness` 8–16、`leaving` 10–16 那两册的
+               * `reflect` 都在十六岁之前收），于是处境类的念头在成年之后一根火种
+               * 也点不着——2026-09-10 实测：`rich` 八根火种总分 18、门槛正好 18，
+               * 200 世里 1 世够到「反复」；`strong` 峰值卡在 17，一次也没越过去。
+               *
+               * 那不是稀有，是**算术上就差着**：分值最大的三根是 `once`，
+               * 一辈子只点一次，而「爹不在家」「家里的债」是持续三十年的处境。
+               */
+              { type: 'reflect' },
               { type: 'attribute', key: 'body', delta: 5 },
               { type: 'attribute', key: 'will', delta: 4 },
               { type: 'household', standing: 6, debt: -5 },
@@ -421,6 +445,18 @@ export const routineScenes: SceneLibrary = {
             echo: '这两年常有人拿着东西来求你写两笔。',
             effects: [
               { type: 'time', years: 2 },
+              /*
+               * 这两年过去了，心里那个念头该长一回。
+               *
+               * **成年段从前一处也没有**（`illness` 8–16、`leaving` 10–16 那两册的
+               * `reflect` 都在十六岁之前收），于是处境类的念头在成年之后一根火种
+               * 也点不着——2026-09-10 实测：`rich` 八根火种总分 18、门槛正好 18，
+               * 200 世里 1 世够到「反复」；`strong` 峰值卡在 17，一次也没越过去。
+               *
+               * 那不是稀有，是**算术上就差着**：分值最大的三根是 `once`，
+               * 一辈子只点一次，而「爹不在家」「家里的债」是持续三十年的处境。
+               */
+              { type: 'reflect' },
               { type: 'attribute', key: 'insight', delta: 6 },
               { type: 'household', standing: 2 },
               { type: 'flag', key: 'known-for-letters', value: true },
@@ -435,6 +471,18 @@ export const routineScenes: SceneLibrary = {
             echo: '你出了一趟远门。',
             effects: [
               { type: 'time', years: 2 },
+              /*
+               * 这两年过去了，心里那个念头该长一回。
+               *
+               * **成年段从前一处也没有**（`illness` 8–16、`leaving` 10–16 那两册的
+               * `reflect` 都在十六岁之前收），于是处境类的念头在成年之后一根火种
+               * 也点不着——2026-09-10 实测：`rich` 八根火种总分 18、门槛正好 18，
+               * 200 世里 1 世够到「反复」；`strong` 峰值卡在 17，一次也没越过去。
+               *
+               * 那不是稀有，是**算术上就差着**：分值最大的三根是 `once`，
+               * 一辈子只点一次，而「爹不在家」「家里的债」是持续三十年的处境。
+               */
+              { type: 'reflect' },
               { type: 'attribute', key: 'insight', delta: 7 },
               { type: 'attribute', key: 'fortune', delta: 6 },
               { type: 'attribute', key: 'body', delta: -2 },
@@ -450,6 +498,18 @@ export const routineScenes: SceneLibrary = {
             echo: '你还在四处打听。',
             effects: [
               { type: 'time', years: 2 },
+              /*
+               * 这两年过去了，心里那个念头该长一回。
+               *
+               * **成年段从前一处也没有**（`illness` 8–16、`leaving` 10–16 那两册的
+               * `reflect` 都在十六岁之前收），于是处境类的念头在成年之后一根火种
+               * 也点不着——2026-09-10 实测：`rich` 八根火种总分 18、门槛正好 18，
+               * 200 世里 1 世够到「反复」；`strong` 峰值卡在 17，一次也没越过去。
+               *
+               * 那不是稀有，是**算术上就差着**：分值最大的三根是 `once`，
+               * 一辈子只点一次，而「爹不在家」「家里的债」是持续三十年的处境。
+               */
+              { type: 'reflect' },
               { type: 'attribute', key: 'insight', delta: 4 },
               { type: 'attribute', key: 'fortune', delta: 4 },
               { type: 'attribute', key: 'will', delta: 3 },
@@ -479,6 +539,18 @@ export const routineScenes: SceneLibrary = {
             echo: '这几年你没出过远门。',
             effects: [
               { type: 'time', years: 2 },
+              /*
+               * 这两年过去了，心里那个念头该长一回。
+               *
+               * **成年段从前一处也没有**（`illness` 8–16、`leaving` 10–16 那两册的
+               * `reflect` 都在十六岁之前收），于是处境类的念头在成年之后一根火种
+               * 也点不着——2026-09-10 实测：`rich` 八根火种总分 18、门槛正好 18，
+               * 200 世里 1 世够到「反复」；`strong` 峰值卡在 17，一次也没越过去。
+               *
+               * 那不是稀有，是**算术上就差着**：分值最大的三根是 `once`，
+               * 一辈子只点一次，而「爹不在家」「家里的债」是持续三十年的处境。
+               */
+              { type: 'reflect' },
               { type: 'attribute', key: 'will', delta: 3 },
               { type: 'attribute', key: 'body', delta: 2 },
               { type: 'flag', key: 'stayed-put', value: true },
@@ -743,13 +815,50 @@ export const routineScenes: SceneLibrary = {
          */
         seen: [
           {
+            /*
+             * 一辈子没成过家的那一路。
+             *
+             * ## 这一条从前是「四样都不在身边」，而那把两种人生混成了一档
+             *
+             * `scripts/seen.ts` 报「50.7% 的人读到同一种组合」——判据说得对：
+             * **这一节对多数人是同一段。**
+             *
+             * 真因是 `near: false` 同时罩住了两种完全不同的人：
+             *
+             *     从来没有过     没成过家、没有孩子
+             *     有而不在身边   孩子出嫁了、儿子在外做工、配偶殁了
+             *
+             * **后一种人屋里也多一个人吃饭，可那件事对他的意思完全不同**
+             * ——他有过一屋子人，如今剩他一个。
+             *
+             * 拆开之后这一句只给前一种：`bond` 什么都不问就是问
+             * 「有没有这条边」（`engine/conditions.ts` 那一段注释写着
+             * 空集合上 `some` 恒为 false，所以 `near: false` 对
+             * 「从来没有」的人也成立——两种人因此撞在一起）。
+             */
+            requires: [
+              { bond: { kind: '子' } },
+              { bond: { kind: '女' } },
+              { bond: { kind: '配偶' } },
+            ],
+            text: '屋里从此多一个人吃饭。夜里他在外间翻身，你听得见。',
+          },
+          {
+            /*
+             * 有过一屋子人，如今剩他一个。
+             *
+             * **跟上一条互斥**：那一条问「从来没有过」（三条边一条也没有），
+             * 这一条问「有过而此刻都不在身边」。
+             *
+             * 而这一句的重心是「从前」两个字——他不是不知道
+             * 屋里有人是什么样，**他是知道了又没有了**。
+             */
             requires: [
               { bond: { kind: '子', near: false } },
               { bond: { kind: '女', near: false } },
               { bond: { kind: '配偶', near: false } },
-              { bond: { kind: '抚养', near: false } },
             ],
-            text: '屋里从此多一个人吃饭。夜里他在外间翻身，你听得见。',
+            text: '屋里又有了动静。你有点不习惯——从前屋里也是这样的。',
           },
           {
             requires: [{ bond: { kind: '子', near: true } }],
