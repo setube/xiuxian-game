@@ -30,6 +30,7 @@ import { attemptEvents, attemptScenes } from './attempt'
 import { bearingEvents, bearingScenes } from './bearing'
 import { candourEvents, candourScenes } from './candour'
 import { festivalEvents, festivalScenes } from './festival'
+import { findingEvents, findingScenes } from './finding'
 import { matchEvents, matchScenes } from './match'
 import { mountainEvents, mountainScenes } from './mountain'
 import { mourningEvents, mourningScenes } from './mourning'
@@ -316,6 +317,38 @@ export const CHAPTERS: readonly Chapter[] = [
     age: [22, 80],
     purpose: ['节令说的是「到了那个日子」，所以时令由内容自己推，不靠碰巧'],
     marks: [],
+  },
+
+  /**
+   * 认得出与认不出：名字不在东西上，在人身上。
+   *
+   * 31.md 第一节反对「拾取：赤炎石 × 3」那种写法——玩家不该自动知道
+   * 手里的是什么。而**地基早就在了**：`InventoryItem.name` 明写它是
+   * 「你此刻会怎么称呼它，不是它究竟是什么」，`Interpretation` 里
+   * 「确信」那一档的注释自己写着「可能仍然是错的」。
+   *
+   * **缺的是东西，不是链。** 动手前数过：全库只有两处 `type: 'item'`
+   * （药铺那截根、山道上那本书），两样都是白给的、都被一步点破了，
+   * 而且认不出这件事只属于药铺家的孩子（`trade-herb` 压着 `business: '药铺'`）。
+   *
+   * 所以这一章只做一件事：**让「认不出的东西」在普通人的日子里出现，
+   * 并且让它停在「认不出」上。** 不建材料表、不建九级链、不给「鉴定」按钮。
+   *
+   * `marks` 里有 `item` 和 `knowledge`：东西进了行囊，而认知停在「未理解」
+   * ——**他知道有这么件事，可他说不出那是什么**。
+   */
+  {
+    id: 'finding',
+    scenes: findingScenes,
+    events: findingEvents,
+    called: ['年表'],
+    to: [],
+    age: [8, 16],
+    purpose: [
+      '名字不在东西上，在人身上——认不出是常态，认得出才是例外',
+      '认不出要靠一个具体动作说出来（他捏了捏，闻了闻，说不认得），不靠一个标签',
+    ],
+    marks: ['item', 'knowledge'],
   },
 
   /**

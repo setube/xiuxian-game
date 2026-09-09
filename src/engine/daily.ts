@@ -1,7 +1,11 @@
 import { BEATS, DOINGS } from '@/content/days'
-import type { Condition, Effect, RegionKey } from '@/types/game'
+import { useCharacterStore } from '@/stores/character'
+import { usePeopleStore } from '@/stores/people'
+import type { Bond, Condition, Effect, RegionKey } from '@/types/game'
 
+import { withAlong } from './along'
 import { meetsAll } from './conditions'
+import { isNearby } from './nearby'
 import { pickWeighted } from './random'
 
 /**
@@ -58,6 +62,53 @@ export type Tier =
   /** 撞上了一件事。这一天整个被它占了 */
   | '大事'
 
+/**
+ * 今天是跟谁去的。
+ *
+ * ## 23.md 那句话
+ *
+ * > 一个人出门只是最简单的情况。现实中更常见的是：和家人一起、
+ * > 跟同村孩子一起、被长辈带着、跟商队同行……
+ * > **而且同行者不是「陪同 NPC 标签」，他应该真的参与这次行动。**
+ *
+ * 所以这一格不是给去处挂一个装饰。它是**一个能被 `Condition` 问到的事实**，
+ * 于是同一个去处的 `BEATS` 自己就分得开：一个人上山和跟着哥上山，
+ * 抽到的不该是同一组事。`spend()` 那一行 `meetsAll(beat.requires)`
+ * 早就在那儿了，不必改一个字。
+ *
+ * ## 为什么是「哪一类人」，不是「哪一个人」
+ *
+ * 因为**内容要问的是前者**：「你哥拉住了你」和「东头那孩子拉住了你」
+ * 在一句正文里是同一件事的两种说法，而「有人拉住了你」跟
+ * 「没有人拉得住你」才是两件事。
+ *
+ * 具体是谁由落笔那一刻现算（`{call:}` 那一层），跟称谓同一条路子——
+ * **这一格记的是「有没有伴、什么样的伴」，不是伴的名单。**
+ *
+ * ## 六种，照实测的分布挑的
+ *
+ * 十岁那年身边有谁（400 世实测）：
+ *
+ *     有大人在身边        95%
+ *     有兄弟姐妹          79%
+ *     有邻家的孩子        87%
+ *     ★ 同龄的一个也没有   6%
+ *
+ * 最后那 6% 是这一格存在的理由之一：**「一个人去」不是默认值，
+ * 是一种处境**——多数孩子有伴，而少数没有，那少数该读到不一样的日子。
+ */
+export type Along =
+  /** 一个人。多数时候的默认，可对那 6% 来说它是唯一的选项 */
+  | '独自'
+  /** 兄弟姐妹。同辈，年纪相近，会一起闯祸也会一起挨骂 */
+  | '手足'
+  /** 爹娘或者养大你的人。他带着你，你跟着他——**这一类里做主的不是你** */
+  | '长辈'
+  /** 同村同巷的孩子。他们不属于你家，散了就各自回家 */
+  | '同伴'
+  /** 商队、脚夫、同路的行人。**萍水相逢，走完这一段就散** */
+  | '同路'
+
 /** 一个去处 */
 export interface Doing {
   id: string
@@ -69,6 +120,17 @@ export interface Doing {
   requires?: Condition[]
   /** 选完之后正文里的回响 */
   echo: string
+  /**
+   * 这个去处**可能**是跟谁一起的，按先后排。
+   *
+   * 不写就是这一趟只能一个人（`独自`）——「待在家里」「帮家里干活」
+   * 那几条本来就不是「出门」，硬给它们配伴是给一个不存在的问题造答案。
+   *
+   * 写了也不保证有伴：**列进来只是说「这一类人如果在身边，
+   * 就可能一起去」**，真有没有由 `alongNow()` 现算。
+   * 排在前面的先算——「跟哥去镇上」比「跟邻家孩子去镇上」更贴身。
+   */
+  along?: readonly Along[]
 }
 
 /**
@@ -141,14 +203,26 @@ export function spend(slot: Slot, doingId: string): Beat | undefined {
   const doing = doingById(doingId)
   if (doing && !meetsAll(doing.requires)) return undefined
 
-  const pool = BEATS.filter(
-    (beat) =>
-      beat.doing === doingId &&
-      (beat.slots === undefined || beat.slots.includes(slot)) &&
-      meetsAll(beat.requires) &&
-      meetsAll(beat.when ? [{ region: beat.when }] : undefined),
-  )
-  return pickWeighted(pool, (beat) => beat.weight)
+  /*
+   * 今天跟谁去，在挑之前算好、挑完收回。
+   *
+   * **算在这儿而不是算在每一条 `requires` 里**，是因为它对这一次抽取
+   * 是个常量：同一趟出门，不会问第一条 beat 的时候是跟哥去的，
+   * 问第二条的时候变成一个人。
+   *
+   * `withAlong` 用 `finally` 还原——`meetsAll` 里任何一格抛了异常，
+   * 这一格也得收回去，否则下一次抽取会读到上一次残留的同伴。
+   */
+  return withAlong(alongNow(doing), () => {
+    const pool = BEATS.filter(
+      (beat) =>
+        beat.doing === doingId &&
+        (beat.slots === undefined || beat.slots.includes(slot)) &&
+        meetsAll(beat.requires) &&
+        meetsAll(beat.when ? [{ region: beat.when }] : undefined),
+    )
+    return pickWeighted(pool, (beat) => beat.weight)
+  })
 }
 
 /** 把一段的正文摊成几句 */
@@ -159,4 +233,62 @@ export function beatLines(beat: Beat): readonly string[] {
 /** 按 id 取一个去处 */
 export function doingById(id: string): Doing | undefined {
   return DOINGS.find((doing) => doing.id === id)
+}
+
+/**
+ * 今天这一趟，实际上是跟谁去的。
+ *
+ * ## 不存字段，每次现算
+ *
+ * 跟称谓那一层同一条纪律（`people.callOf` 的注释）：**存一个「今天的同伴」
+ * 就得记着什么时候清掉它**，而漏清一次，一个死了三年的人还在陪你上山。
+ *
+ * 现算读的全是已有的事实：这个去处允许哪几类伴（`Doing.along`）、
+ * 那一类人此刻在不在身边（`isNearby`）。**一格新数据也没加。**
+ *
+ * ## 「在身边」不是「活着」
+ *
+ * 用 `isNearby` 不用 `isAlive`——哥在镇上做木匠的那些年，他活着、
+ * 那条边也在，可他不会陪你上山。这一条 `days.ts` 里那个「找{elder}说话」
+ * 早就踩明白了：只问死活的话，玩家点的是一个人，说上话的是另一个人。
+ *
+ * ## 按 `Doing.along` 的次序取第一个，不掷
+ *
+ * 有哥就是跟哥去，没有哥才轮到邻家的孩子——**这不是随机，是亲疏**。
+ * 掷一个反而假：一个孩子要出门，身边有哥的时候多半就是跟哥去的。
+ *
+ * 而「今天恰好谁都不在」由 `isNearby` 自己答，不必再掷一次。
+ */
+export function alongNow(doing: Doing | undefined): Along {
+  if (doing?.along === undefined) return '独自'
+  const people = usePeopleStore()
+  const near = (bonds: readonly Bond[]) =>
+    bonds.some((bond) => people.kinOf(bond).some((id) => isNearby(id)))
+
+  for (const kind of doing.along) {
+    if (kind === '手足' && near(['兄', '姐', '弟', '妹'])) return '手足'
+    if (kind === '长辈' && near(['生父', '生母', '抚养'])) return '长辈'
+    /*
+     * 同伴：同村同巷的孩子。**他们不在关系图上**——邻居是 `meet` 立的，
+     * 跟玩家没有任何一条边（`content/birth.ts`）。所以这一支问的是人口册：
+     * 那几户里有没有年纪相仿、此刻在身边的孩子。
+     *
+     * 年纪相仿这一条是必需的：邻家那位五十岁的当家不会陪一个孩子上山。
+     */
+    if (kind === '同伴' && playmateNear()) return '同伴'
+    // 同路的人不在册上——萍水相逢，那是内容自己造的人，这一层答不了
+    if (kind === '同路') continue
+  }
+  return '独自'
+}
+
+/** 此刻身边有没有年纪相仿的邻家孩子。差六岁以内算得上一起玩 */
+function playmateNear(): boolean {
+  const people = usePeopleStore()
+  const mine = useCharacterStore().age
+  return Object.values(people.roster).some((person) => {
+    if (person.id === 'me' || !isNearby(person.id)) return false
+    const age = people.ageOf(person.id)
+    return Math.abs(age - mine) <= 6 && age <= 20
+  })
 }
