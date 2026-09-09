@@ -35,6 +35,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { lifeScenes } from '../src/content/life'
+import { unrestEvents } from '../src/content/life/unrest'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
 import { fillString } from '../src/engine/interpolate'
@@ -449,12 +450,94 @@ function grepReaders(key: string): string[] {
   return out
 }
 
+// ============================================================
+// 六、入场券本身，摆局验不到的那一半
+// ============================================================
+
+/**
+ * 这一卷的 `requires` 有没有一条是恒假的。
+ *
+ * ## 前五问都从 `open` 那一节开始摆，于是入场券一次也没被验过
+ *
+ * 摆局跑的好处是能钉死每一格交叉（那是真世跑不到的），
+ * **代价是它跳过了「他怎么走到这一卷的」**。而这一卷的入场券
+ * 恰恰出过一次大事：头一版写 `{ region: { order: { atMost: 34 } } }`，
+ * **3000 世一次也没抽中**，而前五问全绿。
+ *
+ * ## 这一问不判「够不够稀有」，只判「是不是零」
+ *
+ * 稀有是这一卷该有的样子（19.md 明说这条路径极稀有），
+ * 而**零跟稀有是两件事**：零意味着那条内容在库里是死的。
+ *
+ * 所以判据只问一句：**四条 requires 里有没有哪一条，
+ * 在整个窗口里一次也不成立。**
+ *
+ * ## `beOf` 掷出来的未必是它说的那种人
+ *
+ * 22 今天在 `diary` 上栽的正是这个：摆的是「农家的孩子」，
+ * 而出生境况掷到「被人收留」时，`living` 顺着监护人解析成 `adrift`——
+ * **出身是 farm 不等于他过的是农家日子。**
+ *
+ * 实测 `beOf('farm')` 200 次：farm 187、temple 7、begging 4、adrift 2
+ * ——**6.5% 掷出来的不是农家日子。**
+ *
+ * 所以这一问自己掷够一批，**每一条 requires 分别数它成立几次**，
+ * 而不是只看合起来成不成立。合起来为零的时候，
+ * 分开数才说得出是哪一条把门关上了。
+ */
+function entryHolds(): string[] {
+  const wrong: string[] = []
+  const event = unrestEvents.find((one) => one.id === 'unrest-word')
+  if (!event) return ['库里没有 unrest-word 这个事件']
+
+  const TRIES = 300
+  const hit = new Map<string, number>()
+  for (let i = 0; i < TRIES; i += 1) {
+    setActivePinia(createPinia())
+    const world = useWorldStore()
+    useCharacterStore()
+    useHouseholdStore()
+    usePeopleStore()
+    beOf('farm')
+    /*
+     * ⚠️ **`beOf` 只立人，不推世界。**
+     *
+     * 头一版这里没有这一行，`befell` 那条当场报「300 次一次也不成立」
+     * ——而那是我的摆局造成的：世界事件由 `runWorld` 结算，
+     * 一年也没跑过的世界当然没闹过匪。
+     *
+     * 这正是 22 今天在 `diary` 上栽的那一族：**摆局的前提要么被后续
+     * 步骤破坏、要么从来没立过、要么掷出来就不是它说的那种人。**
+     * 而我差一点把它当成内容 bug 报出去。
+     *
+     * 推四十年：这一卷的窗口是 18–42 岁，而闹匪那一环要等旱灾链走两步。
+     */
+    world.runWorld(40, true)
+    for (const [index, one] of (event.requires ?? []).entries()) {
+      const label = `${index + 1}. ${JSON.stringify(one).slice(0, 46)}`
+      if (meetsAll([one])) hit.set(label, (hit.get(label) ?? 0) + 1)
+      else if (!hit.has(label)) hit.set(label, 0)
+    }
+  }
+  for (const [label, n] of hit) {
+    console.log(`  ${label.padEnd(52)} ${String(n).padStart(3)}/${TRIES}`)
+    if (n === 0) {
+      wrong.push(
+        `${label} 在 ${TRIES} 次摆局里一次也不成立——**那一条把这一卷的门关死了**` +
+          '（稀有和零是两件事：零意味着这一卷在库里是死的）',
+      )
+    }
+  }
+  return wrong
+}
+
 const gates: readonly { name: string; run: () => string[] }[] = [
   { name: '一、六格各自落在该落的地方', run: landings },
   { name: '二、四种结局各留各的', run: distinct },
   { name: '三、应下和装没听懂：事一样，心里不一样', run: inHisHeart },
   { name: '四、尺子自检', run: ruler },
   { name: '五、这一卷落的旗有没有下家', run: flagsHaveFuture },
+  { name: '六、入场券里有没有恒假的一条', run: entryHolds },
 ]
 
 let bad = 0
@@ -471,6 +554,6 @@ if (bad > 0) {
   console.log(`共 ${bad} 处。`)
   process.exitCode = 1
 } else {
-  console.log('五道全过。造反从他门口经过，而散还是闹在他开口之前就定了。')
+  console.log('六道全过。造反从他门口经过，而散还是闹在他开口之前就定了。')
   console.log('**六成二的人生里什么也没有发生——那三个月的心是白担的。**')
 }
