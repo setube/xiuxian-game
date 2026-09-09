@@ -41,6 +41,18 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  * 后果**只发生在门这一侧**：凡间不知道发生过什么，里长的册子上什么也没变。
  * 那正是「寄生、嵌入、不显形」的意思（`design/cultivation-society.md`）。
  *
+ * ## 第三片：他不老——凡人看得见的第一样超凡的东西
+ *
+ * 30.md 第一层是寿命。引擎里这件事早就成立（`people.live` 跳过有 realm 的人：陶仲比玩家
+ * 大七十一岁，玩家从十三岁翻到四十岁他一天也没老），可库里没有一处让凡人**看见**它。
+ * 这一卷让他看见：你十几岁头一回进药庐他在称药，二十多年后的今天他还是那个样子；
+ * 而你爹背驼了、你自己的手已经不是十几岁的手。**不老是征象，读出来的意思多半是错的**——
+ * 知道山上有人的读成「跟山上有关」（见过·确信），不知道的读成「山里人身子骨硬朗」（见过·猜想）。
+ * 谁也说不出「修士」两个字（地基文档第 2 条）。
+ *
+ * 它是 28.md 那句「凡人认为修仙是为了长生」的第一个凡间入口：见过一个不老的人，
+ * 「想活得久一点」那个愿望多一根火种（`wishes.ts`）。不通向修行——愿望不必通向任何地方。
+ *
  * ## 为什么挂在药庐那条上，不挂在「觉出了一点什么」上
  *
  * 52 建议这一片从 flicker 之后起头。量过（2026-09-09，600 世有心人）：觉出了什么 9 世，
@@ -311,6 +323,97 @@ export const mountainScenes: SceneLibrary = {
   },
 
   /**
+   * 他不老。
+   *
+   * 壮年、还在药庐里的人。这一卷没有选项：看见是一回事，看出什么是另一回事，
+   * 而后者由他知不知道山上定，不由他选。三条路只有正文不同，落的都是同一条认知 `he-does-not-age`。
+   *
+   * 不写「他一根白头发也没有」那种正面描写——凡人看见的是**差**：爹变了、自己的手变了、
+   * 他没变。写变的那两样，让不变的那个自己显出来。
+   */
+  'mountain:unaged': {
+    id: 'mountain:unaged',
+    title: '药庐 · 他',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [{ type: 'time', days: 1 }],
+        blocks: [
+          { kind: 'narration', text: '你进去的时候他在称药。称完了拿手指把戥子上的一点碎末抹平。' },
+          { kind: 'narration', text: '你头一回进这扇门的时候，他也是这么称的。那时候你得踮着脚才看得见戥子上的星。' },
+          { kind: 'narration', text: '你低头看自己的手。虎口那一块也有了茧，指节比从前粗了一圈。' },
+        ],
+        // 你身边的人老了：爹还在的读爹，爹不在了的读自己的鬓角
+        seen: [
+          {
+            requires: [{ family: { id: 'father', alive: true } }],
+            text: '今年春上你爹背驼了，起身要人扶一把。',
+          },
+          {
+            requires: [{ family: { id: 'father', alive: false } }],
+            text: '你鬓角去年起有了白的。',
+          },
+        ],
+        branches: [{ requires: [{ knowledge: 'the-mountain-above' }], next: 'he-is-of-it' }],
+        next: 'hardy',
+      },
+
+      /** 知道山上有人的：这件事跟山上有关。他不知道怎么有关 */
+      'he-is-of-it': {
+        id: 'he-is-of-it',
+        onEnter: [
+          {
+            type: 'knowledge',
+            id: 'he-does-not-age',
+            title: '他不老',
+            summary: '药庐那位二十多年没有变样。这跟山上有关，你不知道怎么有关。',
+            category: '修行',
+            contact: '见过',
+            interpretation: '确信',
+          },
+          { type: 'chronicle', text: '你发觉药庐那位这些年没有老。', tone: 'deep' },
+          /*
+           * 停下来掂量一回。壮年那一段没有日结、没有一卷收日，念头和愿望那层不在这儿点就一辈子冻着
+           * （`routine:adult` 的「接着打听」那条也是为这个加的 reflect）。头一版没加，
+           * 有心人三百世发觉了 47 世、长生那根火种点着 0 世——写了火种没人点，有一头是空的。
+           */
+          { type: 'reflect' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '他还是那个样子。' },
+          { kind: 'narration', text: '你想起他说过山上的事。你想这两件事是一件事，可你说不出是怎么一件事。' },
+          { kind: 'narration', text: '他称完那一味，抬头看了你一眼，低头去称下一味。', tone: 'faint' },
+        ],
+      },
+
+      /** 不知道的：山里人身子骨硬朗。这是他能想到的最合理的解释 */
+      hardy: {
+        id: 'hardy',
+        onEnter: [
+          {
+            type: 'knowledge',
+            id: 'he-does-not-age',
+            title: '他不老',
+            summary: '药庐那位二十多年没有变样。你想山里人身子骨硬朗。',
+            category: '修行',
+            contact: '见过',
+            interpretation: '猜想',
+          },
+          { type: 'chronicle', text: '你发觉药庐那位这些年没有老。' },
+          { type: 'reflect' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '他还是那个样子。' },
+          { kind: 'narration', text: '你想山里人身子骨硬朗，也是有的。' },
+          { kind: 'narration', text: '他称完那一味，抬头看了你一眼，低头去称下一味。', tone: 'faint' },
+        ],
+      },
+
+    },
+  },
+
+  /**
    * 夜里，{call:spouse}问起药庐那边。
    *
    * 跟自家人说，那件事留在家里——听完只说一句「别跟旁人说」。这一条没有门内的后果，
@@ -509,6 +612,22 @@ export const mountainEvents: readonly LifeEvent[] = [
     chain: 'tutelage',
     weight: 4,
     chance: 0.25,
+  },
+  {
+    /**
+     * 他不老。壮年、还在药庐里、跟他处到使唤往后（十几岁就进过这扇门的人）。
+     * 三十岁起：二十多年的差才看得出来，二十岁看不出一个五十岁的人有没有老。
+     */
+    id: 'mountain-unaged',
+    window: { from: 30, to: PRIME_UP },
+    requires: [
+      { flag: { key: FOOTING, in: [...AT_THE_SHED] } },
+      { flag: { key: 'shut-out-by-the-shed', absent: true } },
+    ],
+    scene: 'mountain:unaged',
+    chain: 'tutelage',
+    weight: 5,
+    chance: 0.4,
   },
   {
     /**
