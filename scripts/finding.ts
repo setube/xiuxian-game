@@ -20,8 +20,15 @@
  */
 import './lib/seeded'
 
-import { lifeScenes } from '../src/content/life'
+import { createPinia, setActivePinia } from 'pinia'
+
+import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
+import { useStory } from '../src/engine/story'
+import { useCharacterStore } from '../src/stores/character'
+import { useNarrativeStore } from '../src/stores/narrative'
 import type { Effect, SceneNode } from '../src/types/game'
+
+import { KEEN_CHOICES } from './tasks/ascent-lives'
 
 /**
  * 全库每一处「东西进了行囊」和「点破」。
@@ -142,7 +149,101 @@ if (gained.length === 0) {
 }
 
 /**
- * 四、尺子自检：那张关键词表真的在判事。
+ * 四、真跑：这几件东西得**真的到得了玩家手里**。
+ *
+ * ## 上面三条全是静态的，而这一支栽过的地方它们一条也抓不到
+ *
+ * 一到三扫的是库：名字写对没有、点破有没有出处、库里有几件。
+ * **它们守得住「写错了」，守不住「演不到」**——而后者是这一册真正会坏的地方：
+ *
+ * 2026-09-09 第二片（`finding:named`）头一版 `requires` 里写了
+ * `present: true`，而那个人在镇西药庐、玩家在村里。**有心人 600 世
+ * 九次前提齐备，`present` 九次全是 false，演到 0 次**——
+ * 而上面三条判据当时全绿，`verify` 也绿，类型也绿。
+ *
+ * 条件没写错、字段存在、值也真实，错的是**它跟这一卷的叙事方向相反**：
+ * 拿「已经在跟前」当前提，等于要求这件事在它发生之前就已经发生了。
+ * **没有一条静态判据能看出这个。**
+ *
+ * ## 走法用有心人，不用随机
+ *
+ * 这条线的后半截（点破）挂在陶仲身上，而随机走法 600 世里 586 世
+ * 一辈子遇不到他——**那是设计**（用户拍板「有心人要走得通」，
+ * `ascent.ts` 一直是两种走法各报一张漏斗）。
+ * 拿随机走法判这条线，判的是「大多数人走不到」，那件事本来就是真的。
+ *
+ * ## 判「到得了」，不判「多少人到得了」
+ *
+ * 门槛是**零**：每一件在库里给出去的东西，得**至少有一世**真到了玩家手里。
+ * 不判比例——比例是内容作者的事（撞见该多稀、点破该多难），
+ * 而**零意味着那一卷根本走不到**，那是坏了，不是稀有。
+ */
+{
+  const RUNS = 600
+  /** 每件东西被拿到过几世 */
+  const held = new Map<string, number>()
+  /** 每件东西被点破过几世 */
+  const told = new Map<string, number>()
+
+  for (let i = 0; i < RUNS; i += 1) {
+    setActivePinia(createPinia())
+    const narrative = useNarrativeStore()
+    const character = useCharacterStore()
+    const story = useStory(lifeScenes, {
+      events: lifeEvents,
+      routine: lifeRoutine,
+      finale: lifeFinale,
+    })
+    story.begin()
+    let turns = 0
+    while (!narrative.ended && turns < 240) {
+      const open = narrative.options.filter((one) => !one.locked)
+      if (open.length === 0) break
+      // 有心人：开着好几条时挑 KEEN_CHOICES 里排得最前的那一条
+      let pick = open[Math.floor(Math.random() * open.length)]!
+      const ranked = open
+        .map((one) => ({ one, rank: KEEN_CHOICES.indexOf(one.choice.id) }))
+        .filter((one) => one.rank >= 0)
+        .sort((a, b) => a.rank - b.rank)
+      if (ranked[0]) pick = ranked[0].one
+      story.choose(pick.choice)
+      turns += 1
+    }
+    // 世末点一次数：东西留在行囊里，不必逐步采
+    for (const one of gained) {
+      if (character.has(one.id)) held.set(one.id, (held.get(one.id) ?? 0) + 1)
+    }
+    for (const one of revealed) {
+      const item = character.inventory.find((each) => each.id === one.id)
+      if (item?.formerName !== undefined) told.set(one.id, (told.get(one.id) ?? 0) + 1)
+    }
+  }
+
+  console.log(`\n  真跑（有心人 ${RUNS} 世）：`)
+  const missing: string[] = []
+  for (const one of gained) {
+    const n = held.get(one.id) ?? 0
+    console.log(`      ${one.id.padEnd(14)}拿到 ${String(n).padStart(3)} 世　「${one.name}」`)
+    if (n === 0) missing.push(`${one.scene}#${one.node} 的 ${one.id} 一世也没到玩家手里`)
+  }
+  for (const one of revealed) {
+    const n = told.get(one.id) ?? 0
+    console.log(`      ${one.id.padEnd(14)}点破 ${String(n).padStart(3)} 世　→　「${one.name}」`)
+    if (n === 0) missing.push(`${one.scene}#${one.node} 的点破一世也没演到`)
+  }
+  if (missing.length > 0) {
+    console.log(`  ✗ ${missing.length} 处只写在库里，真跑到不了：`)
+    for (const one of missing) console.log(`      ${one}`)
+    console.log(
+      `    静态判据看不见这种坏法（条件可以没写错而方向相反）。` +
+        `\n    前提齐备却演到 0 次时，**逐条 meetsAll 单独问**——整体问只知道「不成立」。`,
+    )
+    bad += 1
+  }
+}
+
+/**
+ * 五、尺子自检：那张关键词表真的在判事。
  *
  * **这一条是必须的**，因为第一条是关键词匹配——而关键词表失效的方向是**漏报**：
  * 表里的词跟内容里真写的字对不上，判据就永远绿，看着像一切正常。
