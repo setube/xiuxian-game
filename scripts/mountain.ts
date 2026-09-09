@@ -56,8 +56,8 @@ let bad = 0
  * 农家要爹娘都在：寺里收留、路上长大的境况没有宅，也就没有东邻那一户——第五条摆局
  * 要问巷口那一卷开不开，局得先有东邻。宫里长大的（`court`）反过来，要的正是没有东邻。
  */
-function atShed(footing: string | null, origin: OriginId = 'farm', years = 20): Staged | null {
-  const s = born(origin, years, origin === 'farm' ? ['father', 'mother'] : [])
+function atShed(footing: string | null, origin: OriginId = 'farm'): Staged | null {
+  const s = born(origin, 20, origin === 'farm' ? ['father', 'mother'] : [])
   if (!s) return null
   applyEffects([{ type: 'meeting', who: SHED }])
   if (footing !== null) s.world.setFlag(FOOTING, footing)
@@ -543,10 +543,26 @@ function withMind(level: 'high' | 'low'): void {
     if (!s) wrong.push('掷不出局')
     else if (openable('mountain-unaged')) wrong.push('二十岁那一卷就开了——二十岁看不出一个五十岁的人有没有老')
   }
-  // 三十岁、爹在、不知道山上：读「爹背驼了」，落见过·猜想「山里人硬朗」，火种点着。
-  // 爹要在：直接掷一个三十岁爹娘都在的局（`born` 掷到要的人还在为止），别推十年——推十年爹会老死
+  /**
+   * 三十岁还在药庐的局。
+   *
+   * 不能 `born(origin, 30, …)` 一步推三十年：`people.live` 的岁数是**推完时间之后**算的
+   * （`effects.ts` 先 `advanceTime` 再 `live`），一步推三十年，爹娘按七十岁的老死率被推三十遍——
+   * 两百局里一百五十一局爹娘都没了，「掷到要的人还在为止」两百次也掷不出来（种子 zw3hz41kymb6）。
+   * 二十岁起局，十年一年一年推，岁数才是对的；爹要在的掷到在为止。
+   */
+  const atThirty = (footing: string, needFather: boolean): Staged | null => {
+    for (let tries = 0; tries < 60; tries += 1) {
+      const s = atShed(footing)
+      if (!s) return null
+      for (let year = 0; year < 10; year += 1) applyEffects([{ type: 'time', years: 1 }])
+      if (!needFather || s.people.isAlive('father')) return s
+    }
+    return null
+  }
+  // 三十岁、爹在、不知道山上：读「爹背驼了」，落见过·猜想「山里人硬朗」，火种点着
   {
-    const s = atShed('使唤', 'farm', 30)
+    const s = atThirty('使唤', true)
     if (!s) wrong.push('掷不出第二局')
     else {
       {
@@ -567,11 +583,11 @@ function withMind(level: 'high' | 'low'): void {
   }
   // 三十岁、爹不在、知道山上：读「鬓角白了」，落见过·确信「跟山上有关」
   {
-    const s = atShed('带一段', 'farm', 30)
+    const s = atThirty('带一段', false)
     if (!s) wrong.push('掷不出第三局')
     else {
       play('mountain:down', 'ask-who')
-      s.people.die('father', '老病')
+      if (s.people.isAlive('father')) s.people.die('father', '老病')
       const texts = play('mountain:unaged')
       if (!texts.some((line) => line.includes('鬓角'))) wrong.push(`爹不在的该读「鬓角白了」：${texts.join(' / ')}`)
       if (texts.some((line) => line.includes('你爹背驼了'))) wrong.push('爹不在了，却读到「爹背驼了」')
@@ -584,7 +600,7 @@ function withMind(level: 'high' | 'low'): void {
   }
   // 被赶出来的人：这一卷不开
   {
-    const s = atShed('带一段', 'farm', 30)
+    const s = atThirty('带一段', false)
     if (!s) wrong.push('掷不出第四局')
     else {
       s.world.setFlag('shut-out-by-the-shed', true)
