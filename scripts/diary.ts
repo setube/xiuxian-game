@@ -41,26 +41,39 @@ import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 import type { OriginId } from '../src/types/game'
 
+import { livingOfOrigin } from '../src/content/living'
 import { beOf } from './origin'
 
 /** 建 store 会把世界时钟推到出生那年，所以府况一律最后设 */
 function fresh(age = 12, origin: OriginId = 'farm') {
-  setActivePinia(createPinia())
-  beOf(origin)
-  const household = useHouseholdStore()
-  const world = useWorldStore()
-  // 去镇上、上山、找村里的孩子玩现在都问住处。这一支不走出生那一卷，
-  // 于是自己立一处村里的宅——跟 `settlePlaces` 给种地人家立的一样
-  world.enrollPlace({ id: 'town', name: '镇', kind: '镇', within: null })
-  world.enrollPlace({ id: 'village', name: '村', kind: '村', within: 'town' })
-  world.enrollPlace({ id: 'home', name: '家', kind: '宅', within: 'village' })
-  world.settle('home', 'village')
-  const character = useCharacterStore()
-  usePeopleStore()
-  const diary = useDiaryStore()
-  world.bornYear = world.time.year - age
-  world.setFlag('schooled', true)
-  return { character, world, diary, household }
+  for (let tries = 0; tries < 200; tries += 1) {
+    setActivePinia(createPinia())
+    beOf(origin)
+    const household = useHouseholdStore()
+    const world = useWorldStore()
+    // 去镇上、上山、找村里的孩子玩现在都问住处。这一支不走出生那一卷，
+    // 于是自己立一处村里的宅——跟 `settlePlaces` 给种地人家立的一样
+    world.enrollPlace({ id: 'town', name: '镇', kind: '镇', within: null })
+    world.enrollPlace({ id: 'village', name: '村', kind: '村', within: 'town' })
+    world.enrollPlace({ id: 'home', name: '家', kind: '宅', within: 'village' })
+    world.settle('home', 'village')
+    const character = useCharacterStore()
+    usePeopleStore()
+    /*
+     * 出生境况是开 character store 那一刻掷的（`beBorn`）。掷到「被人收留」，监护人是 keeper，
+     * `living` 顺着监护人解析成他过的日子，不是 farm——而「替家里下地」那几条片段要
+     * `living.is === 'farm'`，一条也掷不到，第四条「头 45 天里下过 0 天地」就红
+     * （2026-09-09 种子 mvyzxy1majcm/diary，四颗里一颗）。这一支摆的是「农家的孩子」，
+     * 掷到他过的确实是农家日子为止——跟 `staged.born` 掷到要的人还在是同一个形状：
+     * 判据嘴上说的前提（农家的孩子），代码里得真的立住。
+     */
+    if (character.living.id !== livingOfOrigin(origin).id) continue
+    const diary = useDiaryStore()
+    world.bornYear = world.time.year - age
+    world.setFlag('schooled', true)
+    return { character, world, diary, household }
+  }
+  throw new Error(`掷了两百局也没掷出一个过 ${origin} 日子的孩子`)
 }
 
 /** 过一天：三段各挑一个去处，夜里落成一条 */
