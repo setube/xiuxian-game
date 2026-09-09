@@ -1114,6 +1114,19 @@ if (divided.length < DIVIDES_WANTED) {
   if (!a || !restless || !hungryEvent) wrong.push('掷不出局')
   else {
     a.people.amend('nephew', { temper: '温和' })
+    /*
+     * 「年景平常」这四个字得自己钉住，不能指望掷出来的局正好是平常年。
+     *
+     * `nephew-restless-hungry` 那一卷的条件是 `harvest atMost 40`，而
+     * `grownUp()` 掷出来的收成是随机的——实测 30 局里有 2 局 ≤ 40（约 7%）。
+     * 撞上那两局，温和的孩子照样想走，**而这一条会报「温和的孩子、年景平常，
+     * 却想走」——它说的年景平常根本没成立。**
+     *
+     * `SEED=b3` 就是这么红的（22 报的那条闪红）。三颗种子里一颗红，
+     * 频率跟那 7% 对得上。这是「摆局立的条件跟判据要的条件得是同一套」
+     * 那一族：判据嘴上说的那个前提，摆局那一步没有真的立起来。
+     */
+    weather(a, { harvest: 70 })
     if (meetsAll(restless.requires) || meetsAll(hungryEvent.requires))
       wrong.push('温和的孩子、年景平常，却想走')
     weather(a, { harvest: 30 })
