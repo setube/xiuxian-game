@@ -104,8 +104,12 @@ export function encounterCultivator(cultivatorId: string): Meeting | null {
       gender: cultivator.gender,
       bornYear: world.time.year - cultivator.bornBefore,
       doing: '修行',
-      // 世界知道他是什么，玩家不知道。人口册上有了这一格，他就不按凡人的岁数老死
+      // 世界知道他是什么，玩家不知道。这一格不再免他老死（用户拍板：天年跟境界是两格）——
+      // 他活多久由底下 `span` 定，写在他自己身上
       realm: cultivator.realm,
+      // 修士的底子厚：`(50 - health)` 那一截老病不该落在他身上。这句话从前是假设，现在是数据
+      health: 80,
+      span: cultivator.span,
       temper: cultivator.temper,
       place: cultivator.place,
       // 他的过去在他入册那一刻就是真的。`known` 一律 false——玩家要问了才知道

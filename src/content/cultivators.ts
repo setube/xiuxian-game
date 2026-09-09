@@ -121,6 +121,21 @@ export interface Cultivator {
   gender: Gender
   /** 比玩家早生多少年。他一百二十岁，看着三十 */
   bornBefore: number
+  /**
+   * 天年。写在人身上的世界事实，**不由境界推**（用户 2026-09-10 拍板：不许「筑基 = 150 岁」那种表）。
+   *
+   * 拍板把寿命分三层——延寿（上限增加、明显衰老）／不老（衰老速度变了、外表停住）／长生（不受凡人尺度支配）——
+   * 三层不等价、不自动，也没有哪一层跟哪个境界绑着。数字照「他在内容里要活到哪一刻」给：
+   * 眼下四个数都超过任何一世能活到的岁数，**今天的行为一个字不变**，变的只是「不老死」从引擎里一句
+   * `if (realm) continue` 挪到了人身上。将来谁该死在什么时候，等生命周期七个节点测完再定（`design/cultivation-rulings.md` 五）。
+   *
+   * ⚠️ **这个数只落得了「延寿」那一层。** 「不老」要的是衰老速度那一格，而 `Person` 里没有「看着多大」这个量，
+   * 只有 `bornYear`——引擎眼下看不见不老，它只在正文里（「他看着不到三十」「他还是那个样子」）。
+   * 底下注释里标的延寿／不老是内容层的事实，别把 `span: 200` 读成「不老」（52 提的，2026-09-10）。
+   *
+   * 长生者照样会死：被杀、毁道基、重伤、走火入魔——那些由内容用 `people.die` 写，跟这个数无关。
+   */
+  span: number
   realm: Realm
   temper: Temper
   /** 玩家此刻会怎么称呼他。不是名字——名字要另外知道 */
@@ -214,6 +229,8 @@ export const THE_ONE_ON_THE_PATH: Cultivator = {
   given: '不换',
   gender: '男',
   bornBefore: 63,
+  // 不老：「他看着不到三十」，而他比你大六十三岁。伤重是内容写的死法，不是天年
+  span: 200,
   realm: '炼气',
   temper: '温和',
   calls: '山道上那个人',
@@ -319,6 +336,8 @@ export const THE_ONE_AT_THE_TEMPLE: Cultivator = {
   given: '守拙',
   gender: '男',
   bornBefore: 108,
+  // 延寿：「他是个老人。头发全白了」——上限往后挪了、可衰老是看得见的。这一层跟不老的分别就在他脸上
+  span: 200,
   realm: '筑基',
   temper: '谨慎',
   calls: '观里那位道人',
@@ -462,6 +481,8 @@ export const THE_ONE_AT_THE_HERB_SHED: Cultivator = {
   given: '仲',
   gender: '男',
   bornBefore: 71,
+  // 不老：玩家十三岁头一回进药庐他八十四，四十岁再进去他还是那个样子（`mountain:unaged`）
+  span: 200,
   realm: '炼气',
   temper: '木讷',
   calls: '药庐里那位',
@@ -614,6 +635,8 @@ export const THE_ONE_WHO_COMES_DOWN: Cultivator = {
   gender: '男',
   // 看着二十出头。炼气修士老得慢，四十来岁看着像二十
   bornBefore: 19,
+  // 不老：「他看着比你还小几岁」，隔了十几年再下来还是那副样子
+  span: 160,
   realm: '炼气',
   temper: '谨慎',
   calls: '山上下来的那个人',
