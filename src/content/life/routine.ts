@@ -573,6 +573,19 @@ export const routineScenes: SceneLibrary = {
             requires: [{ flag: { key: 'stayed-put', equals: true } }],
             text: '你这辈子没走出过几十里地。村口那条路通向哪里，你只听人说过。',
           },
+          /*
+           * 山上有人这件事，知道了就一直知道——而且没有人可说（27.md：真实存在但极少公开）。
+           * 两句各读一层：知道山上有人的；山上也知道有他的。后一句到这儿为止，往下没有下文——
+           * 那正是 30.md 那一片的边界，不是漏写。
+           */
+          {
+            requires: [{ knowledge: 'the-mountain-above' }, { flag: { key: 'known-on-the-mountain', absent: true } }],
+            text: '你知道山上有人。这些年你没跟谁说过这件事。',
+          },
+          {
+            requires: [{ flag: { key: 'known-on-the-mountain' } }],
+            text: '山上的人问起过你。此后再没有下文，你也没有去问。',
+          },
         ],
         choices: [
           {

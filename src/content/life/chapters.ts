@@ -32,6 +32,7 @@ import { candourEvents, candourScenes } from './candour'
 import { festivalEvents, festivalScenes } from './festival'
 import { findingEvents, findingScenes } from './finding'
 import { matchEvents, matchScenes } from './match'
+import { mountainEvents, mountainScenes } from './mountain'
 import { mourningEvents, mourningScenes } from './mourning'
 import { routineScenes } from './routine'
 import { royalEvents, royalScenes } from './royal'
@@ -951,6 +952,31 @@ export const CHAPTERS: readonly Chapter[] = [
       '走到最后拿到的是五句话——而脑子里懂到哪一层、身上走到哪一步是两条各走各的轴，他不知道自己在哪一条上',
     ],
     marks: ['tutelage', 'teaching', 'practice'],
+  },
+
+  /**
+   * 山上下来的人。修仙界作为第二层社会的第一片。
+   *
+   * 30.md：修仙世界同样先有世界、组织、人物、资源、规则和因果，玩家再进入其中。
+   * 这一章不写「山上」是什么——它写一个凡人能看见的那一面：药庐那位是山上的人，
+   * 替上头看着这间药庐；山上隔几年打发一个人下来取药。玩家翻了几年的那几筐药是往山上送的。
+   *
+   * 挂在师承那条链上（`chain: 'tutelage'`）：下山的人来的时候你得在药庐里。
+   * 到「上头问起你了」为止；收不收、叫不叫你上去，是 29.md 那一片的事。
+   */
+  {
+    id: 'mountain',
+    scenes: mountainScenes,
+    events: mountainEvents,
+    called: ['年表'],
+    to: [],
+    age: [13, PRIME_UP],
+    purpose: [
+      '修仙界在凡间的第一个接触点是镇西那间没有招牌的药庐——你翻了几年的药是往山上送的，而你不知道',
+      '山上有人是世界事实，写在药庐那位身上；你问了、而他肯答，才成为你知道的事',
+      '下山的人不挑人、不收人——他量到你不错也只能回去说一声；这一章到「上头问起你了」为止',
+    ],
+    marks: ['meeting', 'recall', 'knowledge', 'chronicle', 'flag'],
   },
 
   /**

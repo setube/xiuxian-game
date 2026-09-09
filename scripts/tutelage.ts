@@ -51,6 +51,7 @@ import './lib/seeded'
 import { createPinia, setActivePinia } from 'pinia'
 
 import {
+  CULTIVATORS,
   THE_ONE_AT_THE_HERB_SHED,
   THE_ONE_AT_THE_TEMPLE,
   THE_ONE_ON_THE_PATH,
@@ -506,7 +507,7 @@ console.log('  一个药庐那位一眼就量到八十几的孩子。头一回�
 console.log('\n=== 四　那道顶是他自己的事 ===\n')
 
 {
-  for (const cultivator of [THE_ONE_ON_THE_PATH, THE_ONE_AT_THE_TEMPLE, THE_ONE_AT_THE_HERB_SHED]) {
+  for (const cultivator of CULTIVATORS) {
     const reachable = FOOTINGS.slice(1, FOOTINGS.indexOf(cultivator.stance.ceiling) + 1)
     const missing = reachable.filter((footing) => !cultivator.steps[footing])
     console.log(`  ${cultivator.calls.padEnd(8)}顶在「${cultivator.stance.ceiling}」`)
@@ -523,10 +524,8 @@ console.log('\n=== 四　那道顶是他自己的事 ===\n')
    * 三个人里只有陶仲有 `teaches`，而这一格正是「愿意」跟「看得见」
    * 彻底分开之后剩下的那件事。
    */
-  const teachers = [THE_ONE_ON_THE_PATH, THE_ONE_AT_THE_TEMPLE, THE_ONE_AT_THE_HERB_SHED].filter(
-    (one) => one.teaches,
-  )
-  judge(teachers.length === 1, `三个人里只有一个会教人：${teachers[0]?.calls}`)
+  const teachers = CULTIVATORS.filter((one) => one.teaches)
+  judge(teachers.length === 1, `${CULTIVATORS.length} 个人里只有一个会教人：${teachers[0]?.calls}`)
   judge(
     teachers[0]?.stance.ceiling === '教一点',
     '而他的顶正好在「教一点」——顶和肯教是同一件事的两面',

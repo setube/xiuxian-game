@@ -103,7 +103,11 @@ function describe(requires: readonly Condition[]): string {
   return requires
     .map((one) => {
       if (one.flag)
-        return one.flag.equals === undefined ? one.flag.key : `${one.flag.key}=${one.flag.equals}`
+        return one.flag.equals !== undefined
+          ? `${one.flag.key}=${one.flag.equals}`
+          : one.flag.in !== undefined
+            ? `${one.flag.key}∈{${one.flag.in.join('/')}}`
+            : one.flag.key
       if (one.standing) return `家境 ${one.standing.atLeast ?? ''}–${one.standing.atMost ?? ''}`
       if (one.attribute)
         return `${one.attribute.key} ${one.attribute.atLeast ?? ''}–${one.attribute.atMost ?? ''}`
