@@ -30,6 +30,17 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  * 药庐那位说完就是一句「别出去乱说」。玩家知道了山上有人，**没有人可说**——
  * 壮年那一卷读到的是「这些年你没跟谁说过」。
  *
+ * ## 第二片：「别出去乱说」是一条规矩，规矩要有后果
+ *
+ * 30.md：修仙界先有规则和因果，玩家再进入。门内的第一条规矩是陶仲那句「别出去乱说」——
+ * 头一片里它只是一句嘱咐。这一片让它咬人：有人问起药庐那边是做什么的（夜里是 {call:spouse}，
+ * 巷口是邻家户主），你说了还是没说。跟自家人说，那件事留在家里；跟邻家说，镇上的话传得快，
+ * 有一天你到药庐门口，他把戥子放下：「往后不用来了。」——`footing` 回到「不理会」，
+ * 师承那条链上的每一件事自然落空，山上也不会再问起你。
+ *
+ * 后果**只发生在门这一侧**：凡间不知道发生过什么，里长的册子上什么也没变。
+ * 那正是「寄生、嵌入、不显形」的意思（`design/cultivation-society.md`）。
+ *
  * ## 为什么挂在药庐那条上，不挂在「觉出了一点什么」上
  *
  * 52 建议这一片从 flicker 之后起头。量过（2026-09-09，600 世有心人）：觉出了什么 9 世，
@@ -112,6 +123,8 @@ export const mountainScenes: SceneLibrary = {
         id: 'told',
         onEnter: [
           { type: 'recall', id: SHED, chapter: 'keeps-the-shed' },
+          // 他嘱咐过你别出去乱说。第二片问的是这面旗：没被嘱咐过的人说出去，不算犯他的规矩
+          { type: 'flag', key: 'told-by-the-shed', value: true },
           {
             type: 'knowledge',
             id: 'the-mountain-above',
@@ -296,6 +309,163 @@ export const mountainScenes: SceneLibrary = {
       },
     },
   },
+
+  /**
+   * 夜里，{call:spouse}问起药庐那边。
+   *
+   * 跟自家人说，那件事留在家里——听完只说一句「别跟旁人说」。这一条没有门内的后果，
+   * 有的是一句实话落在家里；读者在壮年那一卷。
+   */
+  'mountain:asked-home': {
+    id: 'mountain:asked-home',
+    title: '夜里',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [{ type: 'time', days: 1 }],
+        blocks: [
+          { kind: 'narration', text: '夜里熄了灯，{call:spouse}忽然问你。' },
+          { kind: 'dialogue', text: '「镇西那边，到底是个什么去处？你天天去。」' },
+        ],
+        choices: [
+          {
+            id: 'tell-mountain',
+            label: '说了',
+            echo: '你说了。',
+            effects: [
+              { type: 'time', days: 1 },
+              { type: 'flag', key: 'told-spouse-about-the-mountain', value: true },
+              { type: 'chronicle', text: '山上的事，你跟{call:spouse}说了。' },
+            ],
+            next: 'told-home',
+          },
+          {
+            id: 'keep-mountain',
+            label: '说就是个抓药的地方',
+            echo: '你说没什么。',
+            effects: [
+              { type: 'time', days: 1 },
+              { type: 'flag', key: 'kept-the-mountain', value: true },
+            ],
+            next: 'kept-home',
+          },
+        ],
+      },
+      'told-home': {
+        id: 'told-home',
+        blocks: [
+          { kind: 'narration', text: '你说得很含糊，因为你自己也说不清。' },
+          { kind: 'narration', text: '{call:spouse}听完很久没有说话。' },
+          { kind: 'dialogue', text: '「别跟旁人说。」' },
+          { kind: 'narration', text: '此后{call:spouse}再没有问过。', tone: 'faint' },
+        ],
+      },
+      'kept-home': {
+        id: 'kept-home',
+        blocks: [
+          { kind: 'narration', text: '{call:spouse}「嗯」了一声，翻过身去了。' },
+          { kind: 'narration', text: '你在黑里睁着眼躺了一会儿。', tone: 'faint' },
+        ],
+      },
+    },
+  },
+
+  /**
+   * 巷口，邻家的人叫住你。
+   *
+   * 跟邻家说，话就出了家门。这一条有门内的后果——不是当场，是有一天（`mountain-shut`）。
+   *
+   * 叫住你的是「{house:east}的人」，不点名：东邻那一户的户主比你大二十四到五十岁，你二十岁时
+   * 四十局里三十四局他已经没了（人口册照凡人的公式老死），钉死他这一卷就死在窗口后三分之二
+   * （79 在 `unrest-word` 上量出的同一个形状）。问话的是那一户，谁当家谁问——户在人不在。
+   */
+  'mountain:asked-lane': {
+    id: 'mountain:asked-lane',
+    title: '巷口',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [{ type: 'time', days: 1 }],
+        blocks: [
+          { kind: 'narration', text: '傍晚回来，{house:east}的人在巷口叫住你。' },
+          { kind: 'dialogue', text: '「你天天往镇西跑，那药庐是个什么去处？我怎么没见它挂过招牌。」' },
+        ],
+        choices: [
+          {
+            id: 'tell-mountain',
+            label: '说了',
+            echo: '你说了。',
+            effects: [
+              { type: 'time', days: 1 },
+              { type: 'flag', key: 'talked-about-the-mountain', value: true },
+              { type: 'chronicle', text: '山上的事，你跟{house:east}的人说了。' },
+            ],
+            next: 'told-lane',
+          },
+          {
+            id: 'keep-mountain',
+            label: '说就是个药铺，帮着翻翻药',
+            echo: '你说就是个药铺。',
+            effects: [
+              { type: 'time', days: 1 },
+              { type: 'flag', key: 'kept-the-mountain', value: true },
+            ],
+            next: 'kept-lane',
+          },
+        ],
+      },
+      'told-lane': {
+        id: 'told-lane',
+        blocks: [
+          { kind: 'narration', text: '你说了。说的时候你觉得自己声音很小。' },
+          { kind: 'narration', text: '那人听完笑了一声，说山上要是真有那样的人，他倒想去看看。' },
+          { kind: 'narration', text: '那天晚上你想起药庐那位说的最后一句。你想他大概不会知道。', tone: 'faint' },
+        ],
+      },
+      'kept-lane': {
+        id: 'kept-lane',
+        blocks: [
+          { kind: 'narration', text: '那人点点头，没有再问。' },
+          { kind: 'narration', text: '你进了门才发觉手心有汗。', tone: 'faint' },
+        ],
+      },
+    },
+  },
+
+  /**
+   * 他知道了。
+   *
+   * 镇上的话传得快。这一节没有解释，也没有第二次机会——他把戥子放下，说了一句，
+   * 就低头去称下一味了。`footing` 回到「不理会」：师承那条链上的每一件事自然落空，
+   * 山上也不会再问起你。**规矩的后果落在关系上，不落在凡间的任何账上。**
+   */
+  'mountain:shut': {
+    id: 'mountain:shut',
+    title: '药庐 · 门',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [
+          { type: 'time', days: 3 },
+          { type: 'flag', key: FOOTING, value: '不理会' },
+          { type: 'flag', key: 'shut-out-by-the-shed', value: true },
+          { type: 'chronicle', text: '药庐那位不再让你去了。', tone: 'deep' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '那天你到的时候门开着，他在称药。' },
+          { kind: 'narration', text: '他称完那一味，把戥子放下了。' },
+          { kind: 'dialogue', text: '「说出去了？」' },
+          { kind: 'narration', text: '你没答。' },
+          { kind: 'dialogue', text: '「往后不用来了。」' },
+          { kind: 'narration', text: '他低头去称下一味。你在门口站了一会儿，退了出来。' },
+          { kind: 'narration', text: '后来你从镇西过，几次都没往那边看。', tone: 'faint' },
+        ],
+      },
+    },
+  },
 }
 
 /**
@@ -335,5 +505,54 @@ export const mountainEvents: readonly LifeEvent[] = [
     chain: 'tutelage',
     weight: 4,
     chance: 0.25,
+  },
+  {
+    /**
+     * 夜里，{call:spouse}问起。要他嘱咐过你（`told-by-the-shed`），要有配偶在。
+     * 问过一回就不再问（不 `repeatable`）；说了、瞒了各落一面旗，壮年那一卷读。
+     */
+    id: 'mountain-asked-home',
+    window: { from: 16, to: PRIME_UP },
+    requires: [
+      { flag: { key: 'told-by-the-shed' } },
+      { bond: { kind: '配偶', alive: true } },
+      { flag: { key: 'told-spouse-about-the-mountain', absent: true } },
+      { flag: { key: 'kept-the-mountain', absent: true } },
+    ],
+    scene: 'mountain:asked-home',
+    weight: 5,
+    chance: 0.3,
+  },
+  {
+    /**
+     * 巷口，邻家的人问起。要有东邻那一户（宫里、寺里、路上长大的没有），谁当家谁问。
+     */
+    id: 'mountain-asked-lane',
+    window: { from: 16, to: PRIME_UP },
+    requires: [
+      { flag: { key: 'told-by-the-shed' } },
+      { house: { id: 'east' } },
+      { flag: { key: 'talked-about-the-mountain', absent: true } },
+      { flag: { key: 'kept-the-mountain', absent: true } },
+    ],
+    scene: 'mountain:asked-lane',
+    weight: 5,
+    chance: 0.3,
+  },
+  {
+    /**
+     * 他知道了。要你说出去过、而你还在药庐里（处到使唤往后）。
+     * 在师承那条链上：链开了头它就排在散事件前面，`chance` 是「话传到他耳朵里要些日子」。
+     */
+    id: 'mountain-shut',
+    window: { from: 16, to: PRIME_UP },
+    requires: [
+      { flag: { key: 'talked-about-the-mountain' } },
+      { flag: { key: FOOTING, in: [...AT_THE_SHED] } },
+    ],
+    scene: 'mountain:shut',
+    chain: 'tutelage',
+    weight: 6,
+    chance: 0.5,
   },
 ]

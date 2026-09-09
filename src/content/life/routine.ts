@@ -579,13 +579,24 @@ export const routineScenes: SceneLibrary = {
            * 那正是 30.md 那一片的边界，不是漏写。
            */
           {
-            requires: [{ knowledge: 'the-mountain-above' }, { flag: { key: 'known-on-the-mountain', absent: true } }],
+            requires: [
+              { knowledge: 'the-mountain-above' },
+              { flag: { key: 'known-on-the-mountain', absent: true } },
+              { flag: { key: 'told-spouse-about-the-mountain', absent: true } },
+              { flag: { key: 'talked-about-the-mountain', absent: true } },
+            ],
             text: '你知道山上有人。这些年你没跟谁说过这件事。',
           },
           {
             requires: [{ flag: { key: 'known-on-the-mountain' } }],
             text: '山上的人问起过你。此后再没有下文，你也没有去问。',
           },
+          /*
+           * 「别出去乱说」那条规矩的三种下场（跟配偶说了、瞒住了、被赶出来了）**不写在这儿**：
+           * 那三面旗随机人生里千分之一以下，`seen.ts` 那一层判的是「常到的节上哪一句没人读到」，
+           * 三千世也凑不齐样本，只会一批红一批绿。三种下场各自的收尾写在那三卷自己身上
+           * （`mountain:asked-home` / `asked-lane` / `shut`），`scripts/mountain.ts` 在有心人那一批里验。
+           */
         ],
         choices: [
           {
