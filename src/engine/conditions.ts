@@ -7,6 +7,7 @@ import { useWorldStore } from '@/stores/world'
 import type { Condition, RegionKey } from '@/types/game'
 
 import { mayAsk } from './address'
+import { currentAlong } from './along'
 import { roleId } from './interpolate'
 import { stageOf } from './stages'
 import { isNearby } from './nearby'
@@ -347,6 +348,17 @@ const CHECKS = {
    * （「他张了张嘴，没问出口」跟「这话轮不到他说」写出来是两句话），
    * 而条件层只需要知道这句该不该出现。
    */
+  /**
+   * 今天跟谁去的。
+   *
+   * 读的是 `dailyAlong`——`spend()` 抽 beat 之前把它放在那儿的一格
+   * 上下文。**不从 store 里读**：「今天这一趟」不是一种世界状态，
+   * 它是一次抽取的参数，存进 store 就得记着什么时候清掉。
+   *
+   * 一天之外问它恒为「独自」，那是对的：没出门就没有同伴。
+   */
+  along: (along) => along.includes(currentAlong()),
+
   mayAsk: (ask) =>
     /*
      * `who` 可能是**角色名**（`elder` / `dam` / `child`）。跟 `{hail:}` 那处

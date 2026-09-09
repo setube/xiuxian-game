@@ -563,6 +563,15 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
      * **同一件事不在两张表里各查一遍。**
      */
     mayAsk: null,
+    /*
+     * 「今天跟谁去」没有出处表可查。
+     *
+     * 它不是任何一条效果打出来的——是 `spend()` 抽 beat 那一瞬间
+     * 从世界事实现算的（`engine/daily.ts` 的 `alongNow`：
+     * 这个去处允许哪几类伴、那类人此刻在不在身边）。
+     * **没有写入端，也就没有出处可查。**
+     */
+    along: null,
   } satisfies {
     [K in keyof Condition]-?:
       ((value: NonNullable<Condition[K]>) => [Map<string, string[]>, string] | null) | null
