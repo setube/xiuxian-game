@@ -643,6 +643,9 @@ export const tutelageEvents: readonly LifeEvent[] = [
     repeatable: true,
     window: { from: 13, to: GROWN_UP },
     requires: [
+      // 药庐那位（herbalist-at-the-shed）在这一卷里开口、教你——他得还在。从前没人问：他有 realm 就不老死；
+      // 天年挪到人身上之后（`Cultivator.span`）这一条才守得住「修士出了意外这条链就停」
+      { family: { id: 'herbalist-at-the-shed', alive: true } },
       { flag: { key: 'leaning:know' } },
       { flag: { key: 'event:tutor-shed' } },
       { flag: { key: 'footing:herbalist-at-the-shed', absent: true } },
@@ -667,7 +670,12 @@ export const tutelageEvents: readonly LifeEvent[] = [
     repeatable: true,
     // 续上的那几件开到壮年末（`PRIME_UP`）：关系已经开始了，不因过了二十九就断
     window: { from: 12, to: PRIME_UP },
-    requires: [{ flag: { key: 'footing:herbalist-at-the-shed', equals: '搭话' } }],
+    requires: [
+      // 药庐那位（herbalist-at-the-shed）在这一卷里开口、教你——他得还在。从前没人问：他有 realm 就不老死；
+      // 天年挪到人身上之后（`Cultivator.span`）这一条才守得住「修士出了意外这条链就停」
+      { family: { id: 'herbalist-at-the-shed', alive: true } },
+      { flag: { key: 'footing:herbalist-at-the-shed', equals: '搭话' } },
+    ],
     scene: 'tutor:errand',
     chain: 'tutelage',
     weight: 9,
@@ -677,7 +685,12 @@ export const tutelageEvents: readonly LifeEvent[] = [
     id: 'tutor-walk',
     repeatable: true,
     window: { from: 13, to: PRIME_UP },
-    requires: [{ flag: { key: 'footing:herbalist-at-the-shed', equals: '使唤' } }],
+    requires: [
+      // 药庐那位（herbalist-at-the-shed）在这一卷里开口、教你——他得还在。从前没人问：他有 realm 就不老死；
+      // 天年挪到人身上之后（`Cultivator.span`）这一条才守得住「修士出了意外这条链就停」
+      { family: { id: 'herbalist-at-the-shed', alive: true } },
+      { flag: { key: 'footing:herbalist-at-the-shed', equals: '使唤' } },
+    ],
     scene: 'tutor:walk',
     chain: 'tutelage',
     weight: 9,
@@ -702,7 +715,12 @@ export const tutelageEvents: readonly LifeEvent[] = [
     id: 'tutor-words',
     repeatable: true,
     window: { from: 13, to: PRIME_UP },
-    requires: [{ flag: { key: 'footing:herbalist-at-the-shed', equals: '带一段' } }],
+    requires: [
+      // 药庐那位（herbalist-at-the-shed）在这一卷里开口、教你——他得还在。从前没人问：他有 realm 就不老死；
+      // 天年挪到人身上之后（`Cultivator.span`）这一条才守得住「修士出了意外这条链就停」
+      { family: { id: 'herbalist-at-the-shed', alive: true } },
+      { flag: { key: 'footing:herbalist-at-the-shed', equals: '带一段' } },
+    ],
     scene: 'tutor:words',
     chain: 'tutelage',
     weight: 9,

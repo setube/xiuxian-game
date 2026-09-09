@@ -846,7 +846,21 @@ export const usePeopleStore = defineStore(
           fate = '殁'
         } else {
           // 天年没到，可上了年纪、底子又差的人每年都有那么点可能过不去
-          const frailty = Math.max(0, age - 45) * 0.004 + Math.max(0, 50 - person.health) * 0.0016
+          /*
+           * 老病从哪一岁起算。
+           *
+           * 凡人从四十五岁起，每年多那么一点过不去的可能。**内容给了大天年的人**（写在人身上的
+           * 世界事实，`Cultivator.span`——不由境界推，用户 2026-09-10 拍板：不许填表），老病
+           * 也得跟着天年往后挪：一个天年两百的人，八十四岁不该按凡人的率一年 15% 地没。
+           * 这就是拍板里「延寿：寿命上限增加」在引擎里的样子——起点挪、率不变。
+           *
+           * 凡人掷出来的天年最多 88（52–82 + 底子），`span - 45` 到不了 45，**凡人的率一个数不变**。
+           *
+           * 头一版没有这一行：陶仲入册时八十四岁，天年给到两百也活不过十年——
+           * 隔离树里量过，入册 200 局推十一年剩 2（种子 yx9wjg1w7ecr）。
+           */
+          const pivot = Math.max(45, span - 45)
+          const frailty = Math.max(0, age - pivot) * 0.004 + Math.max(0, 50 - person.health) * 0.0016
           for (let i = 0; i < years; i += 1) {
             if (age + i >= span) {
               fate = '殁'
@@ -966,6 +980,8 @@ export function makePerson(input: {
   realm?: Realm
   temper?: Temper
   health?: number
+  /** 天年。内容明确定过的人才写（修士入册时从 `Cultivator.span` 带进来）；不写的 `live()` 头一回碰到时现掷 */
+  span?: number
   place: string
   history?: Chapter[]
 }): Person {
@@ -981,6 +997,7 @@ export function makePerson(input: {
     ...(input.realm === undefined ? {} : { realm: input.realm }),
     temper: input.temper ?? rollTemper(),
     health: input.health ?? randomBetween(40, 80),
+    ...(input.span === undefined ? {} : { span: input.span }),
     place: input.place,
     fate: '在',
     history: input.history ?? [],

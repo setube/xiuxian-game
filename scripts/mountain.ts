@@ -97,6 +97,9 @@ function withMind(level: 'high' | 'low'): void {
       if (s.people.personOf(SHED)?.history.find((one) => one.id === 'keeps-the-shed')?.known)
         wrong.push('没答，那一页却翻开了')
       const visitor = s.people.personOf(VISITOR)
+      // 天年写在人身上：入册时带进来，不是掷的
+      if (visitor && visitor.span !== THE_ONE_WHO_COMES_DOWN.span)
+        wrong.push(`下山的人入册该带他自己的天年 ${THE_ONE_WHO_COMES_DOWN.span}，记的是 ${String(visitor.span)}`)
       if (!visitor) wrong.push('下山的人没入册')
       else {
         if (visitor.realm !== '炼气') wrong.push(`下山的人该是炼气，记的是「${visitor.realm ?? '（无）'}」`)
@@ -596,6 +599,16 @@ function withMind(level: 'high' | 'low'): void {
       if (!entry) wrong.push('第二局发觉了，认知没落')
       else if (entry.contact !== '见过' || entry.interpretation !== '确信')
         wrong.push(`知道山上的该落见过·确信，落的是 ${entry.contact}·${entry.interpretation}`)
+    }
+  }
+  // 他不老不是一句话：入册时他八十四，推到你六十岁他还在，而你爹娘早就没了
+  {
+    const s = atShed('使唤')
+    if (!s) wrong.push('掷不出天年那一局')
+    else {
+      for (let year = 0; year < 40; year += 1) applyEffects([{ type: 'time', years: 1 }])
+      if (!s.people.isAlive(SHED)) wrong.push('推到六十岁，药庐那位老病没了——天年没写在他身上，或老病的起点没跟着天年挪')
+      if (s.people.isAlive('father') && s.people.isAlive('mother')) wrong.push('推到六十岁爹娘都还在——凡人的老病是不是也被免了')
     }
   }
   // 被赶出来的人：这一卷不开

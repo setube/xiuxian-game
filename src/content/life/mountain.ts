@@ -589,7 +589,11 @@ export const mountainEvents: readonly LifeEvent[] = [
   {
     id: 'mountain-down',
     window: { from: 13, to: PRIME_UP },
-    requires: [{ flag: { key: FOOTING, in: [...AT_THE_SHED] } }],
+    requires: [
+      // 药庐那位（herbalist-at-the-shed）在这一卷里在场、开口——他得还在（天年在他身上，`Cultivator.span`）
+      { family: { id: SHED, alive: true } },
+      { flag: { key: FOOTING, in: [...AT_THE_SHED] } },
+    ],
     scene: 'mountain:down',
     chain: 'tutelage',
     weight: 5,
@@ -605,6 +609,8 @@ export const mountainEvents: readonly LifeEvent[] = [
     id: 'mountain-again',
     window: { from: 14, to: PRIME_UP },
     requires: [
+      // 药庐那位（herbalist-at-the-shed）在这一卷里在场、开口——他得还在（天年在他身上，`Cultivator.span`）
+      { family: { id: SHED, alive: true } },
       { flag: { key: 'event:mountain-down' } },
       { flag: { key: FOOTING, in: [...AT_THE_SHED] } },
     ],
@@ -621,6 +627,8 @@ export const mountainEvents: readonly LifeEvent[] = [
     id: 'mountain-unaged',
     window: { from: 30, to: PRIME_UP },
     requires: [
+      // 药庐那位（herbalist-at-the-shed）在这一卷里在场、开口——他得还在（天年在他身上，`Cultivator.span`）
+      { family: { id: SHED, alive: true } },
       { flag: { key: FOOTING, in: [...AT_THE_SHED] } },
       { flag: { key: 'shut-out-by-the-shed', absent: true } },
     ],
@@ -670,6 +678,8 @@ export const mountainEvents: readonly LifeEvent[] = [
     id: 'mountain-shut',
     window: { from: 16, to: PRIME_UP },
     requires: [
+      // 药庐那位（herbalist-at-the-shed）在这一卷里在场、开口——他得还在（天年在他身上，`Cultivator.span`）
+      { family: { id: SHED, alive: true } },
       { flag: { key: 'talked-about-the-mountain' } },
       { flag: { key: FOOTING, in: [...AT_THE_SHED] } },
     ],
