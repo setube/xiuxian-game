@@ -56,7 +56,33 @@ export const rivermanScenes: SceneLibrary = {
           { requires: [{ station: '仕宦' }], next: 'as-gentry' },
           { requires: [{ flag: { key: 'has-craft' } }], next: 'as-apprentice' },
           { requires: [{ flag: { key: 'has-shopwork' } }], next: 'as-clerk' },
-          { requires: [{ flag: { key: 'schooled', equals: true } }], next: 'as-student' },
+          /*
+           * 念过书的那一路，按**先生还在不在**分两支。
+           *
+           * ⚠️ 这两行从前只有一行（`schooled` 那个旗），于是先生殁了的人
+           * 照样读到「先生让你去县学送一份文书」——`present.ts` 报的正是它。
+           *
+           * ## 它是被我另一处改动逼出来的
+           *
+           * 这一卷的入场券从 `{ fortune: { atLeast: 50 } }` 改成
+           * `{ among: '前四分之一' }` 之后（`2cbacd1`，用户拍板），
+           * 入场率 11.7% → 40.8%——**先生已殁的那批人第一次走进了这一卷**。
+           *
+           * 那个改动是对的，而这一处是它照出来的既有账：
+           * **一个只问「念过书」的条件，在入场率翻三倍之后才露出破绽。**
+           *
+           * 这是「先生殁了整章还在演」那一族的第三次（前两次在 `exam`）。
+           * 修法照旧：**拆两支，不是给分岔加条件**——加条件会让
+           * 先生殁了的人整个读不到这一节，而念过书这件事不因先生死了而消失。
+           */
+          {
+            requires: [
+              { flag: { key: 'schooled', equals: true } },
+              { family: { id: 'teacher', alive: true } },
+            ],
+            next: 'as-student',
+          },
+          { requires: [{ flag: { key: 'schooled', equals: true } }], next: 'as-reader' },
         ],
         next: 'as-hand',
       },
@@ -160,6 +186,26 @@ export const rivermanScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '入秋那几日，先生让你去县学送一份文书。' },
           { kind: 'narration', text: '事情办完还早，你没有直接回去。' },
+        ],
+        next: 'river',
+      },
+
+      /**
+       * 念过书，而先生已经不在了。
+       *
+       * **这一节里一个「先生」也不出现**——`present.ts` 按称呼字面匹配，
+       * 认不出「追述」和「在场」的分别（`apprentice.ts` 那一卷踩过一次）。
+       *
+       * 而绕开那个词写出来更准：**他去渡口不是替谁办事，是自己走去的。**
+       * 那一句「没有人等着回话」正是这一支跟上一支的全部分别——
+       * 上一支是替先生送文书（有人等着回话），这一支是他自己想去走走。
+       */
+      'as-reader': {
+        id: 'as-reader',
+        onEnter: [{ type: 'time', days: 2 }],
+        blocks: [
+          { kind: 'narration', text: '入秋那几日，你把书搁下，一个人往渡口走了走。' },
+          { kind: 'narration', text: '没有人等着你回话，你就在岸上多站了一会儿。' },
         ],
         next: 'river',
       },
