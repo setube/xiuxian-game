@@ -32,6 +32,7 @@ import { bearingEvents, bearingScenes } from './bearing'
 import { candourEvents, candourScenes } from './candour'
 import { festivalEvents, festivalScenes } from './festival'
 import { findingEvents, findingScenes } from './finding'
+import { goingUpEvents, goingUpScenes } from './going-up'
 import { matchEvents, matchScenes } from './match'
 import { mountainEvents, mountainScenes } from './mountain'
 import { mourningEvents, mourningScenes } from './mourning'
@@ -1007,6 +1008,34 @@ export const CHAPTERS: readonly Chapter[] = [
       '下山的人不挑人、不收人——他量到你不错也只能回去说一声；这一章到「上头问起你了」为止',
     ],
     marks: ['meeting', 'recall', 'knowledge', 'chronicle', 'flag'],
+  },
+
+  /**
+   * 山上叫你上去。29.md 第一片，接在 `mountain` 那一章停住的五个字上。
+   *
+   * 那一册停在「上头问起你了」，然后**他没有往下说**。这一章的第一句
+   * 就是隔了两年多之后那个下半句：「上头要你上去一趟。」
+   *
+   * 29.md：**不要把它设计成【选择】散修 / 宗门，因为这样又变成玩家菜单。**
+   * 落到这一章就是——**开口那一下不由玩家**，他能决定的只有人家开口之后去不去。
+   *
+   * 到「他在半山腰挑水」为止。不写山门什么样、有几个人、什么规矩，
+   * 也不落 `identity`——他不是「外门弟子」，是一个在那儿干活的人，
+   * 山上还没决定拿他怎么办。宗门作为一个社会是后面的事。
+   */
+  {
+    id: 'going-up',
+    scenes: goingUpScenes,
+    events: goingUpEvents,
+    called: ['年表'],
+    to: [],
+    age: [15, PRIME_UP],
+    purpose: [
+      '上山不是选的，是人家隔了两年多才说完那句话——开口那一下不由玩家，他只能决定去不去',
+      '答应了也未必走得成：有妻儿的走不脱，而那不是反悔，是这一家没有他就转不动',
+      '不去跟去是同一层的两个结局——他不知道那上头是什么，而他知道自己有什么',
+    ],
+    marks: ['knowledge', 'chronicle', 'flag', 'undertake'],
   },
 
   /**
