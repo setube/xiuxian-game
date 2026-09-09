@@ -90,10 +90,22 @@ export const goingUpScenes: SceneLibrary = {
             label: '你说你去',
             hint: '家里的事得先安顿',
             echo: '你说你去。',
-            effects: [
-              { type: 'time', days: 10 },
-              { type: 'flag', key: 'said-yes-to-the-mountain', value: true },
-            ],
+            /*
+             * 这儿原先还落一面 `said-yes-to-the-mountain`。**删了。**
+             *
+             * 它是个**过路态**：答应了之后可能走成（`went-up-the-mountain`），
+             * 也可能走不脱（`could-not-go-up`），而那两面才是稳定的。
+             * 我在给别人解释这一卷的旗时写过「别用它判长期」——
+             * **一面自己都告诫别人别用的旗，落它就是在制造光杆。**
+             *
+             * 分界（2026-09-09 跟 52 一起归纳的）：
+             *
+             *     无声的光杆　落了旗，正文没说什么　　→ 多半有意的
+             *     有声的光杆　正文明说了「往后……」　→ 那是空头支票
+             *
+             * 这一面两头都不占：它既没有下文，也不是任何一段人生的结论。
+             */
+            effects: [{ type: 'time', days: 10 }],
             next: 'settling',
           },
           {
