@@ -7,6 +7,7 @@ import { useWorldStore } from '@/stores/world'
 import type { Condition, RegionKey } from '@/types/game'
 
 import { mayAsk } from './address'
+import { withinTop } from './cohort'
 import { currentAlong } from './along'
 import { roleId } from './interpolate'
 import { stageOf } from './stages'
@@ -84,7 +85,20 @@ const CHECKS = {
     return world.hasFlag(flag.key)
   },
 
-  attribute: (attribute, { character }) => within(character.attributes[attribute.key], attribute),
+  /**
+   * 一项隐藏刻度。三问，可以一起问：
+   *
+   *     atLeast / atMost   绝对值
+   *     among              同龄人里的位次（`engine/cohort.ts`）
+   *
+   * 都写了就是**并且**——「前四分之一，而且至少 40 分」说得出来。
+   */
+  attribute: (attribute, { character }) => {
+    const value = character.attributes[attribute.key]
+    if (!within(value, attribute)) return false
+    if (attribute.among === undefined) return true
+    return withinTop(attribute.key, character.age, value, attribute.among)
+  },
 
   knowledge: (id, { character }) => character.knows(id),
 
