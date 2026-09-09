@@ -416,10 +416,22 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
   const neededFlags = new Map<string, string[]>()
   const neededKnowledge = new Map<string, string[]>()
   const neededLivings = new Map<string, string[]>()
+  const neededLeanings = new Map<string, string[]>()
   const madeItems = new Set<string>()
   const madeFlags = new Set<string>()
   const madeKnowledge = new Set<string>()
   const madeLivings = new Set<string>()
+  /*
+   * 念头的出处只有一个，而且是**静态的**：`content/leanings.ts` 的 `LEANINGS`
+   * 那张名单。它跟别的几类不一样——认知、旗标、物件都由 `Effect` 产，
+   * 扫效果就能收齐；念头不由任何效果产，它从 `SPARKS` 长出来，
+   * 而 `SPARKS` 只能往名单上已有的 id 里长。
+   *
+   * 所以这一格查的是「条件里问的那个念头在不在册」，而不是「有没有人给」。
+   * 写错一个字（`{ leaning: { id: 'riches' } }`）那一条永远不成立，
+   * 整卷静默消失——跟 `equals: false` 那一族同一个形状。
+   */
+  const madeLeanings = new Set(LEANINGS.map((one) => one.id))
 
   const note = (map: Map<string, string[]>, key: string, where: string): void => {
     const list = map.get(key) ?? []
@@ -457,6 +469,7 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     item: (id) => [neededItems, id],
     flag: (flag) => [neededFlags, flag.key],
     knowledge: (id) => [neededKnowledge, id],
+    leaning: (leaning) => [neededLeanings, leaning.id],
     attribute: null,
     age: null,
     standing: null,
@@ -950,6 +963,8 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
      * 前者进 `madeKnowledge`，后者靠下面扫源码那一关兜住。
      */
     ['认知', neededKnowledge, madeKnowledge],
+    /** 念头只有一个出处，见上面 `madeLeanings` 那段 */
+    ['念头', neededLeanings, madeLeanings],
     /**
      * 日子有三个出处：出身、抚养人、半路上那一处效果。
      * 前两个在上面 seed 进 `madeLivings`，第三个由 `MAKES.living` 扫。
@@ -975,7 +990,7 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     }
   }
 
-  const total = neededItems.size + neededFlags.size + neededKnowledge.size + neededLivings.size
+  const total = neededItems.size + neededFlags.size + neededKnowledge.size + neededLivings.size + neededLeanings.size
   if (orphanNeeds.length === 0) {
     console.log(`  ${total} 种前置条件，每一种都有出处。\n`)
   } else {

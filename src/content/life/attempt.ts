@@ -37,8 +37,88 @@ export const attemptScenes: SceneLibrary = {
   'attempt:first': {
     id: 'attempt:first',
     title: '照着做',
-    entry: 'open',
+    entry: 'why',
     nodes: {
+      /**
+       * 他为什么坐下来。
+       *
+       * ## 28.md 那句话落到这一节上
+       *
+       *   > 财富、权力、长生，是修仙最核心的三类现实目的；修仙本身不是目的。
+       *
+       * 从前这一册的入场只问三样——手里有那册书、知道那是什么、没在试。
+       * **一次也没问过他图什么。** 于是同一个人，办完丧事那夜起过念头的，
+       * 和被人踩了半辈子的，坐下来时读到的是同一句「那册书你翻过很多回」。
+       *
+       * 三类目的在库里早有对应物，都是从真经历里长出来的（`content/leanings.ts`）：
+       *
+       *     live-long   守在旁边帮不上忙、办完丧事那一夜　→ 长生
+       *     rich        家底跌破线、看着别人家的院子　　　→ 财富
+       *     strong      被人踩、说不上话　　　　　　　　　→ 权力
+       *
+       * ## 这一节只改「他为什么坐下来」，不改「坐下来之后成不成」
+       *
+       * 分完岔一律汇进 `open`，`outcome` 那一掷一个字没动。念头要是能提高
+       * 成功率，它就成了隐藏加成——那是属性系统，而 28.md 第五节反对的
+       * 正是把「我想修仙」写成一个 `true`。
+       *
+       * ## 为什么问 `atLeast: '反复'` 而不是「明白」
+       *
+       * 「明白」是他自己把话说出来了，那种人有，但少。「反复」是他开始
+       * 总往那边看却说不出为什么——**一个揣着说不清的念头去试的人，
+       * 才是这一册最常见的样子**。
+       *
+       * 「埋着」问不了：`peakStageOf` 对从没长过的念头也返回「埋着」，
+       * 那一条对每个人都成立（类型层已排除，见 `Condition.leaning`）。
+       *
+       * ## 排在前面的更具体
+       *
+       * `branches` 取第一条满足的就走。一个人可能同时揣着两个念头
+       * （想活久、也想过得好），这时候取哪一个都对——**排在前面的是
+       * 更少见的那个**，让稀有的念头有机会被说出来，而不是永远被
+       * 「想过得好」盖过去。
+       */
+      why: {
+        id: 'why',
+        blocks: [],
+        branches: [
+          { requires: [{ leaning: { id: 'live-long', atLeast: '反复' } }], next: 'for-long' },
+          { requires: [{ leaning: { id: 'strong', atLeast: '反复' } }], next: 'for-strong' },
+          { requires: [{ leaning: { id: 'rich', atLeast: '反复' } }], next: 'for-rich' },
+        ],
+        next: 'open',
+      },
+
+      /** 长生。他见过人怎么没的，而书上说有人能不那样 */
+      'for-long': {
+        id: 'for-long',
+        blocks: [
+          { kind: 'narration', text: '你想起那几天守在旁边，什么忙也帮不上。' },
+          { kind: 'narration', text: '书上那几页说的，好像是另一种活法。' },
+        ],
+        next: 'open',
+      },
+
+      /** 权力。不是「想掌权」，是「不愿意再被人那样看着」 */
+      'for-strong': {
+        id: 'for-strong',
+        blocks: [
+          { kind: 'narration', text: '你想起有些话你说了不算，有些人看你的眼神。' },
+          { kind: 'narration', text: '书上写的那些人，大约不必受这个。' },
+        ],
+        next: 'open',
+      },
+
+      /** 财富。落到明代一个普通人身上，是「家里那点底子经不起一次病」 */
+      'for-rich': {
+        id: 'for-rich',
+        blocks: [
+          { kind: 'narration', text: '你想起家里那点底子，经不起一场病、一个荒年。' },
+          { kind: 'narration', text: '要是真有点旁人没有的本事，日子大概不一样。' },
+        ],
+        next: 'open',
+      },
+
       open: {
         id: 'open',
         onEnter: [

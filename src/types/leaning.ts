@@ -36,14 +36,14 @@ import type { Condition, GameTime } from './game'
  * 好好过日子、养家、把孩子拉扯大、平安过完一生——**那不是失败路线。**
  */
 
-/** 一个念头此刻长到哪一步 */
-export type LeaningStage =
-  /** 埋着。他自己都还没意识到 */
-  | '埋着'
-  /** 反复。他开始总是往那边看，但他说不出为什么 */
-  | '反复'
-  /** 明白。他自己把它说出来了 */
-  | '明白'
+/**
+ * 一个念头此刻长到哪一步。
+ *
+ * **定义在 `./game`**，因为 `Condition.leaning` 要用它而这个文件已经引了
+ * `Condition`——反过来引就是循环。这里重新导出，让念头这套东西的
+ * 使用者仍然只从一个地方取（`@/types/leaning`）。
+ */
+export type { LeaningStage } from './game'
 
 /** 念头长起来的一刻。攒成一串，就是他为什么会变成这样的人 */
 export interface LeaningMoment {

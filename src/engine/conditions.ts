@@ -2,9 +2,10 @@ import { getActivePinia } from 'pinia'
 
 import { useCharacterStore } from '@/stores/character'
 import { useHouseholdStore } from '@/stores/household'
+import { useLeaningStore } from '@/stores/leanings'
 import { usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
-import type { Condition, RegionKey } from '@/types/game'
+import type { Condition, LeaningStage, RegionKey } from '@/types/game'
 
 import { mayAsk } from './address'
 import { withinTop } from './cohort'
@@ -28,7 +29,10 @@ interface Ctx {
  * 一格条件怎么验。拿到的值保证不是 undefined——空着的格子由 `matches` 跳过。
  */
 // 去掉的是「没写」（undefined），不去 null：`sideline: null` 是一条真条件（这家没有贴补）
-type Check<K extends keyof Condition> = (value: Exclude<Condition[K], undefined>, ctx: Ctx) => boolean
+type Check<K extends keyof Condition> = (
+  value: Exclude<Condition[K], undefined>,
+  ctx: Ctx,
+) => boolean
 
 /** 闭区间，两端都可以不写 */
 function within(value: number, range: { atLeast?: number; atMost?: number }): boolean {
@@ -102,6 +106,37 @@ const CHECKS = {
 
   knowledge: (id, { character }) => character.knows(id),
 
+  /**
+   * 他心里长着哪个念头，长到哪一步。
+   *
+   * 现取 store，不进 `Ctx`——跟 `people` 同一个惯例（`Ctx` 那三个是几乎每条
+   * 条件都要用的，`leanings` 不是）。这也让 `meetsAll` 那个按 pinia 实例
+   * 缓存的 `ctxCache` 一个字不用改。
+   *
+   * 用 `peakStageOf` 不是 `stageOf`：**念头会退**（那个方向的事久不发生，
+   * 分量会掉），而「他曾经长到过这一步」跟「他此刻还在这一步」是两件事。
+   * 一个二十岁想过发财、三十岁认命了的人，他二十岁那年的选择仍然是
+   * 因为想发财——问的是这个。
+   *
+   * ## `atLeast: '埋着'` 恒真，所以类型层把它排除了
+   *
+   * `peakStageOf` 对**从没长过的念头**返回「埋着」（`leanings.ts:101`：
+   * `peak ?? 0`，而 0 低于 `STIRRING_AT`）。所以问「至少埋着」等于不问——
+   * 对每一个人都成立，包括一辈子没动过那个念头的人。
+   *
+   * 这跟 `flag` 那一格 `equals: false` 的坑是镜像的：那个是**恒假**
+   * （两册五卷 400 世零演出），这个是**恒真**（判据形同虚设）。
+   * 两种都不报错，而恒真更难查——恒假至少能从「零次演出」看出来。
+   *
+   * 所以 `Condition.leaning.atLeast` 的类型是 `'反复' | '明白'`，不是
+   * `LeaningStage`。要问「埋着」只有一种正当写法：写成**旁人看得见的行为**
+   * （他多看了一眼），而那不是条件层的事。
+   */
+  leaning: (leaning) => {
+    const order: LeaningStage[] = ['埋着', '反复', '明白']
+    const reached = useLeaningStore().peakStageOf(leaning.id)
+    return order.indexOf(reached) >= order.indexOf(leaning.atLeast)
+  },
   item: (id, { character }) => character.has(id),
 
   age: (age, { character }) => within(character.age, age),
