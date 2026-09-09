@@ -845,22 +845,38 @@ export const usePeopleStore = defineStore(
         if (age >= span) {
           fate = '殁'
         } else {
-          // 天年没到，可上了年纪、底子又差的人每年都有那么点可能过不去
           /*
-           * 老病从哪一岁起算。
+           * 天年没到，可上了年纪、底子又差的人每年都有那么点可能过不去。
            *
-           * 凡人从四十五岁起，每年多那么一点过不去的可能。**内容给了大天年的人**（写在人身上的
-           * 世界事实，`Cultivator.span`——不由境界推，用户 2026-09-10 拍板：不许填表），老病
-           * 也得跟着天年往后挪：一个天年两百的人，八十四岁不该按凡人的率一年 15% 地没。
-           * 这就是拍板里「延寿：寿命上限增加」在引擎里的样子——起点挪、率不变。
+           * ## 那个 45 要跟着天年走，不能写死
            *
-           * 凡人掷出来的天年最多 88（52–82 + 底子），`span - 45` 到不了 45，**凡人的率一个数不变**。
+           * 写死 45 的话，**天年给到两百也活不过十年**：
+           * 一个八十四岁的人每年老病 15.6%，推十一年只剩 15.5% 还活着
+           * （22 在隔离树里实测：入册 200 个，推十一年还在 2 个）。
            *
-           * 头一版没有这一行：陶仲入册时八十四岁，天年给到两百也活不过十年——
-           * 隔离树里量过，入册 200 局推十一年剩 2（种子 yx9wjg1w7ecr）。
+           * 于是「他二十多年没变样」那一片当场变成死人称药——
+           * 而 `span` 那一格明明给对了。**天年是上限，老病是过程，
+           * 两个都对不上就等于没改。**
+           *
+           * ## `span - 45`：凡人一个数不变，长寿的人晚衰
+           *
+           *     天年  68（凡人）  → pivot 45   84 岁那年 15.6%   ← 跟从前一模一样
+           *     天年  82（凡人）  → pivot 45   75 岁那年 12.0%   ← 一样
+           *     天年 200（修士）  → pivot 155  84 岁那年  0.0%
+           *                                   160 岁那年 2.0%
+           *
+           * **凡人的 span 掷出来是 52–83，`span - 45` 一律小于 45**，
+           * 于是 `Math.max` 把他们全钉在 45 上——**凡人这一侧
+           * 一个数也没变**。变的只有内容明确给了大天年的那些人。
+           *
+           * 而这正是用户拍板里「延寿 = 寿命上限增加」在引擎里的样子：
+           * **不是给谁发一张免死牌，是他的衰老曲线整个往后挪。**
+           * 而且它**不看境界**——挪多少由 `span` 那个数说了算，
+           * 那个数写在人身上，由内容一笔一笔给。
            */
           const pivot = Math.max(45, span - 45)
-          const frailty = Math.max(0, age - pivot) * 0.004 + Math.max(0, 50 - person.health) * 0.0016
+          const frailty =
+            Math.max(0, age - pivot) * 0.004 + Math.max(0, 50 - person.health) * 0.0016
           for (let i = 0; i < years; i += 1) {
             if (age + i >= span) {
               fate = '殁'
@@ -980,7 +996,7 @@ export function makePerson(input: {
   realm?: Realm
   temper?: Temper
   health?: number
-  /** 天年。内容明确定过的人才写（修士入册时从 `Cultivator.span` 带进来）；不写的 `live()` 头一回碰到时现掷 */
+  /** 天年。不传就等 `live()` 头一回现掷 */
   span?: number
   place: string
   history?: Chapter[]
@@ -997,6 +1013,12 @@ export function makePerson(input: {
     ...(input.realm === undefined ? {} : { realm: input.realm }),
     temper: input.temper ?? rollTemper(),
     health: input.health ?? randomBetween(40, 80),
+    /*
+     * 天年。**不传就是「还没掷过」**——`live()` 头一回碰到他时现掷一个。
+     *
+     * 传了的是内容明确定过的人：修士的天年写在 `Cultivator.span` 上，
+     * 那是一个世界事实，不由境界推（用户拍板：不许填表）。
+     */
     ...(input.span === undefined ? {} : { span: input.span }),
     place: input.place,
     fate: '在',
