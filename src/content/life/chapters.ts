@@ -26,6 +26,7 @@ import { investEvents, investScenes } from './invest'
 import { unrestEvents, unrestScenes } from './unrest'
 import { rivermanEvents, rivermanScenes } from './riverman'
 import { afterwardsEvents, afterwardsScenes } from './afterwards'
+import { keepingEvents, keepingScenes } from './keeping'
 import { apprenticeEvents, apprenticeScenes } from './apprentice'
 import { attemptEvents, attemptScenes } from './attempt'
 import { bearingEvents, bearingScenes } from './bearing'
@@ -528,6 +529,31 @@ export const CHAPTERS: readonly Chapter[] = [
     age: [22, 90],
     purpose: ['他这辈子唯一一次碰到修行的边，此后再没有答案，而他已经不需要答案了'],
     marks: ['undertake', 'roll', 'flag'],
+  },
+
+  /**
+   * 守着那件事的那些年，和它头一次真的改了什么。
+   *
+   * **全作第一个正向 `lifespan` 使用者。**在这一册之前，
+   * 「修仙是一条可能改变生命长度的道路」这句话在代码里没有落点——
+   * 全库唯一动过天年的是「熬夜伤身，减两年」。
+   *
+   * 用户 2026-09-10 拍板的四条：挂在「真正练成一件具体的事」上
+   * （不是见到修士、不是入宗门、不是突破境界自动加寿）、**不绑境界**、
+   * 第一次给的量要小（凡人天年 p50=67，这里给到七十出头）、
+   * **玩家未必知道加了多少**。
+   *
+   * 所以 `marks` 里有 `lifespan` 而没有 `realm`——那不是疏漏，那是这一册的全部主张。
+   */
+  {
+    id: 'keeping',
+    scenes: keepingScenes,
+    events: keepingEvents,
+    called: ['年表'],
+    to: [],
+    age: [40, 78],
+    purpose: ['他守着一件说不清的事十几年，某一年它头一次真的改了他的身体，而他不知道改了多少'],
+    marks: ['undertake', 'roll', 'flag', 'lifespan', 'knowledge'],
   },
 
   /** 手艺。铁匠、木匠、药铺 */
