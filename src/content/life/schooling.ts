@@ -435,6 +435,20 @@ export const schoolingScenes: SceneLibrary = {
               { type: 'attribute', key: 'body', delta: 8 },
               { type: 'attribute', key: 'will', delta: 4 },
               { type: 'identity', identity: '农家子' },
+              /*
+               * ⚠️ **年表这一笔要跟身份落在同一处**，不能落在上一节的 `onEnter`。
+               *
+               * `whence` 判的是「身份变的那一步，年表长没长」——它比较的是
+               * `world.chronicle.length` 在**同一次 `choose` 之内**有没有增长
+               * （`scripts/whence.ts:195`）。头一版我把它加在 `cannot` 的 `onEnter` 上，
+               * 中间隔了一次 `choose`，那笔年表算进了上一步，**判据照旧报红**。
+               *
+               * 这一笔本身是 2026-09-09 补的（`SEED=mvyzxy1majcm/whence` 复现）。
+               * 真因是这一册五笔年表**全在「念上书了」那几条路上**（侍讲开蒙、
+               * 教授开蒙、请西席、借钱送去、进了私塾），而「供不起，跟着下地」
+               * 这条路一笔也没有——**念上书的人年表里有记载，念不上的人什么也没有**。
+               */
+              { type: 'chronicle', text: '你没有进私塾，跟着下地了。' },
               { type: 'aspect', key: 'body', self: '你从七岁就下地。手上有茧。' },
             ],
             next: 'worked',
@@ -451,6 +465,8 @@ export const schoolingScenes: SceneLibrary = {
               { type: 'attribute', key: 'will', delta: 3 },
               { type: 'flag', key: 'listened-outside', value: true },
               { type: 'identity', identity: '农家子' },
+              // 同上一支：年表跟身份落在同一处，`whence` 判的是同一步里长没长
+              { type: 'chronicle', text: '你没有进私塾，跟着下地了。' },
               {
                 type: 'aspect',
                 key: 'learning',
