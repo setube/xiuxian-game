@@ -31,6 +31,7 @@ import { useNarrativeStore } from '../src/stores/narrative'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 import type { House } from '../src/types/game'
+import { born, play } from './lib/staged'
 
 const LIVES = 160
 const CAP = 4000
@@ -53,6 +54,8 @@ interface Lived {
   succeeded: boolean
   succeededOk: boolean
   succeedNote: string
+  /** 交家那一幕演了，同一步里她接着就没了——演的时候人还在，不算错，报个数 */
+  handedThenDied: boolean
   divided: boolean
   divideOk: boolean
   divideNote: string
@@ -121,6 +124,7 @@ function live(): Lived {
     succeeded: false,
     succeededOk: true,
     succeedNote: '',
+    handedThenDied: false,
     divided: false,
     divideOk: true,
     divideNote: '',
@@ -146,6 +150,9 @@ function live(): Lived {
     const spouseBefore = people.kinOf('配偶').filter(alive)
     const kidsBefore = [...people.kinOf('子'), ...people.kinOf('女')].filter(alive)
     const oldHomeBefore = household.home
+    // 交家的那个人这一步开始之前还在不在：承户那一卷演在这一步里头，采样在这一步末尾（见二）
+    const passedFromBefore = world.getFlag('head-passed-from')
+    const fromAliveBefore = typeof passedFromBefore === 'string' ? alive(passedFromBefore) : null
 
     story.choose(pick.choice)
 
@@ -193,9 +200,23 @@ function live(): Lived {
          * 现在问的是内容层：`head-handed-over` 由 `house:succeed` 的 `handed` 那一节打
          * （`content/life/house.ts`），有它就说明玩家正在读「当家的把钥匙交给了你」。
          * 那一幕演的时候人必须还在——**死者不能把家交出来**。
+         *
+         * ## 可采样点在这一步末尾，那一幕演在这一步里头
+         *
+         * 承户那一卷没有选项，一进一出；同一步里它演完，年表接着排下一卷——三年一考那种
+         * 一卷推三年——`people.live` 在那三年里把她带走了。到这一步末尾看：旗打了、人没了，
+         * 而她交家那一刻确实还在（2026-09-09 种子 finding-two/succession，17 换了随机序列
+         * 才掷到这一世；内容一个字没错）。**采样点跟事实点隔着一卷，中间的死不是这一幕的错。**
+         *
+         * 所以只判「这一步开始之前她就不在了」——那时她铁定没法把家交出来，正文照演就是
+         * 讲了不真的事。这一步里头才没的，不算错也不算验过，报个数。
+         * 而「守卫拆了会不会红」在随机世里几乎撞不上（寡母交家之后、承户排期之前就没了的，
+         * 三颗种子零世），所以底下另摆一局把它钉死。
          */
-        out.succeededOk = false
-        out.succeedNote = `交家那一幕演了，可交家的 ${from} 已经不在了`
+        if (fromAliveBefore === false) {
+          out.succeededOk = false
+          out.succeedNote = `交家那一幕演了，可交家的 ${from} 这一步开始之前就不在了`
+        } else out.handedThenDied = true
       }
     }
 
@@ -311,16 +332,44 @@ console.log(
 // 二、承户讲的是真事
 {
   const wrong = succeeded.filter((l) => !l.succeededOk)
+  /*
+   * 摆局钉死那条守卫：寡母交了家，承户那一卷排到的时候她还在，演「把钥匙交给了你」；
+   * 她不在了，演的得是「当家的人没了」——正文点名说的是娘，条件就得问那一个人。
+   * 随机世里「交家之后、排期之前她就没了」几乎撞不上，守卫拆掉判据也不红；这一局补的就是那个缝。
+   */
+  {
+    const staged: string[] = []
+    const s = born('farm', 16, ['mother'])
+    if (!s) staged.push('掷不出局')
+    else {
+      s.world.setFlag('head-passed-how', '交')
+      s.world.setFlag('head-passed-from', 'mother')
+      s.world.setFlag('head-passed-to', 'me')
+      const alive = play('house:succeed')
+      if (!alive.some((line) => line.includes('把钥匙交给了你')))
+        staged.push(`娘在，该演交家那一幕：${alive.slice(0, 3).join(' / ')}`)
+      s.people.die('mother', '老病')
+      const gone = play('house:succeed')
+      if (gone.some((line) => line.includes('把钥匙交给了你')))
+        staged.push('娘不在了，交家那一幕照演——死者把家交出来了')
+      if (!gone.some((line) => line.includes('当家的人没了')))
+        staged.push(`娘不在了，该演的是当家的人没了：${gone.slice(0, 3).join(' / ')}`)
+    }
+    if (staged.length > 0) wrong.push({ ...succeeded[0]!, succeededOk: false, succeedNote: staged[0]! })
+  }
   if (succeeded.length === 0) {
     console.log(`  ✗ 二、${sampled} 世没有一世走到承户——当家的人从来不殁？`)
     bad += 1
   } else if (wrong.length > 0) {
     console.log(`  ✗ 二、${wrong.length} 世承户讲的不是真事：${wrong[0]!.succeedNote}`)
     bad += 1
-  } else
+  } else {
+    const later = succeeded.filter((l) => l.handedThenDied).length
     console.log(
-      `  ✓ 二、${succeeded.length} 世承户，讲完户主都是我；殁了的确实殁了，交家那一幕演的时候人还在。`,
+      `  ✓ 二、${succeeded.length} 世承户，讲完户主都是我；殁了的确实殁了，交家那一幕演的时候人还在；摆局里娘不在了演的是丧事` +
+        (later > 0 ? `（${later} 世交完家同一步里她就没了——演的时候还在，不算错）。` : '。'),
     )
+  }
 }
 
 // 三、分家分的是户
