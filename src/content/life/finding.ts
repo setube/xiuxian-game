@@ -50,6 +50,24 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
 /** 家里靠山吃饭：打猎、采药、砍柴的人家，才会有人真进山 */
 const MOUNTAIN_TRADES = { livelihood: '打猎' } as const
 
+/**
+ * 点破那一笔。两条分支落同一笔，抽出来免得两处各自漂。
+ *
+ * **`note` 是必须的**（`scripts/finding.ts` 第二条判据守着）：改称呼在这个
+ * 世界里只有一个来源——某个具体的人在某个具体的时候说了一句话。
+ * 一笔没有出处的改名，是系统自己告诉了玩家答案。
+ *
+ * **不落 `knowledge`**：认知那一条（`the-odd-herb`）已经在第一卷里立着，
+ * 而这一趟改的是**称呼**不是**理解**。它照旧停在「未理解」——
+ * 你现在知道它叫什么，仍然不知道它是什么。
+ */
+const NAME_IT = {
+  type: 'reveal',
+  item: 'odd-herb',
+  name: '石苁',
+  note: '后山认草那一趟，{call:herbalist-at-the-shed}说的。石头缝里长的，不烂。他没说有什么用。',
+} as const
+
 export const findingScenes: SceneLibrary = {
   /**
    * 石头缝里那一株。
@@ -152,6 +170,105 @@ export const findingScenes: SceneLibrary = {
       done: { id: 'done', blocks: [] },
     },
   },
+
+  /**
+   * 他说了那个名字。
+   *
+   * ## 九级链的第四级，第一次有人站在那儿
+   *
+   * 31.md 第一节那条链，第四级是「拿给炼器师看」——而**前三级都在凡人这一侧**
+   * （不知道、听人说过、见过），第四级起需要一个懂行的人真实存在于这个世界里。
+   *
+   * 那个人不必新造：`tutor:walk` 那一节早就写着
+   *
+   *     他带你上后山认了七八样草，说完就走，不管你记没记住。
+   *
+   * **而那七八样草一样也没落进玩家手里、没落进他的认知。** 这一卷补的正是它：
+   * 你怀里那株没见过的草，在这一趟里第一次有人叫得出名字。
+   *
+   * ## 「说了」不等于「你记住了」
+   *
+   * 这一卷不改 `interpretation`——它仍旧停在 `'未理解'` 那一档。
+   * 变的是名字（`reveal`），不是理解：**你现在知道它叫什么，
+   * 仍然不知道它是什么。** 那正是陶仲那句「说完就走，不管你记没记住」。
+   *
+   * 九级链后面五级（用途、产地、真假、品质）**这一卷一级也不给**——
+   * 它们要的是一个愿意坐下来讲的人，而陶仲不是那种人（`Way` 是「说给你听」，
+   * 念完就起身收拾去了）。
+   */
+  'finding:named': {
+    id: 'finding:named',
+    title: '他说了那个名字',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        blocks: [
+          {
+            kind: 'narration',
+            text: '你揣着那株草，往镇西去了一趟。',
+          },
+          { kind: 'narration', text: '他正在院里翻晒药材。你把草递过去。' },
+          { kind: 'narration', text: '他扫了一眼，手上没停。' },
+          {
+            kind: 'dialogue',
+            speaker: '{call:herbalist-at-the-shed}',
+            text: '石苁。石头缝里长的，不烂。',
+          },
+          { kind: 'narration', text: '说完就接着翻他的药去了。' },
+        ],
+        choices: [
+          {
+            id: 'ask-more',
+            label: '问它有什么用',
+            hint: '他已经转过身去了',
+            echo: '你还是问了一句。',
+            effects: [{ type: 'time', days: 1 }],
+            next: 'no-answer',
+          },
+          {
+            id: 'keep-it',
+            label: '把草收回怀里',
+            echo: '你把它收了回去。',
+            effects: [{ type: 'time', days: 1 }],
+            next: 'kept',
+          },
+        ],
+      },
+      /**
+       * 追上去问，他不答。
+       *
+       * **不是他藏私**——他那句「说给你听」的教法就是这样：说了名字，
+       * 说完就走。他不觉得自己漏了什么。
+       */
+      'no-answer': {
+        id: 'no-answer',
+        onEnter: [NAME_IT],
+        blocks: [
+          { kind: 'narration', text: '他没抬头，只说：记住名字就行了。' },
+          {
+            kind: 'narration',
+            text: '你捏着那株草站了一会儿。它现在有名字了，你还是不知道它是什么。',
+            tone: 'faint',
+          },
+        ],
+        next: 'done',
+      },
+      kept: {
+        id: 'kept',
+        onEnter: [NAME_IT],
+        blocks: [
+          {
+            kind: 'narration',
+            text: '回去的路上你想着那两个字。石苁。原来它有名字。',
+            tone: 'faint',
+          },
+        ],
+        next: 'done',
+      },
+      done: { id: 'done', blocks: [] },
+    },
+  },
 }
 
 export const findingEvents: readonly LifeEvent[] = [
@@ -176,5 +293,57 @@ export const findingEvents: readonly LifeEvent[] = [
     scene: 'finding:root',
     weight: 8,
     chance: 0.3,
+  },
+  {
+    /**
+     * 他说了那个名字。
+     *
+     * ## 三件事同时成立才演，一件也不能少
+     *
+     *     手里真有那株草　　`item: odd-herb`——没挖的人没有东西给他看
+     *     他肯带你上后山　　`footing` 至少走到「带一段」
+     *     他还活着、在跟前　那是个真人，会老会死（`staged-people-die`）
+     *
+     * **第二条是这一卷的立场所在。** 认得出与认不出这件事，
+     * 不由资质决定、不由运气决定——**由「他肯不肯带你」决定**，
+     * 而那把尺子（`cultivators.ts`）跟修行没有关系。
+     *
+     * 一个挖到了草却没走到那一格的人，一辈子只知道「一株没见过的草」。
+     * **那不是失败分支，是绝大多数人的实情**：实测 600 世里
+     * 586 世一辈子没遇到他（随机走法）。
+     *
+     * ## ⚠️ 用 `in` 不用 `equals`，而且要 `repeatable`——两个都是踩出来的
+     *
+     * `Footing` 是有序五档，`weighUp` 一次最多挪一格、只往上不往下，
+     * 所以**「带一段」是个过路档**：走过它的人此刻已经在「教一点」了。
+     * 头一版写 `equals: '带一段'`，实测 600 世**演到 0 次**——
+     * 它只在一个瞬间成立，而年表未必恰好在那一步掷中这一卷。
+     *
+     * 那一版还漏了 `repeatable`。`tutor-words` 那一卷（同一个位置）
+     * 是「入口 + 卷内再掂量 + repeatable」的写法：**反复来，
+     * 直到某一回他把你挪上去**。少了它，掷不中就永远没有下一次。
+     *
+     * ## ⚠️ 第三条不能问 `present`——那是实测出来的
+     *
+     * 头一版写 `{ family: { id, alive: true, present: true } }`，
+     * **有心人 600 世里九次前提齐备，`present` 九次全是 false**。
+     *
+     * 因为陶仲在镇西药庐，玩家在村里——`present` 问的是「此刻在不在同一处」，
+     * 而**这一卷的场景本来就是「你上他那儿去」**。拿「已经在跟前」当前提，
+     * 等于要求这件事在它发生之前就已经发生了。
+     *
+     * 只问 `alive`：他还活着，你才走得成这一趟。他会老会死
+     * （`staged-people-die`），那一条是真的要守。
+     */
+    id: 'finding-named',
+    window: { from: 10, to: 45 },
+    requires: [
+      { item: 'odd-herb' },
+      { flag: { key: 'footing:herbalist-at-the-shed', in: ['带一段', '教一点'] } },
+      { family: { id: 'herbalist-at-the-shed', alive: true } },
+    ],
+    scene: 'finding:named',
+    weight: 30,
+    repeatable: true,
   },
 ]
