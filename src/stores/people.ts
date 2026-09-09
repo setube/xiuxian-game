@@ -3,6 +3,7 @@ import { computed, shallowRef } from 'vue'
 
 import { kinCall, neighbourCall } from '@/engine/address'
 import { createId } from '@/engine/id'
+import { rollSpan } from '@/engine/lifespan'
 import { pick, randomBetween } from '@/engine/random'
 import type {
   Acquaintance,
@@ -798,28 +799,76 @@ export const usePeopleStore = defineStore(
       if (years <= 0) return
       const next: Record<string, Person> = {}
       for (const [id, person] of Object.entries(roster.value)) {
-        // 修士不按凡人的岁数老死——他一百二十岁看着三十。他们怎么没，等内容写（山道上那个是伤重）
-        if (person.fate !== '在' || person.realm !== undefined) {
+        if (person.fate !== '在') {
           next[id] = person
           continue
         }
         const age = Math.max(0, world.time.year - person.bornYear)
-        // 上了年纪、底子又差的人，每年都有那么点可能过不去
-        const frailty = Math.max(0, age - 45) * 0.004 + Math.max(0, 50 - person.health) * 0.0016
+        /*
+         * 他能活多久。**天年跟境界是两格**（用户 2026-09-10 拍板）。
+         *
+         * ## 这一行从前是一句 `if`
+         *
+         * ```ts
+         * if (person.fate !== '在' || person.realm !== undefined) continue
+         * ```
+         *
+         * **「有境界」直接等于「不会老死」**——不分境界、不管多老。
+         * 库里那个 108 岁的修士因此永远不会没，而那不是任何一卷内容
+         * 决定的，是「他有 realm」这个事实决定的。
+         *
+         * 用户明确反对按境界填表（筑基 150 / 金丹 500），
+         * 而**那个实现比填表还粗一档**：填表至少还分境界。
+         *
+         * 更要紧的是它污染下游：将来真给谁加一笔正的 `lifespan`，
+         * 也**分不出他是「寿数真的被推远了」还是「有 realm 所以不老死」**。
+         *
+         * ## 现在：天年现掷，而修士的底子本来就厚
+         *
+         * 掷用的是玩家那一支同一个函数（`rollSpan`），
+         * 而修士的 `health` 立起来时就高——**他活得久是因为身子骨，
+         * 不是因为一个开关**。真正的「修行延寿」等 `lifespan` 那一格
+         * 有了第一个内容使用者再说，而那是这一轮之后的事。
+         *
+         * ⚠️ 掷完存回 `span`：**同一个人不能每年掷一次**，
+         * 那样他的天年会一直变，而「他还能活几年」就不是一个事实了。
+         */
+        const span = person.span ?? rollSpan(person.health)
         let fate: Fate = person.fate
         let diedAfter = 0
-        for (let i = 0; i < years; i += 1) {
-          if (Math.random() < frailty) {
-            fate = '殁'
-            diedAfter = i
-            break
+        /*
+         * 天年到了就是到了。
+         *
+         * 跟玩家那一侧同一条判法（`isSpent` 用 `>=` 不用 `===`）——
+         * 推一次可能跨好几年，判等的话跨过去的人就再也不会死了。
+         */
+        if (age >= span) {
+          fate = '殁'
+        } else {
+          // 天年没到，可上了年纪、底子又差的人每年都有那么点可能过不去
+          const frailty = Math.max(0, age - 45) * 0.004 + Math.max(0, 50 - person.health) * 0.0016
+          for (let i = 0; i < years; i += 1) {
+            if (age + i >= span) {
+              fate = '殁'
+              diedAfter = i
+              break
+            }
+            if (Math.random() < frailty) {
+              fate = '殁'
+              diedAfter = i
+              break
+            }
           }
         }
         next[id] =
           fate === person.fate
-            ? person
+            ? // 天年头一回掷出来就存回去——同一个人不能每年掷一个新的
+              person.span === undefined
+              ? { ...person, span }
+              : person
             : {
                 ...person,
+                span,
                 fate,
                 // 老病没的。年份按推到第几年算——推十年、第三年没的，就是第三年
                 death: {
