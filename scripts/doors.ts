@@ -141,9 +141,20 @@ const DEATH_STARTS_AT = 45
  * 区间取**上界**：跟底下那句「宁可高估」同一个立场——
  * 高估会多报几条让人看，低估会漏掉真的。
  */
-function agesOf(): { absolute: Map<string, number>; older: Map<string, number> } {
+/** 修士的天年：他比玩家早生几年、能活多久。两样都从 `cultivators.ts` 读 */
+interface Immortal {
+  bornBefore: number
+  span: number
+}
+
+function agesOf(): {
+  absolute: Map<string, number>
+  older: Map<string, number>
+  immortal: Map<string, Immortal>
+} {
   const absolute = new Map<string, number>()
   const older = new Map<string, number>()
+  const immortal = new Map<string, Immortal>()
 
   for (const name of readdirSync(join(ROOT, LIFE))) {
     if (!name.endsWith('.ts')) continue
@@ -190,7 +201,27 @@ function agesOf(): { absolute: Map<string, number>; older: Map<string, number> }
       if (!older.has(id)) older.set(id, span)
     }
   }
-  return { absolute, older }
+
+  /*
+   * 修士那一批：他们的天年写在 `content/cultivators.ts` 上（`span`），
+   * 而这一格 2026-09-09 才有——从前 `realm !== undefined` 直接跳过老死，
+   * 是一个开关；现在天年是一个量，跟玩家同一个 `rollSpan` 的区间。
+   *
+   * **他们不进 `older` 那张表**：`older` 记的是「比玩家大多少」，
+   * 而修士该问的是另一件事——**他的天年够不够长，长到这个窗口里死不了**。
+   *
+   * 陶仲：`bornBefore: 71` + `span: 200`。玩家窗口最多到 80，
+   * 他那时 151 岁——**离 200 还远**。所以「他会不会死在窗口里」的答案是不会，
+   * 而这跟他多老无关，跟他能活多久有关。
+   */
+  const cult = readFileSync(join(ROOT, 'src/content/cultivators.ts'), 'utf8')
+  for (const m of cult.matchAll(
+    /id:\s*'([\w-]+)',[\s\S]{0,600}?bornBefore:\s*(\d+),[\s\S]{0,400}?span:\s*(\d+)/g,
+  )) {
+    immortal.set(m[1]!, { bornBefore: Number(m[2]), span: Number(m[3]) })
+  }
+
+  return { absolute, older, immortal }
 }
 
 /**
@@ -314,6 +345,28 @@ function doors(): Door[] {
  * 底子那一项不算——判据不知道这个人的 health，**少算一点好过瞎猜一个**。
  */
 function deathOdds(door: Door, ages: ReturnType<typeof agesOf>): number | undefined {
+  /*
+   * 修士先答——**他问的不是同一件事**。
+   *
+   * 凡人那两路问「他多老了」，因为老死的概率跟岁数挂钩。
+   * 而修士的天年是内容层写死的一个数（`cultivators.ts` 的 `span`），
+   * 所以该问的是：**窗口末他到了没到那个数。**
+   *
+   * 陶仲：比玩家早生 71 年、`span: 200`。玩家窗口最多到 80，
+   * 他那时 151——离 200 还远，**这个窗口里他死不了**。
+   *
+   * ⚠️ 这一格 2026-09-09 才存在。从前 `people.ts` 是
+   * `realm !== undefined` 就跳过老死（一个开关），用户拍板改成
+   * 「天年现掷、跟玩家同一个函数」（一个量）之后，修士才第一次
+   * **会死**——而 `doors` 也才第一次算得出他们。
+   */
+  const holy = ages.immortal.get(door.who)
+  if (holy !== undefined) {
+    const 窗口末他多大 = holy.bornBefore + door.window[1]
+    // 天年之内就是活着。这一路不算概率——那个数是写死的，不是掷出来的
+    return 窗口末他多大 >= holy.span ? 1 : 0
+  }
+
   const older = ages.older.get(door.who)
   const absolute = ages.absolute.get(door.who)
 
@@ -399,13 +452,25 @@ console.log(`  库里 ${all.length} 处事件级 requires 要求某人活着。\
   if (锁死.length > 0) {
     console.log(`  ✗ ${锁死.length} 处：一个跟这条线无关的人死了，整卷就再也不演：`)
     for (const one of 锁死) {
+      const holy = ages.immortal.get(one.who)
       const older = ages.older.get(one.who)
+      /*
+       * 三种人三种说法。⚠️ 头一版这儿只有后两种，于是修士那一路
+       * 印出「出场 undefined 岁，末了 NaN 岁」——**判据算对了，话说错了**。
+       * 打断实验（把陶仲的 `span` 改到 80）当场照出来的。
+       */
       const 出处 =
-        older !== undefined ? `比玩家大 ${older} 岁` : `出场 ${ages.absolute.get(one.who)!} 岁`
+        holy !== undefined
+          ? `比玩家早生 ${holy.bornBefore} 年，天年 ${holy.span}`
+          : older !== undefined
+            ? `比玩家大 ${older} 岁`
+            : `出场 ${ages.absolute.get(one.who)!} 岁`
       const 末了 =
-        older !== undefined
-          ? older + one.window[1]
-          : ages.absolute.get(one.who)! + (one.window[1] - one.window[0])
+        holy !== undefined
+          ? holy.bornBefore + one.window[1]
+          : older !== undefined
+            ? older + one.window[1]
+            : ages.absolute.get(one.who)! + (one.window[1] - one.window[0])
       console.log(
         `      ${one.file} 的 ${one.event}：要求 ${one.who} 活着` +
           `（${出处}，窗口 ${one.window[0]}–${one.window[1]}，末了 ${末了} 岁，` +
