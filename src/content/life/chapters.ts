@@ -14,6 +14,7 @@ import { illnessEvents, illnessScenes } from './illness'
 import { inquiryEvents, inquiryScenes } from './inquiry'
 import { kinEvents, kinScenes } from './kin'
 import { kindredEvents, kindredScenes } from './kindred'
+import { descendEvents, descendScenes } from './descend'
 import { leavingEvents, leavingScenes } from './leaving'
 import { meetingEvents, meetingScenes } from './meeting'
 import { awayEvents, awayScenes } from './away'
@@ -644,6 +645,35 @@ export const CHAPTERS: readonly Chapter[] = [
       '留下你不等于好结局：出了师的人回来打下手，日子真的换了（living: hired），可那是降格',
     ],
     marks: ['living', 'household', 'chronicle'],
+  },
+
+  /**
+   * 认生：隔了两辈的那个孩子，不知道该怎么叫你。
+   *
+   * 32.md 通篇写的是「你活了六百年回故乡」，而实测终年 p50=62、
+   * **活过九十的零个**——那个人在这个世界里不存在。
+   *
+   * 可它的核心断言不需要六百年：**血缘存在 ≠ 社会关系存在 ≠ 情感关系存在。**
+   * 侄孙就够了——一个五十八岁的人和一个十岁的、姓同一个姓的孩子，
+   * 血缘是实的，共同经历是零。
+   *
+   * 这一卷的全部力气花在**不写「亲切」两个字**上（32.md：那是假感情）。
+   * 写的是三件具体的事：他躲到他娘身后、他不知道该叫什么、
+   * 而你也想不起该说什么。
+   */
+  {
+    id: 'descend',
+    scenes: descendScenes,
+    events: descendEvents,
+    called: ['年表'],
+    to: [],
+    age: [48, 70],
+    purpose: [
+      '血缘存在不等于熟识存在：关系边上有名分，两个人之间没有——他叫不出口',
+      '不写亲切也不写疏远，写具体的事：他低头扒饭，你问了一句就没再问',
+      '哥挑给他一块肉，那孩子才抬头——祖孙跟叔侄不是一回事，那一句就是分别',
+    ],
+    marks: ['chronicle'],
   },
 
   /**
