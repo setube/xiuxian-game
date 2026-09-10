@@ -38,7 +38,7 @@ import './lib/seeded'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { CULTIVATORS } from '../src/content/cultivators'
-import { lifeScenes } from '../src/content/life'
+import { lifeEvents, lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { makePerson, usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
@@ -243,6 +243,39 @@ if (asked.length === 0) {
       ).length
     }
 
+    /*
+     * ⚠️ **只验递进是不够的：一句在窗口外恒假，这一问照样绿。**
+     *
+     * 2026-09-10 实撞：`mountain:unaged` 里那句「认识四十年」要玩家
+     * 五十三岁，而那一卷窗口 30–49——**一个人也够不着**，
+     * 是 `seen.ts` 印的 `0.0%` 露出来的，这一问当时全绿。
+     *
+     * 因为这一问摆局跑，**不受年表窗口限制**：在它眼里五十三岁读得到。
+     * 所以补一条——**每一句的门槛都得落在这一卷的窗口里**。
+     */
+    const scene = 'mountain:unaged'
+    const chapter = lifeEvents.find((one) => one.scene === scene)
+    if (chapter === undefined) {
+      wrong.push(`年表里没有一卷指向 ${scene}——三层察觉挂在它上头`)
+    } else {
+      const upTo = chapter.window?.to ?? 999
+      const node = lifeScenes[scene]?.nodes.open
+      for (const one of node?.seen ?? []) {
+        for (const cond of one.requires) {
+          const need = cond.unaged?.knownFor?.atLeast
+          if (need === undefined) continue
+          // 认识 need 年那一刻玩家多大：十三岁认识他
+          const atAge = MET_THE_SHED_AT + need
+          if (atAge > upTo) {
+            wrong.push(
+              `「${one.text.slice(0, 14)}…」要认识 ${need} 年（玩家 ${atAge} 岁），` +
+                `而 ${scene} 的窗口到 ${upTo} 岁就关了——这一句一个人也够不着`,
+            )
+          }
+        }
+      }
+    }
+
     const steps = [20, 35, 45, 60].map((age) => ({ age, read: readAt(age) }))
     console.log('\n【认识得越久，读出来的越重】\n')
     for (const one of steps) {
@@ -329,8 +362,12 @@ if (asked.length === 0) {
     const at50 = walk(50)
     const at60 = walk(60)
     console.log('\n【他还在那里称药：两支各走到哪儿】\n')
-    console.log(`  玩家 50 岁（认识 ${50 - MET_THE_SHED_AT} 年）  ${at50.nodes.join('→')}　读到 ${at50.seen} 句`)
-    console.log(`  玩家 60 岁（认识 ${60 - MET_THE_SHED_AT} 年）  ${at60.nodes.join('→')}　读到 ${at60.seen} 句`)
+    console.log(
+      `  玩家 50 岁（认识 ${50 - MET_THE_SHED_AT} 年）  ${at50.nodes.join('→')}　读到 ${at50.seen} 句`,
+    )
+    console.log(
+      `  玩家 60 岁（认识 ${60 - MET_THE_SHED_AT} 年）  ${at60.nodes.join('→')}　读到 ${at60.seen} 句`,
+    )
 
     if (!at50.nodes.includes('thirty')) {
       wrong.push(`认识 ${50 - MET_THE_SHED_AT} 年没走到 thirty，停在 ${at50.nodes.join('→')}`)
