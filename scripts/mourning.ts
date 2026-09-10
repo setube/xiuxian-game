@@ -106,6 +106,61 @@ function stagedAway(ask: boolean, make: () => Staged | null = child): { s: Stage
     applyEffects([{ type: 'undertake', undertaking: 'mourning', who: 'elder' }])
     if (character.undertakings.length !== before)
       wrong.push('爹娘都不在了，undertake who: elder 却落了一条')
+    /**
+     * 上面问的是落人的效果不落。而同一批里的 `chronicle` 不受这条纪律管——
+     * 它的 `text` 不在 `aimAtPerson` 那张字段表里，`{elder}` 落到
+     * `snapshotCall` 的兜底叫法「家里的大人」，照落。
+     *
+     * ⚠️ 这里**不**加一条「兜底叫法不该出现」的断言，写过一版又撤了。
+     * 直接 `applyEffects` 一条 chronicle 是绕过入场条件去落效果，
+     * 那种断言问的是「让 chronicle 也随快照落空」——而那条路是明确没选的：
+     * 它会静默吞掉一行编年，而「什么也没记」跟「记对了」在报表上一模一样。
+     *
+     * 真正拦住那场没有发生的死的是**入场条件**，见紧接着那一段的三头。
+     * 分清这两者花了一次红灯：断言绿不绿，取决于它问的是不是修法真正落在的那一层。
+     */
+  }
+  /**
+   * 而真正拦住它的是那一卷的入场条件，不是这一句的措辞。
+   *
+   * `need-illness` 从前问 `{ bond: { kind: '抚养', alive: true } }`——「活着」，
+   * 而正文里的 `{elder}` 走 `idByBond` → `isNearby`——「在身边」。两把尺子分家，
+   * 于是爹活着而不在身边的时候这一卷照开、快照落空。加 `near: true` 并回一把。
+   *
+   * 三头都要问，因为只问中间那一头分不出「修好了」和「没撞上」：
+   * 都在家该开、都不在身边该不开、爹在外而娘在家仍该开（`{elder}` 落到娘身上）。
+   */
+  {
+    /**
+     * ⚠️ 条件从事件本身取，不在这儿手写一份。
+     * 头一版写的是 `[{ bond: { kind: '抚养', alive: true, near: true } }]`——
+     * 一份副本，问的永远是我打字打出来的那句话。把 `illness.ts` 的 `near`
+     * 撤掉去打断它，**三头全绿**：被测系统改了，判据不动。
+     * 「判据的标准要从系统取」那一条，这次栽在最后一步。
+     */
+    const req = lifeEvents.find((one) => one.id === 'need-illness')!.requires!
+    const both = child()
+    if (!both) wrong.push('掷不出局（爹娘都在家）')
+    else if (!meetsAll(req)) wrong.push('爹娘都在家，这一卷却不开')
+    const away = child()
+    if (!away) wrong.push('掷不出局（两个长辈都不在身边）')
+    else {
+      applyEffects([{ type: 'person', id: 'father', place: '邻县 · 河堤工地' }])
+      applyEffects([{ type: 'person', id: 'mother', place: '娘家' }])
+      if (meetsAll(req)) wrong.push('两个长辈都不在身边，这一卷还开着——那就会记下一场没有发生的死')
+    }
+    const half = child()
+    if (!half) wrong.push('掷不出局（爹在外而娘在家）')
+    else {
+      applyEffects([{ type: 'person', id: 'father', place: '邻县 · 河堤工地' }])
+      if (!meetsAll(req)) wrong.push('爹在外而娘在家，这一卷该照开（{elder} 落到娘身上）')
+      else {
+        const at = half.world.chronicle.length
+        fatherDiesOfIllness('watch')
+        const said = half.world.chronicle.slice(at).find((one) => one.text.includes('没能熬过去'))?.text ?? ''
+        if (!said.startsWith('娘')) wrong.push(`爹在外，没了的该是在身边那位（娘），编年写的是「${said}」`)
+      }
+    }
   }
   if (wrong.length > 0) {
     console.log(`\n  ✗ 一、同一刻的人：${wrong[0]}（共 ${wrong.length} 处）`)
@@ -360,6 +415,8 @@ function stagedAway(ask: boolean, make: () => Staged | null = child): { s: Stage
   )
   for (const one of lives) {
     for (const line of one.misnamed) wrong.push(`编年说没了的不是没了的那个人：「${line}」`)
+    for (const line of one.unnamed)
+      wrong.push(`编年记了一场没有发生的死（没人殁、没有守孝，只有这一行兜底叫法）：「${line}」`)
     for (const who of one.mourningLiving) wrong.push(`给活人守孝：${who}`)
     for (const who of one.mourningRole) wrong.push(`守孝记的是角色名不是人：${who}`)
   }

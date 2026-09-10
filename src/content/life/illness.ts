@@ -298,7 +298,32 @@ export const illnessEvents: readonly LifeEvent[] = [
      */
     id: 'need-illness',
     window: { from: 8, to: 16 },
-    requires: [{ bond: { kind: '抚养', alive: true } }],
+    /**
+     * `near: true` 不是「顺手加严一点」，少了它这一卷会记下一场没有发生的死。
+     *
+     * 从前这儿只问 `alive: true`。而卷里那三条效果——`person elder 殁`、
+     * `undertake who: 'elder'`、`chronicle '{elder}那年入冬没能熬过去'`——
+     * 前两条走 `aimAtPerson`，换不到真人整条不落；`chronicle` 的 `text` 不在那张
+     * 字段表里，`{elder}` 落到 `snapshotCall` 的兜底「家里的大人」，照落。
+     *
+     * 于是爹去了邻县修河堤（`hardship.ts` 那条差役）、娘也不在身边的那一小片里：
+     * 没人殁、没有守孝、编年上多出一行「家里的大人那年入冬没能熬过去」。
+     * 摆局印出来的三个数是「新增死者 0、守孝 0、编年 1」；四千世真世扫到两次。
+     *
+     * 两把尺子从前不是同一把：入场问「活着」（`bond.alive`），
+     * 正文里的 `{elder}` 问「在身边」（`idByBond` 走 `isNearby`，比的是
+     * 那个人的 place 跟你家在不在一处）。`near: true` 把它们并回一把。
+     *
+     * 为什么不是让 `chronicle` 也随快照落空而整条不落：那会静默吞掉一行编年，
+     * 而「什么也没记」跟「记对了」在报表上一模一样。这一节的四段正文
+     * （「办丧事的那几天你几乎没有合眼」）全部预设那个人在场——
+     * 不是措辞的事，是整节都不该在无人在场时演。
+     *
+     * `near` 在多个 id 上是 some，农家里生父与抚养是同一个人；
+     * 娘那条边不在这个条件里，而 `ROLE_ORDER.elder` 第二位正是「抚养」
+     * ——库里同族的那十来处条件用的都是它。
+     */
+    requires: [{ bond: { kind: '抚养', alive: true, near: true } }],
     scene: 'need:illness',
     weight: 6,
   },

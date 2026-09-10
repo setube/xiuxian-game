@@ -20,8 +20,17 @@ import { beOf } from '../origin'
 export interface MournedLife {
   /** 家里没了的人：谁、怎么没的 */
   deaths: { id: string; cause: string }[]
-  /** 编年里「没能熬过去」那句点的名不是没了的人 */
+  /** 编年里「没能熬过去」那句点的名不是没了的人（点了一个活人） */
   misnamed: string[]
+  /**
+   * 编年里「没能熬过去」那句落成了兜底叫法。
+   *
+   * 跟 `misnamed` 分开报，因为它坏得更重：兜底叫法出现意味着那一刻
+   * 快照是空的，而落人的效果（`person 殁`、`undertake`）走 `aimAtPerson`
+   * 换不到人整条不落——于是没人殁、没有守孝，只有这一行字。
+   * `misnamed` 是名字点错了，这一个是那场死根本没发生。
+   */
+  unnamed: string[]
   /** 守孝记录上的活人 */
   mourningLiving: string[]
   /** 守孝记录上的角色名 */
@@ -57,6 +66,7 @@ function liveALife(): MournedLife {
   const out: MournedLife = {
     deaths: [],
     misnamed: [],
+    unnamed: [],
     mourningLiving: [],
     mourningRole: [],
     mourned: 0,
@@ -73,7 +83,10 @@ function liveALife(): MournedLife {
     if (at <= 0) continue
     const call = entry.text.slice(0, at)
     const named = Object.values(people.known).find((one) => one.calls === call)
-    if (!named || people.isAlive(named.person)) out.misnamed.push(entry.text)
+    // 认不出这个叫法 = 它是 snapshotCall 的兜底（「家里的大人」那一类），
+    // 不是人口册上任何一个人的称呼
+    if (!named) out.unnamed.push(entry.text)
+    else if (people.isAlive(named.person)) out.misnamed.push(entry.text)
   }
   for (const one of character.undertakings) {
     if (one.id !== 'mourning') continue

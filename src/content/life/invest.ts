@@ -154,7 +154,17 @@ export const investScenes: SceneLibrary = {
         id: 'road-with',
         onEnter: [
           { type: 'time', months: 2 },
-          { type: 'chronicle', text: '你之国就藩，{dam}那边的乳母跟着走了。' },
+          /**
+           * 这一句从前写「{dam}那边的乳母」。`{dam}` 走 `snapshotCall`，
+           * 宫里长大的皇子生母多半不在身边，空的时候兜底成「家里的大人」
+           * ——「家里的大人那边的乳母」。同 `illness.ts` 那一处是一族：
+           * `chronicle` 的 `text` 不受 `aimAtPerson` 管，落空了照落。
+           *
+           * 这一节跟那一处不同，它本身该演：主体是乳母（上头那个选项
+           * 已经问了她还在），生母是谁与这件事无关。所以修的是措辞、
+           * 不是条件——不写那个记号就不会落空。
+           */
+          { type: 'chronicle', text: '你之国就藩，奶大你的那个人跟着走了。' },
         ],
         blocks: [
           { kind: 'narration', text: '出京那天走了整整一个上午才出城。' },
