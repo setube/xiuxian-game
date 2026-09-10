@@ -74,7 +74,6 @@ const KINDRED_SCENES = [
   'kindred:mourning',
 ] as const
 
-
 function live(): Lived {
   setActivePinia(createPinia())
   const household = useHouseholdStore()
@@ -160,7 +159,9 @@ function live(): Lived {
 
     // 一、老屋的事发生了没：看正文，不看卷名（无选项的卷进去就出来）
     const kindredStep =
-      fresh.some((l) => KINDRED_TEXT.test(l)) || chose.startsWith('kindred:') || chose.startsWith('nephew:')
+      fresh.some((l) => KINDRED_TEXT.test(l)) ||
+      chose.startsWith('kindred:') ||
+      chose.startsWith('nephew:')
     if (kindredStep || out.brotherAtDivide === null) {
       // 这一步动没动好感是这一步的事；从这一步起按新的基线量「没事的年」——
       // 旧基线下采的那些年作废，不然基线一挪，早先采的就都成了「动过」
@@ -181,7 +182,8 @@ function live(): Lived {
     if (!out.nephewGrown && fired('kindred-nephew-grown')) out.nephewGrown = true
     if (!out.thirdGeneration && fired('kindred-grandnephew')) out.thirdGeneration = true
     if (!out.brotherTurned && fired('kindred-brother-turns')) out.brotherTurned = true
-    if (!out.nephewRestless && (fired('nephew-restless') || fired('nephew-restless-hungry'))) out.nephewRestless = true
+    if (!out.nephewRestless && (fired('nephew-restless') || fired('nephew-restless-hungry')))
+      out.nephewRestless = true
     if (!out.nephewWent && world.hasFlag('nephew-went')) out.nephewWent = true
 
     // 二、老屋在过日子。头一回见到他们时量住在哪一户；这一步里就夭折了的（时序跨了年）不量——
@@ -224,11 +226,17 @@ function live(): Lived {
           wife: wife.temper,
           mother: mother.temper,
         }
-        out.motherAcrossWedding = { before: motherBefore, after: people.known['mother']?.affinity ?? null }
+        out.motherAcrossWedding = {
+          before: motherBefore,
+          after: people.known['mother']?.affinity ?? null,
+        }
       }
     }
     if (out.quarrel === null && fresh.some((l) => l.includes('翻了脸'))) {
-      out.quarrel = { before: termsBefore, after: people.termsBetween('brother-wife', 'mother') ?? null }
+      out.quarrel = {
+        before: termsBefore,
+        after: people.termsBetween('brother-wife', 'mother') ?? null,
+      }
     }
     if (out.mourningLine === null && fresh.some((l) => l.includes('老屋捎话来，娘没了'))) {
       const line = fresh.some((l) => l.includes('是嫂子在跟前'))
@@ -241,7 +249,9 @@ function live(): Lived {
 
     // 七、债
     const owes = (): boolean =>
-      people.ious.some((one) => one.debtor === 'brother' && one.creditor === 'me' && one.settled === null)
+      people.ious.some(
+        (one) => one.debtor === 'brother' && one.creditor === 'me' && one.settled === null,
+      )
     if (chose === 'kindred:borrow#open:lend') out.iouAfterLend = owes()
     if (chose === 'kindred:borrow#open:refuse') out.iouAfterRefuse = owes()
     if (out.repaid === null) {

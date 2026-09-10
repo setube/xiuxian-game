@@ -50,7 +50,12 @@ import { play, stage } from './lib/staged'
 
 /** 三类目的，和各自那一句只有他读得到的话 */
 const AIMS: readonly { leaning: string; node: string; says: string; why: string }[] = [
-  { leaning: 'heal', node: 'for-long', says: '守在旁边', why: '长生：他见过人怎么没的，本想学看病' },
+  {
+    leaning: 'heal',
+    node: 'for-long',
+    says: '守在旁边',
+    why: '长生：他见过人怎么没的，本想学看病',
+  },
   { leaning: 'strong', node: 'for-strong', says: '说了不算', why: '权力：不愿再被人那样看着' },
   { leaning: 'rich', node: 'for-rich', says: '经不起', why: '财富：家底经不起一场病' },
 ]
