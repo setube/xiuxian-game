@@ -20,7 +20,29 @@
  */
 import { currentSeed, installSeed, seedFromEnv } from './seed'
 
+/**
+ * ## 这一行为什么带上 pid 和时刻
+ *
+ * 用户 2026-09-10 定的：**「哪个进程属于哪次验证」不该靠人脑追。**
+ *
+ * 那天两个人在同一件事上各错一次：
+ *
+ *     我   说「跑完了」，而说完之后又跑了两次打断验，没宣告
+ *     17   查到一个 `bun scripts/lifelong.ts` 进程，推断是我说的那一次
+ *
+ * **两边都没说错**——那个 pid 确实是我的，只是不是我说的那一次。
+ * 一天里同一支门禁会跑好几轮（初测 → 打断验 → 还原 → 同种子复跑），
+ * 而输出里除了种子没有任何东西能把它们分开：**同一颗种子重跑两遍，
+ * 两份输出一模一样。**
+ *
+ * 现在这一行印三样：种子（复现用）、pid（对得上进程表）、时刻（分得开轮次）。
+ * 跨会话报红时把这一整行抄过去，对方就不用问「你说的是哪一次」。
+ */
 if (currentSeed() === undefined) {
   const seed = installSeed(seedFromEnv())
-  console.log(`种子 ${seed}`)
+  const at = new Date()
+  const hh = String(at.getHours()).padStart(2, '0')
+  const mm = String(at.getMinutes()).padStart(2, '0')
+  const ss = String(at.getSeconds()).padStart(2, '0')
+  console.log(`种子 ${seed}　pid ${process.pid}　${hh}:${mm}:${ss}`)
 }
