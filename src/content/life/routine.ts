@@ -684,6 +684,13 @@ export const routineScenes: SceneLibrary = {
               { type: 'time', years: 3 },
               { type: 'attribute', key: 'will', delta: 5 },
               { type: 'household', standing: 2, debt: -3 },
+              /*
+               * 壮年这一段从前一处 `reflect` 也没有（成年那六条是 2026-09-10 加的，b516e4c）。
+               * 而「当了家」中位落在三十岁——正是壮年；处境类的火种（`leanings.ts` 里读
+               * `heads-the-house` 那几根）写在那儿，没有 reflect 就一辈子点不着。
+               * 五个选项各加一处，跟成年那六条同一个口径。
+               */
+              { type: 'reflect' },
             ],
             next: null,
           },
@@ -704,7 +711,7 @@ export const routineScenes: SceneLibrary = {
             requires: [{ bond: { kind: '配偶', alive: true } }, { age: { atMost: 42 } }],
             hint: '家里人也在等这件事',
             echo: '家里都盼着添个人口。',
-            effects: [{ type: 'time', years: 1 }],
+            effects: [{ type: 'time', years: 1 }, { type: 'reflect' }],
             next: null,
           },
           {
@@ -721,6 +728,7 @@ export const routineScenes: SceneLibrary = {
               { type: 'attribute', key: 'will', delta: 4 },
               { type: 'relation', id: 'mother', name: '母亲', delta: 10 },
               { type: 'household', standing: -3 },
+              { type: 'reflect' },
             ],
             next: null,
           },
@@ -730,7 +738,7 @@ export const routineScenes: SceneLibrary = {
             requires: [{ knowledge: 'literacy' }],
             hint: '你手上这点东西，总得有人接着',
             echo: '你收了个徒弟。',
-            effects: [{ type: 'time', years: 2 }],
+            effects: [{ type: 'time', years: 2 }, { type: 'reflect' }],
             next: 'teach',
           },
           {
@@ -744,6 +752,7 @@ export const routineScenes: SceneLibrary = {
               { type: 'attribute', key: 'insight', delta: 6 },
               { type: 'attribute', key: 'will', delta: 4 },
               { type: 'attribute', key: 'fortune', delta: 3 },
+              { type: 'reflect' },
             ],
             next: null,
           },

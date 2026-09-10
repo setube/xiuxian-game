@@ -438,6 +438,46 @@ export const SPARKS: readonly Spark[] = [
     chance: 0.3,
     text: '米缸你揭开看了一眼，又盖上了。',
   },
+  /*
+   * ## 成年段的三根：读的是处境，不是事件，所以不 `once`
+   *
+   * 上头八根加起来正好 18，「反复」门槛也是 18——要够到得八根全中，而分值最大的三根是 `once`
+   * （2026-09-10 实测：200 世 1 世够到；成年段加了 `reflect` 之后 `rich` 几乎没动，`strong` 动了）。
+   * 病灶不在门槛、不在 `once`，在**成年段没有会立旗的家计事**：`family-borrowed`／`knew-hunger`／`sold-things`
+   * 全是童年荒年那一卷落的，十六岁之后真世 200 世里立起来 0–2 次——照名字写火种去读它们，六根全空转（79 量的）。
+   *
+   * 所以这三根读的是真世里确实会立的旗（300 世随机：当了家 153、定过亲 132、添过丁 85），
+   * 而且写成**处境**：当了家这件事影响他后半辈子，每一回停下来掂量（壮年那几卷的 `reflect`）都可能
+   * 多想一分——不 `once`，靠 `chance` 压着，一年一小分，三十年攒下来才是「这件事影响他三十年」。
+   * `once` 留给真正一次性的事（爹为着一笔债走了）。
+   *
+   * 措辞对所有 living 开（`requires` 型火种人人读得到，`upbringing.ts` 按全体判）：不写账本、米缸、
+   * 收成那类点了人家的词。
+   */
+  {
+    id: 'the-house-is-yours',
+    leaning: 'rich',
+    weight: 2,
+    requires: [{ flag: { key: 'heads-the-house' } }],
+    chance: 0.3,
+    text: '这一户如今是你当家。年底那几笔数，你翻来覆去算了好几遍。',
+  },
+  {
+    id: 'one-more-mouth',
+    leaning: 'rich',
+    weight: 2,
+    requires: [{ flag: { key: 'newborn-lives', equals: '活' } }],
+    chance: 0.25,
+    text: '屋里多了一口人吃饭。你算了算，明年得比今年多攒一些。',
+  },
+  {
+    id: 'what-the-wedding-cost',
+    leaning: 'rich',
+    weight: 1,
+    requires: [{ flag: { key: 'betrothed' } }],
+    chance: 0.15,
+    text: '成亲那一年花掉的，你心里一直记着那个数。',
+  },
 
   // ============================================================
   // 想活得久一点
