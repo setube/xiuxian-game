@@ -53,6 +53,20 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  * 它是 28.md 那句「凡人认为修仙是为了长生」的第一个凡间入口：见过一个不老的人，
  * 「想活得久一点」那个愿望多一根火种（`wishes.ts`）。不通向修行——愿望不必通向任何地方。
  *
+ * ## 第四片：造册那年里长来药庐——官府看得见的修士是什么
+ *
+ * 地基文档九问里「官府管不管得了低阶修士」那一行的第一个使用者。口径是「管不着，也不知道要管」：
+ * 低阶修士在凡间不显形，药庐那位在里长的册子上是一户寄籍的医家。这一卷把那句话演出来：
+ * 造册那年里长挨着门问人口，到药庐问屋里几口、多大年纪，他答「四十五」（`seemsAge: 45`，
+ * 一个凡人看他就是这个岁数），里长写了，走了。**官府知道的就是册子上那一行。**
+ *
+ * 玩家在场。已经发觉他不老的人读出「你知道他不是四十五」（见过·确信），没发觉的读出
+ * 「你想他看着差不多」（见过·猜想）——同一行册子，两个人读出两件事。谁也不会去纠正里长：
+ * 一个不老的人在官府眼里是四十五岁的医家，这件事既没有人知道，也没有人要管。
+ *
+ * 里长不立人（他是轮役的差，十年换几个人；能钉户就别钉人），正文只写「里长」。
+ * 造册十年一回，引擎没有绝对年周期的条件格，用 `chance` 表达它的稀——不为这一卷建周期。
+ *
  * ## 为什么挂在药庐那条上，不挂在「觉出了一点什么」上
  *
  * 52 建议这一片从 flicker 之后起头。量过（2026-09-09，600 世有心人）：觉出了什么 9 世，
@@ -503,6 +517,76 @@ export const mountainScenes: SceneLibrary = {
   },
 
   /**
+   * 造册那年，里长来药庐。
+   *
+   * 官府视角的修士：册子上一个四十五岁的医家。玩家知不知道那不是真的，由他发觉过「他不老」没有定。
+   * 这一卷没有选项——纠正里长这条路不写：没有人会去跟官府说「他其实不止四十五」，
+   * 那是「别出去乱说」那条规矩的另一面，也是「不显形」的意思。
+   */
+  'mountain:census': {
+    id: 'mountain:census',
+    title: '药庐 · 造册',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [{ type: 'time', days: 1 }],
+        blocks: [
+          { kind: 'narration', text: '那年秋后造册，里长挨着门问人口。药庐这边他是最后来的。' },
+          { kind: 'narration', text: '他站在门口没进来，问屋里几口，姓什么，多大年纪。' },
+          { kind: 'dialogue', text: '「四十五。」' },
+          { kind: 'narration', text: '里长在册子上写了，又问了一句是不是行医的。他说是。里长走了。' },
+        ],
+        branches: [{ requires: [{ knowledge: 'he-does-not-age' }], next: 'you-know' }],
+        next: 'plain',
+      },
+
+      /** 发觉过他不老的：那一行册子是假的，而你什么也没说 */
+      'you-know': {
+        id: 'you-know',
+        onEnter: [
+          {
+            type: 'knowledge',
+            id: 'what-the-register-says',
+            title: '册子上的他',
+            summary: '官府的册子上，药庐那位是个四十五岁的医家。你知道他不是四十五。',
+            category: '世事',
+            contact: '见过',
+            interpretation: '确信',
+          },
+          { type: 'chronicle', text: '造册那年，药庐那位报了四十五。', tone: 'deep' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '四十五。你头一回进这扇门的时候他就不止四十五了。' },
+          { kind: 'narration', text: '册子合上了。上头写着一个四十五岁的医家。官府知道的就是这个。' },
+          { kind: 'narration', text: '他低头接着称药。你也低头翻你的药，谁也没说什么。', tone: 'faint' },
+        ],
+      },
+
+      /** 没发觉的：他看着差不多。这一行册子在你眼里也是真的 */
+      plain: {
+        id: 'plain',
+        onEnter: [
+          {
+            type: 'knowledge',
+            id: 'what-the-register-says',
+            title: '册子上的他',
+            summary: '造册那年药庐那位报了四十五。你想他看着差不多。',
+            category: '世事',
+            contact: '见过',
+            interpretation: '猜想',
+          },
+          { type: 'chronicle', text: '造册那年，药庐那位报了四十五。' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '四十五。你想他看着差不多，也许还年轻些。' },
+          { kind: 'narration', text: '里长走了，他低头接着称药。', tone: 'faint' },
+        ],
+      },
+    },
+  },
+
+  /**
    * 夜里，{call:spouse}问起药庐那边。
    *
    * 跟自家人说，那件事留在家里——听完只说一句「别跟旁人说」。这一条没有门内的后果，
@@ -725,6 +809,25 @@ export const mountainEvents: readonly LifeEvent[] = [
     chain: 'tutelage',
     weight: 5,
     chance: 0.4,
+  },
+  {
+    /**
+     * 造册那年里长来药庐。要你在药庐里（使唤往后）、他还在、没被赶出去。十六岁起：造册问的是户口，
+     * 一个在别人家做活的孩子不会被当成那一户的人问到——要长到能站在屋里翻药、里长问人口时数得上的岁数。
+     * 造册十年一回：引擎没有绝对年周期，`chance: 0.15` 表达它的稀。不 `repeatable`——一辈子读一回就够。
+     */
+    id: 'mountain-census',
+    window: { from: 16, to: PRIME_UP },
+    requires: [
+      // 药庐那位（herbalist-at-the-shed）在这一卷里答里长的话——他得还在（天年在他身上，`Cultivator.span`）
+      { family: { id: SHED, alive: true } },
+      { flag: { key: FOOTING, in: [...AT_THE_SHED] } },
+      { flag: { key: 'shut-out-by-the-shed', absent: true } },
+    ],
+    scene: 'mountain:census',
+    chain: 'tutelage',
+    weight: 3,
+    chance: 0.15,
   },
   {
     /**
