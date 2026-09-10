@@ -99,17 +99,34 @@ const rounds = await Promise.all(
   }),
 )
 
+/**
+ * 种子那一行现在印三样：种子、pid、时刻（`lib/seeded.ts`，2a37e3f）——后两样每一回都不同，
+ * 而这一支比的是整份输出逐字节一样。加 pid 那一笔查过「没有判据在解析这一行」（grep `startsWith('种子')`
+ * 全空），漏了这一支：它不解析那一行，它比整份——一个不读那一行内容、只比两回输出是否相等的判据，
+ * 任何 grep 都找不到它。标准「有没有人读这一行」本身画窄了，replay 在它射程外（e2 的话）。
+ * 同种子两回从第 1 行起分岔，全套当场红。
+ *
+ * 比之前把那一行抹回只剩种子。只抹这一行：别处要是也印了 pid 或挂钟，照样该红——那正是这一支要抓的。
+ * 不改成印到 stderr：这一支有意把 stderr 也收进来比（崩溃也要两回一样），印到 stderr 一样得抹。
+ * 验收两头：抹掉之后同种子两回相同；异种子仍不同（别把「变」也抹没了）。
+ */
+const withoutRunMarks = (out: string): string =>
+  out.replace(/^(种子 \S+)　pid \d+　\d\d:\d\d:\d\d$/gm, '$1')
+
 for (const { pair, first, second, other } of rounds) {
-  const label = `${pair.name}（${pair.shards === '1' ? '不分片' : `${pair.shards} 片`}，${first.out.split('\n').length} 行）`
-  if (first.out !== second.out) {
-    const a = first.out.split('\n')
-    const b = second.out.split('\n')
+  const firstOut = withoutRunMarks(first.out)
+  const secondOut = withoutRunMarks(second.out)
+  const otherOut = withoutRunMarks(other.out)
+  const label = `${pair.name}（${pair.shards === '1' ? '不分片' : `${pair.shards} 片`}，${firstOut.split('\n').length} 行）`
+  if (firstOut !== secondOut) {
+    const a = firstOut.split('\n')
+    const b = secondOut.split('\n')
     const at = a.findIndex((line, i) => line !== b[i])
     console.log(`  ✗ ${label}：同种子两回不一样，第 ${at + 1} 行起分岔：`)
     console.log(`      甲：${a[at] ?? '（无）'}`)
     console.log(`      乙：${b[at] ?? '（无）'}`)
     failed += 1
-  } else if (first.out === other.out) {
+  } else if (firstOut === otherOut) {
     console.log(`  ✗ ${label}：换了种子输出没变——这把尺子量的不是种子。`)
     failed += 1
   } else if (first.code !== second.code) {
