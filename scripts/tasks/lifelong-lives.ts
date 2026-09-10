@@ -60,6 +60,17 @@ export interface Tally {
   metCultivation: number
   /** 出生那一刻掷定的天年 */
   rolled: number[]
+  /**
+   * 咽气那一刻的天年。**跟 `rolled` 不是一回事**——
+   * 天年在人生中会被 `{ type: 'lifespan' }` 改（老年那一卷的
+   * 「再走一趟远路」六成人吃到，最多 -8），所以「有没有夭折」只能拿这个数问，
+   * 拿 `rolled` 问会把每一个选过它的人全算成夭折。
+   *
+   * 2026-09-10 两个人各栽一次：我拿开局的 span 跟终年比，
+   * 得出「722/1500 没活到天年」；a8 据此以为库里有夭折机制。
+   * **而 `engine/lifespan.ts:32` 明写着库里一个夭折也没有，那是有意的设计。**
+   */
+  spanAtDeath: number[]
   /** 咽气那一年的岁数 */
   died: number[]
   /** 总共按了多少下 */
@@ -100,6 +111,7 @@ export function runShard(runs: number): Tally {
     partings: new Map(),
     metCultivation: 0,
     rolled: [],
+    spanAtDeath: [],
     died: [],
     turns: 0,
   }
@@ -158,6 +170,7 @@ export function runShard(runs: number): Tally {
         tally.lives.set(sceneId, (tally.lives.get(sceneId) ?? 0) + 1)
       }
     }
+    tally.spanAtDeath.push(character.span)
     tally.died.push(character.age)
   }
 

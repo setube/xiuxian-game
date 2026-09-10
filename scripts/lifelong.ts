@@ -89,6 +89,55 @@ function runsToEnd(tally: Tally): string[] {
   return wrong
 }
 
+/**
+ * 人都是活到自己天年那一刻才没的——**库里没有夭折，而那是有意的设计**。
+ *
+ * ## 这一问是被两个人同一天各栽一次逼出来的
+ *
+ * 这支门禁一直印着两组数（`掷定的天年` / `咽气的岁数`），
+ * **而从来没有一条判据问过它们的关系**。两个数摆在报表上，
+ * 谁都看得见，谁也没问——2026-09-10 就有两个人各自从它们推出错的结论：
+ *
+ *     我     拿开局的 span 跟终年比 → 「722/1500 没活到天年」
+ *     a8     据此以为库里有夭折机制 → 把凡人寿命分布的差归错了地方
+ *
+ * **而 `engine/lifespan.ts:32` 明写着**：
+ *
+ * > 早夭不是「概率里没抽中」，而是一件至今没有内容的事……
+ * > 先造一个夭折概率摆着，等于先造阶梯再找楼。
+ *
+ * ## 为什么要拿 `spanAtDeath` 问，不能拿 `rolled` 问
+ *
+ * 天年在人生中会被 `{ type: 'lifespan' }` 改——`routine.ts` 那条
+ * 老年那一卷的「再走一趟远路」**六成人吃到**（`-2` 年，走到老年的人里
+ * 三分之二选它）。拿出生时掷的那个数问，会把每一个选过它的人都算成夭折
+ * ——我那 722 世正是这么来的。
+ *
+ * **一个会变的量，取它的时刻是判据的一部分。**
+ *
+ * ## 这一问红了意味着什么
+ *
+ * 有人给这个世界加了夭折——**那不一定是错的**（`lifespan.ts` 那段
+ * 说的是「该由某一卷具体的病、某一年具体的荒写出来」）。
+ * 红了先去读那段注释：**你在改一条设计主张，不是在修一个 bug。**
+ */
+function noOneDiesEarly(tally: Tally): string[] {
+  const early: number[] = []
+  for (let i = 0; i < tally.died.length; i += 1) {
+    const span = tally.spanAtDeath[i]
+    const age = tally.died[i]
+    if (span === undefined || age === undefined) continue
+    if (age < span) early.push(span - age)
+  }
+  if (early.length === 0) return []
+  const worst = Math.max(...early)
+  return [
+    `${early.length} / ${tally.died.length} 世没活到自己最终的天年（最多差 ${worst} 岁）——` +
+      '库里本来一个夭折也没有（`engine/lifespan.ts:32`，那是有意的）。' +
+      '要么有人加了夭折，要么 `isSpent` 那一处的判定改了。',
+  ]
+}
+
 /** 二、每一档都得有人真的停在那儿 */
 function everyStageLived(tally: Tally): string[] {
   const empty = Object.entries(lifeRoutine).filter(([, sceneId]) => !tally.lives.get(sceneId))
@@ -181,6 +230,7 @@ function ruler(): string[] {
     partings: new Map(partings.map((node) => [node, 30])),
     metCultivation: 30,
     rolled: [60],
+    spanAtDeath: [60],
     died: [60],
     turns: 1000,
   }
@@ -263,6 +313,17 @@ console.log(
 )
 console.log(`  ${spread('掷定的天年', tally.rolled)}`)
 console.log(`  ${spread('咽气的岁数', tally.died)}`)
+{
+  // 天年被改过的有多少——这一行让「两组数为什么不一样」当场看得见
+  let moved = 0
+  for (let i = 0; i < tally.rolled.length; i += 1) {
+    if (tally.rolled[i] !== tally.spanAtDeath[i]) moved += 1
+  }
+  console.log(
+    `  天年在人生中被改过的 ${moved} 世` +
+      `（${((moved / tally.runs) * 100).toFixed(1)}%，全库唯一的负 lifespan 是老年那卷的「再走一趟远路」）`,
+  )
+}
 console.log(
   `\n  走到落幕的 ${tally.reachedFinale} 世，按满回合上限的 ${tally.stalled} 世，` +
     `走到修行那一卷的 ${tally.metCultivation} 世` +
@@ -293,7 +354,8 @@ const gates: readonly { name: string; run: () => string[] }[] = [
   { name: '二、每一档都有人真的停在那儿', run: () => everyStageLived(tally) },
   { name: '三、临终那几节都有人走到，没有一节被盖住', run: () => everyPartingLived(tally) },
   { name: '四、修行是走出来的，不是发下来的', run: () => cultivationIsWalkedTo(tally) },
-  { name: '五、尺子自检', run: ruler },
+  { name: '五、人都是活到自己天年才没的（库里没有夭折）', run: () => noOneDiesEarly(tally) },
+  { name: '六、尺子自检', run: ruler },
 ]
 
 let bad = 0
