@@ -25,6 +25,9 @@
  *       知道山上的落见过·确信「跟山上有关」，不知道的落见过·猜想「山里人硬朗」；
  *       落了那条认知，「想活得久一点」的火种点着；被赶出来的人这一卷不开；二十岁不开。
  *       随机人生里：发觉了 ⇒ 到过药庐；确信 ⇒ 知道山上；有心人掷到发觉为止。
+ *   七、摆好的局（第四片，造册那年里长来药庐）：没发觉他不老的读「看着差不多」（见过·猜想）；
+ *       发觉过的读「你知道他不是四十五」（见过·确信）；正文写死的「四十五」跟 `seemsAge` 对得上；
+ *       被赶出去的、他不在了的、十五岁的不开。随机人生：到过造册 ⇒ 在药庐；确信 ⇒ 发觉过他不老；有心人掷到出现为止。
  *   五、摆好的局（第二片，「别出去乱说」是一条规矩）：没被嘱咐过的人，夜里、巷口两卷不开；
  *       嘱咐过了，配偶在夜里问、邻家户主在巷口问；跟配偶说了留在家里（他知道那一卷不开）；
  *       跟邻家说了他知道（footing 回不理会、师承那条链上的事全落空、山上不会再问起你）；
@@ -32,7 +35,7 @@
  */
 import './lib/seeded'
 
-import { CULTIVATORS, THE_ONE_WHO_COMES_DOWN } from '../src/content/cultivators'
+import { CULTIVATORS, THE_ONE_AT_THE_HERB_SHED, THE_ONE_WHO_COMES_DOWN } from '../src/content/cultivators'
 import { lifeEvents } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
@@ -345,6 +348,21 @@ function withMind(level: 'high' | 'low'): void {
     )
   unagedRow('随机', random)
   unagedRow('有心人', firstKeen)
+  // 第四片：造册。掷到有心人里有一世在场为止
+  const registered = (all: MountainLife[]) => all.some((one) => one.census !== null)
+  while (!registered(keen) && keen.length < CAP) keen = [...keen, ...(await batch('keen', LIVES))]
+  const censusRow = (label: string, all: MountainLife[]) =>
+    console.log(
+      `  · ${label} ${all.length} 世：造册那年在药庐 ${count(all, (o) => o.census !== null)}` +
+        `（知道那不是真的 ${count(all, (o) => o.census?.interpretation === '确信')}、看着差不多 ${count(all, (o) => o.census?.interpretation === '猜想')}）`,
+    )
+  censusRow('随机', random)
+  censusRow('有心人', firstKeen)
+  if (!registered(keen)) wrong.push(`${keen.length} 世有心人里没有一世赶上造册——这一卷在真世里走不到`)
+  for (const one of [...random, ...keen, ...talkers]) {
+    if (one.census && !one.atShed) wrong.push('造册那年在药庐，可这一世没进过药庐')
+    if (one.census?.interpretation === '确信' && one.unaged === null) wrong.push('知道册子不是真的，可这一世没发觉过他不老')
+  }
   if (!noticed(keen)) wrong.push(`${keen.length} 世有心人里没有一世发觉他不老——这一卷在真世里走不到`)
   for (const one of [...random, ...keen, ...talkers]) {
     if (one.unaged && !one.atShed) wrong.push('发觉他不老，可这一世没进过药庐')
@@ -629,6 +647,109 @@ function withMind(level: 'high' | 'low'): void {
   } else
     console.log(
       '  ✓ 六、他不老：三十岁还在药庐的人看见差——爹在的读爹背驼了、爹不在的读鬓角白了；知道山上的落见过·确信、不知道的落见过·猜想；火种点着；被赶出来的、二十岁的不开。',
+    )
+}
+
+// ============================================================
+// 七、摆好的局（第四片）：造册那年里长来药庐
+// ============================================================
+{
+  const wrong: string[] = []
+  const eventOf = (id: string) => lifeEvents.find((one) => one.id === id)
+  const openable = (id: string): boolean => {
+    const event = eventOf(id)
+    if (!event) throw new Error(`年表上没有 ${id}`)
+    const age = useCharacterStore().age
+    return age >= event.window.from && age <= event.window.to && meetsAll(event.requires)
+  }
+  const registerOf = () => useCharacterStore().knowledge.find((one) => one.id === 'what-the-register-says')
+  // 正文写死了「四十五」——它得跟他身上那个数对得上，谁改了 seemsAge 这儿当场红
+  if (THE_ONE_AT_THE_HERB_SHED.seemsAge !== 45)
+    wrong.push(`正文写死了「四十五」，可药庐那位的 seemsAge 是 ${String(THE_ONE_AT_THE_HERB_SHED.seemsAge)}——两处得一起改`)
+  // 二十岁、没发觉他不老：读「看着差不多」，落见过·猜想，编年一笔
+  {
+    const s = atShed('使唤')
+    if (!s) wrong.push('掷不出局')
+    else {
+      if (!openable('mountain-census')) wrong.push('二十岁在药庐，造册那一卷却不开')
+      const texts = play('mountain:census')
+      if (!texts.some((line) => line.includes('四十五'))) wrong.push(`他该答「四十五」：${texts.join(' / ')}`)
+      if (!texts.some((line) => line.includes('看着差不多'))) wrong.push(`没发觉他不老的该读「看着差不多」：${texts.join(' / ')}`)
+      if (texts.some((line) => line.includes('你知道'))) wrong.push('没发觉他不老，却读到「你知道他不是四十五」')
+      const entry = registerOf()
+      if (!entry) wrong.push('造册那年在场，认知没落')
+      else if (entry.contact !== '见过' || entry.interpretation !== '猜想')
+        wrong.push(`没发觉的该落见过·猜想，落的是 ${entry.contact}·${entry.interpretation}`)
+      if (!s.world.chronicle.some((one) => one.text.includes('报了四十五'))) wrong.push('造册那年在场，编年没记')
+    }
+  }
+  // 三十岁、发觉过他不老：读「你知道他不是四十五」，落见过·确信；一辈子一回
+  {
+    const s = atShed('带一段')
+    if (!s) wrong.push('掷不出第二局')
+    else {
+      for (let year = 0; year < 10; year += 1) applyEffects([{ type: 'time', years: 1 }])
+      play('mountain:down', 'ask-who')
+      play('mountain:unaged')
+      if (!useCharacterStore().knowledge.some((one) => one.id === 'he-does-not-age')) wrong.push('摆局：该先发觉他不老')
+      const texts = play('mountain:census')
+      if (!texts.some((line) => line.includes('就不止四十五了'))) wrong.push(`发觉过的该读「就不止四十五了」：${texts.join(' / ')}`)
+      if (texts.some((line) => line.includes('看着差不多'))) wrong.push('发觉过他不老，却读到「看着差不多」')
+      const entry = registerOf()
+      if (!entry) wrong.push('第二局在场，认知没落')
+      else if (entry.contact !== '见过' || entry.interpretation !== '确信')
+        wrong.push(`发觉过的该落见过·确信，落的是 ${entry.contact}·${entry.interpretation}`)
+    }
+  }
+  // 十五岁不开；被赶出去的不开；他不在了不开
+  {
+    /*
+     * `born(origin, years)` 推的是「出生之后 years 年」，可出生那一卷自己已经推过几年——
+     * `born('farm', 15)` 摆出来的人二十岁（实测 15→19、20→24）。要一个十五岁的局得往回让，
+     * 而且摆完当场核一次岁数：判据说「十五岁」，局里就得真是十五岁（摆局的前提要立住）。
+     */
+    // 出生那一卷推的年数不定（实测 +4 到 +5），从小往上试，摆到十三到十五岁为止
+    let s: Staged | null = null
+    for (let years = 8; years <= 12 && s === null; years += 1) {
+      const t = born('farm', years, ['father', 'mother'])
+      if (!t) break
+      const age = useCharacterStore().age
+      if (age >= 13 && age <= 15) s = t
+    }
+    if (!s) wrong.push('掷不出第三局（摆不出一个十三到十五岁的孩子）')
+    else {
+      const age = useCharacterStore().age
+      {
+        applyEffects([{ type: 'meeting', who: SHED }])
+        s.world.setFlag(FOOTING, '使唤')
+        if (openable('mountain-census')) wrong.push(`${age} 岁那一卷就开了——里长问户口问不到一个在别人家做活的孩子`)
+      }
+    }
+  }
+  {
+    const s = atShed('带一段')
+    if (!s) wrong.push('掷不出第四局')
+    else {
+      s.world.setFlag('shut-out-by-the-shed', true)
+      s.world.setFlag(FOOTING, '不理会')
+      if (openable('mountain-census')) wrong.push('被赶出来的人，造册那一卷还开着')
+    }
+  }
+  {
+    const s = atShed('带一段')
+    if (!s) wrong.push('掷不出第五局')
+    else {
+      s.people.die(SHED, '山里')
+      if (openable('mountain-census')) wrong.push('药庐那位不在了，造册那一卷还开着——死人答不了里长的话')
+    }
+  }
+  if (wrong.length > 0) {
+    console.log('\n  ✗ 七、造册：' + wrong[0] + '（共 ' + String(wrong.length) + ' 处）')
+    for (const one of wrong.slice(1)) console.log('      ' + one)
+    bad += 1
+  } else
+    console.log(
+      '  ✓ 七、造册那年里长来药庐：他答四十五（跟 seemsAge 对得上）；没发觉他不老的读看着差不多（见过·猜想），发觉过的读你知道他不是四十五（见过·确信）；十五岁、被赶出去、他不在了都不开。',
     )
 }
 

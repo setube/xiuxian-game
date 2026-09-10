@@ -80,6 +80,8 @@ export interface MountainLife {
   sparked: boolean
   /** 壮年那一卷读到「还是那个样子」 */
   readUnaged: boolean
+  /** 第四片：造册那年在场（认知 what-the-register-says 落成什么） */
+  census: { contact: Contact; interpretation: Interpretation } | null
 }
 
 const AT_SHED: readonly string[] = ['使唤', '带一段', '教一点']
@@ -152,6 +154,7 @@ function liveALife(policy: Policy): MountainLife {
   const footing = world.getFlag('footing:herbalist-at-the-shed')
   const entry = character.knowledge.find((one) => one.id === 'the-mountain-above')
   const unagedEntry = character.knowledge.find((one) => one.id === 'he-does-not-age')
+  const censusEntry = character.knowledge.find((one) => one.id === 'what-the-register-says')
   const visitor = people.personOf('the-one-who-comes-down')
   return {
     footing: typeof footing === 'string' ? footing : null,
@@ -187,6 +190,9 @@ function liveALife(policy: Policy): MountainLife {
       : null,
     sparked: world.hasFlag('spark:saw-one-who-does-not-age'),
     readUnaged,
+    census: censusEntry
+      ? { contact: censusEntry.contact, interpretation: censusEntry.interpretation }
+      : null,
   }
 }
 
