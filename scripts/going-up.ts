@@ -34,7 +34,14 @@ console.log('\n=== 上山那一趟（摆局跑）===\n')
 
 let bad = 0
 
-/** 把玩家摆成「上头问起过他」的样子——这一卷全部的前提 */
+/**
+ * 把玩家摆成「上头问起过他」的样子——这一卷全部的前提。
+ *
+ * ⚠️ `years` 是**推几年**，不是**落在几岁**：`born('farm', 30)` 实测 500 局
+ * 落在 33×41 / 34×376 / 35×83（2026-09-10）——`time` 效果推整年时日常会再多推几年。
+ * 判据不问岁数所以不受影响，但别把下面那些 `sentFor(30)` 读成「三十岁的人」，
+ * 报数时写「三十年后、三十四上下」。同 [[age-needs-whose-and-when]] 那一条。
+ */
 function sentFor(years: number): Staged | null {
   const s = born('farm', years, [])
   if (!s) return null
