@@ -849,32 +849,73 @@ if (divided.length < DIVIDES_WANTED) {
     if (again.some((l) => l.includes('你不知道为了什么'))) wrong.push('知道了缘由还说不知道')
   }
   // 没赶上：一辈子不知道为了什么；后来她们和好了，你也只看见结果
-  const t = stage('farm')
-  if (!t) wrong.push('掷不出第二局')
-  else {
-    t.people.amend('mother', { temper: '温和' })
-    marryIn(t, '温和')
-    play('kindred:wedding')
-    play('kindred:nephew')
-    ageTo(t, 'nephew', 3)
-    play('kindred:quarrel')
-    const mend = lifeEvents.find((one) => one.id === 'kindred-mend')
-    // 娘还不到五十五：和好那一卷关着；把她的生年往前挪，就开了
-    if (!mend) wrong.push('年表上没有和好那一卷')
-    else {
+  /*
+   * 摆到「和好了、娘还在」为止。
+   *
+   * 头一版把娘的生年挪到刚好五十六（和好那一卷要她 ≥ 55，一岁余量），然后 `play('kindred:mend')`——
+   * 那一卷推进的那一年她按凡人的老病率可能就殁了（56 岁年 4.4%）；殁了 `granny` 那道闸
+   * （`bond 生母 alive`）关上，正月里整段娘那一节没了，判据报「没看见嫂子给娘添饭」。
+   * 内容没错（边上确实亲厚、嫂子活着），是摆局把前提摆没了，而且没有一道断言问「摆完局娘还活着吗」
+   * （2026-09-10 种子 1mtxm651pwxy，c9 在真实运行位置上印出来的；同一天第八回栽在摆局的前提上）。
+   * 挪得更老没用——越老越容易死。所以：掷到她活过那一年为止，摆完当场断言。
+   */
+  const mendedStage = (): {
+    t: NonNullable<ReturnType<typeof stage>>
+    notes: string[]
+    visit: string[]
+  } | null => {
+    for (let tries = 0; tries < 40; tries += 1) {
+      const t = stage('farm')
+      if (!t) return null
+      const notes: string[] = []
+      t.people.amend('mother', { temper: '温和' })
+      marryIn(t, '温和')
+      play('kindred:wedding')
+      play('kindred:nephew')
+      ageTo(t, 'nephew', 3)
+      play('kindred:quarrel')
+      const mend = lifeEvents.find((one) => one.id === 'kindred-mend')
+      // 娘还不到五十五：和好那一卷关着；把她的生年往前挪，就开了
+      if (!mend) {
+        notes.push('年表上没有和好那一卷')
+        return { t, notes, visit: [] }
+      }
       const mother = t.people.personOf('mother')
       if (mother && t.people.ageOf('mother') < 55) {
-        if (meetsAll(mend.requires)) wrong.push('娘还没老，和好那一卷就开了')
+        if (meetsAll(mend.requires)) notes.push('娘还没老，和好那一卷就开了')
         t.people.amend('mother', { bornYear: mother.bornYear - (56 - t.people.ageOf('mother')) })
       }
-      if (!meetsAll(mend.requires)) wrong.push('婆媳不睦、娘老了，和好那一卷却关着')
+      if (!meetsAll(mend.requires)) notes.push('婆媳不睦、娘老了，和好那一卷却关着')
       const chronicleBefore = t.world.chronicle.length
       const lines = play('kindred:mend')
       if (lines.length > 0 || t.world.chronicle.length !== chronicleBefore)
-        wrong.push('和好那一卷落了正文或进了编年')
+        notes.push('和好那一卷落了正文或进了编年')
+      /*
+       * 前提断言：正月那一卷要问娘。她在和好那一年殁了，这一局作废，重摆。
+       *
+       * 头一版断言放在这儿就完了，同种子照红——**正月那一卷自己也推时间**（`untilMonth: 1`
+       * 跨年就是推一年），她五十七岁那年老病率 4.8%，摆完局还在、进了正月那一卷才没的，
+       * `granny` 那道闸（`bond 生母 alive`）照样关上（种子 1mtxm651pwxy：和好卷后 49·7 娘在，
+       * 正月卷后 50·1 娘殁）。所以正月那一卷也在这一局里演，演完她还在才算摆成。
+       * 判据要问的是「和好了正月里看得见」，不是「和好了她一定活到正月」——后者由世界掷，
+       * 摆局只负责掷到一个她活着的世界。**被测的那一卷自己会推时间，摆局的断言要放在它之后。**
+       */
+      if (!t.people.isAlive('mother')) continue
+      const visit = play('kindred:newyear')
+      if (!t.people.isAlive('mother')) continue
+      return { t, notes, visit }
+    }
+    return null
+  }
+  const mended = mendedStage()
+  if (!mended) wrong.push('掷不出第二局（四十局里娘都没活过和好那一年和正月）')
+  else {
+    const { t, notes, visit } = mended
+    wrong.push(...notes)
+    {
+      if (!t.people.isAlive('mother')) wrong.push('摆局：正月那一卷要问娘，可她不在了')
       if (t.people.termsBetween('brother-wife', 'mother') !== '亲厚')
         wrong.push('和好了，边上不是亲厚')
-      const visit = play('kindred:newyear')
       if (!visit.some((l) => l.includes('添饭'))) wrong.push('和好了，正月里却没看见嫂子给娘添饭')
       if (!visit.some((l) => l.includes('什么时候和好的，你不知道')))
         wrong.push('没赶上翻脸也没赶上和好，正月里却像什么都知道')
@@ -883,6 +924,7 @@ if (divided.length < DIVIDES_WANTED) {
   }
   if (wrong.length > 0) {
     console.log(`  ✗ 十一、活世界：${wrong[0]}（共 ${wrong.length} 处）`)
+    for (const one of wrong.slice(1)) console.log(`      ${one}`)
     bad += 1
   } else {
     console.log(
