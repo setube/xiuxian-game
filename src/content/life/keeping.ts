@@ -288,7 +288,7 @@ export const keepingScenes: SceneLibrary = {
           { kind: 'event', text: '它停了。', tone: 'deep' },
           {
             kind: 'narration',
-            text: '你坐在门槛上想了很久，没想明白，也没跟人说。',
+            text: '你坐着想了很久，没想明白，也没跟人说。',
             tone: 'faint',
           },
         ],
@@ -300,13 +300,20 @@ export const keepingScenes: SceneLibrary = {
        *
        * 人人都有的那种参照——**不预设他有病、有伤、有什么特别的东西**，
        * 只预设他过过冬天。
+       *
+       * ⚠️ 上面那句话写下来的时候，底下正文写的是「你照旧下地、挑水、修屋顶」
+       * ——**注释声明了纪律，正文当场就违反了它**，而两者隔着六行。
+       * `upbringing` 抓出来的（「下地」得先有地，而这一卷对所有 living 开）。
+       *
+       * 所以这一节不点具体活计：**点了活计就等于点了一种人家。**
+       * 「起早」「忙自己那摊事」谁都成立，宫里那个也成立。
        */
       'sign-winter': {
         id: 'sign-winter',
         onEnter: [{ type: 'chronicle', text: '那个冬天你没有像往年那样难熬。' }],
         blocks: [
           { kind: 'narration', text: '那个冬天格外冷，村里冻病了好几个。' },
-          { kind: 'narration', text: '你照旧下地、挑水、修屋顶，一天也没歇。' },
+          { kind: 'narration', text: '你照旧起早、照旧忙自己那摊事，一天也没歇。' },
           { kind: 'event', text: '开春的时候你才回过味来：这个冬天你一次也没病。', tone: 'deep' },
           {
             kind: 'narration',
@@ -340,7 +347,7 @@ export const keepingScenes: SceneLibrary = {
           { kind: 'narration', text: '你笑了笑，说是命好。' },
           {
             kind: 'narration',
-            text: '他点点头，问起今年的收成，这件事就过去了。',
+            text: '他点点头，扯起今年的年景，这件事就过去了。',
             tone: 'faint',
           },
         ],
