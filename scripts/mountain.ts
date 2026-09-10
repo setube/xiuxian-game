@@ -756,4 +756,4 @@ function withMind(level: 'high' | 'low'): void {
 if (bad > 0) {
   console.log(`\n${bad} 条红。`)
   process.exitCode = 1
-} else console.log('\n山上下来的人：四条全绿。')
+} else console.log('\n山上下来的人：七条全绿。')
