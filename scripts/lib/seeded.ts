@@ -35,8 +35,22 @@ import { currentSeed, installSeed, seedFromEnv } from './seed'
  * 而输出里除了种子没有任何东西能把它们分开：**同一颗种子重跑两遍，
  * 两份输出一模一样。**
  *
- * 现在这一行印三样：种子（复现用）、pid（对得上进程表）、时刻（分得开轮次）。
- * 跨会话报红时把这一整行抄过去，对方就不用问「你说的是哪一次」。
+ * 现在这一行印五样，**用户 2026-09-10 列的那张清单**（run id / seed /
+ * gate / command / pid / start time）里除 shard 之外的全部——
+ * shard 不印是因为分片在 worker 里，主线程这一行只印一次（印 N 遍
+ * 就是种子被重装了 N 次，那是另一个坑）。
+ *
+ *     ◆ keeping  种子 ccvo9yrxlhbq  pid 1132  17:11:11  run 1711-ccvo
+ *       ↑ 哪一支    ↑ 复现用          ↑ 进程表  ↑ 分轮次   ↑ 整轮的号
+ *
+ * ⚠️ **开头那个符号是 `◆` 不是 `▶`**：pinia 的警告用 `├▶` / `╰▶`，
+ * 而 `lifelong` 那种跑几百世的会刷出成千上万条——**`grep "▶"` 会被淹掉**
+ * （实测数出五千多万行）。取证的 grep 一旦被污染，
+ * 「找不到那一行」跟「那一行不存在」长得一模一样。
+ *
+ * **`run` 那一段是给「同一支跑了好几轮」用的**：它由时刻和种子拼成，
+ * 同一次运行里的每一行都一样，跨轮次必然不同。跨会话报红时抄这一整行，
+ * 对方不用再问「你说的是哪一次」。
  */
 if (currentSeed() === undefined) {
   const seed = installSeed(seedFromEnv())
@@ -44,5 +58,14 @@ if (currentSeed() === undefined) {
   const hh = String(at.getHours()).padStart(2, '0')
   const mm = String(at.getMinutes()).padStart(2, '0')
   const ss = String(at.getSeconds()).padStart(2, '0')
-  console.log(`种子 ${seed}　pid ${process.pid}　${hh}:${mm}:${ss}`)
+  /*
+   * 哪一支门禁。`process.argv[1]` 单跑时是脚本路径（`scripts/keeping.ts`），
+   * 取文件名去掉后缀就是它的名字——**不写死一张表**，
+   * 新写一支丢进 `scripts/` 自动就对（跟 `gates.ts` 扫目录同一条纪律）。
+   */
+  const entry = process.argv[1] ?? ''
+  const gate = entry.split(/[\\/]/).pop()?.replace(/\.ts$/, '') ?? '?'
+  // 整轮的号：同一次运行每行都一样，跨轮次必不同
+  const run = `${hh}${mm}-${String(seed).slice(0, 4)}`
+  console.log(`◆ ${gate}　种子 ${seed}　pid ${process.pid}　${hh}:${mm}:${ss}　run ${run}`)
 }
