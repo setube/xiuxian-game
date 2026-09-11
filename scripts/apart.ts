@@ -992,6 +992,8 @@ const HANDED_OVER: Readonly<Record<string, string>> = {
   // 议亲那一卷是散事件，还压着三条 requires（没成过家、没在议、家境过得去），
   // 这一支摆局跑，走不到它。match.ts 摆好局把那一卷从头演到底，量成亲那两条路
   'match:offer#wife': 'match.ts',
+  'match:offer#wife-poor': 'match.ts',
+  'match:offer#wife-rich': 'match.ts',
   'match:offer#husband': 'match.ts',
   /*
    * 添丁那一卷也是散事件，压着五条 requires（成了亲、没在等着、没在服丧、
