@@ -250,8 +250,12 @@ let bad = 0
    * **头一版没立**，于是「穷的走得到」那一半永远不成立，
    * 判据报的是「一路答应下来也没走到那一节」，
    * 看上去像内容写错了，其实是局摆得不对。
+   *
+   * ⚠️ standing 不能低于 23：≤22 会触发 their-verdict（三成概率被对方拒绝），
+   * 而被拒的那次入赘这条就走不到了。入赘条件是 standing ≤26，
+   * 取 24 既高于 their-verdict 阈值又满足入赘条件。
    */
-  stage('男', false, 20)
+  stage('男', false, 24)
   {
     const people = usePeopleStore()
     const world = useWorldStore()
@@ -342,16 +346,25 @@ let bad = 0
   // 中间档——standing 50，走普通 wife
   stage('男', false, 50)
   const midWalked = play('open', () => 'agree')
-  const midNode = midWalked.includes('wife') && !midWalked.includes('wife-rich') && !midWalked.includes('wife-poor')
+  const midNode =
+    midWalked.includes('wife') &&
+    !midWalked.includes('wife-rich') &&
+    !midWalked.includes('wife-poor')
 
   if (!richNode) {
-    console.log(`  ✗ 配偶分档：有产户（standing 80）没走到 wife-rich（走过 ${richWalked.join(' → ')}）。`)
+    console.log(
+      `  ✗ 配偶分档：有产户（standing 80）没走到 wife-rich（走过 ${richWalked.join(' → ')}）。`,
+    )
     bad += 1
   } else if (!poorNode) {
-    console.log(`  ✗ 配偶分档：贫户（standing 20）没走到 wife-poor（走过 ${poorWalked.join(' → ')}）。`)
+    console.log(
+      `  ✗ 配偶分档：贫户（standing 20）没走到 wife-poor（走过 ${poorWalked.join(' → ')}）。`,
+    )
     bad += 1
   } else if (!midNode) {
-    console.log(`  ✗ 配偶分档：中间档（standing 50）没落到普通 wife（走过 ${midWalked.join(' → ')}）。`)
+    console.log(
+      `  ✗ 配偶分档：中间档（standing 50）没落到普通 wife（走过 ${midWalked.join(' → ')}）。`,
+    )
     bad += 1
   } else {
     console.log('  ✓ 配偶分档：有产走 wife-rich，贫户走 wife-poor，中间兜底走 wife。')

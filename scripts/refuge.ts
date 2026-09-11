@@ -90,11 +90,11 @@ function enrollMaster(opts: { health: number; age: number; fate?: '在' | '殁' 
 /**
  * 从 open 节点把这一卷演到底，回报走过的节点 id。
  */
-function play(pick: (options: string[]) => string, stopAfter = 15): string[] {
+function play(pick: (options: string[]) => string, stopAfter = 15, from?: string): string[] {
   const scene = lifeScenes[SCENE]
   if (!scene) return []
   const walked: string[] = []
-  let at: string | undefined = scene.entry
+  let at: string | undefined = from ?? scene.entry
 
   for (let guard = 0; at !== undefined && guard < stopAfter; guard += 1) {
     const node: SceneNode | undefined = scene.nodes[at]
@@ -166,11 +166,17 @@ let bad = 0
  * 三、lean（年纪档）：年岁到了（age ≥ 60）接不了细活。
  *
  * 这条跟 health 档指向同一节，但判据不同——两条都要守。
+ *
+ * ⚠️ 不能走 open → arrive：open 里推了两个月时间，`people.live()` 有概率
+ * 让师傅在那两个月里殁，arrive 第一条 branch 先判 `alive: false` 走 gone，
+ * age 那条永远轮不到。直接从 arrive 演，把时间推进副作用绕开。
+ * health 给 95 确保不触发 health ≤ 60 那条 branch。
  */
 {
   stage()
-  enrollMaster({ health: 80, age: 65 })
-  const walked = play(() => 'go')
+  enrollMaster({ health: 95, age: 65 })
+  // 直接从 arrive 节点开始演，不经过 open 的时间推进
+  const walked = play(() => 'go', 20, 'arrive')
 
   if (!walked.includes('lean')) {
     console.log(`  ✗ lean（年纪）：师傅 65 岁却没走到「难处」那一节（走过 ${walked.join(' → ')}）。`)
