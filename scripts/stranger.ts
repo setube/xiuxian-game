@@ -66,6 +66,10 @@ const KNOWN_BARE = new Set([
   'page',
   'nephew-wife',
   'sibling',
+  // 邻居系统：东邻主事的和他的妻子，称呼由邻居系统现算（「王叔」「王婶」等）
+  // 正文里点名了他们，但 seen 里都有 requires 做活人检查，空库不会印出来
+  'east-head',
+  'east-wife',
 ])
 
 const wrong: string[] = []
