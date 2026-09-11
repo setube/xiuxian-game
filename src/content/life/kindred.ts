@@ -889,6 +889,7 @@ export const kindredScenes: SceneLibrary = {
         onEnter: [
           { type: 'repay', debtor: 'me', creditor: 'brother' },
           { type: 'household', standing: -6 },
+          { type: 'deed', kind: 'keep', text: '哥下葬那天，你把欠他的二两银子交给了嫂子。' },
           { type: 'chronicle', text: '哥下葬那天，你把欠他的二两银子交给了嫂子。' },
         ],
         blocks: [
@@ -905,6 +906,7 @@ export const kindredScenes: SceneLibrary = {
         onEnter: [
           { type: 'repay', debtor: 'me', creditor: 'brother' },
           { type: 'household', standing: -6 },
+          { type: 'deed', kind: 'keep', text: '哥下葬那天，你把欠他的二两银子交给了老屋。' },
           { type: 'chronicle', text: '哥下葬那天，你把欠他的二两银子交给了老屋。' },
         ],
         blocks: [
