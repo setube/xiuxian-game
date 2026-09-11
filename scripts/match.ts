@@ -315,6 +315,49 @@ let bad = 0
 }
 
 /**
+ * 二点六、配偶身份分档：有产户走 wife-rich，贫户走 wife-poor，中间兜底走 wife。
+ *
+ * 这条守两件事：
+ *
+ * 一、**两端各自走得到**。摆两个局：有产户（standing 80）和贫户（standing 20），
+ *     分别验终点节点。
+ *
+ * 二、**中间兜底不会被吃掉**。standing 50 的局仍走 wife，不走两端任意一条。
+ *
+ * 为什么要量中间这一头：只验两端，一个「standing≥71 走 wife-rich」的实现能过
+ * 前一半，一个「所有人都走 wife-rich」的实现也能过——中间那档全部被吃了也不红。
+ */
+{
+  // 有产户——standing 80，走 wife-rich
+  stage('男', false, 80)
+  const richWalked = play('open', () => 'agree')
+  const richNode = richWalked.includes('wife-rich')
+
+  // 贫户——standing 20，但不立哥（入赘要哥，这里要的是走 wife-poor）
+  stage('男', false, 20)
+  const poorWalked = play('open', () => 'agree')
+  const poorNode = poorWalked.includes('wife-poor')
+
+  // 中间档——standing 50，走普通 wife
+  stage('男', false, 50)
+  const midWalked = play('open', () => 'agree')
+  const midNode = midWalked.includes('wife') && !midWalked.includes('wife-rich') && !midWalked.includes('wife-poor')
+
+  if (!richNode) {
+    console.log(`  ✗ 配偶分档：有产户（standing 80）没走到 wife-rich（走过 ${richWalked.join(' → ')}）。`)
+    bad += 1
+  } else if (!poorNode) {
+    console.log(`  ✗ 配偶分档：贫户（standing 20）没走到 wife-poor（走过 ${poorWalked.join(' → ')}）。`)
+    bad += 1
+  } else if (!midNode) {
+    console.log(`  ✗ 配偶分档：中间档（standing 50）没落到普通 wife（走过 ${midWalked.join(' → ')}）。`)
+    bad += 1
+  } else {
+    console.log('  ✓ 配偶分档：有产走 wife-rich，贫户走 wife-poor，中间兜底走 wife。')
+  }
+}
+
+/**
  * 三、没成的那一路：也封口，也留痕。
  *
  * 「没成」跟「成了」是同一层的两个结局，不是失败分支。

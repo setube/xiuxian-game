@@ -62,7 +62,6 @@ export const matchScenes: SceneLibrary = {
         ],
         blocks: [
           { kind: 'narration', text: '媒人是隔壁村的，来过两回，第二回带了那家的年庚。' },
-          { kind: 'narration', text: '那家姓秦，也是种地的，隔着两个村，田比你家多两亩。' },
           { kind: 'event', text: '有人来给你说亲。' },
         ],
         /*
@@ -346,14 +345,19 @@ export const matchScenes: SceneLibrary = {
           { kind: 'narration', text: '从这一天起，{home}这间屋子里多了一个人。' },
         ],
         /*
-         * 三条路，顺序要紧：`branches` 是从上往下第一条成立的算数。
+         * 五条路，顺序要紧：`branches` 是从上往下第一条成立的算数。
          *
-         *   女的 → 嫁过去
-         *   男的、家里穷、又没田可继承 → 入赘
-         *   其余的男的 → 娶进门
+         *   女的 → 嫁过去（husband）
+         *   男的、家里穷、又没田可继承 → 入赘（uxorial）
+         *   其余的男的，按家境分三档：
+         *     有产（standing > 70）→ wife-rich（林家商户之女）
+         *     贫户（standing ≤ 30）→ wife-poor（陈家佃户之女）
+         *     中间 → wife（秦家普通农户之女，兜底）
          *
-         * 入赘那条排在娶妻前面，否则它一次也走不到——而**走不到的内容
-         * 跟没写一模一样，并且没有任何机器会说**。
+         * ⚠️ 顺序设计：入赘排在娶妻三档之前，否则它一次也走不到。
+         * 娶妻三档里，有产排最前，贫户次之，普通兜底（不写 requires）。
+         * 「有产」的 standing > 70 和「入赘」的 standing ≤ 26 是两个不同的条件，
+         * 不会互相拦截——入赘还要求「务农且有兄」，两者的交集极小。
          */
         branches: [
           { requires: [{ gender: '女' }], next: 'husband' },
@@ -361,28 +365,28 @@ export const matchScenes: SceneLibrary = {
             requires: [
               { gender: '男' },
               { standing: { atMost: 26 } },
-              // 有田的男丁不去做赘婿。问的是这一户靠什么过活，不是他自己会干什么
+              // 有田的男丁不去做赘婿
               { livelihood: '务农' },
               /*
-               * 头一版这里写的是 `house: { head: 'other' }`（他不当家）。
-               * **那个条件在这一卷走到的时候多半已经不成立了**：
-               * 议亲要走两三年，这期间叔伯老死、自己成年承户，
-               * `settleHeads` 早把户主换成了「我」——门禁实测到 `wedding`
-               * 那一节时户主正是 `me`，于是入赘这条一次也走不到。
-               *
-               * 而且那个条件本来就选错了：**入赘要问的不是「他当不当家」，
-               * 是「家里有没有东西给他」。** 一个当了家却只有两亩薄田的人
-               * 照样可能去做赘婿；一个不当家但家底厚的不会去。
-               *
-               * `standing atMost 26` 已经在问家底了，所以这一格改问
-               * 「家里还有没有别人」——`bond 兄` 那一问：
-               * **有哥的次子分不到什么，是赘婿最常见的来处。**
+               * 入赘要问的不是「他当不当家」，是「家里有没有东西给他」。
+               * 有哥的次子分不到什么，是赘婿最常见的来处。
                */
               { bond: { kind: '兄', alive: true } },
             ],
             next: 'uxorial',
           },
+          // 有产户——standing > 70，媒人来的是镇上林家这样的人家
+          {
+            requires: [{ gender: '男' }, { standing: { atLeast: 71 } }],
+            next: 'wife-rich',
+          },
+          // 贫户——standing ≤ 30，媒人来的是陈家这样的佃户
+          {
+            requires: [{ gender: '男' }, { standing: { atMost: 30 } }],
+            next: 'wife-poor',
+          },
         ],
+        // 中间档（standing 31–70）兜底走普通农户之女
         next: 'wife',
       },
 
@@ -431,6 +435,37 @@ export const matchScenes: SceneLibrary = {
         ],
       },
 
+      /**
+       * 娶妻三路，按玩家家境分叉。
+       *
+       * 「门当户对」是这个时代的议亲基础——穷户的媒人不去跑殷实人家，
+       * 殷实人家的媒人也不去穷户。三档对应的配偶家庭都是**与玩家大致同阶**的
+       * 人家，不是往上攀。
+       *
+       * standing 三档：贫（≤ 30）/ 普通（31–70）/ 有产（> 70）。
+       */
+      'wife-poor': {
+        id: 'wife-poor',
+        onEnter: [
+          {
+            type: 'meet',
+            id: 'spouse',
+            calls: '妻子',
+            delta: 20,
+            name: true,
+            // 佃户或极贫农家之女：聘礼轻，婚后两家都要数着过
+            who: { surname: '陈', given: '娘', gender: '女', age: 17, doing: '操持家务' },
+            bond: '配偶',
+          },
+          { type: 'chronicle', text: '你成了亲。', tone: 'deep' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '那家也是种地的，地还比你家少两亩。' },
+          { kind: 'narration', text: '聘礼薄，媒人说两家都知道，没有人多说什么。' },
+          { kind: 'narration', text: '她过门那天，你娘把家里压箱底的布拿出来让她做了件新衣。', tone: 'faint' },
+        ],
+      },
+
       wife: {
         id: 'wife',
         onEnter: [
@@ -440,12 +475,37 @@ export const matchScenes: SceneLibrary = {
             calls: '妻子',
             delta: 20,
             name: true,
+            // 普通农户之女：与玩家出身相当，无特别加减
             who: { surname: '秦', given: '娘', gender: '女', age: 18, doing: '操持家务' },
             bond: '配偶',
           },
           { type: 'chronicle', text: '你成了亲。', tone: 'deep' },
         ],
         blocks: [{ kind: 'narration', text: '她话不多，手脚很快。' }],
+      },
+
+      'wife-rich': {
+        id: 'wife-rich',
+        onEnter: [
+          {
+            type: 'meet',
+            id: 'spouse',
+            calls: '妻子',
+            delta: 20,
+            name: true,
+            // 商户或小地主之女：家里开着铺子或有几十亩地，嫁妆带进来的陪嫁让家境略好
+            who: { surname: '林', given: '娘', gender: '女', age: 18, doing: '管着家里的账' },
+            bond: '配偶',
+          },
+          // 嫁妆让家境好了一些——但聘礼已先出去，两相抵消后略涨
+          { type: 'household', standing: 4 },
+          { type: 'chronicle', text: '你成了亲，娶的是镇上林家的姑娘。', tone: 'deep' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '她家在镇上开着一间杂货铺，嫁妆抬了六抬。' },
+          { kind: 'narration', text: '进门那天，她看了看屋里，没说话。' },
+          { kind: 'narration', text: '此后她管着家里的账，村里那些没有字的婆子见了她都客气几分。', tone: 'faint' },
+        ],
       },
 
       husband: {
