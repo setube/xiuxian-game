@@ -1256,8 +1256,57 @@ console.log('=== 可观测路径验收（人生里真走得到吗）===\n')
   )
 
   if (unvisited.length > 0) {
-    console.log(`  这 ${unvisited.length} 个这一批没人走到：\n`)
-    for (const id of unvisited) console.log(`    ${id}`)
+    /*
+     * ⚠️ **按「这一卷有几个节点没走到」分组，而不是平铺一份名单。**
+     *
+     * 用户 2026-09-11 定的那把尺子：
+     *
+     * > **如果期望出现次数本身小于 1，就不要把「零次」当成异常证据。**
+     *
+     * 平铺的名单答不了那个问题——它把两种完全不同的东西排在一起：
+     *
+     *     整卷一个也没走到    要么这一卷极稀（样本不够），要么它真的死了
+     *     一卷里漏几个节点    那一卷活着，是里头某几支没轮到
+     *
+     * **第一种要先问「这一卷的率是多少」再下结论**，第二种可以直接查分支。
+     *
+     * 2026-09-11 实撞：我把 `nephew` 18/18 读成断口，去查入口挂点 requires，
+     * 折腾半天——而它真实到达率 0.4%，三百世期望 1.2 次，抽不中是常态。
+     * **那个零什么也没说明。**
+     */
+    const byBook = new Map<string, { unseen: number; total: number }>()
+    for (const [sceneId, scene] of Object.entries(lifeScenes)) {
+      const book = sceneId.split(':')[0] ?? sceneId
+      const row = byBook.get(book) ?? { unseen: 0, total: 0 }
+      for (const nodeId of Object.keys(scene.nodes)) {
+        row.total += 1
+        if (!visits.has(`${sceneId}#${nodeId}`)) row.unseen += 1
+      }
+      byBook.set(book, row)
+    }
+    const whole = [...byBook.entries()].filter(([, r]) => r.unseen === r.total && r.total > 0)
+    const partial = [...byBook.entries()].filter(([, r]) => r.unseen > 0 && r.unseen < r.total)
+    const floor = ((1 / RUNS) * 100).toFixed(2)
+
+    console.log(`  这 ${unvisited.length} 个这一批没人走到，分两种看：`)
+    console.log('')
+    if (whole.length > 0) {
+      console.log(`  【整卷没走到】${whole.length} 卷 —— 先问这一卷的率，别直接当断口`)
+      console.log(`  （${RUNS} 世对低于 ${floor}% 的内容没有分辨力：期望不足一次）`)
+      console.log('')
+      for (const [book, r] of whole.sort((a, b) => b[1].total - a[1].total)) {
+        console.log(`    ${book.padEnd(16)} ${r.total} 个节点`)
+      }
+      console.log('')
+    }
+    if (partial.length > 0) {
+      console.log(`  【这一卷活着，漏了几支】${partial.length} 卷 —— 这一种可以直接查分支`)
+      console.log('')
+      for (const [book, r] of partial.sort((a, b) => b[1].unseen - a[1].unseen)) {
+        console.log(`    ${book.padEnd(16)} ${r.unseen} / ${r.total} 没走到`)
+      }
+      console.log('')
+    }
     console.log(
       '\n  稀不等于坏。这份名单是给人读的，不是给人清零的——' +
         '\n  读法是去可达性那一层查它：把状态直接构造进去，看那条路通不通。' +
