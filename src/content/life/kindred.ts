@@ -1024,6 +1024,7 @@ export const kindredScenes: SceneLibrary = {
               { type: 'meet', id: 'brother', delta: 8, note: '荒年你匀了一半粮给他。' },
               { type: 'owe', debtor: 'brother', creditor: 'me', what: '半年的粮', terms: '开春还' },
               { type: 'attribute', key: 'will', delta: 2 },
+              { type: 'deed', kind: 'give', text: '荒年家里粮也不多，你把一半匀给了哥。' },
               { type: 'chronicle', text: '荒年，你匀了一半粮给老屋。' },
             ],
             next: 'lent',
