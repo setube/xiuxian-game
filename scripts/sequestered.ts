@@ -60,7 +60,6 @@ import './lib/seeded'
 import { mapShards, sumTallies } from './lib/parallel'
 import { SEP, type SequesteredShard } from './tasks/sequestered-lives'
 
-
 /**
  * 走多少世。高门出身稀有（court/manor 加起来不到 2%），少了采不到。
  *
