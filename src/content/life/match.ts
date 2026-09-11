@@ -350,7 +350,6 @@ export const matchScenes: SceneLibrary = {
         next: 'settled',
       },
 
-
       'their-verdict': {
         id: 'their-verdict',
         onEnter: [
@@ -539,7 +538,18 @@ export const matchScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '那家也是种地的，地还比你家少两亩。' },
           { kind: 'narration', text: '聘礼薄，媒人说两家都知道，没有人多说什么。' },
-          { kind: 'narration', text: '她过门那天，你娘把家里压箱底的布拿出来让她做了件新衣。', tone: 'faint' },
+          {
+            kind: 'narration',
+            /*
+             * 原先写「你娘把家里压箱底的布拿出来」——娘是主语，而这一节
+             * 在娘已经不在了的人生里同样触发（`present.ts` 逼出来的）。
+             * 按 `as-reader` / `as-apprentice` 的同一原则：去掉那个人，
+             * 只写发生了什么。「家里」是一个没有具体所指的主语，
+             * 娘在的时候读出来的是娘，娘不在的时候读出来的是那件事本身。
+             */
+            text: '过门那天，家里把压箱底的布拿出来让她做了件新衣。',
+            tone: 'faint',
+          },
         ],
       },
 
@@ -581,7 +591,11 @@ export const matchScenes: SceneLibrary = {
         blocks: [
           { kind: 'narration', text: '她家在镇上开着一间杂货铺，嫁妆抬了六抬。' },
           { kind: 'narration', text: '进门那天，她看了看屋里，没说话。' },
-          { kind: 'narration', text: '此后她管着家里的账，村里那些没有字的婆子见了她都客气几分。', tone: 'faint' },
+          {
+            kind: 'narration',
+            text: '此后她管着家里的账，村里那些没有字的婆子见了她都客气几分。',
+            tone: 'faint',
+          },
         ],
       },
 
