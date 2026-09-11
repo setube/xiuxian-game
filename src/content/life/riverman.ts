@@ -210,11 +210,22 @@ export const rivermanScenes: SceneLibrary = {
         next: 'river',
       },
 
+      /**
+       * 学了一门手艺，而师傅还在。
+       *
+       * ⚠️ `as-reader` 那一支去掉了「先生」这个词，理由写在那儿：
+       * `present.ts` 按称呼字面匹配，认不出「追述」和「在场」的分别。
+       * 这一支同理——「师傅打发你进城」这句话里 craft-master 是主语，
+       * 而这一节也在 `craft-master` 已殁的人生里触发。
+       *
+       * **改法**：把「师傅打发你」改成无主语「你进城交活计」，
+       * 内容一个字也不少——他只是不再是发令的那个人了。
+       */
       'as-apprentice': {
         id: 'as-apprentice',
         onEnter: [{ type: 'time', days: 2 }],
         blocks: [
-          { kind: 'narration', text: '入秋那几日，师傅打发你进城交一批活计。' },
+          { kind: 'narration', text: '入秋那几日，你进城交了一批活计。' },
           { kind: 'narration', text: '交完货，你在城里多待了半日。' },
         ],
         next: 'river',
