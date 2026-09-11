@@ -105,6 +105,7 @@ export const awayScenes: SceneLibrary = {
           { type: 'time', days: 1 },
           { type: 'household', standing: -6 },
           { type: 'repay', debtor: 'me', creditor: 'brother' },
+          { type: 'deed', kind: 'keep', text: '你把欠哥的二两银子还了。' },
           { type: 'chronicle', text: '你把哥的银子还了。' },
         ],
         blocks: [],
