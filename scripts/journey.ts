@@ -71,12 +71,11 @@ for (const { id, trip } of trips) {
 {
   const days = new Set(trips.map((one) => one.trip.days))
   if (days.size <= 1) {
-    wrong.push(
-      `六个地方算出来的天数只有 ${days.size} 种——「目的地决定基准耗时」那一层塌了`,
-    )
+    wrong.push(`六个地方算出来的天数只有 ${days.size} 种——「目的地决定基准耗时」那一层塌了`)
   }
   // 最远和最近该差得开：云台 20 日 vs 城隍庙 3 日
-  const spread = Math.max(...trips.map((t) => t.trip.days)) - Math.min(...trips.map((t) => t.trip.days))
+  const spread =
+    Math.max(...trips.map((t) => t.trip.days)) - Math.min(...trips.map((t) => t.trip.days))
   if (spread < 5) {
     wrong.push(`最远和最近只差 ${spread} 日——地方之间的远近没有体现出来`)
   }
@@ -96,9 +95,7 @@ for (const { id, trip } of trips) {
     `\n【同一趟路，不同身子骨】\n\n  26 → ${weak.days} 日　42 → ${mid.days} 日　48 → ${strong.days} 日`,
   )
   if (!(weak.days > mid.days && mid.days >= strong.days)) {
-    wrong.push(
-      `身子骨 26/42/48 走出 ${weak.days}/${mid.days}/${strong.days} 日——差的该走得更久`,
-    )
+    wrong.push(`身子骨 26/42/48 走出 ${weak.days}/${mid.days}/${strong.days} 日——差的该走得更久`)
   }
   // 封顶还在吗：最差的人不该把二十日走成四十日
   if (weak.days > mid.days * 1.35) {
@@ -157,9 +154,7 @@ for (const { id, trip } of trips) {
       for (const effects of pools) {
         const hasJourney = effects.some((one) => one.type === 'journey')
         if (!hasJourney) continue
-        const bigTime = effects.find(
-          (one) => one.type === 'time' && (one.days ?? 0) >= floor,
-        )
+        const bigTime = effects.find((one) => one.type === 'time' && (one.days ?? 0) >= floor)
         if (bigTime) {
           wrong.push(
             `${sceneId}#${nodeId} 同时写了 journey 和 ${JSON.stringify(bigTime)}——` +
