@@ -76,7 +76,25 @@ const THE_PLACE: Choice = {
   hint: '少说十来日',
   echo: '你跟家里说去看个亲戚，第二天一早就走了。',
   requires: [{ flag: { key: 'sure-of' } }],
-  effects: [{ type: 'time', days: 8 }, { type: 'household', standing: -2 }, { type: 'follow' }],
+  /*
+   * ⚠️ 这里原先写着 `{ type: 'time', days: 8 }`——**一个折中的数**。
+   *
+   * 落笔的时候他还没决定去哪儿（目的地在 `following` 那面旗上，
+   * 而旗是选完之后才读的），所以那个 8 对**每一个地方都一样**：
+   * 去云台（二十日的路）和去城隍庙（三日的路）花掉同样的时间。
+   *
+   * 改成 `journey` 之后天数由 `engine/journey.ts` 现算：
+   * 目的地给基准，身子骨和路况各摊一层。**目的地决定的是基准耗时，
+   * 不是「目的地一填就必然花固定天数」**（用户 2026-09-11 钉的边界）。
+   *
+   * **不写 `to`** 是有意的：这一刻还不知道去哪儿，
+   * 效果层会从 `following` 那面旗读出真正的目的地。
+   */
+  effects: [
+    { type: 'journey' },
+    { type: 'household', standing: -2 },
+    { type: 'follow' },
+  ],
   next: 'came-back',
 }
 

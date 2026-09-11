@@ -9,6 +9,7 @@ import { HOUSEHOLD_BONDS } from './note'
 import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 
 import { beatLines, spend } from './daily'
+import { reckonJourney } from './journey'
 import { attend, attendBlocks } from './attention'
 import { reconsider } from './diary'
 import { goOn } from './errand'
@@ -1206,6 +1207,28 @@ function applyOne(
       if (visit.errand.standing) household.shiftStanding(visit.errand.standing)
       return visit.blocks
     }
+    case 'journey': {
+      /*
+       * 目的地给基准，人和路况各摊一层，算出实际天数，
+       * **然后原样走 `time` 那一支**——不自己另发明一套推时间的写法。
+       *
+       * 那一支做的是四件事：推时序、人口跟着老去、记这几天里殁了的、
+       * 户主该交的交。**远行这四件一件也不能少**——他走了半个月，
+       * 家里那半个月照样在过（「NPC 不因离开玩家视野而停止存在」）。
+       *
+       * **不出回执。** 跟 `time` 一样：玩家读到的该是
+       * 「你走了十来天才到」那句正文，不是一行「时间 · 11 日」。
+       */
+      /*
+       * 跟谁去。`Doing` 是「他此刻在做的那件事」，
+       * 而 `alongNow` 从它的 `along` 那一格现算——**同行不是一个存着的字段**。
+       * 眼下远行没有 `Doing` 上下文（那是日常那一层的东西），
+       * 所以这一趟一律算独自；等「带着人出远门」真有内容了再把它接上。
+       */
+      const to = effect.to ?? ((world.getFlag('following') as string | undefined) ?? '')
+      const trip = reckonJourney(to, false)
+      return applyOne({ type: 'time', days: trip.days }, world, character, household, people)
+    }
     case 'follow': {
       const where = (world.getFlag('following') as string | undefined) ?? ''
       return follow(where).blocks
@@ -1366,6 +1389,12 @@ function applyOne(
 const PHASE = {
   /** 唯一的上下文相。它一动，底下那一整列记下的时刻全跟着变 */
   time: '上下文',
+  /*
+   * 走一趟远路。**跟 `time` 同相位，而且必须同相位**——
+   * 路上那些日子要先过去，后面那些效果（他到了、他看见什么）
+   * 才落在「回来之后」那个时刻上。
+   */
+  journey: '上下文',
 
   attribute: '事实',
   flag: '事实',

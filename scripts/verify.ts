@@ -773,6 +773,14 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     undertake: null,
     // 「做了一件事」产出的是行为史里的一笔，不是名字
     deed: null,
+    /*
+     * 走一趟远路。**它引用地方，不创造地方**——`to` 那个 id
+     * 必须是 `content/leads.ts` 的 `PLACES` 里已经有的，
+     * 而那张表由 `scripts/journey.ts` 守着（每个地方都算得出天数）。
+     *
+     * 跟 `undertake` 同一个道理：引用别处立起来的东西，这一道不管。
+     */
+    journey: null,
   } satisfies {
     [K in Effect['type']]: ((effect: Extract<Effect, { type: K }>) => [Set<string>, string]) | null
   }
