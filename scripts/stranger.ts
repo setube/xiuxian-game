@@ -155,6 +155,44 @@ for (const [sceneId, scene] of Object.entries(lifeScenes)) {
   }
 }
 
+/*
+ * 四、`{years}` 只许写在 `hindsight.ts` 里。
+ *
+ * **它跟 `{call:X}` 是同一族的另一头**：不是「找不到人时兜底」，
+ * 是**这个占位符根本不由 `interpolate` 解析**——
+ * `engine/diary.ts` 在日录那一层单独 `replace('{years}', …)`。
+ *
+ * 落到别的册里没有人会去换它，正文里就会印出一对花括号：
+ *
+ *     {years}年后你才想明白……
+ *
+ * 比「一个陌生人」还刺眼，**而同样没有任何机器在看**。
+ * 2026-09-11 一手扫过：8 处全在 `hindsight.ts` 界内，这一问是冻住它。
+ *
+ * ⚠️ 顺带记一处虚警：`{side}` / `{family}` **不是占位符**，
+ * 是 `content/birth.ts` 里 JS 模板字符串的 `${side}` / `${family}`。
+ * 扫占位符的正则要排除前面那个 `$`，否则会把它们数进来。
+ */
+{
+  const OWNER = 'hindsight'
+  for (const [sceneId, scene] of Object.entries(lifeScenes)) {
+    for (const [nodeId, node] of Object.entries(scene.nodes)) {
+      const texts = [
+        ...(node.blocks ?? []).map((b) => ('text' in b ? b.text : '')),
+        ...(node.seen ?? []).map((s) => s.text),
+      ]
+      for (const text of texts) {
+        if (text.includes('{years}')) {
+          wrong.push(
+            `${sceneId}#${nodeId} 写了 {years}，而只有 ${OWNER} 那一层会换它——` +
+              `别处会把花括号原样印进正文`,
+          )
+        }
+      }
+    }
+  }
+}
+
 console.log('')
 if (wrong.length === 0) {
   console.log(`  ✓ ${bare.length} 个人在空库时会印兜底话，跟名单一致；正文里没人跟兜底话撞`)
