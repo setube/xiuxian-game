@@ -333,8 +333,9 @@ let bad = 0
   const richWalked = play('open', () => 'agree')
   const richNode = richWalked.includes('wife-rich')
 
-  // 贫户——standing 20，但不立哥（入赘要哥，这里要的是走 wife-poor）
-  stage('男', false, 20)
+  // 贫户——standing 28，高于入赘阈值（≤26）和 their-verdict 阈值（≤22），仍属贫户档（≤30）
+  // ⚠️ 不能低于 27：≤26 会命中入赘条件（即便没有哥也可能因状态泄漏触发）
+  stage('男', false, 28)
   const poorWalked = play('open', () => 'agree')
   const poorNode = poorWalked.includes('wife-poor')
 

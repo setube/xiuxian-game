@@ -166,7 +166,8 @@ export const matchScenes: SceneLibrary = {
               { type: 'time', months: 4 },
               { type: 'flag', key: 'match-deferred-to-elders', value: true },
             ],
-            next: 'settled',
+            // 先过 pre-settle——家境极差时还要看对方家里的意思
+            next: 'pre-settle',
           },
           {
             id: 'ask',
@@ -236,7 +237,8 @@ export const matchScenes: SceneLibrary = {
               { type: 'time', months: 4 },
               { type: 'flag', key: 'match-deferred-to-elders', value: true },
             ],
-            next: 'settled',
+            // 先过 pre-settle——家境极差时还要看对方家里的意思
+            next: 'pre-settle',
           },
           {
             id: 'ask',
@@ -314,6 +316,81 @@ export const matchScenes: SceneLibrary = {
             effects: [{ type: 'time', months: 2 }],
             next: 'refused',
           },
+        ],
+      },
+
+      /**
+       * 谈成了：议亲这件事到此结束，人进门。
+       *
+       * `undertake done` 那一笔是这一册的关键——**结束它的是这一节，
+       * 不是它自己到期**。过程中状态没有 deadline，也不该有。
+       */
+      /**
+       * 「答应」之后等对方回话的那几天。
+       *
+       * 这一节是「答应」选项的实际落点——它不是「玩家答应了、事就成了」。
+       * 家境极差（standing ≤ 22）时，对方家里还没开口，得先过 `their-verdict`。
+       * 其余情况直接走 `settled`。
+       *
+       * ## 为什么要这一节
+       *
+       * `elders`/`alone`/`glimpse` 里「答应」的 `next` 是写死的，
+       * 无法在一个 `choices` 节点的 `next` 里按条件分叉。
+       * 需要一个中间节点，让 `branches` 在进节点时判家境。
+       *
+       * 这一节没有 `onEnter`、没有 `blocks`——它是纯路由，对玩家不可见。
+       */
+      'pre-settle': {
+        id: 'pre-settle',
+        blocks: [],
+        branches: [
+          // 家境极差时对方还会掂量——不是必被拒，是有这个可能
+          { requires: [{ standing: { atMost: 22 } }], next: 'their-verdict' },
+        ],
+        next: 'settled',
+      },
+
+
+      'their-verdict': {
+        id: 'their-verdict',
+        onEnter: [
+          {
+            type: 'roll',
+            key: 'their-answer',
+            among: [
+              // 家境极差时，对方有三成概率婉拒；其余情况直接成
+              // 权重只在 standing ≤ 22 的路径上有意义（那条 branch 才走这一节）
+              { value: '拒', weight: 30 },
+              { value: '成', weight: 70 },
+            ],
+          },
+        ],
+        blocks: [],
+        branches: [
+          { requires: [{ flag: { key: 'their-answer', equals: '拒' } }], next: 'their-refused' },
+        ],
+        next: 'settled',
+      },
+
+      /**
+       * 对方家里婉拒。
+       *
+       * 不写「为什么不成」——媒人回来只说「那边没应」，具体缘由
+       * 你不知道，也不会知道。**这是这一节唯一的设计原则**：
+       * 不替对方立一个「家境差所以嫌弃」的标签，只把那件事发生了这个事实还给玩家。
+       *
+       * 年表记一笔，undertaking 封口。跟「没成」是同一层的结局。
+       */
+      'their-refused': {
+        id: 'their-refused',
+        onEnter: [
+          { type: 'undertake', undertaking: BETROTHAL, done: true },
+          { type: 'chronicle', text: '那门亲事没有成。' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '媒人回来说，那边没有应。' },
+          { kind: 'narration', text: '她说话的时候没看你，走得也比平时快。' },
+          { kind: 'narration', text: '你没有问为什么。', tone: 'faint' },
         ],
       },
 
