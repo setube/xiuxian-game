@@ -29,7 +29,8 @@ import { applyEffects } from '../src/engine/effects'
 import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
 import { usePeopleStore } from '../src/stores/people'
-import type { Choice, SceneNode } from '../src/types/game'
+import type { Choice, SceneNode, Livelihood, Terms } from '../src/types/game'
+import { forkingOf } from './lib/forking'
 import { beOf } from './origin'
 
 function stage(age = 25): void {
@@ -58,6 +59,34 @@ function enrollBrother(): void {
     history: [],
   })
   people.bind('me', 'brother', '兄')
+}
+
+/**
+ * 立一个亲人，**连他靠什么过活一起立**。
+ *
+ * ⚠️ `enrollBrother` 从前不给 `livelihood`，于是 `livelihoodOf` 回落到
+ * 那一户的营生（务农）——`BROTHER_CARPENTER`（要「木工」）一次也不成立，
+ * 而那条分支底下的判据问的是别处，谁也没发现。
+ * **摆局缺一格，条件层就整段验不了。**
+ */
+function enrollKin(id: string, doing: string): void {
+  const people = usePeopleStore()
+  const world = useWorldStore()
+  people.enroll({
+    id,
+    surname: '江',
+    given: id === 'brother' ? '大' : '小',
+    gender: '男',
+    bornYear: world.time.year - (id === 'brother' ? 30 : 18),
+    bornMonth: 3,
+    temper: '木讷',
+    health: 70,
+    place: world.place,
+    fate: '在',
+    livelihood: doing as Livelihood,
+    history: [],
+  })
+  people.bind('me', id, id === 'brother' ? '兄' : '亲戚')
 }
 
 function playFrom(
@@ -201,6 +230,136 @@ function check(label: string, walked: string[], expected: string): void {
     }
   }
   if (allIn) console.log('  ✓ 尺子自检：六卷各自都走进去了。')
+}
+
+/**
+ * 条件层：**哥改了行没有，侄儿在哪儿干活**——分流认不认得这两件事。
+ *
+ * 上面那几条问的是「选了这个选项走到那个节点了吗」，`next` 写死在内容里，
+ * **`meetsAll` 恒真它们纹丝不动**（2026-09-12 打断实测）。
+ *
+ * 这几卷有三处分流，从前一处也没人验：
+ *
+ *     away:hurt / away:old    NEPHEW_FARMS     侄儿种着老屋的地 → son-on-land，否则 done
+ *     away:father-old         FATHER_SON_SOUR  父子不睦 → son-stays-away，否则 son-comes-back
+ *
+ * ## ⚠️ 头一版我把 `NEPHEW_FARMS` 认在了 `away:father-old` 上
+ *
+ * 报「该落在 son-on-land，实际落在 son-comes-back」——看着像内容坏了，
+ * 而**那一卷的 `open` 分的根本不是侄儿的营生，是父子睦不睦**。
+ * 判据没坏，是我写错了要验的对象（`NEPHEW_FARMS` 在 `away:hurt` 和 `away:old` 里）。
+ *
+ * ## ⚠️ `enrollBrother` 从前不给营生
+ *
+ * `BROTHER_CARPENTER` 要 `livelihood: ['木工']`，而门禁立的哥只有姓名和生年
+ * ——`livelihoodOf` 回落到那一户的营生（务农），这条分支**一次也走不到**。
+ * 摆局缺一格，而判据问的是别处，于是谁也没发现。
+ */
+{
+  /** 一处分流：怎么把条件摆成立、期望落在哪 */
+  interface Case {
+    scene: string
+    node: string
+    to: string
+    /** 条件成立时怎么说 */
+    label: string
+    /** 条件不成立时怎么说。分开写，不用「不」去拼——拼出来是「不哥改行做了木匠」 */
+    other: string
+    /** 摆成「条件成立」 */
+    hold: () => void
+    /** 摆成「条件不成立」，只改那一处 */
+    drop: () => void
+  }
+
+  const nephewFarms = (doing: string) => (): void => {
+    stage()
+    enrollKin('brother', '务农')
+    enrollKin('nephew', doing)
+  }
+  const fatherSon = (terms: Terms) => (): void => {
+    stage()
+    enrollKin('brother', '务农')
+    enrollKin('nephew', '务农')
+    usePeopleStore().tie('nephew', 'brother', '生父', terms)
+  }
+
+  const cases: Case[] = [
+    {
+      scene: 'away:i-repay',
+      node: 'open',
+      to: 'in-town',
+      label: '哥改行做了木匠',
+      other: '哥还在种地',
+      hold: () => {
+        stage()
+        enrollKin('brother', '木工')
+      },
+      drop: () => {
+        stage()
+        enrollKin('brother', '务农')
+      },
+    },
+    {
+      scene: 'away:hurt',
+      node: 'open',
+      to: 'son-on-land',
+      label: '侄儿种着老屋的地',
+      other: '侄儿出去做工了',
+      hold: nephewFarms('务农'),
+      drop: nephewFarms('佣工'),
+    },
+    {
+      scene: 'away:old',
+      node: 'open',
+      to: 'son-on-land',
+      label: '侄儿种着老屋的地',
+      other: '侄儿出去做工了',
+      hold: nephewFarms('务农'),
+      drop: nephewFarms('佣工'),
+    },
+    {
+      scene: 'away:father-old',
+      node: 'open',
+      to: 'son-stays-away',
+      label: '父子不睦',
+      other: '父子处得平常',
+      hold: fatherSon('不睦'),
+      drop: fatherSon('平常'),
+    },
+  ]
+
+  for (const { scene, node, to, label, other, hold, drop } of cases) {
+    const fork = forkingOf(scene, node)
+    const fallback = fork?.fallback
+    if (fork === null || fallback === undefined) {
+      console.log(`  ✗ 尺子自检：${scene}/${node} 找不到分流或兜底——结构变了。`)
+      bad += 1
+      continue
+    }
+    const targets = [...fork.branches.map((one) => one.to), fallback]
+    const landedOn = (walked: readonly string[]): string | undefined =>
+      walked.find((one) => targets.includes(one))
+
+    hold()
+    const withIt = landedOn(playFrom(scene, node))
+    drop()
+    const without = landedOn(playFrom(scene, node))
+
+    if (withIt !== to) {
+      console.log(
+        `  ✗ ${scene} 分流〔${label}〕：该落在 ${to}，实际落在 ${withIt ?? '哪儿也没落'}。`,
+      )
+      bad += 1
+    } else if (without !== fallback) {
+      console.log(
+        `  ✗ ${scene} 分流〔${other}〕：该落到兜底 ${fallback}，` +
+          `实际落在 ${without ?? '哪儿也没落'}——那条分支没在管事。`,
+      )
+      bad += 1
+    } else {
+      console.log(`  ✓ ${scene} 分流〔${label}〕落 ${to}，〔${other}〕落 ${fallback}。`)
+    }
+  }
 }
 
 console.log()
