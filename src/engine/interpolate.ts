@@ -94,6 +94,68 @@ function idByBond(order: readonly Bond[]): string | undefined {
 }
 
 /**
+ * 一起长大的那个：邻家跟你年纪最近的孩子。
+ *
+ * ## 为什么它不能照 `idByBond` 写
+ *
+ * 上面那三个角色都按 `Bond` 取——而邻家的孩子**没有 bond**。
+ * 他不是亲属，是「住在挨着的那一户里的人」（`people.isNeighbour` 按住处派生），
+ * 而且他的 id 是出生那一刻随机生成的（`east-child-1` / `west-child-2`…），
+ * 数量 0–3，两户合起来平均三个。**内容层写不出他的 id。**
+ *
+ * ## 取年纪最近的，不取第一个
+ *
+ * 两户合起来可能有六个孩子，跨十二岁（`birth.ts` 掷的是「比你大 0–12 岁」）。
+ * 「一起玩的那个」在现实里是同龄那个，不是排在最前那个——
+ * 取第一个的话，一个八岁孩子的玩伴会是那个二十岁的邻家大哥。
+ *
+ * ## 一辈子认同一个人，不是每次现挑
+ *
+ * 年龄差是固定的（大家一起变老），所以这个函数每次算出来都是同一个人——
+ * **它现算，但结果稳定**。这跟 `neighbourCall` 那一格是同一个道理：
+ * 不存字段，可算出来的东西不会变（`写死的字段活得比事实久`）。
+ *
+ * 唯一会变的时候是那个人不在了或者搬走了（`isNearby` 不成立），
+ * 那时它落到下一个——**而那正是对的**：一起玩的人走了，
+ * 你还是会跟别的孩子玩，只是不再是他。
+ *
+ * ⚠️ 6.3% 的人生里两户一个孩子也没有（20000 次实测），这时它返回 `undefined`，
+ * 那一条效果不落、那一句正文换成兜底。**从小没有同龄玩伴是一种真实的人生**，
+ * 不给它保底。
+ */
+function idOfPlaymate(): string | undefined {
+  const people = usePeopleStore()
+  const mine = people.ageOf('me')
+  let best: string | undefined
+  let closest = Number.POSITIVE_INFINITY
+  for (const house of people.neighbourHouses()) {
+    const headAge = people.ageOf(house.head)
+    for (const id of house.members) {
+      if (!isNearby(id)) continue
+      /*
+       * 排掉那一户的大人。
+       *
+       * 光看「跟我年纪差多少」不够：玩家三十岁的时候，邻家四十岁的户主
+       * 只差十岁，会被当成一起长大的人。而孩子辈的判据是**跟户主差一辈**——
+       * 那一户的当家和他媳妇都不是你的玩伴，哪怕年纪碰巧挨着。
+       *
+       * 十六岁是一辈：`birth.ts` 掷户主生年时用的是「比玩家大 24–50 岁」，
+       * 孩子是「比玩家大 0–12 岁」，两者最窄的差正好十二到二十四之间。
+       * 取十六，宽一点，宁可漏掉一个也不把大人算进来。
+       */
+      const age = people.ageOf(id)
+      if (headAge - age < 16) continue
+      const gap = Math.abs(age - mine)
+      // 差得太远的不算玩伴：那是邻家的哥哥辈，不是一起长大的人
+      if (gap > 12 || gap >= closest) continue
+      closest = gap
+      best = id
+    }
+  }
+  return best
+}
+
+/**
  * 效果里写的角色名。
  *
  * `{elder}` 是正文里的记号；效果里对应的是 `id: 'elder'`——「跟家里的大人多说了几句」
@@ -102,10 +164,10 @@ function idByBond(order: readonly Bond[]): string | undefined {
  * 「一个人」的幽灵熟人挂在人际面板上，`person fate 殁` 谁也没杀。
  * 现在角色名在结算前换成真人的 id，换不到（身边没有这样的人）那一条效果就不落。
  */
-export const ROLE_IDS = ['elder', 'dam', 'child'] as const
+export const ROLE_IDS = ['elder', 'dam', 'child', 'playmate'] as const
 export type RoleId = (typeof ROLE_IDS)[number]
 
-const ROLE_ORDER: Readonly<Record<RoleId, readonly Bond[]>> = {
+const ROLE_ORDER: Readonly<Record<Exclude<RoleId, 'playmate'>, readonly Bond[]>> = {
   elder: ['生父', '抚养', '生母'],
   dam: ['生母', '抚养', '生父'],
   child: ['子', '女'],
@@ -113,6 +175,8 @@ const ROLE_ORDER: Readonly<Record<RoleId, readonly Bond[]>> = {
 
 export function roleId(role: string): string | undefined {
   if (role === 'elder' || role === 'dam' || role === 'child') return idByBond(ROLE_ORDER[role])
+  // 玩伴不按 bond 取——他不是亲属，是挨着住的那一户里跟你年纪最近的孩子
+  if (role === 'playmate') return idOfPlaymate()
   return undefined
 }
 
