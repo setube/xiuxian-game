@@ -23,9 +23,10 @@ import { createPinia, setActivePinia } from 'pinia'
 import { lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
+import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
-import type { Choice, SceneNode } from '../src/types/game'
+import type { Choice, SceneNode, Tenure } from '../src/types/game'
 import { beOf } from './origin'
 
 function stage(age = 30): void {
@@ -152,7 +153,110 @@ let bad = 0
 }
 
 /**
- * 四、尺子自检：三卷各自都走进去了。
+ * 四、条件层：**三张营生分流表，每一档各自去了对的地方吗**。
+ *
+ * ## 上面那三条一条也没碰到条件层
+ *
+ * 它们问的是「走了零步吗」——连目的地都不验，更别说分流。
+ * 把 `meetsAll` 整个改成恒真，**它们纹丝不动**（2026-09-12 打断实测）。
+ *
+ * 这三卷各有一张按营生分流的表（`succeed`/`divide`/`divide-younger`，
+ * 每张六到七条），从前一条也没人验。
+ *
+ * ## 第一条是两个条件叠加，而它排在第二条前面——顺序本身就是判据
+ *
+ *     { living: farm, tenure: 佃 } → rented      ← 更具体的排前面
+ *     { living: farm }             → fields
+ *
+ * `branches` 取第一条成立的。两条对调，**佃户就再也走不到 `rented`**，
+ * 而「走得到吗」那类判据一声不响——`fields` 也是走得到的。
+ * 所以这一条要**摆两次局**：佃户去 `rented`，自耕农去 `fields`。
+ *
+ * ## 分流表从内容现取
+ *
+ * 抄一份的话，内容里加一种营生而这儿忘了加，那一条新分流永远没人验，
+ * 而门禁照样全绿（`ruler-standard-must-come-from-system` 那条）。
+ */
+{
+  /** 一张分流表：这一节按什么分流，各档去哪儿 */
+  interface Route {
+    living: string
+    tenure?: Tenure
+    to: string
+  }
+
+  function routesOf(sceneId: string): { node: string; routes: Route[]; fallback?: string } | null {
+    const scene = lifeScenes[sceneId]
+    for (const [nodeId, node] of Object.entries(scene?.nodes ?? {})) {
+      const routes: Route[] = []
+      for (const branch of node.branches ?? []) {
+        const living = branch.requires?.find((one) => one.living?.is !== undefined)?.living?.is
+        const tenure = branch.requires?.find((one) => one.tenure !== undefined)?.tenure
+        if (living === undefined || branch.next === undefined) continue
+        routes.push({ living, ...(tenure !== undefined ? { tenure } : {}), to: branch.next })
+      }
+      if (routes.length >= 2) return { node: nodeId, routes, fallback: node.next }
+    }
+    return null
+  }
+
+  /** 摆成「过某一种日子」。`living` 是三级链上的 computed，走 liveAs 这个正经入口 */
+  function liveLike(living: string, tenure?: Tenure): void {
+    stage()
+    useCharacterStore().liveAs(living)
+    if (tenure !== undefined) useHouseholdStore().tenure = tenure
+  }
+
+  for (const sceneId of ['house:succeed', 'house:divide', 'house:divide-younger'] as const) {
+    const found = routesOf(sceneId)
+    if (found === null) {
+      console.log(`  ✗ 尺子自检：${sceneId} 里找不到按营生分流的那一节——结构变了。`)
+      bad += 1
+      continue
+    }
+
+    const wrong: string[] = []
+    for (const route of found.routes) {
+      liveLike(route.living, route.tenure)
+      const walked = playFrom(sceneId, found.node)
+      if (!walked.includes(route.to)) {
+        const how = route.tenure === undefined ? route.living : `${route.living}+${route.tenure}`
+        wrong.push(`${how} 该去 ${route.to}，实际走过 ${walked.join('→')}`)
+      }
+    }
+
+    /*
+     * ⚠️ 单验「各档去对了」还漏一种坏法：**两条对调**。
+     * `farm+佃` 和 `farm` 顺序反过来，佃户就再也走不到 `rented`——
+     * 而逐档那一圈**照样全绿**，因为它摆佃户局时走的就是第一条。
+     *
+     * 所以额外问一句：**不带 `tenure` 的那一档，别走进带 `tenure` 的那个去处**。
+     */
+    const loose = found.routes.find((one) => one.tenure === undefined)
+    const tight = found.routes.find((one) => one.tenure !== undefined && one.living === loose?.living)
+    if (loose !== undefined && tight !== undefined) {
+      liveLike(loose.living) // 不设 tenure：自耕农
+      const walked = playFrom(sceneId, found.node)
+      if (walked.includes(tight.to)) {
+        wrong.push(
+          `不是佃户却走到了 ${tight.to}——「${tight.living}+${tight.tenure}」那一条排在` +
+            `「${loose.living}」后面了，顺序反了`,
+        )
+      }
+    }
+
+    if (wrong.length > 0) {
+      console.log(`  ✗ ${sceneId} 分流：${found.routes.length} 档里有 ${wrong.length} 处不对。`)
+      for (const line of wrong) console.log(`      ${line}`)
+      bad += wrong.length
+    } else {
+      console.log(`  ✓ ${sceneId} 分流：${found.routes.length} 档各自去了对的那一节。`)
+    }
+  }
+}
+
+/**
+ * 五、尺子自检：三卷各自都走进去了。
  */
 {
   const scenes = ['house:succeed', 'house:divide', 'house:divide-younger'] as const
