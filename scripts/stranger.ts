@@ -70,6 +70,24 @@ const KNOWN_BARE = new Set([
   // 正文里点名了他们，但 seen 里都有 requires 做活人检查，空库不会印出来
   'east-head',
   'east-wife',
+  /*
+   * 一起长大的那个孩子。跟上面两位同一个理由，而**挡法是分流不是 seen**
+   * ——2026-09-12 逐处查过，三处点名各自都有人挡着：
+   *
+   *     playmate:wed / open      入场条件 `family: { id: 'playmate', present: true }`，
+   *                              这一节不推时间，验过的那个人还在
+   *     playmate:years / close   `open` 那一节第一条分流就把「人不在」的
+   *     playmate:years / apart   挑去了 `gone`（`present: false` → gone），
+   *                              走到这两节的人，那个玩伴必定还在
+   *
+   * ⚠️ 它跟 `east-head` 不同的一点：`{call:playmate}` 是**角色记号**不是 id，
+   * 走 `roleId` → `idOfPlaymate()` 现算「此刻在身边、跟我差不过十二岁、
+   * 比那户当家小一辈的那个孩子」。空库时没有这样的人，所以这一支照样
+   * 把它数进「印出一个陌生人」那一列——**那是对的，它就该在空库时印不出人**。
+   *
+   * 名单里记的是「查过了，真世里有人挡着」，不是「这里没问题所以别管」。
+   */
+  'playmate',
 ])
 
 const wrong: string[] = []

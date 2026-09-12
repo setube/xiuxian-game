@@ -51,6 +51,10 @@ interface Lived {
   livingAfter: { is: string; should: string } | null
   /** 弟弟分出去那年他几岁 */
   youngerAge: number | null
+  /** 有这个弟弟，采样时他已经殁了 */
+  youngerGone: boolean
+  /** 分家那一卷演了，而一个弟弟也没有 */
+  youngerMissing: boolean
   succeeded: boolean
   succeededOk: boolean
   succeedNote: string
@@ -121,6 +125,8 @@ function live(): Lived {
     deadHeads: [],
     livingAfter: null,
     youngerAge: null,
+    youngerGone: false,
+    youngerMissing: false,
     succeeded: false,
     succeededOk: true,
     succeedNote: '',
@@ -222,8 +228,37 @@ function live(): Lived {
 
     // 六、弟弟分出去那年他多大
     if (out.youngerAge === null && world.hasFlag('event:house-divide-younger')) {
-      const younger = people.kinOf('弟').filter(alive)[0]
-      out.youngerAge = younger === undefined ? -1 : people.ageOf(younger)
+      /*
+       * ⚠️ **`-1` 从前把两件不同的事塞进了同一个格子。**
+       *
+       * 那一版写的是 `kinOf('弟').filter(alive)[0]`，取不到人就记 -1，
+       * 而底下第六条判据问的是 `youngerAge < 16`——于是 -1 被当成
+       * 「分家那年他才 -1 岁」判红，报出来的话读着像内容把一个
+       * 没出生的孩子分出去了。
+       *
+       * 真实情形是第三种：**分家的旗落下之后，那个弟弟殁了**。
+       * 采样点在这一轮循环的末尾，而旗是这一轮之内落的——
+       * 中间隔着这一世往下走的那段时间（`staging-moment-vs-engine-moment`）。
+       *
+       * 所以分开记：
+       *
+       *     殁了      有这个弟弟，只是采样时他已经不在　→ 不判红，单独报数
+       *     从来没有  `kinOf('弟')` 整个是空的　　　　　→ 那才是真的不对
+       *
+       * 「他分家之后死了」和「内容把一个没出生的孩子分出去了」
+       * 是两件事，判据不该把它们印成同一个数。
+       */
+      const anyYounger = people.kinOf('弟')
+      const living = anyYounger.filter(alive)[0]
+      if (living !== undefined) {
+        out.youngerAge = people.ageOf(living)
+      } else if (anyYounger.length > 0) {
+        // 有这个人，采样时已经不在了
+        out.youngerGone = true
+      } else {
+        // 一个弟弟也没有，而分家那一卷演了——这才是内容的账
+        out.youngerMissing = true
+      }
     }
 
     // 五、役家承了户：差不是家里的东西，此后给人做工
@@ -421,19 +456,41 @@ console.log(
   }
 }
 
-// 六、弟弟分出去那年他多大
+/*
+ * 六、弟弟分出去那年他多大。
+ *
+ * ⚠️ **三种情形分开数，从前它们挤在一个 `-1` 里。**
+ *
+ *     量到了岁数    判「满了十六没有」　　　　　← 真正要守的
+ *     人殁了　　　　有这个弟弟，采样时已不在　　← 报数不判红
+ *     一个也没有    分家那一卷演了却没有弟弟　　← 这才是内容的账
+ *
+ * 从前取不到活人就记 -1，而判据问 `< 16`——`-1 < 16` 成立，
+ * 于是报「分出去那年才 -1 岁」。那句话读着像内容把一个没出生的
+ * 孩子分出去了，而真相是**他分家之后才殁的**：采样点在这一世
+ * 走完之后，分家的旗是半路落的，中间隔着好些年。
+ */
 {
   const judged = lives.filter((l) => l.youngerAge !== null)
   const tooYoung = judged.filter((l) => l.youngerAge! < 16)
-  if (judged.length === 0) {
+  const gone = lives.filter((l) => l.youngerGone)
+  const missing = lives.filter((l) => l.youngerMissing)
+
+  if (judged.length === 0 && gone.length === 0 && missing.length === 0) {
     console.log(`  ✗ 六、${sampled} 世没有一世弟弟分出去——那一卷没人走到。`)
     bad += 1
-  } else if (tooYoung.length > 0) {
+  } else if (missing.length > 0) {
     console.log(
-      `  ✗ 六、${tooYoung.length} 世弟弟分出去那年才 ${tooYoung[0]!.youngerAge} 岁（-1 是人没了）。`,
+      `  ✗ 六、${missing.length} 世分家那一卷演了，而这家一个弟弟也没有——分出去的是谁。`,
     )
     bad += 1
-  } else console.log(`  ✓ 六、${judged.length} 世弟弟分出去，那年都满了十六。`)
+  } else if (tooYoung.length > 0) {
+    console.log(`  ✗ 六、${tooYoung.length} 世弟弟分出去那年才 ${tooYoung[0]!.youngerAge} 岁。`)
+    bad += 1
+  } else {
+    const tail = gone.length > 0 ? `；另有 ${gone.length} 世他分家之后殁了（不判红）` : ''
+    console.log(`  ✓ 六、${judged.length} 世弟弟分出去，那年都满了十六${tail}。`)
+  }
 }
 
 // 七、尺子自检
