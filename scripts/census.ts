@@ -86,6 +86,18 @@ function stage(age: number): { id: string } | null {
 
     // 那句话说出口过——这一卷的入场条件之一
     world.setFlag('said-come-to-me', true)
+    /*
+     * ⚠️ **还要把那个认定落下来。**
+     *
+     * 这一卷问的是 `knownAs`（当年认定的那一个），不是
+     * `family: { id: 'playmate' }`（此刻身边那个孩子）——两者常常
+     * 不是同一个人（那个人殁了会有另一个顶上，24% 还沿用他的称呼）。
+     *
+     * 真世里这一笔由第一卷那节 `meet` 落；摆局跳过了那一卷，
+     * 所以这里补上。**少了它，入场条件恒不成立，而报错会说
+     * 「那条选项摆不出来」——读着像内容坏了。**
+     */
+    people.meet(id, people.callOf(id), 0, undefined, 'playmate')
     return { id }
   }
   console.log(`  ✗ 摆局：${TRIES} 次也没掷出「${age} 岁那年他还在」的一世。`)

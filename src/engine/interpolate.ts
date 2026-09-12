@@ -51,7 +51,7 @@ import { isNearby } from './nearby'
  * 而「此刻在不在行礼」根本不是一种状态，它是一句话的属性。
  */
 const TOKENS =
-  /\{(name|home|province|prefecture|here|livelihood|elder|elders|dam|chore|putsAway|title|era|bornEra|call|house|hail|place|age|nearbyVillage|nearbyCounty)(?::([\w-]+))?\}/g
+  /\{(name|home|province|prefecture|here|livelihood|elder|elders|dam|chore|putsAway|title|era|bornEra|call|house|hail|place|age|nearbyVillage|nearbyCounty)(?::([\w\-/]+))?\}/g
 
 /**
  * 挑一个还在身边的关系人，按给定的优先次序。
@@ -436,7 +436,27 @@ export function fillString(text: string, manner: Manner = '家常', roles?: Role
      * `{elder}` / `{dam}` / `{child}` 躲过了这个坑只因为它们各有专门的分支
      * （上面那三行），走的不是这条通用路径。
      */
-    if (token === 'call') return usePeopleStore().callOf(roleId(arg ?? '') ?? arg ?? '')
+    if (token === 'call') {
+      const people = usePeopleStore()
+      const key = arg ?? ''
+      /*
+       * `{call:known/playmate}`——**当年认定的那一个**，不是此刻顶上的那个。
+       *
+       * ⚠️ 这两者从前共用 `{call:playmate}` 一个写法，而它们指的
+       * 常常不是同一个人：那个人殁了之后 `roleId` 会让另一个孩子顶上
+       * （实测 24% 的顶替还会沿用死者的称呼）。
+       *
+       * **位置语义没有错，错的是拿它去说「当年」。** 所以两个写法并存：
+       *
+       *     {call:playmate}        此刻身边那个孩子　　　　日常那一类
+       *     {call:known/playmate}  一起长大的那一个　　　　「当年」「从小」那一类
+       *
+       * 认定过的人已经不在了，这里落回「一个陌生人」——而那种时候
+       * 正文本来就不该点他的名（入场条件用 `knownAs present` 挡住）。
+       */
+      if (key.startsWith('known/')) return people.callOf(people.knownOf(key.slice(6)) ?? '')
+      return people.callOf(roleId(key) ?? key)
+    }
     if (token === 'house') return houseCall(arg ?? '')
     /*
      * `{hail:east-wife}`——**那个人开口时怎么称呼你**，连着后面那个逗号。

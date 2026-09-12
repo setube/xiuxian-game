@@ -71,23 +71,37 @@ const KNOWN_BARE = new Set([
   'east-head',
   'east-wife',
   /*
-   * 一起长大的那个孩子。跟上面两位同一个理由，而**挡法是分流不是 seen**
-   * ——2026-09-12 逐处查过，三处点名各自都有人挡着：
+   * 一起长大的那个孩子。跟上面两位同一个理由，而**挡法是分流不是 seen**。
    *
-   *     playmate:wed / open      入场条件 `family: { id: 'playmate', present: true }`，
+   * ## 2026-09-13：写法从 `playmate` 换成了 `known/playmate`
+   *
+   * 那一天两个语义正式分开（`Acquaintance.knownAs` 那一格的注释记着
+   * 起因：一个 906 次的 bug）：
+   *
+   *     {call:playmate}        此刻身边那个孩子（位置）
+   *     {call:known/playmate}  当年认定的那一个（人）
+   *
+   * 三卷的点名全改用后者，于是这一支当天报
+   * 「名单里的 playmate 在库里已经没有引用了」——**报得对**，
+   * 而且它同时照出这支门禁的正则不认斜杠（`[a-z-]+`）。
+   * 两处一起改：正则放行斜杠，名单换成新写法。
+   *
+   * ## 挡法也跟着换了
+   *
+   *     playmate:wed / open      入场 `knownAs: { kind: 'playmate', present: true }`，
    *                              这一节不推时间，验过的那个人还在
-   *     playmate:years / close   `open` 那一节第一条分流就把「人不在」的
-   *     playmate:years / apart   挑去了 `gone`（`present: false` → gone），
-   *                              走到这两节的人，那个玩伴必定还在
+   *     playmate:years / close   `open` 第一条分流把「人不在」的挑去 `gone`
+   *     playmate:years / apart   （`present: false` → gone），走到这两节的
+   *                              人，那个玩伴必定还在
+   *     census:mismatch / open   入场和那条选项各有一格 `knownAs present`
    *
-   * ⚠️ 它跟 `east-head` 不同的一点：`{call:playmate}` 是**角色记号**不是 id，
-   * 走 `roleId` → `idOfPlaymate()` 现算「此刻在身边、跟我差不过十二岁、
-   * 比那户当家小一辈的那个孩子」。空库时没有这样的人，所以这一支照样
-   * 把它数进「印出一个陌生人」那一列——**那是对的，它就该在空库时印不出人**。
+   * ⚠️ 空库时 `knownOf` 返回 `undefined`（从来没有过那个认定），
+   * `callOf('')` 落回「一个陌生人」——**那是对的，它就该在空库时印不出人**，
+   * 所以这一支照样把它数进那一列。
    *
    * 名单里记的是「查过了，真世里有人挡着」，不是「这里没问题所以别管」。
    */
-  'playmate',
+  'known/playmate',
 ])
 
 const wrong: string[] = []
@@ -102,7 +116,7 @@ for (const [sceneId, scene] of Object.entries(lifeScenes)) {
       ...(node.choices ?? []).flatMap((c) => [c.label, c.echo ?? '']),
     ]
     for (const text of texts) {
-      for (const found of text.matchAll(/\{call:([a-z-]+)\}/g)) {
+      for (const found of text.matchAll(/\{call:([a-z\-/]+)\}/g)) {
         const id = found[1]!
         who.set(id, [...(who.get(id) ?? []), `${sceneId}#${nodeId}`])
       }

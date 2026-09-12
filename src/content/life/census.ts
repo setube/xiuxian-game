@@ -82,8 +82,8 @@ export const censusScenes: SceneLibrary = {
           { kind: 'event', text: '「上一回记的不是这个数。」' },
           {
             kind: 'narration',
-            text: '上一回造册是十年前。那十年里家里添过人，也少过人，' +
-              '而册子上那一行没有跟着动。',
+            text:
+              '上一回造册是十年前。那十年里家里添过人，也少过人，' + '而册子上那一行没有跟着动。',
           },
           { kind: 'narration', text: '他说这事他做不了主，得有人出面说清楚。' },
           {
@@ -105,7 +105,7 @@ export const censusScenes: SceneLibrary = {
              * 是他自己的事**。
              */
             id: 'go-to-him',
-            label: '去巷子那头找{call:playmate}',
+            label: '去巷子那头找{call:known/playmate}',
             /*
              * ⚠️ **这一条要问他此刻还在不在，入场问过不算数。**
              *
@@ -121,7 +121,7 @@ export const censusScenes: SceneLibrary = {
              * （同一个形状：`playmate.ts` 那三卷的 `open` 都特意不推时间，
              * 文件头写着「推完他可能就不是他了」。这一卷推了，所以要补这一格。）
              */
-            requires: [{ family: { id: 'playmate', present: true } }],
+            requires: [{ knownAs: { kind: 'playmate', present: true } }],
             hint: '他在这条巷子里住得比谁都久',
             echo: '你去了巷子那头一趟。',
             effects: [
@@ -171,7 +171,11 @@ export const censusScenes: SceneLibrary = {
       'he-came': {
         id: 'he-came',
         onEnter: [
-          { type: 'chronicle', text: '造册那年册上对不上，{call:playmate}出面说了话。', tone: 'deep' },
+          {
+            type: 'chronicle',
+            text: '造册那年册上对不上，{call:known/playmate}出面说了话。',
+            tone: 'deep',
+          },
           { type: 'flag', key: 'he-spoke-for-me', value: true },
         ],
         blocks: [
@@ -211,7 +215,10 @@ export const censusScenes: SceneLibrary = {
         ],
         blocks: [
           { kind: 'narration', text: '你去了三趟。头一趟人不在，第二趟说要凭据。' },
-          { kind: 'narration', text: '第三趟你把能想起来的年份一样一样报了，有两处对不上，又回去问人。' },
+          {
+            kind: 'narration',
+            text: '第三趟你把能想起来的年份一样一样报了，有两处对不上，又回去问人。',
+          },
           { kind: 'narration', text: '前后拖了两个多月。' },
           { kind: 'event', text: '册子改过来了。' },
           {
@@ -261,7 +268,19 @@ export const censusEvents: readonly LifeEvent[] = [
     id: 'census-mismatch',
     window: { from: 40, to: 66 },
     requires: [
-      { family: { id: 'playmate', present: true } },
+      /*
+       * ⚠️ **问的是「当年那一个」，不是「此刻身边那个孩子」。**
+       *
+       * `family: { id: 'playmate' }` 走的是位置语义：那个人殁了，
+       * 邻家另一个孩子会顶上（实测 24% 的顶替还会沿用死者的称呼），
+       * 于是这一卷会让一个几十年没见过的人出面说
+       * 「这是我从小一块长大的」——而那是假话。
+       *
+       * `knownAs` 问的是第一卷认定的那一个，此后不换人。
+       * 他不在了这一卷就不演——**那正是对的**：
+       * 「一起长大的那个人已经不在了」跟「另找一个顶上」是两件事。
+       */
+      { knownAs: { kind: 'playmate', present: true } },
       { flag: { key: 'said-come-to-me', equals: true } },
     ],
     scene: 'census:mismatch',

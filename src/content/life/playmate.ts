@@ -46,7 +46,7 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  * `undefined`，这三卷一卷也演不到。**从小没有同龄玩伴是一种真实的人生**，
  * 不为了让内容有人读而发明一个玩伴。
  *
- * ## `{call:playmate}` 是这一册的全部机关
+ * ## `{call:known/playmate}` 是这一册的全部机关
  *
  * 内容层写不出他的 id（`east-child-2` 是出生那一刻随机生成的），
  * 所以走 `roleId('playmate')`——按「邻户里跟你年纪最近、还在身边的孩子」
@@ -84,7 +84,7 @@ export const playmateScenes: SceneLibrary = {
          */
         blocks: [
           /*
-           * ⚠️ **这一节不点名。** 那句「{call:playmate}比你早起…」挪到了
+           * ⚠️ **这一节不点名。** 那句「{call:known/playmate}比你早起…」挪到了
            * 底下 `went`/`stayed` 各自的开头。
            *
            * `scripts/present.ts` 抓到过一次：**一个取样步里装得下两卷正文**
@@ -140,7 +140,7 @@ export const playmateScenes: SceneLibrary = {
       },
 
       went: {
-        // 不推时间：这一节点名说人（下一句的 `{call:playmate}`），
+        // 不推时间：这一节点名说人（下一句的 `{call:known/playmate}`），
         // 而推完那几个月他可能已经不在了。这一卷本来也是一天的事
         id: 'went',
         blocks: [
@@ -201,7 +201,9 @@ export const playmateScenes: SceneLibrary = {
       open: {
         id: 'open',
         // 不推时间，理由同 `playmate:young` 的 open：推完他可能就不是他了
-        blocks: [{ kind: 'narration', text: '{call:playmate}成亲那天，隔壁院子里摆了六桌。' }],
+        blocks: [
+          { kind: 'narration', text: '{call:known/playmate}成亲那天，隔壁院子里摆了六桌。' },
+        ],
         /*
          * 三支按你自己成没成家分。顺序要紧：`branches` 取第一条成立的，
          * 所以「你也成了家」排在前面——它比「你还没有」更具体。
@@ -255,7 +257,7 @@ export const playmateScenes: SceneLibrary = {
    * ⚠️ **这一卷三支都不推时间。**
    *
    * 引擎的顺序是 `applyEffects(onEnter)` → 渲染正文，而这三支的开场句
-   * 都点名说了人（`{call:playmate}`「入冬前你在巷口碰见…」）。
+   * 都点名说了人（`{call:known/playmate}`「入冬前你在巷口碰见…」）。
    * 推完那半年他可能已经不在了，于是巷口碰见的是一个不在的人
    * ——`scripts/present.ts` 抓到过一次。
    *
@@ -272,7 +274,7 @@ export const playmateScenes: SceneLibrary = {
         // 不推时间，理由同上两卷的 open。这一卷尤其要紧：
         // 这一节的分支读的正是 `{playmate}` 的好感，换了人就换了那一格
         /*
-         * ⚠️ **这一节不印正文了**，那句「入冬前你在巷口碰见{call:playmate}」
+         * ⚠️ **这一节不印正文了**，那句「入冬前你在巷口碰见{call:known/playmate}」
          * 挪到了底下两支各自的开头。
          *
          * 从前它印在这里，而 `scripts/present.ts` 抓到过一次穿帮：
@@ -313,8 +315,20 @@ export const playmateScenes: SceneLibrary = {
          * 好感那一格根本不该问出口。
          */
         branches: [
-          { requires: [{ family: { id: 'playmate', present: false } }], next: 'gone' },
-          { requires: [{ family: { id: 'playmate', affinity: { atLeast: 6 } } }], next: 'close' },
+          { requires: [{ knownAs: { kind: 'playmate', present: false } }], next: 'gone' },
+          /*
+           * ⚠️ **问的是那个人的好感，不是顶替者的。**
+           *
+           * 这一行漏改过一次：`gone` 那条已经切到人语义，而这一条还问
+           * `family`（位置）——于是「他还在不在」问的是当年那个人，
+           * 「你们还走不走动」问的却是此刻邻家另一个孩子。
+           * 实测「还走动」那一支因此掉到 6.0%（前两卷攒下的好感
+           * 全记在那个人身上，而顶替者身上是空的）。
+           */
+          {
+            requires: [{ knownAs: { kind: 'playmate', affinity: { atLeast: 6 } } }],
+            next: 'close',
+          },
         ],
         next: 'apart',
       },
@@ -325,7 +339,7 @@ export const playmateScenes: SceneLibrary = {
        * 这一支不写「你很难过」——**这一册从头到尾不替玩家说他的心情**。
        * 只写一件看得见的事：巷口没有他了。
        *
-       * ⚠️ 这一节**不点名**（没有 `{call:playmate}`）：走到这儿正是因为
+       * ⚠️ 这一节**不点名**（没有 `{call:known/playmate}`）：走到这儿正是因为
        * 他不在，而 `{playmate}` 现算会落到巷子里下一个孩子身上
        * ——那就成了「你碰见了另一个人」，而这一节说的恰恰是没碰见。
        */
@@ -359,7 +373,7 @@ export const playmateScenes: SceneLibrary = {
          */
         onEnter: [{ type: 'flag', key: 'said-come-to-me', value: true }],
         blocks: [
-          { kind: 'narration', text: '入冬前你在巷口碰见{call:playmate}。' },
+          { kind: 'narration', text: '入冬前你在巷口碰见{call:known/playmate}。' },
           { kind: 'narration', text: '他站住了，问你家里都还好。你们在巷口说了半盏茶的话。' },
           {
             kind: 'narration',
@@ -372,7 +386,7 @@ export const playmateScenes: SceneLibrary = {
       apart: {
         id: 'apart',
         blocks: [
-          { kind: 'narration', text: '入冬前你在巷口碰见{call:playmate}。' },
+          { kind: 'narration', text: '入冬前你在巷口碰见{call:known/playmate}。' },
           { kind: 'narration', text: '他点了下头，你也点了下头。' },
           { kind: 'narration', text: '两个人都没停下来。' },
           {
@@ -400,6 +414,21 @@ export const playmateEvents: readonly LifeEvent[] = [
      */
     id: 'playmate-young',
     window: { from: 8, to: 14 },
+    /*
+     * ⚠️ **这一卷用位置语义，不是笔误。**
+     *
+     * `knownAs` 那个认定**正是这一卷自己落的**（底下那笔 `meet`）。
+     * 这里要是也问它，就成了鸡生蛋：第一卷永远进不来，
+     * 后两卷也就永远没有认定可读——**实测三卷全部归零**。
+     *
+     * 分工是 GPT 定的那一条：
+     *
+     *     生年　　　用来**发现**「他是谁」　　　← 这一卷
+     *     当前状态　用来判断「他现在怎么样」　　← 后两卷
+     *
+     * 所以这一卷问「此刻邻家有没有一个跟我年纪相近的孩子」，
+     * 认出来之后把结论记下；后两卷直接找那个人。
+     */
     requires: [{ family: { id: 'playmate', present: true } }],
     scene: 'playmate:young',
     weight: 14,
@@ -413,7 +442,7 @@ export const playmateEvents: readonly LifeEvent[] = [
      */
     id: 'playmate-wed',
     window: { from: 18, to: 30 },
-    requires: [{ family: { id: 'playmate', present: true } }],
+    requires: [{ knownAs: { kind: 'playmate', present: true } }],
     scene: 'playmate:wed',
     weight: 12,
   },
@@ -426,7 +455,7 @@ export const playmateEvents: readonly LifeEvent[] = [
      */
     id: 'playmate-years',
     window: { from: 35, to: 70 },
-    requires: [{ family: { id: 'playmate', present: true } }],
+    requires: [{ knownAs: { kind: 'playmate', present: true } }],
     scene: 'playmate:years',
     weight: 10,
   },

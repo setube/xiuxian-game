@@ -108,6 +108,28 @@ const CHECKS = {
     return withinTop(attribute.key, character.age, value, attribute.among)
   },
 
+  /**
+   * 那个已经被认定的历史关系人，此刻怎么样。
+   *
+   * ⚠️ **「他是谁」认一次，「他现在怎么样」每次重新判断**——
+   * 所以这一条分两步：先 `knownOf` 取人（不会变），再问死活和在不在身边。
+   *
+   * 认定过的那个人不在了，这一条就**不成立**。那是对的：
+   * 「一起长大的那个人已经不在了」跟「另找一个顶上」是两件事，
+   * 而这一格问的正是前者（`family` 那一格问的是后者）。
+   */
+  knownAs: (ask) => {
+    const people = usePeopleStore()
+    const id = people.knownOf(ask.kind)
+    if (id === undefined) return false
+    if (ask.alive !== undefined && people.isAlive(id) !== ask.alive) return false
+    if (ask.present !== undefined && isNearby(id) !== ask.present) return false
+    if (ask.affinity !== undefined && !within(people.known[id]?.affinity ?? 0, ask.affinity)) {
+      return false
+    }
+    return true
+  },
+
   knowledge: (id, { character }) => character.knows(id),
 
   /**

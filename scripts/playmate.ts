@@ -80,10 +80,16 @@ const CLOSE_AT = ((): number => {
    * **从内容现取是对的，取的位置写死了「第一条」是错的**：
    * 内容里插一条分支是再正常不过的事，而判据不该因此失明。
    */
+  /*
+   * ⚠️ **从 `knownAs` 取，不是 `family`。** 2026-09-13 那一卷把
+   * 「你们还走不走动」切到了人语义——`family` 问的是此刻邻家那个孩子，
+   * 而前面两卷攒下的好感记在**当年那个人**身上。
+   * 判据跟着改，否则它在一个已经不存在的门槛上守着（`ruler-standard-must-come-from-system`）。
+   */
   const cond = open?.branches?.find((one) =>
-    (one.requires ?? []).some((c) => c.family?.affinity?.atLeast !== undefined),
-  )?.requires?.find((c) => c.family?.affinity?.atLeast !== undefined)
-  const at = cond?.family?.affinity?.atLeast
+    (one.requires ?? []).some((c) => c.knownAs?.affinity?.atLeast !== undefined),
+  )?.requires?.find((c) => c.knownAs?.affinity?.atLeast !== undefined)
+  const at = cond?.knownAs?.affinity?.atLeast
   if (at === undefined) {
     console.log('  ✗ 尺子自检：从 playmate:years 取不到那条好感门槛——结构变了。')
     bad += 1
@@ -141,6 +147,14 @@ function stage(age: number): { id: string } | null {
     if (character.age !== age) continue
     if (!people.isAlive(id)) continue
     if (!isNearby(id)) continue
+    /*
+     * ⚠️ **把那个认定落下来**——后两卷问的是 `knownAs`（当年那一个），
+     * 不是 `family`（此刻身边那个孩子）。真世里这一笔由第一卷那节
+     * `meet` 落；摆局跳过了那一卷，所以这里补上。
+     * 少了它，后两卷的入场条件恒不成立，而报错会说
+     * 「摆了玩伴却进不去」——读着像内容坏了。
+     */
+    people.meet(id, people.callOf(id), 0, undefined, 'playmate')
     return { id }
   }
   console.log(`  ✗ 摆局：${TRIES} 次也没掷出「${age} 岁那年玩伴还在」的一世。`)
@@ -364,8 +378,29 @@ function entryOf(eventId: string): readonly Condition[] {
       continue
     }
 
-    // 没有玩伴：进不去。只撤掉邻户那一条边，别的一概不动
-    usePeopleStore().$patch({ adjacent: [] })
+    /*
+     * 没有玩伴：进不去。
+     *
+     * ⚠️ **撤法要跟那一卷问的那一格对上。**
+     *
+     *     第一卷　问 `family`（位置）　→ 撤邻接边，那个孩子不再算「邻家的」
+     *     后两卷　问 `knownAs`（人）　 → 撤邻接边**没用**：一个人不会因为
+     *                                   户之间的邻接没了就不再是你从小
+     *                                   一起长大的那个。要让他真的不在
+     *
+     * 头一版两卷都撤邻接，于是后两卷报「撤了玩伴还进得去」——
+     * **而那是判据的撤法过时了，不是入场条件没在管事**。
+     */
+    const people = usePeopleStore()
+    if (scene === 'playmate:young') {
+      people.$patch({ adjacent: [] })
+    } else {
+      const who = roleId('playmate')
+      if (who !== undefined) people.die(who, '病')
+      // 认定的那个人也要一起撤——真世里他殁了，`knownAs` 那一格还在，
+      // 而 `present` 会因为他不在而不成立。这里照那条路走
+      people.$patch({ adjacent: [] })
+    }
     if (meetsAll(requires)) {
       console.log(`  ✗ ${event} 入场：撤了玩伴还进得去——入场条件没在管事。`)
       bad += 1

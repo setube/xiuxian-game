@@ -417,6 +417,21 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
   const neededKnowledge = new Map<string, string[]>()
   const neededLivings = new Map<string, string[]>()
   const neededLeanings = new Map<string, string[]>()
+  /**
+   * 认定的历史关系（`Acquaintance.knownAs`）：谁在问、谁在写。
+   *
+   * ⚠️ 它跟别的几类不同：**这里的「种类」由内容层自己定**（像
+   * `Undertaking.id`），没有一张事先写好的表可查。所以对账问的是
+   * **读的那个种类有没有人写过**——写错一个字就是恒假，
+   * 而恒假在报表上跟「这一卷本来就稀」长得一模一样。
+   */
+  const neededKnownAs = new Map<string, string[]>()
+  /**
+   * ⚠️ 空串是「这次 `meet` 没有认定任何历史关系」（绝大多数如此）。
+   * 它会被收进来，而对账只查 `neededKnownAs` 里真被问过的那几个种类，
+   * 空串不会出现在那一边——所以它无害。
+   */
+  const madeKnownAs = new Set<string>()
   const madeItems = new Set<string>()
   const madeFlags = new Set<string>()
   const madeKnowledge = new Set<string>()
@@ -607,6 +622,14 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
      * 永远为假——而那正是「恒假的条件」那一族：不报错、演不到、
      * 报表上什么也看不出来。
      */
+    /**
+     * 认定的历史关系。查的是**这个种类有没有人写过**。
+     *
+     * 写错一个字（`'playmates'`）就是一条恒假的条件：类型过、门禁绿、
+     * 那一卷零次演出，而报表上看不出任何异常。全库眼下只有一个写入端
+     * （`playmate.ts` 第一卷那笔 `meet`），所以这一条对得起来。
+     */
+    knownAs: (ask) => [neededKnownAs, ask.kind],
     unaged: (ask) => [new Map([['人物', [ask.who]]]), ask.who],
   } satisfies {
     [K in keyof Condition]-?:
@@ -689,7 +712,15 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     household: null,
     family: null,
     person: null,
-    meet: null,
+    /**
+     * 认识一个人。它造的不是「物」，是**一个认定**——
+     * `knownAs` 写了才收，没写就是一次寻常的相识（多数如此）。
+     *
+     * 这一行是 `NEEDS.knownAs` 那条判据的另一半：内容问
+     * 「那个被认定为 playmate 的人」，就得有某一处 `meet` 写过它。
+     * 少了这一行，那条判据会把每一种认定都判成孤儿。
+     */
+    meet: (effect) => [madeKnownAs, effect.knownAs ?? ''],
     recall: null,
     signs: null,
     ask: null,
@@ -987,6 +1018,7 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
   const orphanNeeds: string[] = []
   for (const [kind, needed, made] of [
     ['物', neededItems, madeItems],
+    ['认定的历史关系', neededKnownAs, madeKnownAs],
     ['旗标', neededFlags, madeFlags],
     /**
      * 认知有两个出处：剧本里 `type: 'knowledge'` 的效果，
@@ -1021,7 +1053,12 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
     }
   }
 
-  const total = neededItems.size + neededFlags.size + neededKnowledge.size + neededLivings.size + neededLeanings.size
+  const total =
+    neededItems.size +
+    neededFlags.size +
+    neededKnowledge.size +
+    neededLivings.size +
+    neededLeanings.size
   if (orphanNeeds.length === 0) {
     console.log(`  ${total} 种前置条件，每一种都有出处。\n`)
   } else {

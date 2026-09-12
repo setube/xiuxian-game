@@ -196,9 +196,7 @@ let bad = 0
    * 走几个是内容作者的事，而「家败了人就散了」才是设计。
    */
   const stillHere = SERVANTS.filter((id) => people.personOf(id) !== undefined)
-  const doings = SERVANTS.map((id) => people.personOf(id)?.doing).filter(
-    (one) => one !== undefined,
-  )
+  const doings = SERVANTS.map((id) => people.personOf(id)?.doing).filter((one) => one !== undefined)
   if (before.here.length > 0 && doings.length === 0) {
     wrong.push('府里那几个人一个也没写下去处——家败了，而他们还在原地站着')
   }

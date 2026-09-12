@@ -107,6 +107,38 @@ const REMEMBERING_ALOUD = /想起|记得|想到|梦见|梦里|问过|说过|讲�
 // 「老爹」是邻居的叫法（六十岁的许家户主叫「许老爹」），跟殁了的「爹」撞的是一个字
 const INNOCENT_CONTEXTS: readonly string[] = ['姑娘', '新娘', '娘娘', '老爹', '原来他叫']
 
+/**
+ * 这个称呼此刻指的是**一个活人**吗。
+ *
+ * ## 用于认人的证据必须是身份解析结果，不能是未经解析的展示文本
+ *
+ * 这支门禁按称呼的字面在正文里找人，而**称呼是现算的、按住处走的**
+ * （`callOf` → `neighbourCall`）：东头那户的老户主殁了，下一任户主
+ * 照样叫「东头老江」。实测同一形状的顶替里 24% 会沿用死者那个称呼。
+ *
+ * 于是报出来的是：
+ *
+ *     P4 报=east-head(殁) 称呼=东头老江 认定的人=east-child-1(在) 他的称呼=东头老江
+ *
+ * **活人在说话，印的是他自己此刻的称呼**，而判据把它记到了死人头上。
+ *
+ * 两条更差的解法先排除掉：
+ *
+ *     扩那张排除表　　要人手维护，而且这一类不是「词的零件」，是同名
+ *     冻住死者的称呼　那是改世界语义，而世界语义没有问题
+ *
+ * 这一问是从系统取的：**此刻有没有一个活人也叫这个**。有就是撞车。
+ */
+function stillSomeoneAlive(calls: string, dead: string): boolean {
+  const people = usePeopleStore()
+  for (const id of Object.keys(people.known)) {
+    if (id === dead) continue
+    if (!people.isAlive(id)) continue
+    if (people.callOf(id) === calls) return true
+  }
+  return false
+}
+
 /** 这一句里的「娘」是不是别的词的零件 */
 function innocent(text: string, calls: string): boolean {
   if (calls.length > 1) return false
@@ -223,6 +255,8 @@ for (let i = 0; i < RUNS; i += 1) {
         if (TALKING_ABOUT_DEATH.test(text)) continue
         if (REMEMBERING_ALOUD.test(text)) continue
         if (innocent(text, hit)) continue
+        // 那个称呼此刻还指着一个活人——是撞车，不是穿帮
+        if (stillSomeoneAlive(hit, id)) continue
         ghosts.push({ who: id, calls: hit, where: '正文', text })
       }
       for (const option of narrative.options) {
@@ -232,6 +266,7 @@ for (let i = 0; i < RUNS; i += 1) {
         if (TALKING_ABOUT_DEATH.test(label)) continue
         if (REMEMBERING_ALOUD.test(label)) continue
         if (innocent(label, hit)) continue
+        if (stillSomeoneAlive(hit, id)) continue
         ghosts.push({ who: id, calls: hit, where: '选项', text: label })
       }
     }

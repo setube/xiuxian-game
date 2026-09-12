@@ -126,6 +126,33 @@ export const usePeopleStore = defineStore(
     }
 
     /**
+     * 那个已经被认定为 `kind` 的人是谁。
+     *
+     * ## 它跟 `roleId('playmate')` 是两件事，而这是这一格存在的全部理由
+     *
+     *     roleId('playmate')  **当前**玩伴——此刻邻家跟你年纪最近、还在身边的孩子。
+     *                         那个人走了，另一个顶上，而**那正是对的**：
+     *                         一起玩的人走了，你还是会跟别的孩子玩，只是不再是他
+     *     knownOf('playmate') **童年**玩伴——当年认定的那一个，此后不换人
+     *
+     * 两个语义从前挤在同一个记号上，于是三卷「讲的是同一个人」那条立意
+     * 在人老了之后悄悄失效（`knownAs` 那一格的注释记着那个 906 次的 bug）。
+     *
+     * ⚠️ **这里只答「他是谁」，不答「他现在怎么样」。** 活着没有、
+     * 在不在身边，调用方自己问（`isAlive` / `isNearby`）——
+     * 历史身份只认一次，现实状态每次重新判断。
+     *
+     * 认定过的人不在册上（存档跨版本）时返回 `undefined`，
+     * 跟「从来没有过这样一个人」同一个答案：那时候那几卷都不该演。
+     */
+    function knownOf(kind: string): string | undefined {
+      const found = Object.values(known.value).find((one) => one.knownAs === kind)
+      return found !== undefined && roster.value[found.person] !== undefined
+        ? found.person
+        : undefined
+    }
+
+    /**
      * 玩家此刻会怎么称呼他。
      *
      * 知道姓名就叫姓名，不知道就用那个描述性的叫法——
@@ -976,6 +1003,7 @@ export const usePeopleStore = defineStore(
       seemsOf,
       monthsOf,
       callOf,
+      knownOf,
       enroll,
       amend,
       die,

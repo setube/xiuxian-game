@@ -386,8 +386,7 @@ let bad = 0
    */
   const strangerMay = mayAsk('east-wife', '家常')
   const kinMay = mayAsk('kin-elder', '家常')
-  const sameStanding =
-    strangerMay.can === kinMay.can && strangerMay.because === kinMay.because
+  const sameStanding = strangerMay.can === kinMay.can && strangerMay.because === kinMay.because
   if (sameStanding) {
     wrong.push(
       `邻家的妇人和家里的大人问同一档家常的资格一样（都是「${strangerMay.because}」）` +
