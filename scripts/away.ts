@@ -26,6 +26,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
+import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
 import { usePeopleStore } from '../src/stores/people'
@@ -358,10 +359,85 @@ function check(label: string, walked: string[], expected: string): void {
   }
 }
 
+/**
+ * 效果层：**借了不还和借了还上，留下的东西不一样**。
+ *
+ * 上面那几条问的是「走到那个节点了吗」——**把 `applyEffects` 整个改成空转，
+ * 它们纹丝不动**（2026-09-12 B 刀实测）。
+ *
+ * 这两卷合起来是**一笔债的一生**，跨着好些年：
+ *
+ *     away:lends    借出去   家底 +6，簿上记一笔「二两银子，秋后还」
+ *     away:i-repay  还上了   家底 -6，那一笔销账，行为史多一笔 `keep`
+ *
+ * ## 这一对最值得守的是「账销没销」
+ *
+ * 借了不还不算穿帮——那是一种人生。**而还了之后账还挂着**，
+ * 或者**还了却没在行为史上留下一笔**，那才是效果没落地：
+ * 往后「他是不是个守信的人」就再也数不出来
+ * （`character.did('keep')` 数的正是这一串）。
+ *
+ * 判「还前有账、还后销账、行为史多一笔」，不判「正好二两」——
+ * 数目是内容作者的，而「借了要记、还了要销」是这一对卷的骨头。
+ */
+{
+  interface Ledger {
+    open: number
+    settled: number
+    kept: number
+  }
+
+  function ledgerAfter(repay: boolean): Ledger {
+    stage()
+    standing({ id: 'brother', bond: '兄', older: 30, given: '大' })
+    const people = usePeopleStore()
+    const character = useCharacterStore()
+    // 先借：走 lends 的 take 那一条
+    play('away:lends', (opts) => (opts.includes('take') ? 'take' : opts[0]!))
+    /*
+     * ⚠️ 从**入口**演，不是从 `in-town`。
+     *
+     * 还债那几样效果落在 `away:i-repay` 的 `open` 上，而 `in-town` 是
+     * 它底下的落点之一——从那儿演，`open` 整个跳过去，效果一条也不落。
+     * 判据当场报「还了之后那一笔还挂着」，读着像销账坏了。
+     *
+     * 跟 `house` 那次同一个错：**从错的节点起演，验的是另一段路**。
+     */
+    if (repay) play('away:i-repay')
+    const mine = people.ious.filter((one) => one.debtor === 'me' && one.creditor === 'brother')
+    return {
+      open: mine.filter((one) => !one.settled).length,
+      settled: mine.filter((one) => one.settled).length,
+      kept: character.did('keep'),
+    }
+  }
+
+  const owing = ledgerAfter(false)
+  const paid = ledgerAfter(true)
+
+  const wrong: string[] = []
+  if (owing.open === 0) wrong.push('借了哥的银子，簿上却没有这一笔')
+  if (paid.settled === 0) wrong.push('还了之后那一笔还挂着——账没销')
+  if (paid.kept <= owing.kept) {
+    wrong.push(`还了债该在行为史上留一笔「守信」：还前 ${owing.kept}、还后 ${paid.kept}`)
+  }
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ 借还效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ 借还效果层：借了簿上挂 ${owing.open} 笔；还了销 ${paid.settled} 笔，` +
+        `行为史上「守信」从 ${owing.kept} 到 ${paid.kept}。`,
+    )
+  }
+}
+
 console.log()
 if (bad > 0) {
   console.log(`  ✗ ${bad} 项不成立。\n`)
   process.exitCode = 1
 } else {
-  console.log('  外出那几年，六卷各有人走过了。\n')
+  console.log('  外出那几年，六卷各有人走过了，借的还的也各记各的。\n')
 }
