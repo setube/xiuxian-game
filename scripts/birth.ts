@@ -57,7 +57,7 @@ function enrollNephew(): void {
     fate: '在',
     history: [],
   })
-  people.bind('me', 'nephew', '侄')
+  people.bind('me', 'nephew', '亲戚')
 }
 
 function playFrom(
@@ -157,10 +157,6 @@ let bad = 0
  */
 {
   stage('farm', 70)
-  // ending.ts 的场景 id 先查一下
-  const endingScenes = Object.keys(lifeScenes).filter(
-    (id) => id.includes('ending') || id.includes('last') || id.includes('end:'),
-  )
   // 从 lifeScenes 里找 entry 是 'last' 的场景
   const endingScene = Object.entries(lifeScenes).find(([, s]) => s.entry === 'last')
   if (!endingScene) {

@@ -48,7 +48,7 @@ function stage(): void {
       id: 'cultivators-exist',
       title: '世上有修士',
       summary: '你听说了，世上真的有那种人。',
-      contact: '传闻',
+      contact: '听说',
       category: '修行',
     },
   ])
@@ -60,7 +60,7 @@ function stage(): void {
 function playFrom(
   scene: string,
   from: string,
-  pick: (options: string[]) => string = () => (options: string[]) => options[0]!,
+  pick: (options: string[]) => string = (opts) => opts[0]!,
   stopAfter = 15,
 ): string[] {
   const s = lifeScenes[scene]
@@ -76,7 +76,7 @@ function playFrom(
 
     const open: Choice[] = (node.choices ?? []).filter((one) => meetsAll(one.requires))
     if (open.length > 0) {
-      const want = typeof pick === 'function' ? pick(open.map((o) => o.id)) : open[0]!.id
+      const want = pick(open.map((o) => o.id))
       const chosen: Choice = open.find((one) => one.id === want) ?? open[0]!
       if (chosen.effects) applyEffects(chosen.effects)
       at = chosen.next ?? undefined

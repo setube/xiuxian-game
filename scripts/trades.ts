@@ -108,7 +108,7 @@ let bad = 0
   const SCENE = 'trade:guest'
 
   // serve → close-look
-  stage('merchant', '客栈')
+  stage('inn', '客栈')
   const closeWalked = play(SCENE, (opts) => (opts.includes('serve') ? 'serve' : opts[0]!))
   if (!closeWalked.includes('close-look')) {
     console.log(`  ✗ guest close-look：选了「下楼」却没走到（走过 ${closeWalked.join(' → ')}）。`)
@@ -118,7 +118,7 @@ let bad = 0
   }
 
   // peek → from-afar
-  stage('merchant', '客栈')
+  stage('inn', '客栈')
   const farWalked = play(SCENE, (opts) => (opts.includes('peek') ? 'peek' : opts[0]!))
   if (!farWalked.includes('from-afar')) {
     console.log(`  ✗ guest from-afar：选了「楼梯看」却没走到（走过 ${farWalked.join(' → ')}）。`)
@@ -128,7 +128,7 @@ let bad = 0
   }
 
   // sleep → missed
-  stage('merchant', '客栈')
+  stage('inn', '客栈')
   const missedWalked = play(SCENE, (opts) => (opts.includes('sleep') ? 'sleep' : opts[0]!))
   if (!missedWalked.includes('missed')) {
     console.log(`  ✗ guest missed：选了「回去睡」却没走到（走过 ${missedWalked.join(' → ')}）。`)
@@ -147,7 +147,7 @@ let bad = 0
 {
   const SCENE = 'trade:drunk'
 
-  stage('merchant', '酒楼')
+  stage('tavern', '酒楼')
   const heardWalked = play(SCENE, (opts) => (opts.includes('listen') ? 'listen' : opts[0]!))
   if (!heardWalked.includes('heard')) {
     console.log(`  ✗ drunk heard：选了「倒酒去听」却没走到（走过 ${heardWalked.join(' → ')}）。`)
@@ -157,7 +157,7 @@ let bad = 0
   }
 
   // ignored：选 work（走开干活）
-  stage('merchant', '酒楼')
+  stage('tavern', '酒楼')
   const ignoredWalked = play(SCENE, (opts) => (opts.includes('work') ? 'work' : opts[0]!))
   if (!ignoredWalked.includes('ignored')) {
     console.log(
@@ -179,7 +179,7 @@ let bad = 0
   const SCENE = 'trade:herb'
 
   // buy → drawn 或 kept
-  stage('merchant', '药铺')
+  stage('herb', '药铺')
   const drawnWalked = play(SCENE, (opts) => (opts.includes('buy') ? 'buy' : opts[0]!))
   if (!drawnWalked.includes('drawn') && !drawnWalked.includes('kept')) {
     console.log(
@@ -191,7 +191,7 @@ let bad = 0
   }
 
   // pass → passed
-  stage('merchant', '药铺')
+  stage('herb', '药铺')
   const passedWalked = play(SCENE, (opts) => (opts.includes('pass') ? 'pass' : opts[0]!))
   if (!passedWalked.includes('passed')) {
     console.log(`  ✗ herb passed：选了「走开」却没走到（走过 ${passedWalked.join(' → ')}）。`)
@@ -210,7 +210,7 @@ let bad = 0
 {
   const SCENE = 'trade:road'
 
-  stage('merchant', '护送', 12, true)
+  stage('escort', '护送', 12, true)
   const toldWalked = play(SCENE, (opts) => (opts.includes('ask') ? 'ask' : opts[0]!))
   if (!toldWalked.includes('told')) {
     console.log(`  ✗ road told：选了「问爹」却没走到（走过 ${toldWalked.join(' → ')}）。`)
@@ -219,7 +219,7 @@ let bad = 0
     console.log('  ✓ road told（问出来了）：走到了。')
   }
 
-  stage('merchant', '护送', 12, true)
+  stage('escort', '护送', 12, true)
   const unaskedWalked = play(SCENE, (opts) => (opts.includes('quiet') ? 'quiet' : opts[0]!))
   if (!unaskedWalked.includes('unasked')) {
     console.log(`  ✗ road unasked：选了「不问」却没走到（走过 ${unaskedWalked.join(' → ')}）。`)
@@ -238,7 +238,7 @@ let bad = 0
 {
   const SCENE = 'trade:archive'
 
-  stage('merchant', '仕宦', 12, true)
+  stage('office', '仕宦', 12, true)
   // 设 station，因为 trade-archive 要求 station: '仕宦'
   const household = useHouseholdStore()
   ;(household as unknown as { station: string }).station = '仕宦'
@@ -252,7 +252,7 @@ let bad = 0
     console.log('  ✓ archive confronted（问了，爹脸色变了）：走到了。')
   }
 
-  stage('merchant', '仕宦', 12, true)
+  stage('office', '仕宦', 12, true)
   const household2 = useHouseholdStore()
   ;(household2 as unknown as { station: string }).station = '仕宦'
   const unseen = play(SCENE, (opts) => (opts.includes('back') ? 'back' : opts[0]!))
@@ -268,16 +268,32 @@ let bad = 0
  * 六、尺子自检：五卷各自真走进去了，不是零步就结束。
  */
 {
-  const checks: Array<{ scene: string; business: string; withFather?: boolean }> = [
-    { scene: 'trade:guest', business: '客栈' },
-    { scene: 'trade:drunk', business: '酒楼' },
-    { scene: 'trade:herb', business: '药铺' },
-    { scene: 'trade:road', business: '护送', withFather: true },
-    { scene: 'trade:archive', business: '仕宦', withFather: true },
+  /*
+   * 出身跟行当写在同一行。
+   *
+   * ⚠️ 从前这里出身写死成 `'merchant'`——**而那根本不是一个合法的 `OriginId`**
+   * （合法的是 farm/tenant/hunt/craft/cloth/inn/tavern/herb/escort/office/yamen/manor/court）。
+   * `beOf` 拿不到就落回兜底那一行，于是五卷全在同一个出身上跑，
+   * 而这支门禁照样全绿：**它验的是「走得到吗」，摆错出身也走得到。**
+   *
+   * 增量类型检查一直没报（`vue-tsc --build` 读 tsbuildinfo），
+   * `--build --force` 才当场六条。
+   */
+  const checks: Array<{
+    scene: string
+    origin: OriginId
+    business: string
+    withFather?: boolean
+  }> = [
+    { scene: 'trade:guest', origin: 'inn', business: '客栈' },
+    { scene: 'trade:drunk', origin: 'tavern', business: '酒楼' },
+    { scene: 'trade:herb', origin: 'herb', business: '药铺' },
+    { scene: 'trade:road', origin: 'escort', business: '护送', withFather: true },
+    { scene: 'trade:archive', origin: 'office', business: '仕宦', withFather: true },
   ]
 
-  for (const { scene, business, withFather } of checks) {
-    stage('merchant', business, 12, withFather)
+  for (const { scene, origin, business, withFather } of checks) {
+    stage(origin, business, 12, withFather)
     if (withFather) {
       const h = useHouseholdStore()
       if (business === '仕宦') {

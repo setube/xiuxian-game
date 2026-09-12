@@ -27,7 +27,6 @@ import { createPinia, setActivePinia } from 'pinia'
 import { lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
-import { useCharacterStore } from '../src/stores/character'
 import { useWorldStore } from '../src/stores/world'
 import { useHouseholdStore } from '../src/stores/household'
 import { useLeaningStore } from '../src/stores/leanings'
@@ -40,7 +39,7 @@ const SCENE = 'attempt:first'
  * 摆一局：有书、有知识、没在修炼中，走进 why 入口。
  *
  * `leaning` 决定走哪一条动机分叉。
- * `outcome` 直接设旗标绕过掷骰，控制走哪个结局档。
+ * 结果档不从这里控制——见底下第三节：改从目标节点直接演。
  */
 function stage(opts: { leaning?: 'heal' | 'strong' | 'rich' }): void {
   setActivePinia(createPinia())
@@ -126,7 +125,7 @@ let bad = 0
   ]
 
   for (const { leaning, node, label } of cases) {
-    stage({ leaning, outcome: 'nothing' })
+    stage({ leaning })
     const walked = play()
     if (!walked.includes(node)) {
       console.log(`  ✗ 动机分叉 ${label}：没走到 ${node}（走过 ${walked.join(' → ')}）。`)
@@ -143,7 +142,7 @@ let bad = 0
  * 不设 leaning，三条 branches 都不成立，兜底 next 走 open。
  */
 {
-  stage({ outcome: 'nothing' })
+  stage({})
   const walked = play()
   if (!walked.includes('open')) {
     console.log(`  ✗ 无动机：没走到 open（走过 ${walked.join(' → ')}）。`)
@@ -185,7 +184,7 @@ let bad = 0
  * 这一档守的是「坐了一会儿就放下」这件事是正经的路，有正文。
  */
 {
-  stage({ outcome: 'nothing' })
+  stage({})
   const walked = play((options) => (options.includes('shelve') ? 'shelve' : options[0]!))
 
   if (!walked.includes('shelved')) {
@@ -200,7 +199,7 @@ let bad = 0
  * 五、尺子自检：场景真的被演过，不是 play() 走了零步。
  */
 {
-  stage({ outcome: 'nothing' })
+  stage({})
   const walked = play()
   if (walked.length < 3) {
     console.log(

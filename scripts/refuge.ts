@@ -84,7 +84,7 @@ function enrollMaster(opts: { health: number; age: number; fate?: '在' | '殁' 
     fate: opts.fate ?? '在',
     history: [],
   })
-  people.bind('me', 'craft-master', '师傅')
+  people.bind('me', 'craft-master', '师')
 }
 
 /**

@@ -57,7 +57,7 @@ function enrollNephew(): void {
     fate: '在',
     history: [],
   })
-  people.bind('me', 'nephew', '侄')
+  people.bind('me', 'nephew', '亲戚')
 }
 
 function playFrom(

@@ -23,7 +23,6 @@ import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
 import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
-import { useLeaningStore } from '../src/stores/leanings'
 import type { Choice, SceneNode } from '../src/types/game'
 import { beOf } from './origin'
 
@@ -34,13 +33,6 @@ function stage(age = 12): void {
   household.standing = 40
   const world = useWorldStore()
   world.advanceTime({ years: age })
-}
-
-/** 把指定 leaning 推到「反复」档（weight 18 = STIRRING_AT） */
-function setLeaning(id: string): void {
-  const leanings = useLeaningStore()
-  const world = useWorldStore()
-  leanings.stir(id, 18, { at: world.time, text: '（门禁摆局）' }, world.time)
 }
 
 function playFrom(
