@@ -231,10 +231,85 @@ let bad = 0
   console.log('  ✓ 尺子自检：两卷各自都走进去了。')
 }
 
+/**
+ * 效果层：**度荒的三条路，各付各的代价**。
+ *
+ * 上面那几条问的是「走到那一节了吗」——**把 `applyEffects` 整个改成空转，
+ * 它们纹丝不动**（2026-09-12 B 刀实测）。
+ *
+ * `dearth:price` 的 `choose` 那一节三条路，各留各的印记：
+ *
+ *     sell    家底 -9              卖东西度过去，家当薄了
+ *     borrow  家底 +4，欠 14       眼前宽了，账挂着
+ *     work    家底 +6，书念不成了   `schooled` 落 false
+ *
+ * **这一卷的设计全在这儿**：荒年每一条路都要付出点什么，
+ * 而且付的不是同一样东西——一条折家当、一条欠账、一条断了念书那条路。
+ *
+ * ## 判「各留各的」，不判「正好 +4 欠 14」
+ *
+ * 数值随时会调；**「三条路的代价互不相同」才是设计**。
+ * 所以问的是：借了有债而做工的没有、做工的丢了学而借的没丢、
+ * 卖东西那条家底往下走而另两条往上。
+ *
+ * 这些在效果空转时全部塌掉（三条后果全同），而调数值不会误伤。
+ */
+{
+  const SCENE = 'dearth:price'
+
+  interface Cost {
+    standing: number
+    debt: number
+    schooled: boolean
+  }
+
+  function costOf(pick: string): Cost {
+    // 家底摆低些，荒年那一卷才轮得到 choose 这一节
+    stage(30)
+    const household = useHouseholdStore()
+    const world = useWorldStore()
+    // 先给他一个「在念书」的起点，才看得出 work 那条断没断
+    world.setFlag('schooled', true)
+    const before = { standing: household.standing, debt: household.debt }
+    playFrom(SCENE, 'choose', (opts) => (opts.includes(pick) ? pick : opts[0]!))
+    return {
+      // 记增量：每次摆局各起各的 pinia
+      standing: household.standing - before.standing,
+      debt: household.debt - before.debt,
+      schooled: world.getFlag('schooled') === true,
+    }
+  }
+
+  const sold = costOf('sell')
+  const borrowed = costOf('borrow')
+  const worked = costOf('work')
+
+  const wrong: string[] = []
+  if (borrowed.debt <= 0) wrong.push(`去借了却没欠下账（债变了 ${borrowed.debt}）`)
+  if (worked.debt !== 0) wrong.push(`出去做工不该欠账，却欠了 ${worked.debt}`)
+  if (worked.schooled) wrong.push('出去做工那一年，书还念着——那条路的代价没落下')
+  if (!borrowed.schooled) wrong.push('去借钱不该断了念书那条路，可书也没念成')
+  if (!(sold.standing < 0)) wrong.push(`卖东西度荒，家底该往下走，实际 ${sold.standing}`)
+  if (sold.standing === borrowed.standing && borrowed.standing === worked.standing) {
+    wrong.push(`三条路家底都变了 ${sold.standing}——那一节的效果一样也没落`)
+  }
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ price 效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ price 效果层：卖了折 ${sold.standing}；借了得 ${borrowed.standing} 而欠 ${borrowed.debt}；` +
+        `做工得 ${worked.standing} 而书没念成。`,
+    )
+  }
+}
+
 console.log()
 if (bad > 0) {
   console.log(`  ✗ ${bad} 项不成立。\n`)
   process.exitCode = 1
 } else {
-  console.log('  荒年是什么样子，由这家人的家底决定。各档各有人走过了。\n')
+  console.log('  荒年是什么样子，由这家人的家底决定。各档各有人走过了，也各付各的代价。\n')
 }
