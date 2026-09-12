@@ -21,8 +21,8 @@ import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
 import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
-import { usePeopleStore } from '../src/stores/people'
 import type { Choice, SceneNode, OriginId } from '../src/types/game'
+import { standing } from './lib/standing'
 import { beOf } from './origin'
 
 /**
@@ -41,21 +41,15 @@ function stage(origin: OriginId, business: string, age = 12, withFather = false)
   world.advanceTime({ years: age })
 
   if (withFather) {
-    const people = usePeopleStore()
-    people.enroll({
-      id: 'father',
-      surname: '江',
-      given: '大',
-      gender: '男',
-      bornYear: world.time.year - 40,
-      bornMonth: 3,
-      temper: '木讷',
-      health: 70,
-      place: world.place,
-      fate: '在',
-      history: [],
-    })
-    people.bind('me', 'father', '生父')
+    /*
+     * ⚠️ 走 `standing()` 不直接 `enroll`：**立基可能已经造过父亲了**，
+     * 而 `enroll` 对在册的人不改写——我摆的「在身边」静默落空，
+     * 于是 `trade-road`/`trade-archive` 两条入场条件报「开护送的人家进不去」。
+     *
+     * 这一支先前**单跑绿、批次红**：立基造的那个爹恰好在身边时绿，
+     * 流位置一挪就红。判据的红取决于随机流，那不是绿，是碰上了。
+     */
+    standing({ id: 'father', bond: '生父', older: 40, given: '大' })
   }
 }
 
@@ -375,9 +369,7 @@ let bad = 0
       bad += 1
       wrong += 1
     } else if (strangerEnters) {
-      console.log(
-        `  ✗ ${event} 入场：开${other.business}的人家也进得去——那条入场条件没在管事。`,
-      )
+      console.log(`  ✗ ${event} 入场：开${other.business}的人家也进得去——那条入场条件没在管事。`)
       bad += 1
       wrong += 1
     }

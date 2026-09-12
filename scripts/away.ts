@@ -31,6 +31,7 @@ import { useWorldStore } from '../src/stores/world'
 import { usePeopleStore } from '../src/stores/people'
 import type { Choice, SceneNode, Livelihood, Terms } from '../src/types/game'
 import { forkingOf } from './lib/forking'
+import { standing } from './lib/standing'
 import { beOf } from './origin'
 
 function stage(age = 25): void {
@@ -70,23 +71,18 @@ function enrollBrother(): void {
  * **摆局缺一格，条件层就整段验不了。**
  */
 function enrollKin(id: string, doing: string): void {
-  const people = usePeopleStore()
-  const world = useWorldStore()
-  people.enroll({
+  /*
+   * ⚠️ 走 `standing()`：**立基已经造过哥了，而他在种地**。
+   * `enroll` 对在册的人不改写，于是摆「哥改行做了木匠」静默落空，
+   * `BROTHER_CARPENTER` 那一条永不成立——这一支先前单跑绿批次红。
+   */
+  standing({
     id,
-    surname: '江',
+    bond: id === 'brother' ? '兄' : '亲戚',
+    older: id === 'brother' ? 30 : 18,
     given: id === 'brother' ? '大' : '小',
-    gender: '男',
-    bornYear: world.time.year - (id === 'brother' ? 30 : 18),
-    bornMonth: 3,
-    temper: '木讷',
-    health: 70,
-    place: world.place,
-    fate: '在',
     livelihood: doing as Livelihood,
-    history: [],
   })
-  people.bind('me', id, id === 'brother' ? '兄' : '亲戚')
 }
 
 function playFrom(
