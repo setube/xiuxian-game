@@ -27,6 +27,7 @@ import { lifeScenes } from '../src/content/life'
 import { birthSceneId } from '../src/content/life/birth'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
+import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
 import { usePeopleStore } from '../src/stores/people'
@@ -363,6 +364,76 @@ let bad = 0
     bad += 1
   } else if (wrong === 0) {
     console.log(`  ✓ 出生分流：爹在不在各落一处，${titled.length} 档有封号的出身男女各落一处。`)
+  }
+}
+
+/**
+ * 效果层：**生在什么人家，你爹就是什么人**。
+ *
+ * 上面那六条验的是「各卷走得进去」——**把 `applyEffects` 整个改成空转，
+ * 它们纹丝不动**（2026-09-12 B 刀实测）。
+ *
+ * 出生那一卷落的东西只有两类，而两类都不是数：
+ *
+ *     family    manor  爹「亲王」、娘「王妃」
+ *               court  爹「皇帝」、娘「妃」
+ *     identity  按性别落两个不同的称呼
+ *
+ * ## 这是「宫里与王府分开」那条设计的落点
+ *
+ * 王府和宫里是两档，不是一档的两种说法：**亲王的儿子和皇帝的儿子
+ * 过的不是同一种日子**，而分开它们的就是这两行 `rank`。
+ * 两档写成一样，后头所有讲爵位、讲称呼、讲削爵的内容一起失去依据。
+ *
+ * 而农家那一档**一个 rank 也不该有**——种地的人家没有爵位，
+ * 这一条比前两条更容易悄悄坏掉（多给一个 rank 不报错，
+ * 只是从此每个农家孩子的爹都成了什么爷）。
+ *
+ * 判「三档各是各的」不判「manor 那一档正好写着『亲王』」。
+ */
+{
+  const wrong: string[] = []
+
+  /** 演一遍出生，回报爹娘的爵位和落到身上的称呼 */
+  function bornAs(origin: OriginId): { father?: string; mother?: string; identity: string } {
+    stage(origin, 0)
+    const people = usePeopleStore()
+    play(birthSceneId(origin))
+    return {
+      father: people.personOf('father')?.rank,
+      mother: people.personOf('mother')?.rank,
+      identity: useCharacterStore().identity,
+    }
+  }
+
+  const manor = bornAs('manor')
+  const court = bornAs('court')
+  const farm = bornAs('farm')
+
+  if (manor.father === undefined) wrong.push('生在王府，爹却没有爵位')
+  if (court.father === undefined) wrong.push('生在宫里，爹却没有爵位')
+  if (manor.father === court.father) {
+    wrong.push(
+      `王府的爹和宫里的爹是同一个身份（都是「${String(manor.father)}」）` +
+        '——那两档没分开，后头讲爵位的内容一起失去依据',
+    )
+  }
+  if (manor.mother === court.mother) {
+    wrong.push(`王府的娘和宫里的娘是同一个身份（都是「${String(manor.mother)}」）`)
+  }
+  if (farm.father !== undefined) {
+    wrong.push(`种地人家的爹也有了爵位「${farm.father}」——农家孩子的爹成了什么爷`)
+  }
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ 出生效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ 出生效果层：王府的爹是「${String(manor.father)}」、娘是「${String(manor.mother)}」；` +
+        `宫里的是「${String(court.father)}」「${String(court.mother)}」；种地人家的爹没有爵位。`,
+    )
   }
 }
 
