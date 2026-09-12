@@ -428,12 +428,21 @@ let bad = 0
       fortune: character.attributes.fortune,
       standing: household.standing,
     }
+    /*
+     * ⚠️ 落空要整趟看，不能逐节点看：`pick` 在每一节都被问一次，
+     * 而下游那些节点本来就没有我要的那条。问的是
+     * 「整趟走下来，我要的那条一次也没点到吗」。
+     */
+    let hit = pick === undefined
     playFrom(scene, from, (opts) => {
-      if (pick === undefined) return opts[0]!
-      // 落空不许安静过去：点不到那一条时，底下几句问的是别条路的账
-      if (!opts.includes(pick)) missed.push(`${pick}（当时只有 ${opts.join('、')}）`)
-      return opts.includes(pick) ? pick : opts[0]!
+      if (pick !== undefined && opts.includes(pick)) {
+        hit = true
+        return pick
+      }
+      return opts[0]!
     })
+    // 落空不许安静过去：一次也没点到时，底下几句问的是别条路的账
+    if (!hit && pick !== undefined) missed.push(pick)
     return {
       heardCultivators: world.getFlag('heard-of-cultivators') === true,
       heardTale: world.getFlag('heard-immortal-tale') === true,

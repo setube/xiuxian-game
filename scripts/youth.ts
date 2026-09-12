@@ -23,6 +23,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { lifeEvents, lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
+import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
@@ -354,6 +355,107 @@ function check(label: string, walked: string[], expected: string): void {
     } else {
       console.log(`  ✓ ${event} 入场：前提不成立进不去，成立了才进得去。`)
     }
+  }
+}
+
+/**
+ * 效果层：**这几年过去，他成了另一种人**。
+ *
+ * 上面那几条验的是「各条路走得到」——**把 `applyEffects` 整个改成空转，
+ * 它们纹丝不动**（2026-09-12 B 刀实测）。
+ *
+ * 三卷各是一次「往哪儿走」的分岔，而其中一条落的不是属性：
+ *
+ *     exam        go 见识 6、心志 4      stay 心志 2
+ *                 again 见识 5、心志 3   quit 心志 5 + 旗「不考了」
+ *     apprentice  craft **identity 变成「学徒」** + 见识 6、体魄 6、心志 4
+ *
+ * ## `identity` 那一笔是四格里的一格，跟属性不是一回事
+ *
+ * 出身、营生、living、identity——**四格说的是「他是什么」的四件事**。
+ * 属性是他身上的数，identity 是**别人怎么称呼他、后头哪些卷向他开门**。
+ * 学了手艺这一笔改的是后者：进了这一行，他就不再是「那家的小子」。
+ *
+ * 所以这一段验两样：几条路各长各的，**外加那一格真的翻了**。
+ *
+ * 判「几条路的后果互不相同」不判「go 正好 +6」。
+ */
+{
+  interface Became {
+    identity: string
+    insight: number
+    will: number
+    body: number
+    quit: boolean
+  }
+
+  const missed: string[] = []
+
+  function becameBy(scene: string, from: string, pick: string): Became {
+    stage(15)
+    const character = useCharacterStore()
+    const world = useWorldStore()
+    const before = { ...character.attributes }
+    /*
+     * ⚠️ 落空要整趟看，不能逐节点看。
+     *
+     * `pick` 在**每一节**都被问一次：点了 `go` 走到 `result`，
+     * 那一节问的是 `again`/`quit`，自然没有 `go`。
+     * 头一版在那儿记了一笔「没摆出 go」——**报的是判据自己的毛病**。
+     *
+     * 要问的是「整趟走下来，我要的那条一次也没点到吗」。
+     */
+    let hit = false
+    playFrom(scene, from, (opts) => {
+      if (opts.includes(pick)) {
+        hit = true
+        return pick
+      }
+      return opts[0]!
+    })
+    // 落空不许安静过去：一次也没点到时，底下几句问的是别条路的账
+    if (!hit) missed.push(pick)
+    return {
+      identity: character.identity,
+      // 记增量：每次摆局各起各的 pinia，属性起手是现掷的
+      insight: character.attributes.insight - before.insight,
+      will: character.attributes.will - before.will,
+      body: character.attributes.body - before.body,
+      quit: world.getFlag('quit-exam') === true,
+    }
+  }
+
+  const went = becameBy('youth:exam', 'open', 'go')
+  const stayed = becameBy('youth:exam', 'open', 'stay')
+  const quit = becameBy('youth:exam', 'result', 'quit')
+  const learned = becameBy('youth:apprentice', 'open', 'craft')
+
+  const wrong: string[] = []
+  for (const one of missed) wrong.push(`摆局没摆出「${one}」这一条——底下那几句问的是别条路的账`)
+
+  if (went.insight <= 0) wrong.push(`进城赶考走这一趟该长见识，实际 ${went.insight}`)
+  if (went.insight === stayed.insight && went.will === stayed.will) {
+    wrong.push('去了和没去长的是同样的东西——那一节两条路没有分别')
+  }
+  if (!quit.quit) {
+    wrong.push('不考了，却没落下那面旗——后头没人知道他断过这个念想')
+  }
+  if (went.quit) wrong.push('去赶考了，却记成「不考了」')
+  if (learned.identity !== '学徒') {
+    wrong.push(`学了手艺，他该成学徒，而那一格还是「${learned.identity}」`)
+  }
+  if (went.identity === '学徒') wrong.push('去赶考的人也成了学徒——那一格没在认路')
+  if (learned.body <= 0) wrong.push(`学手艺三年该练出身子骨，实际 ${learned.body}`)
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ 青年效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ 青年效果层：赶考 +${went.insight} 见识、断了念想落了旗；` +
+        `学手艺那一格翻成「${learned.identity}」，+${learned.body} 身子骨——这几年过去，他成了另一种人。`,
+    )
   }
 }
 
