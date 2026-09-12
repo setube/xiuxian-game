@@ -29,6 +29,7 @@ import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
 import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
+import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 import type { Choice, SceneNode } from '../src/types/game'
 import { beOf } from './origin'
@@ -262,6 +263,116 @@ function check(label: string, walked: string[], expected: string): void {
     }
   }
   if (allIn) console.log('  ✓ 尺子自检：三卷各自都走进去了。')
+}
+
+/**
+ * 效果层：**离家那一趟，你认识了一个人**。
+ *
+ * 上面那几条验的是「各条路走得到」——**把 `applyEffects` 整个改成空转，
+ * 它们纹丝不动**（2026-09-12 B 刀实测）。
+ *
+ * 这一卷落的东西里有一样别处很少见：`meet`——**它立一个真人进册**。
+ *
+ *     ask   问一句     旗「动了离家的念头」+ 见识 1 + 认识那位管事，交情 4
+ *     work  替他干活   同一面旗 + 家底 2 + 体魄 1 + 同一个人，交情 8
+ *     go    跟商队走   旗「跟商队走了」+ 见识 5、体魄 4、心志 3 + 一条认知
+ *     stay  没去       旗「回绝了商队」
+ *
+ * ## 同一个人，两种认识法，交情深浅不同
+ *
+ * 沈管事这个人两条路都碰得到，而**问一句是 4 分，替他干了一天活是 8 分**。
+ * 这一格是他后半辈子关系网的起点：认识了，后头才有人可找。
+ *
+ * 判「替他干活比问一句认得更深」不判「正好 8」。
+ *
+ * ## 两面旗是相反的，各标一个未来
+ *
+ * `went-with-caravan` 和 `turned-down-caravan`——去了和没去，
+ * 后头读的是不同的那一面。
+ */
+{
+  interface Went {
+    towardLeaving: boolean
+    withCaravan: boolean
+    turnedDown: boolean
+    regard: number
+    metBoss: boolean
+    insight: number
+    body: number
+    standing: number
+  }
+
+  const missed: string[] = []
+
+  function wentBy(scene: string, pick: string): Went {
+    stage(18)
+    const character = useCharacterStore()
+    const household = useHouseholdStore()
+    const people = usePeopleStore()
+    const world = useWorldStore()
+    const before = {
+      insight: character.attributes.insight,
+      body: character.attributes.body,
+      standing: household.standing,
+    }
+    /*
+     * 落空要整趟看，不能逐节点看：`pick` 在每一节都被问一次，
+     * 而下游那些节点本来就没有我要的那条。
+     */
+    let hit = false
+    play(scene, (opts) => {
+      if (opts.includes(pick)) {
+        hit = true
+        return pick
+      }
+      return opts[0]!
+    })
+    if (!hit) missed.push(pick)
+    return {
+      towardLeaving: world.getFlag('toward-leaving') === true,
+      withCaravan: world.getFlag('went-with-caravan') === true,
+      turnedDown: world.getFlag('turned-down-caravan') === true,
+      regard: people.known['caravan-boss']?.affinity ?? 0,
+      metBoss: people.personOf('caravan-boss') !== undefined,
+      // 记增量：每次摆局各起各的 pinia，属性和家底起手都是现掷的
+      insight: character.attributes.insight - before.insight,
+      body: character.attributes.body - before.body,
+      standing: household.standing - before.standing,
+    }
+  }
+
+  const asked = wentBy('leave:hiring', 'ask')
+  const worked = wentBy('leave:hiring', 'work')
+  const went = wentBy('leave:caravan', 'go')
+  const stayed = wentBy('leave:caravan', 'stay')
+
+  const wrong: string[] = []
+  for (const one of missed) wrong.push(`摆局没摆出「${one}」这一条——底下那几句问的是别条路的账`)
+
+  if (!asked.metBoss) wrong.push('去问了一句，那位管事却没进人口册——他后半辈子少认识一个人')
+  if (!worked.metBoss) wrong.push('替他干了一天活，那位管事却没进人口册')
+  if (worked.regard <= asked.regard) {
+    wrong.push(
+      `替他干活该比问一句认得更深（问一句 ${asked.regard}、干了活 ${worked.regard}）——那一天白干了`,
+    )
+  }
+  if (!asked.towardLeaving) wrong.push('问了雇工的事，却没落「动了离家的念头」那面旗')
+  if (worked.standing <= 0) wrong.push(`替人干了一天活该有工钱，家底却是 ${worked.standing}`)
+  if (!went.withCaravan) wrong.push('跟商队走了，却没落那面旗——后头没人知道他出过门')
+  if (!stayed.turnedDown) wrong.push('没跟商队走，却没落「回绝了」那面旗')
+  if (went.turnedDown) wrong.push('跟着走了，却记成「回绝了」')
+  if (went.insight <= 0) wrong.push(`跟商队跑一趟该长见识，实际 ${went.insight}`)
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ 离家效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ 离家效果层：问一句认得 ${asked.regard} 分、替他干活认得 ${worked.regard} 分；` +
+        `跟商队走 +${went.insight} 见识并落了旗，没走的落「回绝了」——各标一个未来。`,
+    )
+  }
 }
 
 console.log()
