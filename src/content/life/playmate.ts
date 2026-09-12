@@ -115,7 +115,19 @@ export const playmateScenes: SceneLibrary = {
           { kind: 'narration', text: '那天你们一直走到河滩上，回来的时候裤脚全是泥。' },
           {
             kind: 'narration',
-            text: '各自的娘在各自的院子里骂了几句，隔着那道墙，听得清清楚楚。',
+            /*
+             * ⚠️ 这一句从前是「**各自的娘**在各自的院子里骂了几句」，
+             * 而 `onEnter` 推了三个月——**娘可能就在这三个月里没了**，
+             * 于是正文里一个不在的人还在院子里骂人（`scripts/present.ts` 当场抓到）。
+             *
+             * 改成不点名。这一句的重点本来就是**两家只隔一道矮墙**，
+             * 不是谁在骂——「两边的院子里都有人骂」说的是同一件事，
+             * 而它不依赖某一个具体的人还在不在。
+             *
+             * 「正文里点名说谁，条件就得问谁」那条的另一面：
+             * **问不起的时候，就别点名**。
+             */
+            text: '两边的院子里都有人骂了几句，隔着那道墙，听得清清楚楚。',
             tone: 'faint',
           },
         ],
@@ -202,6 +214,17 @@ export const playmateScenes: SceneLibrary = {
    * 两支的分别不在谁对谁错，在**他们各自过了什么日子**——
    * 一个常来常往的和一个多年不说话的，隔着的是几十年，不是几分好感。
    */
+  /*
+   * ⚠️ **这一卷三支都不推时间。**
+   *
+   * 引擎的顺序是 `applyEffects(onEnter)` → 渲染正文，而这三支的开场句
+   * 都点名说了人（`{call:playmate}`「入冬前你在巷口碰见…」）。
+   * 推完那半年他可能已经不在了，于是巷口碰见的是一个不在的人
+   * ——`scripts/present.ts` 抓到过一次。
+   *
+   * 而这一卷本来也不需要推：**它讲的就是一次照面**，
+   * 入冬前那一天的事，不是那半年里的事。
+   */
   'playmate:years': {
     id: 'playmate:years',
     title: '还走不走动',
@@ -211,7 +234,18 @@ export const playmateScenes: SceneLibrary = {
         id: 'open',
         // 不推时间，理由同上两卷的 open。这一卷尤其要紧：
         // 这一节的分支读的正是 `{playmate}` 的好感，换了人就换了那一格
-        blocks: [{ kind: 'narration', text: '入冬前你在巷口碰见{call:playmate}。' }],
+        /*
+         * ⚠️ **这一节不印正文了**，那句「入冬前你在巷口碰见{call:playmate}」
+         * 挪到了底下两支各自的开头。
+         *
+         * 从前它印在这里，而 `scripts/present.ts` 抓到过一次穿帮：
+         * 入场条件问的是「他此刻在场」，可**入场判定和正文渲染之间隔着一段**，
+         * 他可能就在这中间没了——于是巷口碰见的是一个不在的人。
+         *
+         * 底下多加一条 `gone` 分支把这条缝堵上：他不在了，那一年就没碰见他。
+         * **而那正是这一卷该说的话**——人没了，走不走动这件事自己就结束了。
+         */
+        blocks: [],
         /*
          * 6 这个门槛不是「好感度及格线」，它是**少年那一卷跟没跟他去**。
          *
@@ -236,16 +270,44 @@ export const playmateScenes: SceneLibrary = {
          * `scripts/playmate.ts` 那条「两支各有各的人走」判据守着这件事——
          * 全够得着和全够不着，它都会红。
          */
+        /*
+         * `gone` 排在最前面：**更具体的条件要排在前面**，
+         * 而「他已经不在了」比「好感够不够」更具体——他不在，
+         * 好感那一格根本不该问出口。
+         */
         branches: [
+          { requires: [{ family: { id: 'playmate', present: false } }], next: 'gone' },
           { requires: [{ family: { id: 'playmate', affinity: { atLeast: 6 } } }], next: 'close' },
         ],
         next: 'apart',
       },
 
+      /**
+       * 他不在了。
+       *
+       * 这一支不写「你很难过」——**这一册从头到尾不替玩家说他的心情**。
+       * 只写一件看得见的事：巷口没有他了。
+       *
+       * ⚠️ 这一节**不点名**（没有 `{call:playmate}`）：走到这儿正是因为
+       * 他不在，而 `{playmate}` 现算会落到巷子里下一个孩子身上
+       * ——那就成了「你碰见了另一个人」，而这一节说的恰恰是没碰见。
+       */
+      gone: {
+        id: 'gone',
+        blocks: [
+          { kind: 'narration', text: '入冬前你又走了一趟那条巷子。' },
+          {
+            kind: 'narration',
+            text: '那道墙还在，墙那边的院子里换了人家。',
+            tone: 'faint',
+          },
+        ],
+      },
+
       close: {
         id: 'close',
-        onEnter: [{ type: 'time', months: 6 }],
         blocks: [
+          { kind: 'narration', text: '入冬前你在巷口碰见{call:playmate}。' },
           { kind: 'narration', text: '他站住了，问你家里都还好。你们在巷口说了半盏茶的话。' },
           {
             kind: 'narration',
@@ -257,8 +319,8 @@ export const playmateScenes: SceneLibrary = {
 
       apart: {
         id: 'apart',
-        onEnter: [{ type: 'time', months: 6 }],
         blocks: [
+          { kind: 'narration', text: '入冬前你在巷口碰见{call:playmate}。' },
           { kind: 'narration', text: '他点了下头，你也点了下头。' },
           { kind: 'narration', text: '两个人都没停下来。' },
           {

@@ -69,7 +69,20 @@ let bad = 0
 const CLOSE_AT = ((): number => {
   const scene = lifeScenes['playmate:years']
   const open = scene?.nodes[scene.entry ?? 'open']
-  const cond = open?.branches?.[0]?.requires?.[0]
+  /*
+   * ⚠️ **按语义找那一条，不取「第一条」。**
+   *
+   * 头一版写的是 `branches[0]`，而 2026-09-12 那一卷前面插了一条
+   * `gone`（他不在了）——`branches[0]` 当场变成另一条，
+   * 这里取到 `undefined`，门禁三处判据一起塌
+   * （门槛、指纹、演出率全报「结构变了」）。
+   *
+   * **从内容现取是对的，取的位置写死了「第一条」是错的**：
+   * 内容里插一条分支是再正常不过的事，而判据不该因此失明。
+   */
+  const cond = open?.branches?.find((one) =>
+    (one.requires ?? []).some((c) => c.family?.affinity?.atLeast !== undefined),
+  )?.requires?.find((c) => c.family?.affinity?.atLeast !== undefined)
   const at = cond?.family?.affinity?.atLeast
   if (at === undefined) {
     console.log('  ✗ 尺子自检：从 playmate:years 取不到那条好感门槛——结构变了。')
@@ -407,26 +420,46 @@ function entryOf(eventId: string): readonly Condition[] {
   const SCENES = ['playmate:young', 'playmate:wed', 'playmate:years'] as const
 
   /** 这一卷入口那句话里，不含占位符的最长一段——拿它当指纹 */
-  function fingerprintOf(sceneId: string): string {
+  function fingerprintsOf(sceneId: string): string[] {
     const scene = lifeScenes[sceneId]
-    const entry = scene?.nodes[scene.entry ?? 'open']
-    const first = entry?.blocks?.find((one) => 'text' in one)
-    const text = first !== undefined && 'text' in first ? first.text : ''
-    const longest = text
-      .split(/\{[^}]*\}/)
-      .map((part) => part.replace(/^[。，、]+|[。，、]+$/g, ''))
-      .sort((a, b) => b.length - a.length)[0]
-    return longest ?? ''
+    /*
+     * ⚠️ 从**整卷**里找第一句带字的正文，不只看入口那一节。
+     *
+     * 入口节点可以没有正文——`playmate:years` 的 `open` 现在只判分支，
+     * 那句「入冬前你在巷口碰见…」挪到了底下各支
+     * （挪的理由见内容里那段注释：入场判定和渲染之间他可能没了）。
+     * 只看入口会取到空指纹，于是「这一卷演到几次」恒为 0，
+     * **读着像这一卷是死的**。
+     */
+    const prints: string[] = []
+    for (const node of Object.values(scene?.nodes ?? {})) {
+      const first = (node.blocks ?? []).find((one) => 'text' in one && one.text.length > 0)
+      const text = first !== undefined && 'text' in first ? first.text : ''
+      const longest = text
+        .split(/\{[^}]*\}/)
+        .map((part) => part.replace(/^[。，、]+|[。，、]+$/g, ''))
+        .sort((a, b) => b.length - a.length)[0]
+      if (longest !== undefined && longest.length >= 6) prints.push(longest)
+    }
+    return prints
   }
 
-  const prints = new Map<string, string>()
+  /*
+   * ⚠️ 一卷收**每一支**的指纹，任一命中就算演到。
+   *
+   * 只取一句会选错支：`playmate:years` 那句「入冬前你在巷口碰见…」
+   * 现在在 `close`/`apart` 两支里，而整卷第一个有正文的节点是 `gone`
+   * （他不在了那一支）——真人生里几乎没人走到那儿，
+   * 于是「这一卷演到几次」印出 0.0%，**读着像这一卷是死的**。
+   */
+  const prints = new Map<string, string[]>()
   for (const id of SCENES) {
-    const print = fingerprintOf(id)
-    if (print.length < 6) {
-      console.log(`  ✗ 尺子自检：${id} 取不出指纹（拿到「${print}」）——场景 id 或结构变了。`)
+    const found = fingerprintsOf(id)
+    if (found.length === 0) {
+      console.log(`  ✗ 尺子自检：${id} 一句指纹也取不出来——场景 id 或结构变了。`)
       bad += 1
     }
-    prints.set(id, print)
+    prints.set(id, found)
   }
 
   let lives = 0
@@ -479,8 +512,8 @@ function entryOf(eventId: string): readonly Condition[] {
     if (sawPlaymate) withPlaymate += 1
     const whole = text.join('\n')
     for (const id of SCENES) {
-      const print = prints.get(id)
-      if (print !== undefined && print.length > 0 && whole.includes(print)) {
+      const found = prints.get(id) ?? []
+      if (found.some((one) => whole.includes(one))) {
         played.set(id, (played.get(id) ?? 0) + 1)
       }
     }
