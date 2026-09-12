@@ -88,10 +88,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  scene: string,
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(scene: string, pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   return playFrom(scene, lifeScenes[scene]?.entry ?? 'open', pick)
 }
 
@@ -118,12 +115,12 @@ function check(label: string, walked: string[], expected: string): void {
 
   stage()
   enrollFather()
-  const pressWalked = play(SCENE, (opts) => opts.includes('press') ? 'press' : opts[0]!)
+  const pressWalked = play(SCENE, (opts) => (opts.includes('press') ? 'press' : opts[0]!))
   check('dad:north press → told', pressWalked, 'told')
 
   stage()
   enrollFather()
-  const quietWalked = play(SCENE, (opts) => opts.includes('quiet') ? 'quiet' : opts[0]!)
+  const quietWalked = play(SCENE, (opts) => (opts.includes('quiet') ? 'quiet' : opts[0]!))
   check('dad:north quiet → untold', quietWalked, 'untold')
 }
 
@@ -137,12 +134,12 @@ function check(label: string, walked: string[], expected: string): void {
 
   stage()
   enrollFather()
-  const askWalked = play(SCENE, (opts) => opts.includes('ask') ? 'ask' : opts[0]!)
+  const askWalked = play(SCENE, (opts) => (opts.includes('ask') ? 'ask' : opts[0]!))
   check('dad:adept ask → the-story', askWalked, 'the-story')
 
   stage()
   enrollFather()
-  const laterWalked = play(SCENE, (opts) => opts.includes('later') ? 'later' : opts[0]!)
+  const laterWalked = play(SCENE, (opts) => (opts.includes('later') ? 'later' : opts[0]!))
   check('dad:adept later → slept', laterWalked, 'slept')
 }
 

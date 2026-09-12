@@ -95,7 +95,7 @@ let bad = 0
 
   for (const { node, label } of lieScenes) {
     stage()
-    const walked = play((opts) => opts.includes('lie') ? 'lie' : opts[0]!, 10, node)
+    const walked = play((opts) => (opts.includes('lie') ? 'lie' : opts[0]!), 10, node)
     if (!walked.includes('lie') && !walked.includes('after-lie')) {
       console.log(`  ✗ ${label} 撒谎路：没走到（走过 ${walked.join(' → ')}）。`)
       bad += 1
@@ -117,7 +117,7 @@ let bad = 0
 
   for (const { node, label } of truthScenes) {
     stage()
-    const walked = play((opts) => opts.includes('truth') ? 'truth' : opts[0]!, 10, node)
+    const walked = play((opts) => (opts.includes('truth') ? 'truth' : opts[0]!), 10, node)
     if (!walked.includes('truth') && !walked.includes('after-truth')) {
       console.log(`  ✗ ${label} 说实话路：没走到（走过 ${walked.join(' → ')}）。`)
       bad += 1

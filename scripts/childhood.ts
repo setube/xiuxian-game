@@ -70,10 +70,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  scene: string,
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(scene: string, pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   return playFrom(scene, lifeScenes[scene]?.entry ?? 'open', pick)
 }
 
@@ -149,7 +146,7 @@ let bad = 0
   const SCENE = 'child:hungry'
 
   stage()
-  const askWalked = play(SCENE, (opts) => opts.includes('ask') ? 'ask' : opts[0]!)
+  const askWalked = play(SCENE, (opts) => (opts.includes('ask') ? 'ask' : opts[0]!))
   if (!askWalked.includes('asked')) {
     console.log(`  ✗ hungry ask → asked：没走到（走过 ${askWalked.join(' → ')}）。`)
     bad += 1
@@ -158,7 +155,7 @@ let bad = 0
   }
 
   stage()
-  const quietWalked = play(SCENE, (opts) => opts.includes('quiet') ? 'quiet' : opts[0]!)
+  const quietWalked = play(SCENE, (opts) => (opts.includes('quiet') ? 'quiet' : opts[0]!))
   if (!quietWalked.includes('quiet')) {
     console.log(`  ✗ hungry quiet → quiet：没走到（走过 ${quietWalked.join(' → ')}）。`)
     bad += 1
@@ -186,7 +183,11 @@ let bad = 0
  */
 {
   const scenes = [
-    'child:memory', 'child:sick', 'child:sibling', 'child:hungry', 'child:harvest',
+    'child:memory',
+    'child:sick',
+    'child:sibling',
+    'child:hungry',
+    'child:harvest',
   ] as const
   let allIn = true
   for (const scene of scenes) {

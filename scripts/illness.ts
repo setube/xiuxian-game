@@ -72,9 +72,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   return playFrom(lifeScenes[SCENE]?.entry ?? 'open', pick)
 }
 
@@ -88,7 +86,7 @@ let bad = 0
 {
   for (const pick of ['watch', 'herbs', 'work'] as const) {
     stage()
-    const walked = play((opts) => opts.includes(pick) ? pick : opts[0]!)
+    const walked = play((opts) => (opts.includes(pick) ? pick : opts[0]!))
     if (!walked.includes('watched')) {
       console.log(`  ✗ open ${pick} → watched：没走到（走过 ${walked.join(' → ')}）。`)
       bad += 1

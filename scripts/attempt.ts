@@ -42,9 +42,7 @@ const SCENE = 'attempt:first'
  * `leaning` 决定走哪一条动机分叉。
  * `outcome` 直接设旗标绕过掷骰，控制走哪个结局档。
  */
-function stage(opts: {
-  leaning?: 'heal' | 'strong' | 'rich'
-}): void {
+function stage(opts: { leaning?: 'heal' | 'strong' | 'rich' }): void {
   setActivePinia(createPinia())
   beOf('farm')
   const household = useHouseholdStore()
@@ -69,19 +67,18 @@ function stage(opts: {
   if (opts.leaning) {
     const leanings = useLeaningStore()
     const world2 = useWorldStore()
-    leanings.stir(
-      opts.leaning,
-      18,
-      { at: world2.time, text: '（门禁摆局）' },
-      world2.time,
-    )
+    leanings.stir(opts.leaning, 18, { at: world2.time, text: '（门禁摆局）' }, world2.time)
   }
 }
 
 /**
  * 从指定节点演下去，回报走过的节点 id。
  */
-function playFrom(from: string, pick: (options: string[]) => string = () => 'shelve', stopAfter = 20): string[] {
+function playFrom(
+  from: string,
+  pick: (options: string[]) => string = () => 'shelve',
+  stopAfter = 20,
+): string[] {
   const scene = lifeScenes[SCENE]
   if (!scene) return []
   const walked: string[] = []
@@ -189,7 +186,7 @@ let bad = 0
  */
 {
   stage({ outcome: 'nothing' })
-  const walked = play((options) => options.includes('shelve') ? 'shelve' : options[0]!)
+  const walked = play((options) => (options.includes('shelve') ? 'shelve' : options[0]!))
 
   if (!walked.includes('shelved')) {
     console.log(`  ✗ shelved：选了「算了」却没走到那一节（走过 ${walked.join(' → ')}）。`)
@@ -206,7 +203,9 @@ let bad = 0
   stage({ outcome: 'nothing' })
   const walked = play()
   if (walked.length < 3) {
-    console.log(`  ✗ 尺子自检：只走了 ${walked.length} 节（${walked.join(' → ')}）——这一卷没有真被演过。`)
+    console.log(
+      `  ✗ 尺子自检：只走了 ${walked.length} 节（${walked.join(' → ')}）——这一卷没有真被演过。`,
+    )
     bad += 1
   } else {
     console.log(`  ✓ 尺子自检：走了 ${walked.length} 节（${walked.join(' → ')}）。`)

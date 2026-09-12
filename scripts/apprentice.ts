@@ -67,10 +67,7 @@ function enrollMaster(alive: boolean): void {
   people.bind('me', 'craft-master', '师')
 }
 
-function play(
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-  stopAfter = 15,
-): string[] {
+function play(pick: (options: string[]) => string = (opts) => opts[0]!, stopAfter = 15): string[] {
   const scene = lifeScenes[SCENE]
   if (!scene) return []
   const walked: string[] = []

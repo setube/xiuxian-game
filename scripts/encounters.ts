@@ -74,10 +74,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  scene: string,
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(scene: string, pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   return playFrom(scene, lifeScenes[scene]?.entry ?? 'open', pick)
 }
 
@@ -97,7 +94,11 @@ let bad = 0
   // unseen：open 兜底走 unseen（没注意到）
   stage()
   const unseenWalked = play(SCENE, (opts) => opts[0]!)
-  if (!unseenWalked.includes('unseen') && !unseenWalked.includes('noticed-but-ignored') && !unseenWalked.includes('notice')) {
+  if (
+    !unseenWalked.includes('unseen') &&
+    !unseenWalked.includes('noticed-but-ignored') &&
+    !unseenWalked.includes('notice')
+  ) {
     console.log(`  ✗ wounded open：没走到任何分叉（走过 ${unseenWalked.join(' → ')}）。`)
     bad += 1
   } else {
@@ -107,7 +108,9 @@ let bad = 0
   // notice → interest → lift（走近去帮）
   // 直接从 interest 节点演，绕过 open 的随机分叉
   stage()
-  const liftWalked = playFrom(SCENE, 'interest', (opts) => opts.includes('lift') ? 'lift' : opts[0]!)
+  const liftWalked = playFrom(SCENE, 'interest', (opts) =>
+    opts.includes('lift') ? 'lift' : opts[0]!,
+  )
   if (!liftWalked.includes('after')) {
     console.log(`  ✗ wounded lift：选了「扶」却没走到 after（走过 ${liftWalked.join(' → ')}）。`)
     bad += 1
@@ -117,7 +120,9 @@ let bad = 0
 
   // walked-on：直接从 interest 演，选 leave
   stage()
-  const leaveWalked = playFrom(SCENE, 'interest', (opts) => opts.includes('leave') ? 'leave' : opts[0]!)
+  const leaveWalked = playFrom(SCENE, 'interest', (opts) =>
+    opts.includes('leave') ? 'leave' : opts[0]!,
+  )
   if (!leaveWalked.includes('walked-on')) {
     console.log(`  ✗ wounded walked-on：选了「走开」却没走到（走过 ${leaveWalked.join(' → ')}）。`)
     bad += 1
@@ -137,8 +142,12 @@ let bad = 0
 
   // notice → interest → buy
   stage()
-  const boughtWalked = play(SCENE, (opts) => opts.includes('buy') ? 'buy' : opts[0]!)
-  if (!boughtWalked.includes('bought') && !boughtWalked.includes('notice') && !boughtWalked.includes('interest')) {
+  const boughtWalked = play(SCENE, (opts) => (opts.includes('buy') ? 'buy' : opts[0]!))
+  if (
+    !boughtWalked.includes('bought') &&
+    !boughtWalked.includes('notice') &&
+    !boughtWalked.includes('interest')
+  ) {
     console.log(`  ✗ book bought：选了「买」却没走到核心节点（走过 ${boughtWalked.join(' → ')}）。`)
     bad += 1
   } else {
@@ -147,7 +156,9 @@ let bad = 0
 
   // ask → asked（问了书主）
   stage()
-  const askedWalked = playFrom(SCENE, 'interest', (opts) => opts.includes('ask') ? 'ask' : opts[0]!)
+  const askedWalked = playFrom(SCENE, 'interest', (opts) =>
+    opts.includes('ask') ? 'ask' : opts[0]!,
+  )
   if (!askedWalked.includes('asked')) {
     console.log(`  ✗ book asked：选了「问书主」却没走到（走过 ${askedWalked.join(' → ')}）。`)
     bad += 1
@@ -157,7 +168,9 @@ let bad = 0
 
   // away（走开）
   stage()
-  const awayWalked = playFrom(SCENE, 'interest', (opts) => opts.includes('away') ? 'away' : opts[0]!)
+  const awayWalked = playFrom(SCENE, 'interest', (opts) =>
+    opts.includes('away') ? 'away' : opts[0]!,
+  )
   if (awayWalked.length === 0) {
     console.log('  ✗ book away：从 interest 走开走了零步——节点有问题。')
     bad += 1
@@ -188,7 +201,9 @@ let bad = 0
 
   // pour → after（倒了茶，有所得）
   stage()
-  const pourWalked = playFrom(SCENE, 'interest', (opts) => opts.includes('pour') ? 'pour' : opts[0]!)
+  const pourWalked = playFrom(SCENE, 'interest', (opts) =>
+    opts.includes('pour') ? 'pour' : opts[0]!,
+  )
   if (!pourWalked.includes('after')) {
     console.log(`  ✗ merchant after：选了「倒茶」却没走到（走过 ${pourWalked.join(' → ')}）。`)
     bad += 1
@@ -199,7 +214,11 @@ let bad = 0
   // missed（没在意）
   stage()
   const missedWalked = playFrom(SCENE, 'notice', (opts) => opts[0]!)
-  if (!missedWalked.includes('missed') && !missedWalked.includes('after') && !missedWalked.includes('overheard')) {
+  if (
+    !missedWalked.includes('missed') &&
+    !missedWalked.includes('after') &&
+    !missedWalked.includes('overheard')
+  ) {
     console.log(`  ✗ merchant 结果节点：没走到任何结果（走过 ${missedWalked.join(' → ')}）。`)
     bad += 1
   } else {

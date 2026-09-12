@@ -179,7 +179,9 @@ let bad = 0
   const walked = play(() => 'go', 20, 'arrive')
 
   if (!walked.includes('lean')) {
-    console.log(`  ✗ lean（年纪）：师傅 65 岁却没走到「难处」那一节（走过 ${walked.join(' → ')}）。`)
+    console.log(
+      `  ✗ lean（年纪）：师傅 65 岁却没走到「难处」那一节（走过 ${walked.join(' → ')}）。`,
+    )
     bad += 1
   } else {
     console.log('  ✓ lean（年纪档）：65 岁的师傅走到了难处。')
@@ -243,7 +245,9 @@ let bad = 0
   enrollMaster({ health: 80, age: 45 })
   const walked = play(() => 'go')
   if (walked.length < 3) {
-    console.log(`  ✗ 尺子自检：一路走了 ${walked.length} 节，这一卷没有真被演过（${walked.join(' → ')}）。`)
+    console.log(
+      `  ✗ 尺子自检：一路走了 ${walked.length} 节，这一卷没有真被演过（${walked.join(' → ')}）。`,
+    )
     bad += 1
   } else {
     console.log(`  ✓ 尺子自检：走了 ${walked.length} 节（${walked.join(' → ')}）。`)

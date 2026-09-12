@@ -91,10 +91,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  scene: string,
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(scene: string, pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   return playFrom(scene, lifeScenes[scene]?.entry ?? 'open', pick)
 }
 
@@ -120,11 +117,11 @@ function check(label: string, walked: string[], expected: string): void {
   const SCENE = 'away:lends'
 
   stage()
-  const takenWalked = play(SCENE, (opts) => opts.includes('take') ? 'take' : opts[0]!)
+  const takenWalked = play(SCENE, (opts) => (opts.includes('take') ? 'take' : opts[0]!))
   check('lends take → taken', takenWalked, 'taken')
 
   stage()
-  const refusedWalked = play(SCENE, (opts) => opts.includes('refuse') ? 'refuse' : opts[0]!)
+  const refusedWalked = play(SCENE, (opts) => (opts.includes('refuse') ? 'refuse' : opts[0]!))
   check('lends refuse → refused', refusedWalked, 'refused')
 }
 
@@ -185,8 +182,12 @@ function check(label: string, walked: string[], expected: string): void {
  */
 {
   const scenes = [
-    'away:lends', 'away:i-repay', 'away:hurt',
-    'away:old', 'away:father-old', 'away:journeyman',
+    'away:lends',
+    'away:i-repay',
+    'away:hurt',
+    'away:old',
+    'away:father-old',
+    'away:journeyman',
   ] as const
   let allIn = true
   for (const scene of scenes) {

@@ -68,10 +68,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  scene: string,
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(scene: string, pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   return playFrom(scene, lifeScenes[scene]?.entry ?? 'open', pick)
 }
 
@@ -97,11 +94,11 @@ function check(label: string, walked: string[], expected: string): void {
   const SCENE = 'youth:exam'
 
   stage()
-  const goWalked = play(SCENE, (opts) => opts.includes('go') ? 'go' : opts[0]!)
+  const goWalked = play(SCENE, (opts) => (opts.includes('go') ? 'go' : opts[0]!))
   check('exam go → result', goWalked, 'result')
 
   stage()
-  const stayWalked = play(SCENE, (opts) => opts.includes('stay') ? 'stay' : opts[0]!)
+  const stayWalked = play(SCENE, (opts) => (opts.includes('stay') ? 'stay' : opts[0]!))
   check('exam stay → stayed', stayWalked, 'stayed')
 }
 
@@ -116,7 +113,7 @@ function check(label: string, walked: string[], expected: string): void {
 
   for (const pick of ['craft', 'shop', 'farm', 'tenant'] as const) {
     stage()
-    const walked = play(SCENE, (opts) => opts.includes(pick) ? pick : opts[0]!)
+    const walked = play(SCENE, (opts) => (opts.includes(pick) ? pick : opts[0]!))
     if (!walked.includes('done') && walked.length === 0) {
       console.log(`  ✗ apprentice ${pick}：走了零步——选项不存在或节点有问题。`)
       bad += 1
@@ -136,7 +133,7 @@ function check(label: string, walked: string[], expected: string): void {
 
   for (const pick of ['stand', 'ask-boatman', 'leave'] as const) {
     stage()
-    const walked = play(SCENE, (opts) => opts.includes(pick) ? pick : opts[0]!)
+    const walked = play(SCENE, (opts) => (opts.includes(pick) ? pick : opts[0]!))
     if (!walked.includes('done') && walked.length === 0) {
       console.log(`  ✗ river ${pick}：走了零步——节点有问题。`)
       bad += 1

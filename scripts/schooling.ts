@@ -70,10 +70,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  scene: string,
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(scene: string, pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   return playFrom(scene, lifeScenes[scene]?.entry ?? 'open', pick)
 }
 
@@ -100,7 +97,7 @@ let bad = 0
 
   for (const { pick, node, label } of lessonsCases) {
     stage(50)
-    const walked = playFrom(SCENE, 'lessons', (opts) => opts.includes(pick) ? pick : opts[0]!)
+    const walked = playFrom(SCENE, 'lessons', (opts) => (opts.includes(pick) ? pick : opts[0]!))
     if (!walked.includes(node) && walked.length === 0) {
       console.log(`  ✗ threshold lessons ${label}：没走到（走过 ${walked.join(' → ')}）。`)
       bad += 1
@@ -111,7 +108,9 @@ let bad = 0
 
   // cannot 两条路
   stage(20)
-  const workWalked = playFrom(SCENE, 'cannot', (opts) => opts.includes('work') ? 'work' : opts[0]!)
+  const workWalked = playFrom(SCENE, 'cannot', (opts) =>
+    opts.includes('work') ? 'work' : opts[0]!,
+  )
   if (!workWalked.includes('worked')) {
     console.log(`  ✗ threshold cannot→work：没走到 worked（走过 ${workWalked.join(' → ')}）。`)
     bad += 1
@@ -120,7 +119,9 @@ let bad = 0
   }
 
   stage(20)
-  const peekWalked = playFrom(SCENE, 'cannot', (opts) => opts.includes('peek') ? 'peek' : opts[0]!)
+  const peekWalked = playFrom(SCENE, 'cannot', (opts) =>
+    opts.includes('peek') ? 'peek' : opts[0]!,
+  )
   if (!peekWalked.includes('peeked')) {
     console.log(`  ✗ threshold cannot→peek：没走到 peeked（走过 ${peekWalked.join(' → ')}）。`)
     bad += 1
@@ -178,7 +179,7 @@ let bad = 0
 
   for (const { pick, node, label } of fairCases) {
     stage(50, 10)
-    const walked = play(SCENE, (opts) => opts.includes(pick) ? pick : opts[0]!)
+    const walked = play(SCENE, (opts) => (opts.includes(pick) ? pick : opts[0]!))
     if (!walked.includes(node)) {
       console.log(`  ✗ fair ${label}：没走到 ${node}（走过 ${walked.join(' → ')}）。`)
       bad += 1

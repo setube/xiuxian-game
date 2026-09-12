@@ -78,9 +78,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   return playFrom(lifeScenes[SCENE]?.entry ?? 'open', pick)
 }
 
@@ -123,9 +121,18 @@ let bad = 0
  */
 {
   const entryNodes = [
-    'as-escort', 'as-nobody', 'as-highborn', 'as-healer',
-    'as-innkeep', 'as-taverner', 'as-gentry', 'as-student',
-    'as-reader', 'as-apprentice', 'as-clerk', 'as-hand',
+    'as-escort',
+    'as-nobody',
+    'as-highborn',
+    'as-healer',
+    'as-innkeep',
+    'as-taverner',
+    'as-gentry',
+    'as-student',
+    'as-reader',
+    'as-apprentice',
+    'as-clerk',
+    'as-hand',
   ] as const
 
   for (const node of entryNodes) {
@@ -155,7 +162,7 @@ let bad = 0
 
   for (const { pick, node, label } of riverCases) {
     stage()
-    const walked = playFrom('river', (opts) => opts.includes(pick) ? pick : opts[0]!)
+    const walked = playFrom('river', (opts) => (opts.includes(pick) ? pick : opts[0]!))
     if (!walked.includes(node)) {
       console.log(`  ✗ river ${label}：没走到（走过 ${walked.join(' → ')}）。`)
       bad += 1

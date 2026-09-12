@@ -86,7 +86,9 @@ for (const { scene, age, label } of ageCases) {
     console.log(`  ✗ ${label}（${scene}）：走了零步——场景 id 打错或库里没挂上。`)
     bad += 1
   } else {
-    console.log(`  ✓ ${label}（${scene}）：走进去了，走了 ${walked.length} 步（…${walked[walked.length - 1]}）。`)
+    console.log(
+      `  ✓ ${label}（${scene}）：走进去了，走了 ${walked.length} 步（…${walked[walked.length - 1]}）。`,
+    )
   }
 }
 

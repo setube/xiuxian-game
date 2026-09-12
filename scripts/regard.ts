@@ -76,9 +76,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   return playFrom(lifeScenes[SCENE]?.entry ?? 'open', pick)
 }
 

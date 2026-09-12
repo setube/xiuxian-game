@@ -67,10 +67,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  scene: string,
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(scene: string, pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   return playFrom(scene, lifeScenes[scene]?.entry ?? 'open', pick)
 }
 
@@ -96,15 +93,15 @@ function check(label: string, walked: string[], expected: string): void {
   const SCENE = 'leave:hiring'
 
   stage()
-  const askedWalked = play(SCENE, (opts) => opts.includes('ask') ? 'ask' : opts[0]!)
+  const askedWalked = play(SCENE, (opts) => (opts.includes('ask') ? 'ask' : opts[0]!))
   check('hiring ask → asked', askedWalked, 'asked')
 
   stage()
-  const workedWalked = play(SCENE, (opts) => opts.includes('work') ? 'work' : opts[0]!)
+  const workedWalked = play(SCENE, (opts) => (opts.includes('work') ? 'work' : opts[0]!))
   check('hiring work → worked', workedWalked, 'worked')
 
   stage()
-  const passedWalked = play(SCENE, (opts) => opts.includes('pass') ? 'pass' : opts[0]!)
+  const passedWalked = play(SCENE, (opts) => (opts.includes('pass') ? 'pass' : opts[0]!))
   // pass 是「不去」——没有专门的 passed 节点，直接结束
   if (passedWalked.length === 0) {
     console.log('  ✗ hiring pass：走了零步——节点有问题。')
@@ -123,11 +120,11 @@ function check(label: string, walked: string[], expected: string): void {
   const SCENE = 'leave:caravan'
 
   stage()
-  const wentWalked = play(SCENE, (opts) => opts.includes('go') ? 'go' : opts[0]!)
+  const wentWalked = play(SCENE, (opts) => (opts.includes('go') ? 'go' : opts[0]!))
   check('caravan go → went', wentWalked, 'went')
 
   stage()
-  const stayedWalked = play(SCENE, (opts) => opts.includes('stay') ? 'stay' : opts[0]!)
+  const stayedWalked = play(SCENE, (opts) => (opts.includes('stay') ? 'stay' : opts[0]!))
   check('caravan stay → stayed', stayedWalked, 'stayed')
 }
 

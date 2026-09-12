@@ -90,10 +90,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  scene: string,
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(scene: string, pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   return playFrom(scene, lifeScenes[scene]?.entry ?? 'open', pick)
 }
 
@@ -136,12 +133,12 @@ function check(label: string, walked: string[], expected: string): void {
 
   stage(20)
   enrollFather()
-  const sitWalked = play(SCENE, (opts) => opts.includes('sit') ? 'sit' : opts[0]!)
+  const sitWalked = play(SCENE, (opts) => (opts.includes('sit') ? 'sit' : opts[0]!))
   check('borrow sit（跟着坐在外面）→ sat', sitWalked, 'sat')
 
   stage(20)
   enrollFather()
-  const sleepWalked = play(SCENE, (opts) => opts.includes('sleep') ? 'sleep' : opts[0]!)
+  const sleepWalked = play(SCENE, (opts) => (opts.includes('sleep') ? 'sleep' : opts[0]!))
   check('borrow sleep（留在家里睡）→ slept', sleepWalked, 'slept')
 }
 
@@ -172,7 +169,7 @@ function check(label: string, walked: string[], expected: string): void {
   })
   people.bind('me', 'brother', '兄')
 
-  const followWalked = play(SCENE, (opts) => opts.includes('follow') ? 'follow' : opts[0]!)
+  const followWalked = play(SCENE, (opts) => (opts.includes('follow') ? 'follow' : opts[0]!))
   check('leave follow（跟哥去）→ followed', followWalked, 'followed')
 
   stage(20)
@@ -192,7 +189,7 @@ function check(label: string, walked: string[], expected: string): void {
     history: [],
   })
   p2.bind('me', 'brother', '兄')
-  const stayWalked = play(SCENE, (opts) => opts.includes('stay') ? 'stay' : opts[0]!)
+  const stayWalked = play(SCENE, (opts) => (opts.includes('stay') ? 'stay' : opts[0]!))
   check('leave stay（留家里）→ stayed', stayWalked, 'stayed')
 }
 
@@ -250,11 +247,11 @@ function check(label: string, walked: string[], expected: string): void {
   const SCENE = 'debt:fields'
 
   stage(20)
-  const listenWalked = play(SCENE, (opts) => opts.includes('listen') ? 'listen' : opts[0]!)
+  const listenWalked = play(SCENE, (opts) => (opts.includes('listen') ? 'listen' : opts[0]!))
   check('fields listen（听大人说话）→ heard', listenWalked, 'heard')
 
   stage(20)
-  const fieldsWalked = play(SCENE, (opts) => opts.includes('fields') ? 'fields' : opts[0]!)
+  const fieldsWalked = play(SCENE, (opts) => (opts.includes('fields') ? 'fields' : opts[0]!))
   check('fields fields（去地里）→ went', fieldsWalked, 'went')
 }
 
@@ -267,11 +264,11 @@ function check(label: string, walked: string[], expected: string): void {
   const SCENE = 'debt:quit'
 
   stage(20)
-  const acceptWalked = play(SCENE, (opts) => opts.includes('accept') ? 'accept' : opts[0]!)
+  const acceptWalked = play(SCENE, (opts) => (opts.includes('accept') ? 'accept' : opts[0]!))
   check('quit accept（接受退学）→ leave-school', acceptWalked, 'leave-school')
 
   stage(20)
-  const begWalked = play(SCENE, (opts) => opts.includes('beg') ? 'beg' : opts[0]!)
+  const begWalked = play(SCENE, (opts) => (opts.includes('beg') ? 'beg' : opts[0]!))
   check('quit beg（去求先生）→ begged', begWalked, 'begged')
 }
 
@@ -280,8 +277,14 @@ function check(label: string, walked: string[], expected: string): void {
  */
 {
   const scenes = [
-    'debt:drought', 'debt:borrow', 'debt:leave', 'debt:return',
-    'debt:silence', 'debt:death', 'debt:fields', 'debt:quit',
+    'debt:drought',
+    'debt:borrow',
+    'debt:leave',
+    'debt:return',
+    'debt:silence',
+    'debt:death',
+    'debt:fields',
+    'debt:quit',
   ] as const
   let allIn = true
   for (const scene of scenes) {

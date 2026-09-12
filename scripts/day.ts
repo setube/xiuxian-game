@@ -67,9 +67,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   return playFrom(lifeScenes[SCENE]?.entry ?? 'morning', pick)
 }
 
@@ -82,7 +80,7 @@ let bad = 0
  */
 {
   stage()
-  const workWalked = playFrom('morning', (opts) => opts.includes('work') ? 'work' : opts[0]!)
+  const workWalked = playFrom('morning', (opts) => (opts.includes('work') ? 'work' : opts[0]!))
   if (!workWalked.includes('morning-out')) {
     console.log(`  ✗ morning work → morning-out：没走到（走过 ${workWalked.join(' → ')}）。`)
     bad += 1
@@ -91,7 +89,7 @@ let bad = 0
   }
 
   stage()
-  const idleWalked = playFrom('morning', (opts) => opts.includes('idle') ? 'idle' : opts[0]!)
+  const idleWalked = playFrom('morning', (opts) => (opts.includes('idle') ? 'idle' : opts[0]!))
   if (!idleWalked.includes('morning-out')) {
     console.log(`  ✗ morning idle → morning-out：没走到（走过 ${idleWalked.join(' → ')}）。`)
     bad += 1
@@ -106,7 +104,7 @@ let bad = 0
 {
   for (const pick of ['work', 'town', 'elder'] as const) {
     stage()
-    const walked = playFrom('afternoon', (opts) => opts.includes(pick) ? pick : opts[0]!)
+    const walked = playFrom('afternoon', (opts) => (opts.includes(pick) ? pick : opts[0]!))
     if (!walked.includes('afternoon-out')) {
       console.log(`  ✗ afternoon ${pick} → afternoon-out：没走到（走过 ${walked.join(' → ')}）。`)
       bad += 1

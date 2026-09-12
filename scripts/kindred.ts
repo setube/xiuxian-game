@@ -119,10 +119,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  scene: string,
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(scene: string, pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   return playFrom(scene, lifeScenes[scene]?.entry ?? 'open', pick)
 }
 
@@ -150,12 +147,12 @@ function check(label: string, walked: string[], expected: string): void {
 
   stage(40, 30)
   enrollBrother()
-  const lentWalked = play(SCENE, (opts) => opts.includes('lend') ? 'lend' : opts[0]!)
+  const lentWalked = play(SCENE, (opts) => (opts.includes('lend') ? 'lend' : opts[0]!))
   check('borrow lend → lent', lentWalked, 'lent')
 
   stage(40, 30)
   enrollBrother()
-  const refusedWalked = play(SCENE, (opts) => opts.includes('refuse') ? 'refuse' : opts[0]!)
+  const refusedWalked = play(SCENE, (opts) => (opts.includes('refuse') ? 'refuse' : opts[0]!))
   check('borrow refuse → refused', refusedWalked, 'refused')
 }
 

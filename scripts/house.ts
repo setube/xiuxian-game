@@ -68,10 +68,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  scene: string,
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(scene: string, pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   return playFrom(scene, lifeScenes[scene]?.entry ?? 'open', pick)
 }
 
@@ -116,7 +113,9 @@ let bad = 0
   const SCENE = 'house:divide'
 
   stage()
-  const stayWalked = playFrom(SCENE, 'choose', (opts) => opts.includes('stay') ? 'stay' : opts[0]!)
+  const stayWalked = playFrom(SCENE, 'choose', (opts) =>
+    opts.includes('stay') ? 'stay' : opts[0]!,
+  )
   if (!stayWalked.includes('settled') && stayWalked.length === 0) {
     console.log(`  ✗ divide stay：走了零步——节点有问题。`)
     bad += 1
@@ -125,7 +124,9 @@ let bad = 0
   }
 
   stage()
-  const townWalked = playFrom(SCENE, 'choose', (opts) => opts.includes('town') ? 'town' : opts[0]!)
+  const townWalked = playFrom(SCENE, 'choose', (opts) =>
+    opts.includes('town') ? 'town' : opts[0]!,
+  )
   if (!townWalked.includes('town') && townWalked.length === 0) {
     console.log(`  ✗ divide town：走了零步——节点有问题。`)
     bad += 1

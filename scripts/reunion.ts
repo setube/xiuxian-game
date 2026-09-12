@@ -68,10 +68,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  scene: string,
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(scene: string, pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   return playFrom(scene, lifeScenes[scene]?.entry ?? 'open', pick)
 }
 
@@ -97,11 +94,11 @@ function check(label: string, walked: string[], expected: string): void {
   const SCENE = 'reunion:apprentice'
 
   stage()
-  const goWalked = play(SCENE, (opts) => opts.includes('go') ? 'go' : opts[0]!)
+  const goWalked = play(SCENE, (opts) => (opts.includes('go') ? 'go' : opts[0]!))
   check('apprentice go → away', goWalked, 'away')
 
   stage()
-  const stayWalked = play(SCENE, (opts) => opts.includes('stay') ? 'stay' : opts[0]!)
+  const stayWalked = play(SCENE, (opts) => (opts.includes('stay') ? 'stay' : opts[0]!))
   check('apprentice stay → stayed', stayWalked, 'stayed')
 }
 
@@ -114,11 +111,15 @@ function check(label: string, walked: string[], expected: string): void {
   const SCENE = 'reunion:homecoming'
 
   stage()
-  const stayHomeWalked = play(SCENE, (opts) => opts.includes('stay-home') ? 'stay-home' : opts[0]!)
+  const stayHomeWalked = play(SCENE, (opts) =>
+    opts.includes('stay-home') ? 'stay-home' : opts[0]!,
+  )
   check('homecoming stay-home → stayed', stayHomeWalked, 'stayed')
 
   stage()
-  const backWalked = play(SCENE, (opts) => opts.includes('back-to-town') ? 'back-to-town' : opts[0]!)
+  const backWalked = play(SCENE, (opts) =>
+    opts.includes('back-to-town') ? 'back-to-town' : opts[0]!,
+  )
   check('homecoming back-to-town → left', backWalked, 'left')
 }
 
@@ -131,11 +132,15 @@ function check(label: string, walked: string[], expected: string): void {
   const SCENE = 'reunion:emptied'
 
   stage()
-  const settleWalked = play(SCENE, (opts) => opts.includes('stay-and-settle') ? 'stay-and-settle' : opts[0]!)
+  const settleWalked = play(SCENE, (opts) =>
+    opts.includes('stay-and-settle') ? 'stay-and-settle' : opts[0]!,
+  )
   check('emptied stay-and-settle → stayed', settleWalked, 'stayed')
 
   stage()
-  const backWalked = play(SCENE, (opts) => opts.includes('back-to-town') ? 'back-to-town' : opts[0]!)
+  const backWalked = play(SCENE, (opts) =>
+    opts.includes('back-to-town') ? 'back-to-town' : opts[0]!,
+  )
   check('emptied back-to-town → left', backWalked, 'left')
 }
 

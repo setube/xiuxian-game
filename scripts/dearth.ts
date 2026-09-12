@@ -90,10 +90,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  scene: string,
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(scene: string, pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   return playFrom(scene, lifeScenes[scene]?.entry ?? 'open', pick)
 }
 
@@ -180,7 +177,7 @@ let bad = 0
 
   for (const { pick, node, label } of chooseCases) {
     stage(25)
-    const walked = playFrom(SCENE, 'choose', (opts) => opts.includes(pick) ? pick : opts[0]!)
+    const walked = playFrom(SCENE, 'choose', (opts) => (opts.includes(pick) ? pick : opts[0]!))
     if (!walked.includes(node)) {
       console.log(`  ✗ price choose ${label}：没走到 ${node}（走过 ${walked.join(' → ')}）。`)
       bad += 1

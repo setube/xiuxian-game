@@ -91,10 +91,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  scene: string,
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(scene: string, pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   const s = lifeScenes[scene]
   if (!s) return []
   return playFrom(scene, s.entry, pick)
@@ -161,7 +158,9 @@ let bad = 0
 {
   stage('farm', 70)
   // ending.ts 的场景 id 先查一下
-  const endingScenes = Object.keys(lifeScenes).filter((id) => id.includes('ending') || id.includes('last') || id.includes('end:'))
+  const endingScenes = Object.keys(lifeScenes).filter(
+    (id) => id.includes('ending') || id.includes('last') || id.includes('end:'),
+  )
   // 从 lifeScenes 里找 entry 是 'last' 的场景
   const endingScene = Object.entries(lifeScenes).find(([, s]) => s.entry === 'last')
   if (!endingScene) {
@@ -174,7 +173,9 @@ let bad = 0
       console.log(`  ✗ ending（${sceneId}）：走了零步。`)
       bad += 1
     } else {
-      console.log(`  ✓ ending（${sceneId}）：走进去了，走了 ${walked.length} 步（last → ${walked[walked.length - 1]}）。`)
+      console.log(
+        `  ✓ ending（${sceneId}）：走进去了，走了 ${walked.length} 步（last → ${walked[walked.length - 1]}）。`,
+      )
     }
   }
 }
@@ -188,7 +189,7 @@ let bad = 0
   const SCENE = 'ask:around'
 
   stage('farm', 30)
-  const elderWalked = play(SCENE, (opts) => opts.includes('ask-elder') ? 'ask-elder' : opts[0]!)
+  const elderWalked = play(SCENE, (opts) => (opts.includes('ask-elder') ? 'ask-elder' : opts[0]!))
   if (!elderWalked.includes('after')) {
     console.log(`  ✗ ask:around ask-elder → after：没走到（走过 ${elderWalked.join(' → ')}）。`)
     bad += 1
@@ -197,7 +198,7 @@ let bad = 0
   }
 
   stage('farm', 30)
-  const letWalked = play(SCENE, (opts) => opts.includes('let-it-be') ? 'let-it-be' : opts[0]!)
+  const letWalked = play(SCENE, (opts) => (opts.includes('let-it-be') ? 'let-it-be' : opts[0]!))
   if (letWalked.length === 0) {
     console.log('  ✗ ask:around let-it-be：走了零步。')
     bad += 1
@@ -215,7 +216,7 @@ let bad = 0
   const SCENE = 'ask:strangers'
 
   stage('farm', 30)
-  const lookWalked = play(SCENE, (opts) => opts.includes('look') ? 'look' : opts[0]!)
+  const lookWalked = play(SCENE, (opts) => (opts.includes('look') ? 'look' : opts[0]!))
   if (lookWalked.length === 0) {
     console.log('  ✗ ask:strangers look：走了零步。')
     bad += 1
@@ -224,7 +225,7 @@ let bad = 0
   }
 
   stage('farm', 30)
-  const ignoreWalked = play(SCENE, (opts) => opts.includes('ignore') ? 'ignore' : opts[0]!)
+  const ignoreWalked = play(SCENE, (opts) => (opts.includes('ignore') ? 'ignore' : opts[0]!))
   if (ignoreWalked.length === 0) {
     console.log('  ✗ ask:strangers ignore：走了零步。')
     bad += 1

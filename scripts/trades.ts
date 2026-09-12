@@ -31,12 +31,7 @@ import { beOf } from './origin'
  * trades 系列的入场都要求特定 business（客栈/酒楼/药铺/护送），
  * 而 business 来自出身表的 `sidelines`。直接设 `household.business`。
  */
-function stage(
-  origin: OriginId,
-  business: string,
-  age = 12,
-  withFather = false,
-): void {
+function stage(origin: OriginId, business: string, age = 12, withFather = false): void {
   setActivePinia(createPinia())
   beOf(origin)
   const household = useHouseholdStore()
@@ -95,10 +90,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  scene: string,
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(scene: string, pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   return playFrom(scene, lifeScenes[scene]?.entry ?? 'open', pick)
 }
 
@@ -117,7 +109,7 @@ let bad = 0
 
   // serve → close-look
   stage('merchant', '客栈')
-  const closeWalked = play(SCENE, (opts) => opts.includes('serve') ? 'serve' : opts[0]!)
+  const closeWalked = play(SCENE, (opts) => (opts.includes('serve') ? 'serve' : opts[0]!))
   if (!closeWalked.includes('close-look')) {
     console.log(`  ✗ guest close-look：选了「下楼」却没走到（走过 ${closeWalked.join(' → ')}）。`)
     bad += 1
@@ -127,7 +119,7 @@ let bad = 0
 
   // peek → from-afar
   stage('merchant', '客栈')
-  const farWalked = play(SCENE, (opts) => opts.includes('peek') ? 'peek' : opts[0]!)
+  const farWalked = play(SCENE, (opts) => (opts.includes('peek') ? 'peek' : opts[0]!))
   if (!farWalked.includes('from-afar')) {
     console.log(`  ✗ guest from-afar：选了「楼梯看」却没走到（走过 ${farWalked.join(' → ')}）。`)
     bad += 1
@@ -137,7 +129,7 @@ let bad = 0
 
   // sleep → missed
   stage('merchant', '客栈')
-  const missedWalked = play(SCENE, (opts) => opts.includes('sleep') ? 'sleep' : opts[0]!)
+  const missedWalked = play(SCENE, (opts) => (opts.includes('sleep') ? 'sleep' : opts[0]!))
   if (!missedWalked.includes('missed')) {
     console.log(`  ✗ guest missed：选了「回去睡」却没走到（走过 ${missedWalked.join(' → ')}）。`)
     bad += 1
@@ -156,7 +148,7 @@ let bad = 0
   const SCENE = 'trade:drunk'
 
   stage('merchant', '酒楼')
-  const heardWalked = play(SCENE, (opts) => opts.includes('listen') ? 'listen' : opts[0]!)
+  const heardWalked = play(SCENE, (opts) => (opts.includes('listen') ? 'listen' : opts[0]!))
   if (!heardWalked.includes('heard')) {
     console.log(`  ✗ drunk heard：选了「倒酒去听」却没走到（走过 ${heardWalked.join(' → ')}）。`)
     bad += 1
@@ -166,9 +158,11 @@ let bad = 0
 
   // ignored：选 work（走开干活）
   stage('merchant', '酒楼')
-  const ignoredWalked = play(SCENE, (opts) => opts.includes('work') ? 'work' : opts[0]!)
+  const ignoredWalked = play(SCENE, (opts) => (opts.includes('work') ? 'work' : opts[0]!))
   if (!ignoredWalked.includes('ignored')) {
-    console.log(`  ✗ drunk ignored：选了「走开干活」却没走到（走过 ${ignoredWalked.join(' → ')}）。`)
+    console.log(
+      `  ✗ drunk ignored：选了「走开干活」却没走到（走过 ${ignoredWalked.join(' → ')}）。`,
+    )
     bad += 1
   } else {
     console.log('  ✓ drunk ignored（走开干活）：走到了。')
@@ -186,9 +180,11 @@ let bad = 0
 
   // buy → drawn 或 kept
   stage('merchant', '药铺')
-  const drawnWalked = play(SCENE, (opts) => opts.includes('buy') ? 'buy' : opts[0]!)
+  const drawnWalked = play(SCENE, (opts) => (opts.includes('buy') ? 'buy' : opts[0]!))
   if (!drawnWalked.includes('drawn') && !drawnWalked.includes('kept')) {
-    console.log(`  ✗ herb drawn/kept：选了「买了」却没走到核心节点（走过 ${drawnWalked.join(' → ')}）。`)
+    console.log(
+      `  ✗ herb drawn/kept：选了「买了」却没走到核心节点（走过 ${drawnWalked.join(' → ')}）。`,
+    )
     bad += 1
   } else {
     console.log(`  ✓ herb 积极路线（drawn/kept）：走到了 ${drawnWalked[drawnWalked.length - 1]}。`)
@@ -196,7 +192,7 @@ let bad = 0
 
   // pass → passed
   stage('merchant', '药铺')
-  const passedWalked = play(SCENE, (opts) => opts.includes('pass') ? 'pass' : opts[0]!)
+  const passedWalked = play(SCENE, (opts) => (opts.includes('pass') ? 'pass' : opts[0]!))
   if (!passedWalked.includes('passed')) {
     console.log(`  ✗ herb passed：选了「走开」却没走到（走过 ${passedWalked.join(' → ')}）。`)
     bad += 1
@@ -215,7 +211,7 @@ let bad = 0
   const SCENE = 'trade:road'
 
   stage('merchant', '护送', 12, true)
-  const toldWalked = play(SCENE, (opts) => opts.includes('ask') ? 'ask' : opts[0]!)
+  const toldWalked = play(SCENE, (opts) => (opts.includes('ask') ? 'ask' : opts[0]!))
   if (!toldWalked.includes('told')) {
     console.log(`  ✗ road told：选了「问爹」却没走到（走过 ${toldWalked.join(' → ')}）。`)
     bad += 1
@@ -224,7 +220,7 @@ let bad = 0
   }
 
   stage('merchant', '护送', 12, true)
-  const unaskedWalked = play(SCENE, (opts) => opts.includes('quiet') ? 'quiet' : opts[0]!)
+  const unaskedWalked = play(SCENE, (opts) => (opts.includes('quiet') ? 'quiet' : opts[0]!))
   if (!unaskedWalked.includes('unasked')) {
     console.log(`  ✗ road unasked：选了「不问」却没走到（走过 ${unaskedWalked.join(' → ')}）。`)
     bad += 1
@@ -246,9 +242,11 @@ let bad = 0
   // 设 station，因为 trade-archive 要求 station: '仕宦'
   const household = useHouseholdStore()
   ;(household as unknown as { station: string }).station = '仕宦'
-  const confrontedWalked = play(SCENE, (opts) => opts.includes('ask') ? 'ask' : opts[0]!)
+  const confrontedWalked = play(SCENE, (opts) => (opts.includes('ask') ? 'ask' : opts[0]!))
   if (!confrontedWalked.includes('confronted')) {
-    console.log(`  ✗ archive confronted：选了「问爹」却没走到（走过 ${confrontedWalked.join(' → ')}）。`)
+    console.log(
+      `  ✗ archive confronted：选了「问爹」却没走到（走过 ${confrontedWalked.join(' → ')}）。`,
+    )
     bad += 1
   } else {
     console.log('  ✓ archive confronted（问了，爹脸色变了）：走到了。')
@@ -257,7 +255,7 @@ let bad = 0
   stage('merchant', '仕宦', 12, true)
   const household2 = useHouseholdStore()
   ;(household2 as unknown as { station: string }).station = '仕宦'
-  const unseen = play(SCENE, (opts) => opts.includes('back') ? 'back' : opts[0]!)
+  const unseen = play(SCENE, (opts) => (opts.includes('back') ? 'back' : opts[0]!))
   if (!unseen.includes('unseen')) {
     console.log(`  ✗ archive unseen：选了「走开」却没走到（走过 ${unseen.join(' → ')}）。`)
     bad += 1

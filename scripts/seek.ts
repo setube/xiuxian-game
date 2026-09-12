@@ -88,10 +88,7 @@ function playFrom(
   return walked
 }
 
-function play(
-  scene: string,
-  pick: (options: string[]) => string = (opts) => opts[0]!,
-): string[] {
+function play(scene: string, pick: (options: string[]) => string = (opts) => opts[0]!): string[] {
   const entry = lifeScenes[scene]?.entry ?? 'open'
   return playFrom(scene, entry, pick)
 }
@@ -110,7 +107,7 @@ let bad = 0
 {
   // open 节点可达
   stage()
-  const walked = play('seek:errand', (opts) => opts.includes('watch') ? 'watch' : opts[0]!)
+  const walked = play('seek:errand', (opts) => (opts.includes('watch') ? 'watch' : opts[0]!))
   if (!walked.includes('open')) {
     console.log(`  ✗ errand open：没走到（走过 ${walked.join(' → ')}）。`)
     bad += 1
@@ -125,7 +122,9 @@ let bad = 0
   // 直接从 back 节点开始演
   const emptyWalked = playFrom('seek:errand', 'back')
   if (!emptyWalked.includes('empty')) {
-    console.log(`  ✗ errand empty：设了 came-up-empty 却没走到（走过 ${emptyWalked.join(' → ')}）。`)
+    console.log(
+      `  ✗ errand empty：设了 came-up-empty 却没走到（走过 ${emptyWalked.join(' → ')}）。`,
+    )
     bad += 1
   } else {
     console.log('  ✓ errand empty：来-up-empty 旗成立时走到了。')
@@ -140,7 +139,9 @@ let bad = 0
     console.log(`  ✗ errand again：没走到（走过 ${againWalked.join(' → ')}）。`)
     bad += 1
   } else if (!againWalked.includes('gave-up')) {
-    console.log(`  ✗ errand gave-up：走到了 again 但没走到 gave-up（走过 ${againWalked.join(' → ')}）。`)
+    console.log(
+      `  ✗ errand gave-up：走到了 again 但没走到 gave-up（走过 ${againWalked.join(' → ')}）。`,
+    )
     bad += 1
   } else {
     console.log('  ✓ errand again + gave-up：两个节点都走到了。')
@@ -155,7 +156,7 @@ let bad = 0
  */
 {
   stage()
-  const walked = play('seek:asking', (opts) => opts.includes('ask') ? 'ask' : opts[0]!)
+  const walked = play('seek:asking', (opts) => (opts.includes('ask') ? 'ask' : opts[0]!))
   if (!walked.includes('open')) {
     console.log(`  ✗ asking open：没走到（走过 ${walked.join(' → ')}）。`)
     bad += 1
@@ -164,7 +165,7 @@ let bad = 0
   }
 
   stage()
-  const stoppedWalked = play('seek:asking', (opts) => opts.includes('stop') ? 'stop' : opts[0]!)
+  const stoppedWalked = play('seek:asking', (opts) => (opts.includes('stop') ? 'stop' : opts[0]!))
   if (!stoppedWalked.includes('stopped')) {
     console.log(`  ✗ asking stopped：选了「不问」却没走到（走过 ${stoppedWalked.join(' → ')}）。`)
     bad += 1
@@ -181,7 +182,7 @@ let bad = 0
  */
 {
   stage()
-  const crossedWalked = play('seek:crossed', (opts) => opts.includes('go') ? 'go' : opts[0]!)
+  const crossedWalked = play('seek:crossed', (opts) => (opts.includes('go') ? 'go' : opts[0]!))
   if (!crossedWalked.includes('open')) {
     console.log(`  ✗ crossed open：没走到（走过 ${crossedWalked.join(' → ')}）。`)
     bad += 1
@@ -191,7 +192,7 @@ let bad = 0
 
   // after → waited（选了 go 后继续等）
   stage()
-  const waitedWalked = play('seek:crossed', (opts) => opts.includes('go') ? 'go' : opts[0]!)
+  const waitedWalked = play('seek:crossed', (opts) => (opts.includes('go') ? 'go' : opts[0]!))
   if (!waitedWalked.includes('after')) {
     console.log(`  ✗ crossed after：没走到（走过 ${waitedWalked.join(' → ')}）。`)
     bad += 1
@@ -221,7 +222,7 @@ let bad = 0
 {
   // open 和 walked（兜底）
   stage()
-  const doorWalked = play('seek:door', (opts) => opts.includes('enter') ? 'enter' : opts[0]!)
+  const doorWalked = play('seek:door', (opts) => (opts.includes('enter') ? 'enter' : opts[0]!))
   if (!doorWalked.includes('open')) {
     console.log(`  ✗ door open：没走到（走过 ${doorWalked.join(' → ')}）。`)
     bad += 1
@@ -255,7 +256,9 @@ let bad = 0
   useWorldStore().setFlag('was-turned-down', true)
   const turnedResult = playFrom('seek:door', 'after')
   if (!turnedResult.includes('turned')) {
-    console.log(`  ✗ door turned：设了 was-turned-down 却没走到（走过 ${turnedResult.join(' → ')}）。`)
+    console.log(
+      `  ✗ door turned：设了 was-turned-down 却没走到（走过 ${turnedResult.join(' → ')}）。`,
+    )
     bad += 1
   } else {
     console.log('  ✓ door turned（没收）：走到了。')
