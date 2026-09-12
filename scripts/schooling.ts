@@ -26,9 +26,10 @@ import { lifeScenes } from '../src/content/life'
 import { ORIGINS } from '../src/content/origins'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
+import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
-import type { Choice, SceneNode } from '../src/types/game'
+import type { Choice, SceneNode, OriginId } from '../src/types/game'
 import { forkingOf } from './lib/forking'
 import { beOf } from './origin'
 
@@ -313,10 +314,101 @@ let bad = 0
   }
 }
 
+/**
+ * 效果层：**两组梯度——家世定起点，用功定收成**。
+ *
+ * 上面那条六档分流验的是「落在哪一节」——**把 `applyEffects` 整个改成空转，
+ * 它纹丝不动**（2026-09-12 B 刀实测）。
+ *
+ * 这一卷落下的是两组见识梯度，加一面分身份的旗：
+ *
+ *     家世那一组   hall +6  study +5  tutor +4     皇子、世子、官宦请的西席
+ *     用功那一组   用功 +8  普通 +4   逃课 +1       同一间私塾，三种念法
+ *     窗外那一档   cannot +4                       念不起书，在窗外听
+ *     royal-schooling 旗   只有宗室那两档落
+ *
+ * **这一卷最动人的一处是 `cannot` +4**：念不起书的孩子在窗外听，
+ * 也长见识——比逃课的（+1）多，比用功的（+8）少。
+ * 那不是补偿，是「他确实听见了什么」。
+ *
+ * ## 判「梯度有高下」，不判「hall 正好 +6」
+ *
+ * 数值随时会调；**「皇子比世子多、世子比官宦多」「用功比逃课多」
+ * 才是这两组的设计**。写死 +6 的话调一次判据就红。
+ *
+ * 旗那一条判的是**分身份**：宗室落 `royal-schooling`，平民不落。
+ * 效果空转时两边都不落，这一条当场塌。
+ */
+{
+  const SCENE = 'school:threshold'
+
+  /**
+   * @param pick 走到有选项那一节时点哪一条
+   *
+   * ⚠️ 窗外那一档的见识 +4 **落在 `peek` 那条选项上**，不在 `cannot` 节点的
+   * `onEnter` 里。不指定 `pick` 就默认点第一条（`work`，出去做活），
+   * 判据当场报「在窗外听也该长见识，实际 0」——**而他根本没去听**。
+   *
+   * 「从错的节点起演」的近亲：**从对的节点起演，却点了另一条路**。
+   */
+  function insightBy(
+    put: () => void,
+    from: string,
+    pick?: string,
+  ): { gained: number; royal: boolean } {
+    put()
+    const character = useCharacterStore()
+    const world = useWorldStore()
+    const before = character.attributes.insight
+    playFrom(SCENE, from, (opts) => (pick !== undefined && opts.includes(pick) ? pick : opts[0]!))
+    return {
+      // 记增量：每次摆局各起各的 pinia，属性起手是现掷的
+      gained: character.attributes.insight - before,
+      royal: world.getFlag('royal-schooling') === true,
+    }
+  }
+
+  const byOrigin = (origin: OriginId) => (): void => {
+    setActivePinia(createPinia())
+    beOf(origin)
+    useWorldStore().advanceTime({ years: 7 })
+  }
+
+  const hall = insightBy(byOrigin('court'), 'hall')
+  const study = insightBy(byOrigin('manor'), 'study')
+  const tutor = insightBy(byOrigin('office'), 'tutor')
+  const diligent = insightBy(() => stage(50, 10), 'lessons')
+  const peeked = insightBy(() => stage(20, 10), 'cannot', 'peek')
+
+  const wrong: string[] = []
+  if (!(hall.gained > study.gained && study.gained > tutor.gained)) {
+    wrong.push(
+      `家世那一组该有高下：皇子 +${hall.gained}、世子 +${study.gained}、官宦 +${tutor.gained}`,
+    )
+  }
+  if (diligent.gained <= 0) wrong.push(`进了私塾念书，见识却是 ${diligent.gained}`)
+  if (peeked.gained <= 0) {
+    wrong.push(`念不起书的孩子在窗外听，也该长见识，实际 ${peeked.gained}`)
+  }
+  if (!hall.royal) wrong.push('皇子开蒙，却没落下「宗室念的书」那一面旗')
+  if (diligent.royal) wrong.push('平民进私塾，却落了「宗室念的书」那一面旗')
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ threshold 效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ threshold 效果层：皇子 +${hall.gained}、世子 +${study.gained}、官宦 +${tutor.gained}；` +
+        `进私塾 +${diligent.gained}、窗外听 +${peeked.gained}；宗室那面旗只落在宗室身上。`,
+    )
+  }
+}
+
 console.log()
 if (bad > 0) {
   console.log(`  ✗ ${bad} 项不成立。\n`)
   process.exitCode = 1
 } else {
-  console.log('  私塾那几年，各条路各自有人走过了。\n')
+  console.log('  私塾那几年，各条路各自有人走过了，念下来的东西也各有多少。\n')
 }
