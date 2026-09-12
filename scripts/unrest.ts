@@ -512,9 +512,40 @@ function entryHolds(): string[] {
   const event = unrestEvents.find((one) => one.id === 'unrest-word')
   if (!event) return ['库里没有 unrest-word 这个事件']
 
-  const TRIES = 300
+  /*
+   * ## 掷到成立为止，不是掷固定次数
+   *
+   * ⚠️ 这里从前是 `TRIES = 300` 固定跑，然后把「一次也不成立」判成
+   * 「这一条把门关死了」。而 `befell banditry within 5` 的实测率是
+   * **0.60%**（1500 世 9 次，2026-09-12 探路量的）——
+   * 300 次期望命中 1.8 次，**零和稀有在这个量级上分不开**。
+   * 于是它在某些主种子下报红、某些下不报，而内容一个字没改。
+   *
+   * 按期望命中十次算要 1700 次，而每次都要 `runWorld(40)`——
+   * 那会让这一支慢五六倍，**买到的只是同一个零/非零的答案**。
+   *
+   * 所以换个问法：这一条判据要的不是「它有多常成立」，
+   * 是「**它在这个库里成不成立得了**」——一次就够。
+   * 掷到每一条都成立过为止，封顶 `CAP`；到顶还有没成立过的才红。
+   *
+   * 期望：0.6% 的那一条约 167 次命中一次，`CAP = 2000` 有十倍余量。
+   * 而常见的那几条（278/300、283/300）头几次就成立，循环立刻提前收工。
+   *
+   * （CLAUDE.md「『没人读到』也要掷到出现为止」那一条；
+   * 以及「分不出的那个零」——两个千分之几求交集，
+   * 「不会发生」和「没撞上」印出同一个 0。）
+   */
+  const CAP = 2000
   const hit = new Map<string, number>()
-  for (let i = 0; i < TRIES; i += 1) {
+  const labels = (event.requires ?? []).map(
+    (one, index) => `${index + 1}. ${JSON.stringify(one).slice(0, 46)}`,
+  )
+  for (const label of labels) hit.set(label, 0)
+  let TRIES = 0
+  for (let i = 0; i < CAP; i += 1) {
+    TRIES += 1
+    // 每一条都成立过了就收工——不必为了凑数把最常见的那几条再掷一千次
+    if (labels.every((one) => (hit.get(one) ?? 0) > 0)) break
     setActivePinia(createPinia())
     const world = useWorldStore()
     useCharacterStore()
@@ -536,17 +567,16 @@ function entryHolds(): string[] {
      */
     world.runWorld(40, true)
     for (const [index, one] of (event.requires ?? []).entries()) {
-      const label = `${index + 1}. ${JSON.stringify(one).slice(0, 46)}`
+      const label = labels[index]!
       if (meetsAll([one])) hit.set(label, (hit.get(label) ?? 0) + 1)
-      else if (!hit.has(label)) hit.set(label, 0)
     }
   }
   for (const [label, n] of hit) {
-    console.log(`  ${label.padEnd(52)} ${String(n).padStart(3)}/${TRIES}`)
+    console.log(`  ${label.padEnd(52)} ${String(n).padStart(4)}/${TRIES}`)
     if (n === 0) {
       wrong.push(
-        `${label} 在 ${TRIES} 次摆局里一次也不成立——**那一条把这一卷的门关死了**` +
-          '（稀有和零是两件事：零意味着这一卷在库里是死的）',
+        `${label} 掷了 ${TRIES} 次一次也不成立——**那一条把这一卷的门关死了**` +
+          `（掷到成立为止，封顶 ${CAP}；到顶还是零，那就不是稀有，是不会发生）`,
       )
     }
   }
