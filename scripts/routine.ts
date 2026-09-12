@@ -321,10 +321,100 @@ for (const { scene, age, label } of ageCases) {
   }
 }
 
+/**
+ * 效果层：**同一个孩子，一天怎么过决定他长成什么样**。
+ *
+ * 上面那两条验的是「走得进去」和「选项在区分人」——
+ * **把 `applyEffects` 整个改成空转，它们纹丝不动**（2026-09-12 B 刀实测）。
+ * 那两条问的是「他看得见哪几条路」，这一条问的是「走完之后他身上多了什么」。
+ *
+ * `routine:child` 四条各长不同的东西：
+ *
+ *     follow-mother  见识 +2          跟着娘，看她怎么应付人
+ *     run            体魄 +3、运气 +1  跑出去疯一天
+ *     nurse          见识 +1、心志 +1  跟着乳母（只有王府那一档有）
+ *     alone          心志 +3、见识 +1  一个人待着
+ *
+ * ## 这一卷的分量在「日常也在塑人」
+ *
+ * 它不是过场：跑出去的孩子身子骨好，一个人待着的孩子心里沉。
+ * **一天一天累起来，人就长成了不一样的人**——
+ * 而这几点属性是那件事唯一的落点。
+ *
+ * 判「三条各长不同的」不判「run 正好 +3」。
+ *
+ * ## ⚠️ 「跟着娘」要娘还活着，而这一段跑在条件层那十个局之后
+ *
+ * 写第一版时这一条红着：见识 +0，而且跟 `run` 长出一模一样的东西。
+ * 探针单独跑同一颗种子却是 +2——**差别是随机流的位置**。
+ * 条件层那一段掷掉几十个局之后，`beOf` 摆出的这一世里娘已经殁了，
+ * 于是「整日跟着娘」不在选项里，`pick` 静默落空点了 `run`，
+ * 报出来的话是「跟着娘该长见识，实际 0」——**读着像内容坏了**。
+ *
+ * 所以两件事一起做：**把娘按活**，再**让落空出声**。
+ * 光按活不够——下一个往这一卷加条件的人会再撞一次，
+ * 而那时候没人记得这段注释。
+ */
+{
+  interface Grew {
+    insight: number
+    will: number
+    body: number
+  }
+
+  const missed: string[] = []
+
+  function grewBy(pick: string): Grew {
+    stage(8)
+    // 「整日跟着娘」要 `family: { id: 'mother', alive: true }`——按死这一格
+    usePeopleStore().amend('mother', { fate: '在' })
+    const character = useCharacterStore()
+    const before = { ...character.attributes }
+    play('routine:child', (opts) => {
+      // 落空不许安静过去：点不到那一条时，判据报的是另一条路的账
+      if (!opts.includes(pick)) missed.push(`${pick}（当时只有 ${opts.join('、')}）`)
+      return opts.includes(pick) ? pick : opts[0]!
+    })
+    return {
+      // 记增量：每次摆局各起各的 pinia，属性起手是现掷的
+      insight: character.attributes.insight - before.insight,
+      will: character.attributes.will - before.will,
+      body: character.attributes.body - before.body,
+    }
+  }
+
+  const follow = grewBy('follow-mother')
+  const run = grewBy('run')
+  const alone = grewBy('alone')
+
+  const wrong: string[] = []
+  for (const one of missed) wrong.push(`摆局没摆出「${one}」这一条——底下那几句问的是别条路的账`)
+  if (follow.insight <= 0) wrong.push(`跟着娘该长见识，实际 ${follow.insight}`)
+  if (run.body <= 0) wrong.push(`跑出去疯一天该长身子骨，实际 ${run.body}`)
+  if (alone.will <= 0) wrong.push(`一个人待着该长心志，实际 ${alone.will}`)
+  if (run.body === follow.body && run.insight === follow.insight) {
+    wrong.push('跟着娘和跑出去长的是同样的东西——那一节几条路没有分别')
+  }
+  if (alone.will === follow.will && alone.insight === follow.insight) {
+    wrong.push('一个人待着和跟着娘长的是同样的东西')
+  }
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ child 效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ child 效果层：跟着娘 +${follow.insight} 见识、跑出去 +${run.body} 身子骨、` +
+        `一个人待着 +${alone.will} 心志——一天一天累起来，长成不一样的人。`,
+    )
+  }
+}
+
 console.log()
 if (bad > 0) {
   console.log(`  ✗ ${bad} 项不成立。\n`)
   process.exitCode = 1
 } else {
-  console.log('  日常例行六卷，各年龄段各自有人走过了，那些选项也各自挑着人。\n')
+  console.log('  日常例行六卷，各年龄段各自有人走过了，那些选项也各自挑着人、各自长着人。\n')
 }
