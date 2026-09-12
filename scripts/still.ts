@@ -31,6 +31,7 @@ import { useWorldStore } from '../src/stores/world'
 import { usePeopleStore } from '../src/stores/people'
 import type { Choice, SceneNode, Condition, Temper } from '../src/types/game'
 import { forkingOf } from './lib/forking'
+import { standing } from './lib/standing'
 import { beOf } from './origin'
 
 function stage(age = 25): void {
@@ -344,10 +345,76 @@ let bad = 0
   }
 }
 
+/**
+ * 效果层：**侄儿走那天，父子之间落下的是哪一种处法**。
+ *
+ * 上面那条七档分流验的是「落在哪一节」——**把 `applyEffects` 整个改成空转，
+ * 它纹丝不动**（2026-09-12 B 刀实测）。落到了那一节，而那一节落下什么没人验。
+ *
+ * 三个结局各在**同一条边**上落一种处法（`nephew → brother` 生父）：
+ *
+ *     blessed  亲厚    爹放他走，这事没伤着父子
+ *     defiant  不睦    他自己走的，爹记着这一笔
+ *     allowed  平常    松了口，可也就是松了口
+ *
+ * **同一条边、三种处法**——这一节的分量全在这儿：
+ * 走成什么样，决定的不是他走没走成，是这对父子往后怎么处。
+ *
+ * ## 判「三种各不相同」，不判「blessed 落的是亲厚」
+ *
+ * 写死哪一档配哪一种，内容调一次这条判据就红；
+ * **「三条路不该落同一种处法」才是设计**。
+ * 效果空转时三条全落空（`termsBetween` 回 undefined），这一条当场塌。
+ */
+{
+  const SCENE = 'nephew:goes'
+
+  /** 走一趟，回报父子那条边上落下的处法 */
+  function termsAfter(temper: Temper, fatherTemper: Temper, flag?: string): string {
+    stage(40)
+    standing({ id: 'brother', bond: '兄', older: 45, temper: fatherTemper, given: '大' })
+    standing({ id: 'nephew', bond: '亲戚', older: 18, temper, given: '小' })
+    if (flag !== undefined) useWorldStore().setFlag(flag, true)
+    playFrom(SCENE, lifeScenes[SCENE]?.entry ?? 'open')
+    return usePeopleStore().termsBetween('nephew', 'brother') ?? '（没落）'
+  }
+
+  // 三条路各摆一次：胆子大+爹宽厚 → blessed，胆子大 → defiant，爹精明+替他说过 → allowed
+  const blessed = termsAfter('刚硬', '温和')
+  const defiant = termsAfter('刚硬', '暴躁')
+  const allowed = termsAfter('谨慎', '精明', 'spoke-for-nephew')
+
+  const wrong: string[] = []
+  for (const [label, one] of [
+    ['爹放他走', blessed],
+    ['他自己走的', defiant],
+    ['松了口', allowed],
+  ] as const) {
+    if (one === '（没落）') wrong.push(`〔${label}〕走完那一节，父子那条边上什么也没落下`)
+  }
+  if (blessed === defiant) {
+    wrong.push(`爹放他走和他自己走的，父子处法一样（都是 ${blessed}）——那一节的效果没落`)
+  }
+  if (defiant === allowed) {
+    wrong.push(`他自己走的和松了口，父子处法一样（都是 ${defiant}）`)
+  }
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ goes 效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ goes 效果层：爹放他走落「${blessed}」、他自己走的落「${defiant}」、` +
+        `松了口落「${allowed}」——同一条边，三种处法。`,
+    )
+  }
+}
+
 console.log()
 if (bad > 0) {
   console.log(`  ✗ ${bad} 项不成立。\n`)
   process.exitCode = 1
 } else {
-  console.log('  静功与侄子四卷，各自有人走过了。\n')
+  console.log('  静功与侄子四卷，各自有人走过了，父子那条边也各落各的。\n')
 }
