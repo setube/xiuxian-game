@@ -20,10 +20,11 @@ import './lib/seeded'
 
 import { createPinia, setActivePinia } from 'pinia'
 
-import { lifeScenes } from '../src/content/life'
+import { lifeEvents, lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
 import { useHouseholdStore } from '../src/stores/household'
+import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 import type { Choice, SceneNode } from '../src/types/game'
 import { beOf } from './origin'
@@ -160,6 +161,116 @@ function check(label: string, walked: string[], expected: string): void {
     }
   }
   if (allIn) console.log('  ✓ 尺子自检：三卷各自都走进去了。')
+}
+
+/**
+ * 条件层：**这三卷各自落在什么样的人身上**。
+ *
+ * 上面那几条问的是「选了这个选项走到那个节点了吗」——`next` 写死在内容里，
+ * **`meetsAll` 恒真它们纹丝不动**（2026-09-12 打断实测）。
+ *
+ * 这三卷的条件层全在**入场**上，而后两条尤其要紧——**同一面旗，不同的人**：
+ *
+ *     reunion-apprentice  offered-shopwork
+ *     reunion-homecoming  went-to-town + 养育你的人还在（牵够八年）
+ *     reunion-emptied     went-to-town + 养育你的人不在了
+ *
+ * 后两条互斥：回来那天他还在，是「回家」；他不在了，是「屋空了」。
+ * 两条的旗是同一面，**分开它们的只有那个人的死活**——
+ * 而「走得到吗」那类判据对这两卷一视同仁。
+ *
+ * ⚠️ `years: { atLeast: 8 }` 那一格要关系牵够八年：**先 `bind` 再推时间**。
+ * `bind` 记的 `since` 是当时的年份，顺序反了就牵不够年头。
+ */
+{
+  /**
+   * 摆一个「养育你的人」，`alive` 决定他还在不在。
+   *
+   * ⚠️ **那条边上不能有第二个人。** `bond` 那一格问的是
+   * 「这层关系里**有没有**一个满足的人」（`some`），而立基已经把
+   * 父母挂在「抚养」边上了（实测 `kinOf('抚养')` → father、mother）。
+   * 我再加一个 `foster`，`alive: true` 有活的父母就成立、
+   * `alive: false` 要「一个活的都没有」也过不去——**两条互斥的入场
+   * 条件同时失灵，而报出来的话一条说「不成立也进得去」、
+   * 一条说「摆齐了却进不去」，看着像两个独立的内容 bug。**
+   *
+   * 所以先把别人从那条边上摘干净，只留我摆的这一个。
+   */
+  function raisedBy(alive: boolean): void {
+    setActivePinia(createPinia())
+    beOf('farm')
+    useHouseholdStore().standing = 40
+    const people = usePeopleStore()
+    const world = useWorldStore()
+    world.advanceTime({ years: 10 })
+    // 立基挂上的父母先摘掉：这一局里「抚养」只该有一个人
+    for (const id of people.kinOf('抚养')) people.unbind(id, '抚养')
+    people.enroll({
+      id: 'foster',
+      surname: '孙',
+      given: '婶',
+      gender: '女',
+      bornYear: world.time.year - 40,
+      bornMonth: 3,
+      temper: '温和',
+      health: 70,
+      place: world.place,
+      fate: '在',
+      history: [],
+    })
+    people.amend('foster', { place: world.place, fate: '在' })
+    people.bind('me', 'foster', '抚养')
+    // 先牵上再推时间：`bind` 记的 since 是此刻，推完才够八年
+    world.advanceTime({ years: 15 })
+    world.setFlag('went-to-town', true)
+    if (!alive) people.die('foster', '病')
+  }
+
+  const cases: Array<{ event: string; hold: () => void; drop: () => void }> = [
+    {
+      event: 'reunion-apprentice',
+      hold: () => {
+        stage(25)
+        useWorldStore().setFlag('offered-shopwork', true)
+      },
+      drop: () => stage(25),
+    },
+    {
+      event: 'reunion-homecoming',
+      hold: () => raisedBy(true),
+      drop: () => raisedBy(false), // 只改死活这一处
+    },
+    {
+      event: 'reunion-emptied',
+      hold: () => raisedBy(false),
+      drop: () => raisedBy(true),
+    },
+  ]
+
+  for (const { event, hold, drop } of cases) {
+    const found = lifeEvents.find((one) => one.id === event)
+    const requires = found?.requires ?? []
+    if (found === undefined || requires.length === 0) {
+      console.log(`  ✗ 尺子自检：${event} 取不到入场条件——id 打错或条件改了。`)
+      bad += 1
+      continue
+    }
+
+    hold()
+    const held = meetsAll(requires)
+    drop()
+    const dropped = meetsAll(requires)
+
+    if (!held) {
+      console.log(`  ✗ ${event} 入场：前提摆齐了却进不去——这一卷在真世里演不到。`)
+      bad += 1
+    } else if (dropped) {
+      console.log(`  ✗ ${event} 入场：前提不成立也进得去——那条入场条件没在管事。`)
+      bad += 1
+    } else {
+      console.log(`  ✓ ${event} 入场：前提齐了进得去，差一处就进不去。`)
+    }
+  }
 }
 
 console.log()
