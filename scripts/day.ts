@@ -156,10 +156,71 @@ let bad = 0
   }
 }
 
+/**
+ * 效果层：**今天怎么过的，记在同一面旗上**。
+ *
+ * 上面那几条验的是「三段各自走得到」——**把 `applyEffects` 整个改成空转，
+ * 它们纹丝不动**（2026-09-12 B 刀实测）。
+ *
+ * 这一卷的形状跟别的卷都不一样：**七条选项不落属性，只落一面记账旗**。
+ *
+ *     work / school / town / hill / kids / home / idle
+ *              ↓
+ *     flag「day-上午」= 那一条的 id
+ *
+ * 那面旗记的是「今天上午他干了什么」，而**七条选项写的是七个不同的值**。
+ * 后头的卷读它来说「你昨天还在地里」这种话——
+ * **旗错一个值，正文就说错一件事**。
+ *
+ * ## 判「选哪条就记哪个值」，这是「不同输入去不同地方」的效果层版本
+ *
+ * 效果空转时那面旗一次也不落，七条全塌。
+ * 而如果某两条落了同一个值，也当场看得出来——那正是最难用眼睛发现的一种。
+ */
+{
+  const wrong: string[] = []
+  const seen = new Map<string, string>()
+
+  /** 七条选项都点一遍，看那面旗记下什么 */
+  for (const pick of ['work', 'school', 'town', 'hill', 'kids', 'home', 'idle'] as const) {
+    stage()
+    const world = useWorldStore()
+    /*
+     * ⚠️ 两条选项有前提，不摆齐就点不到：
+     *   work    要平民（`living notIn palace/manor/up-there`）——农家出身已满足
+     *   school  要念过书
+     * `pick` 落空是静默的（`open.find(...) ?? open[0]!` 点第一条）。
+     */
+    world.setFlag('schooled', true)
+    playFrom('morning', (opts) => (opts.includes(pick) ? pick : opts[0]!))
+    const got = world.getFlag('day-上午')
+    if (got === undefined) {
+      wrong.push(`点了「${pick}」，那面旗却一个字也没记`)
+      continue
+    }
+    const had = seen.get(String(got))
+    if (had !== undefined) {
+      wrong.push(`「${pick}」和「${had}」记成了同一个值（${String(got)}）——两条路分不开`)
+    }
+    seen.set(String(got), pick)
+    if (String(got) !== pick) {
+      wrong.push(`点了「${pick}」，旗上记的却是「${String(got)}」`)
+    }
+  }
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ 上午那一段效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(`  ✓ 上午那一段效果层：七条路各记各的值（${[...seen.keys()].join('、')}）。`)
+  }
+}
+
 console.log()
 if (bad > 0) {
   console.log(`  ✗ ${bad} 项不成立。\n`)
   process.exitCode = 1
 } else {
-  console.log('  早中晚三段，各条路各自有人走过了。\n')
+  console.log('  早中晚三段，各条路各自有人走过了，今天怎么过的也记下来了。\n')
 }
