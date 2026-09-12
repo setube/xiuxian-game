@@ -25,10 +25,12 @@ import { createPinia, setActivePinia } from 'pinia'
 import { lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
+import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
 import { usePeopleStore } from '../src/stores/people'
 import type { Choice, SceneNode } from '../src/types/game'
+import { standing } from './lib/standing'
 import { beOf } from './origin'
 
 const SCENE = 'craft:out'
@@ -217,10 +219,73 @@ let bad = 0
   }
 }
 
+/**
+ * 效果层：**出师那一刻，「学徒」这两个字得换掉**。
+ *
+ * 上面那两条验的是「师傅在/殁两支各自走得到、且互斥」——路径层。
+ * **把 `applyEffects` 整个改成空转，它们纹丝不动**（2026-09-12 B 刀实测）。
+ *
+ * `craft:out` 的 `open` 落两样：
+ *
+ *     identity   学徒 → 匠人      他不再是学徒了
+ *     livelihood 变「木工」        靠这门手艺吃饭
+ *
+ * ## 这一卷存在的理由就是这两样
+ *
+ * `scripts/identity.ts` 那支记着一条实测：**六十岁咽气那天还挂着「学徒」**
+ * ——「一个『正在做的事』被写成了身份，而没人写它什么时候结束」。
+ * 出师这一卷就是为那条写的：**它一旦不落地，那个人一辈子是学徒。**
+ *
+ * 所以这里不判「正好叫匠人」（那个词内容改得动），判的是
+ * **「走完之后不再是学徒」**——那才是这一卷要做的事。
+ */
+{
+  function afterOut(masterAlive: boolean): { identity: string; livelihood: string } {
+    stage()
+    const character = useCharacterStore()
+    const household = useHouseholdStore()
+    // 摆一个还挂着「学徒」的人——那正是这一卷要来解决的状态
+    character.identity = '学徒'
+    if (masterAlive) {
+      standing({ id: 'craft-master', bond: '师', older: 45, given: '师', surname: '陈' })
+    }
+    // ⚠️ 这一支的 `play()` 写死了 `SCENE`，不收场景参数——传进去会当成 pick
+    play()
+    return { identity: character.identity, livelihood: household.livelihood }
+  }
+
+  const given = afterOut(true)
+  const gone = afterOut(false)
+
+  const wrong: string[] = []
+  if (given.identity === '学徒') {
+    wrong.push('师傅给出了师，身份却还挂着「学徒」——这一卷不落地，他一辈子是学徒')
+  }
+  if (gone.identity === '学徒') {
+    wrong.push('师傅没了自己接着做，身份却还挂着「学徒」')
+  }
+  if (given.livelihood !== gone.livelihood) {
+    wrong.push(
+      `两条路出来该靠同一门手艺吃饭：师傅在「${given.livelihood}」、师傅殁「${gone.livelihood}」`,
+    )
+  }
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ 出师效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ 出师效果层：两条路走完都不再是学徒（${given.identity}／${gone.identity}），` +
+        `靠「${given.livelihood}」吃饭。`,
+    )
+  }
+}
+
 console.log()
 if (bad > 0) {
   console.log(`  ✗ ${bad} 项不成立。\n`)
   process.exitCode = 1
 } else {
-  console.log('  两条路都走得到：师傅在的有人给你出师，师傅没了就自己接着做。\n')
+  console.log('  两条路都走得到：师傅在的有人给你出师，师傅没了就自己接着做，学徒那两个字也换掉了。\n')
 }
