@@ -16,7 +16,7 @@ import './lib/seeded'
 
 import { createPinia, setActivePinia } from 'pinia'
 
-import { lifeScenes } from '../src/content/life'
+import { lifeEvents, lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
 import { useHouseholdStore } from '../src/stores/household'
@@ -307,6 +307,85 @@ let bad = 0
     }
   }
   console.log('  ✓ 尺子自检：五卷各自都走进去了。')
+}
+
+/**
+ * 七、条件层：**这五卷各自落在开那种铺子的人家吗**。
+ *
+ * 上面那几条问的是「选了这个选项走到那个节点了吗」——`next` 写死在内容里，
+ * **`meetsAll` 恒真它们纹丝不动**（2026-09-12 打断实测）。
+ *
+ * 这五卷的条件层全在**入场**上，一卷一种行当：
+ *
+ *     trade-guest    business 客栈
+ *     trade-drunk    business 酒楼
+ *     trade-herb     business 药铺
+ *     trade-road     livelihood 护送 + 爹还在
+ *     trade-archive  station 仕宦 + 爹还在
+ *
+ * 判法是「同一个前提摆两次局」：**开这种铺子的进得去，
+ * 开别家铺子的进不去**。只摆前一半等于没验——那一卷本来就挂在那儿。
+ *
+ * ⚠️ 入场条件从 `lifeEvents` 现取，不复用上面那张 `checks` 表：
+ * 那张表是门禁自己写的，**它跟内容可能分家**，而分家的时候
+ * 判据会安静地守着一个已经不存在的条件
+ * （`ruler-standard-must-come-from-system` 那条）。
+ */
+{
+  /** 哪种出身开哪种铺子——这一半只能靠门禁自己知道，摆局要用 */
+  const shops: Array<{ event: string; origin: OriginId; business: string; father?: boolean }> = [
+    { event: 'trade-guest', origin: 'inn', business: '客栈' },
+    { event: 'trade-drunk', origin: 'tavern', business: '酒楼' },
+    { event: 'trade-herb', origin: 'herb', business: '药铺' },
+    { event: 'trade-road', origin: 'escort', business: '护送', father: true },
+    { event: 'trade-archive', origin: 'office', business: '仕宦', father: true },
+  ]
+
+  let wrong = 0
+  for (const { event, origin, business, father } of shops) {
+    const found = lifeEvents.find((one) => one.id === event)
+    if (found === undefined) {
+      console.log(`  ✗ 尺子自检：库里没有事件「${event}」——id 打错或没注册。`)
+      bad += 1
+      wrong += 1
+      continue
+    }
+    const requires = found.requires ?? []
+    if (requires.length === 0) {
+      console.log(`  ✗ 尺子自检：${event} 一条入场条件也没有——这一卷谁都读得到。`)
+      bad += 1
+      wrong += 1
+      continue
+    }
+
+    // 开这种铺子的：进得去
+    stage(origin, business, 12, father)
+    if (business === '仕宦') {
+      ;(useHouseholdStore() as unknown as { station: string }).station = '仕宦'
+    }
+    const canEnter = meetsAll(requires)
+
+    // 开别家铺子的：进不去。只改行当这一处，别处一个字不动
+    const other = shops.find((one) => one.business !== business)!
+    stage(other.origin, other.business, 12, father)
+    const strangerEnters = meetsAll(requires)
+
+    if (!canEnter) {
+      console.log(`  ✗ ${event} 入场：开${business}的人家进不去——这一卷在真世里演不到。`)
+      bad += 1
+      wrong += 1
+    } else if (strangerEnters) {
+      console.log(
+        `  ✗ ${event} 入场：开${other.business}的人家也进得去——那条入场条件没在管事。`,
+      )
+      bad += 1
+      wrong += 1
+    }
+  }
+
+  if (wrong === 0) {
+    console.log(`  ✓ 五卷入场：各自只落在开那种铺子的人家，别家进不去。`)
+  }
 }
 
 console.log()
