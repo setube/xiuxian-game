@@ -83,7 +83,20 @@ export const playmateScenes: SceneLibrary = {
          * 所以那句话说在当下，日子在之后过去。
          */
         blocks: [
-          { kind: 'narration', text: '{call:playmate}比你早起，天没亮就在院墙外头喊。' },
+          /*
+           * ⚠️ **这一节不点名。** 那句「{call:playmate}比你早起…」挪到了
+           * 底下 `went`/`stayed` 各自的开头。
+           *
+           * `scripts/present.ts` 抓到过一次：**一个取样步里装得下两卷正文**
+           * ——上一卷（生病）推时间把他推死了，紧接着开演的这一卷
+           * 又把他挑出来落笔，于是玩家在同一屏里先读到他病死、
+           * 再读到他天没亮在院墙外头喊。
+           *
+           * 入场条件 `family playmate present` 挡不住这个：它在上一卷结算之前问。
+           * 而「有人在院墙外头喊」这件事不需要点名——**两家只隔一道矮墙**
+           * 这句话自己就说清了是谁。
+           */
+          { kind: 'narration', text: '天没亮，院墙外头有人喊你。' },
           { kind: 'narration', text: '两家院子只隔一道矮墙，喊一声两边都听得见。' },
         ],
         choices: [
@@ -109,9 +122,13 @@ export const playmateScenes: SceneLibrary = {
       },
 
       went: {
+        // 不推时间：这一节点名说人（下一句的 `{call:playmate}`），
+        // 而推完那几个月他可能已经不在了。这一卷本来也是一天的事
         id: 'went',
-        onEnter: [{ type: 'time', months: 3 }],
         blocks: [
+          // ⚠️ 不点名，理由见 `open` 那一段：一个取样步里装得下两卷正文，
+          // 上一卷可能刚把他推死，而点了名就是「死人在院墙外头喊」
+          { kind: 'narration', text: '是隔壁那个孩子。' },
           { kind: 'narration', text: '那天你们一直走到河滩上，回来的时候裤脚全是泥。' },
           {
             kind: 'narration',
@@ -134,9 +151,11 @@ export const playmateScenes: SceneLibrary = {
       },
 
       stayed: {
+        // 不推时间，理由同 `went`
         id: 'stayed',
-        onEnter: [{ type: 'time', months: 3 }],
         blocks: [
+          // 不点名，理由同 `went`
+          { kind: 'narration', text: '是隔壁那个孩子。你让他先走。' },
           { kind: 'narration', text: '你把活做完，日头已经高了。' },
           {
             kind: 'narration',
