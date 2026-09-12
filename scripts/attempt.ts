@@ -28,6 +28,7 @@ import { lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
 import { useWorldStore } from '../src/stores/world'
+import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useLeaningStore } from '../src/stores/leanings'
 import type { Choice, SceneNode } from '../src/types/game'
@@ -211,10 +212,102 @@ let bad = 0
   }
 }
 
+/**
+ * 效果层：**照着书练那一年，身上落下什么**。
+ *
+ * 上面那几条验的是「三档各自走得到」——**把 `applyEffects` 整个改成空转，
+ * 它们纹丝不动**（2026-09-12 B 刀实测）。
+ *
+ * 这一卷两层效果，一层在选项上、一层在结果节点上：
+ *
+ *     read    见识 +5、心志 +4        照着念，念进去了
+ *     copy    心志 +6、体魄 -2        照着描，熬了几个通宵
+ *     flicker 落「觉出点什么」旗 + 一条知识
+ *     hurt    体魄 -8                 练岔了
+ *
+ * ## 两条路的分别不在多少，在**换的是什么**
+ *
+ * `read` 换来的是见识，`copy` 换来的是心志而折了身子——
+ * **同样坐一年，念的人和描的人，落下的不是同一样东西**。
+ *
+ * 判「两条各有各的」不判「read 正好 +5」；
+ * `flicker` 那一档判「旗落下了」——**那面旗是这条修行线往后的全部入口**，
+ * 不落它，后头几卷一个人也读不到。
+ */
+{
+  interface Gained {
+    insight: number
+    will: number
+    body: number
+  }
+
+  function gainedBy(pick: string, from = 'open'): Gained {
+    stage({})
+    /*
+     * ⚠️ `read`（一个字一个字地认）要「念过书」——
+     * 不设这面旗那条选项**不可选**，`pick` 落空，默认点了第一条。
+     * 判据当场报「照着念那一条该长见识，实际 0」——**而他根本没在念**。
+     *
+     * 「摆局缺一格，判据问的是另一件事」，今天第三次同一形状
+     * （`house` 的铺子、`dearth` 的念书、这一处）。
+     */
+    useWorldStore().setFlag('schooled', true)
+    const character = useCharacterStore()
+    const before = { ...character.attributes }
+    playFrom(from, (opts) => (opts.includes(pick) ? pick : opts[0]!))
+    return {
+      // 记增量：每次摆局各起各的 pinia，属性起手是现掷的
+      insight: character.attributes.insight - before.insight,
+      will: character.attributes.will - before.will,
+      body: character.attributes.body - before.body,
+    }
+  }
+
+  const read = gainedBy('read')
+  const copy = gainedBy('copy')
+
+  // flicker / hurt 的效果在节点 onEnter 上，从那一节起演
+  stage({})
+  const world = useWorldStore()
+  const character = useCharacterStore()
+  playFrom('flicker')
+  const felt = world.getFlag('felt-something') === true
+  const knows = Object.keys(character.knowledge).length
+
+  stage({})
+  const hurtChar = useCharacterStore()
+  const bodyBefore = hurtChar.attributes.body
+  playFrom('hurt')
+  const hurtBody = hurtChar.attributes.body - bodyBefore
+
+  const wrong: string[] = []
+  if (read.insight <= 0) wrong.push(`照着念那一条该长见识，实际 ${read.insight}`)
+  if (copy.will <= 0) wrong.push(`照着描那一条该长心志，实际 ${copy.will}`)
+  if (read.insight === copy.insight && read.will === copy.will) {
+    wrong.push('念的和描的落下同样的东西——那一节的两条路没有分别')
+  }
+  if (!felt) {
+    wrong.push('觉出了点什么，却没落下那面旗——后头几卷的入口就此关死')
+  }
+  if (knows === 0) wrong.push('觉出了点什么，却一条也没记住')
+  if (hurtBody >= 0) wrong.push(`练岔了该伤身，体魄却是 ${hurtBody}`)
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ first 效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ first 效果层：念的长见识 +${read.insight}、描的长心志 +${copy.will}；` +
+        `觉出点什么落了旗记了 ${knows} 条；练岔了伤身 ${hurtBody}。`,
+    )
+  }
+}
+
 console.log()
 if (bad > 0) {
   console.log(`  ✗ ${bad} 项不成立。\n`)
   process.exitCode = 1
 } else {
-  console.log('  坐了一年，有没有觉出什么不一样——三档各自有人走过了。\n')
+  console.log('  坐了一年，有没有觉出什么不一样——三档各自有人走过了，身上也各落各的。\n')
 }
