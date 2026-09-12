@@ -26,7 +26,8 @@ import { applyEffects } from '../src/engine/effects'
 import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
-import type { Choice, SceneNode, Tenure } from '../src/types/game'
+import type { Choice, SceneNode, Tenure, OriginId } from '../src/types/game'
+import { forkingOf } from './lib/forking'
 import { beOf } from './origin'
 
 function stage(age = 30): void {
@@ -287,10 +288,97 @@ let bad = 0
   if (allIn) console.log('  ✓ 尺子自检：三卷各自都走进去了。')
 }
 
+/**
+ * 效果层：**分出去那天，三种家当各折各的价**。
+ *
+ * 上面那几条问的是「落在哪一节」——**把 `applyEffects` 整个改成空转，
+ * 它们纹丝不动**（2026-09-12 B 刀实测）。分流对了，而那一节落下的东西没人验。
+ *
+ * `house:divide` 那张分流表的三个落点各有各的代价：
+ *
+ *     fields  家底 -9              有田的分出去，田分薄了
+ *     rented  家底 -6              租的地，分的是租约
+ *     shop    家底 -12 + 盘掉铺子   铺子分不开，只能折价
+ *
+ * ## 判「三档各不相同」，不判「正好降了九」
+ *
+ * 数值是内容作者的，随时会调；**「三档不该降一样多」才是这一节的设计**
+ * ——分田、分租约、盘铺子本来就是三件轻重不同的事。
+ * 写死 -9 的话调一次数值判据就红，而那个数不是它的守备范围。
+ *
+ * ⚠️ 还要问一句**方向**：光问「三档不同」的话，
+ * 三档都涨（而不是降）也能满足。
+ */
+{
+  const SCENE = 'house:divide'
+
+  /*
+   * ⚠️ 从**分流那一节**演，不是从 `choose`。
+   *
+   * 头一版写的是 `playFrom(SCENE, 'choose')`，四条判据全报 0——
+   * 那三个落点（`fields`/`rented`/`shop`）在分流表下游，
+   * 而 `choose` 是另一条路，从那儿演一辈子也走不到。
+   *
+   * 节点名从 `forkingOf` 现取，不写死：内容改了节点名这里跟着改。
+   */
+  const forkNode = forkingOf(SCENE)?.node ?? 'open'
+
+  /**
+   * @param living 过哪一种日子（决定走分流表的哪一档）
+   * @param origin 生在哪一行——**开铺子那一档要真有一间铺子**
+   *
+   * ⚠️ 头一版两档都用 `beOf('farm')`，于是「盘掉铺子」那一条恒不成立：
+   * 农户人家 `business` 本来就是 `null`，效果把它设成 `null` 等于没变，
+   * 判据报「分完之后这一家还开着同一间铺子」——**而它压根没有铺子**。
+   *
+   * 摆局摆不出那个前提，判据问的就是另一件事。
+   */
+  function costOf(living: string, origin: OriginId): { lost: number; trade: string | null } {
+    stage()
+    beOf(origin)
+    useCharacterStore().liveAs(living)
+    const household = useHouseholdStore()
+    const before = { standing: household.standing, business: household.business }
+    playFrom(SCENE, forkNode)
+    return {
+      // 记「变了多少」：每次摆局各起各的 pinia，家底起手是现掷的
+      lost: household.standing - before.standing,
+      trade: household.business === before.business ? null : (household.business ?? '（没了）'),
+    }
+  }
+
+  const fields = costOf('farm', 'farm')
+  const shop = costOf('shop', 'cloth')
+
+  const wrong: string[] = []
+  if (fields.lost >= 0) wrong.push(`分出去那天家底该往下走，有田的却是 ${fields.lost}`)
+  if (shop.lost >= 0) wrong.push(`分出去那天家底该往下走，开铺子的却是 ${shop.lost}`)
+  if (fields.lost === shop.lost) {
+    wrong.push(
+      `分田和盘铺子折的价一样（都是 ${fields.lost}）——那一节的三档落点没有分别，` +
+        '效果一样也没落',
+    )
+  }
+  if (shop.trade === null) {
+    wrong.push('铺子分不开，只能折价盘掉——可分完之后这一家还开着同一间铺子')
+  }
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ divide 效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ divide 效果层：有田的折 ${fields.lost}、开铺子的折 ${shop.lost}，` +
+        `铺子那一档还盘掉了营生（${shop.trade}）。`,
+    )
+  }
+}
+
 console.log()
 if (bad > 0) {
   console.log(`  ✗ ${bad} 项不成立。\n`)
   process.exitCode = 1
 } else {
-  console.log('  分家那几卷，各条路各自有人走过了。\n')
+  console.log('  分家那几卷，各条路各自有人走过了，分出去那天也各折各的价。\n')
 }
