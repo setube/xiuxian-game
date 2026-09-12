@@ -203,17 +203,63 @@ let bad = 0
     return walked.find((one) => (targets as readonly string[]).includes(one))
   }
 
+  /**
+   * 这一档要活着的那个人是谁。摆局之后要**再验一次**，理由见底下。
+   */
+  const mustLive: Record<string, string | undefined> = {
+    'gate-east-wife': 'east-wife',
+    'gate-east-head': 'east-head',
+    indoors: undefined,
+  }
+
   let checked = 0
   for (const { label, gone, to } of cases) {
-    if (!stageWithNeighbours()) {
-      console.log('  ✗ 摆局：300 次也没掷出东邻两口子都在的一世——这一条什么也没量。')
-      bad += 1
-      break
+    /*
+     * ⚠️ **`open` 的 `onEnter` 推一个月，人会在这一个月里殁。**
+     *
+     * 摆局摆的是「此刻他还在」，而引擎判分流是在 `applyEffects(onEnter)`
+     * 之后——中间隔着一个月。2026-09-12 实测：第二档摆局时
+     * 东邻主事活着、条件为真，推完那一个月他殁了，于是落在 `indoors`。
+     * 判据报「该落在 gate-east-head」，**读着像那条分流坏了**。
+     *
+     * 这一支先前一直绿是因为流位置恰好没掷中；全库跑一轮就红了。
+     *
+     * 所以掷到「**推完那一个月他还在**」为止——
+     * 判据的采样点要跟引擎判分流的那一刻对齐
+     * （`gate-sampling-point`：采错点会诬告被测系统）。
+     */
+    let ready = false
+    for (let tries = 0; tries < 60 && !ready; tries += 1) {
+      if (!stageWithNeighbours()) break
+      const people = usePeopleStore()
+      for (const id of gone) people.die(id, '病')
+      const who = mustLive[to]
+      if (who === undefined) {
+        ready = true
+        break
+      }
+      // 演一遍 open 的 onEnter，看那一个月过去他还在不在
+      const probe = usePeopleStore()
+      applyEffects(lifeScenes[SCENE]?.nodes[entry]?.onEnter)
+      if (probe.isAlive(who)) {
+        ready = true
+        break
+      }
     }
-    const people = usePeopleStore()
-    for (const id of gone) people.die(id, '病')
+    if (!ready) {
+      console.log(`  ✗ 摆局〔${label}〕：掷不出推完那一个月人还在的一世——这一条什么也没量。`)
+      bad += 1
+      continue
+    }
     checked += 1
-    const walked = playFrom(entry)
+    /*
+     * ⚠️ 从 `entry` 起演会**再推一个月**（`onEnter` 又跑一遍）。
+     * 摆局那一步已经推过了，这里从分流本身起演：
+     * 直接问 `branches` 此刻落在哪，不重复推时间。
+     */
+    const node = lifeScenes[SCENE]?.nodes[entry]
+    const branch = node?.branches?.find((one) => meetsAll(one.requires))
+    const walked = [entry, ...playFrom(branch?.next ?? node?.next ?? 'indoors')]
     const landed = landedOn(walked)
     if (landed !== to) {
       console.log(

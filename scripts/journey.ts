@@ -88,12 +88,47 @@ for (const { id, trip } of trips) {
  * 所以这一问不问「有没有差别」，问**差在哪一头**。
  */
 {
-  const weak = walk('云台', 26)
-  const mid = walk('云台', 42)
-  const strong = walk('云台', 48)
+  /*
+   * ⚠️ **三个人要在同一个世界里走，否则比的是三个世界的路况。**
+   *
+   * 头一版三次各调一遍 `walk()`，而 `walk` 里 `setActivePinia(createPinia())`
+   * ——**每次都是新掷的一个世界**，`road`（路况）各掷各的。
+   * 2026-09-12 全库跑出 23/20/24：身子骨最好的那个反而最慢，
+   * 因为他那一世赶上了烂路。判据报「差的该走得更久」，
+   * **读着像引擎把方向写反了**。
+   *
+   * 所以同一个 pinia 里问三遍，让身子骨成为唯一的变量。
+   */
+  setActivePinia(createPinia())
+  const someone = useCharacterStore()
+  function atBody(body: number): ReturnType<typeof reckonJourney> {
+    someone.adjustAttribute('body', body - someone.attributes.body)
+    return reckonJourney('云台')
+  }
+  const weak = atBody(26)
+  const mid = atBody(42)
+  const strong = atBody(48)
   console.log(
-    `\n【同一趟路，不同身子骨】\n\n  26 → ${weak.days} 日　42 → ${mid.days} 日　48 → ${strong.days} 日`,
+    `
+【同一趟路，不同身子骨】
+
+  26 → ${weak.days} 日　42 → ${mid.days} 日　48 → ${strong.days} 日` +
+      `
+  （同一个世界，路况都是 ${weak.road}；身子骨那一档 ${weak.body}/${mid.body}/${strong.body}）`,
   )
+  /*
+   * ⚠️ 另问一句**未取整的那一格**。
+   *
+   * `days` 是 `Math.round(base × body × along × road)`，三档算出来的
+   * 天数可能撞进同一个整数。`body` 那个系数是「身子骨差的走得慢」
+   * 唯一的落点，不受取整影响。
+   */
+  if (!(weak.body > mid.body && mid.body >= strong.body)) {
+    wrong.push(
+      `身子骨 26/42/48 的那一档系数是 ${weak.body}/${mid.body}/${strong.body}` +
+        '——差的该走得更久，方向反了',
+    )
+  }
   if (!(weak.days > mid.days && mid.days >= strong.days)) {
     wrong.push(`身子骨 26/42/48 走出 ${weak.days}/${mid.days}/${strong.days} 日——差的该走得更久`)
   }
