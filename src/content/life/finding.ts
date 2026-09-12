@@ -371,6 +371,21 @@ export const findingEvents: readonly LifeEvent[] = [
     window: { from: 10, to: 45 },
     requires: [
       { item: 'odd-herb' },
+      /*
+       * ⚠️ **还不知道它叫什么**——这一条是 2026-09-12 补的。
+       *
+       * 这一卷讲的是「他说了那个名字」，而两条选项谁也不动那株草
+       * （正文明写「把草收回怀里」），于是从前入场只问「手里有没有」时，
+       * **同一卷可以从十岁一直重演到窗口关掉**：`weight: 30` 很高，
+       * 抽中了就演，演完条件照旧成立。
+       *
+       * 实测有一世在这儿按满六百回合，人卡在 `finding:named#open`、44 岁
+       * ——`lifelong` 那一支报的「这个圈没有停下来」就是它。
+       *
+       * 凭据用 `reveal` 留下的 `formerName`，不另立旗：
+       * 知道了名字这件事本来就记在那样东西身上。
+       */
+      { named: { item: 'odd-herb', is: false } },
       { flag: { key: 'footing:herbalist-at-the-shed', in: ['带一段', '教一点'] } },
       { family: { id: 'herbalist-at-the-shed', alive: true } },
     ],

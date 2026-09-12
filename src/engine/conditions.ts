@@ -143,6 +143,13 @@ const CHECKS = {
   },
   item: (id, { character }) => character.has(id),
 
+  /*
+   * 他知不知道这样东西叫什么。凭据是 `reveal` 留下的 `formerName`。
+   * 第一个读者是 `finding-named`：那一卷演过之后草还在手里，
+   * 只有「知道了名字」这件事变了。
+   */
+  named: (named, { character }) => character.knowsName(named.item) === named.is,
+
   age: (age, { character }) => within(character.age, age),
 
   standing: (standing, { household }) => within(household.standing, standing),

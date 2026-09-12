@@ -652,6 +652,22 @@ export const useCharacterStore = defineStore(
     }
 
     /**
+     * 这样东西他知不知道它叫什么。
+     *
+     * `reveal` 改名时会把原来那个称呼记进 `formerName`——**那一格就是
+     * 「他后来才知道这是什么」的凭据**，不必另立一面旗。
+     *
+     * 第一个读者是 `finding-named` 的入场条件：那一卷是「他说了那个名字」，
+     * 而从前入场只问「手里有没有那株草」。草不会因为知道了名字就没了
+     * （正文明写「把草收回怀里」），于是**同一卷可以反复演到窗口关掉**
+     * ——2026-09-12 实测有一世在这儿按满六百回合，人卡在 44 岁。
+     */
+    function knowsName(id: string): boolean {
+      const found = inventory.value.find((item) => item.id === id)
+      return found?.formerName !== undefined
+    }
+
+    /**
      * 收进或取出行囊。count 为负即失去，减到零则整条移除。
      * @returns 实际变动的数量，0 表示什么也没发生
      */
@@ -758,6 +774,7 @@ export const useCharacterStore = defineStore(
       knows,
       learn,
       has,
+      knowsName,
       carry,
       reveal,
       reset,

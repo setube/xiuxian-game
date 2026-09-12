@@ -1705,6 +1705,18 @@ export interface Condition {
    */
   leaning?: { id: string; atLeast: Exclude<LeaningStage, '埋着'> }
   item?: string
+  /**
+   * 这样东西他**知不知道它叫什么**。
+   *
+   * `item` 只问「手里有没有」，而有些卷问的是另一件事：
+   * `finding-named` 是「他说了那个名字」，演过之后草还在手里
+   * （正文明写「把草收回怀里」），只是从此它有了名字。
+   * 光凭 `item` 那一卷会反复演到窗口关掉——2026-09-12 实测有一世
+   * 在那儿按满六百回合，人卡在 44 岁。
+   *
+   * 凭据是 `reveal` 留下的 `formerName`，不另立旗。
+   */
+  named?: { item: string; is: boolean }
   /** 年龄闭区间 */
   age?: { atLeast?: number; atMost?: number }
   /** 家境刻度闭区间。隐藏刻度，只在这里露面 */

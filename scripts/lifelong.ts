@@ -97,9 +97,23 @@ const RUNS = 6000
 function runsToEnd(tally: Tally): string[] {
   const wrong: string[] = []
   if (tally.stalled > 0) {
+    /*
+     * 卡在哪，一并报出来。
+     *
+     * ⚠️ 从前这条只报一个数字，而这是**六千分之一**的事——
+     * 查的人拿着那个数字得从头掷世界去撞，等于查不了
+     * （`evidence-truncation`：证据只在发生那一刻存在）。
+     * `stalledAt` 记的是「停在哪一卷哪一节、多大岁数」。
+     */
+    const where = [...tally.stalledAt.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([at, n]) => `${at}${n > 1 ? ` ×${n}` : ''}`)
+      .join('、')
     wrong.push(
       `${tally.stalled} 世按满了 ${TURN_CEILING} 下还没走完——` +
         '年表抽事、日常耗时、再抽事，这个圈没有停下来。' +
+        (where === '' ? '' : `停在：${where}。`) +
         '⚠️ 第五条（没活到天年）多半跟着红，那是同一世的派生症状，不是夭折。',
     )
   }
@@ -264,6 +278,7 @@ function ruler(): string[] {
     spanAtDeath: [60],
     died: [60],
     turns: 1000,
+    stalledAt: new Map(),
   }
 
   const check = (

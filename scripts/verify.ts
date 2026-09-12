@@ -467,6 +467,9 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
    */
   const NEEDS = {
     item: (id) => [neededItems, id],
+    // 「知不知道它叫什么」问的还是那样东西，记进同一本账：
+    // 一卷要 `named` 就等于要那样东西在手里
+    named: (named) => [neededItems, named.item],
     flag: (flag) => [neededFlags, flag.key],
     knowledge: (id) => [neededKnowledge, id],
     leaning: (leaning) => [neededLeanings, leaning.id],

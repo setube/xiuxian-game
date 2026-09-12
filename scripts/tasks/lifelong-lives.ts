@@ -75,6 +75,8 @@ export interface Tally {
   died: number[]
   /** 总共按了多少下 */
   turns: number
+  /** 卡住的那几世各停在哪：`场景#节点@岁数` → 几世 */
+  stalledAt: Map<string, number>
 }
 
 /** 卷名 → 它是哪一档的日常。跑的时候靠它认出「这一节是日常」 */
@@ -114,6 +116,7 @@ export function runShard(runs: number): Tally {
     spanAtDeath: [],
     died: [],
     turns: 0,
+    stalledAt: new Map(),
   }
 
   for (let index = 0; index < runs; index += 1) {
@@ -159,7 +162,22 @@ export function runShard(runs: number): Tally {
       turns += 1
     }
     tally.turns += turns
-    if (turns >= TURN_CEILING) tally.stalled += 1
+    if (turns >= TURN_CEILING) {
+      tally.stalled += 1
+      /*
+       * ⚠️ 从前这儿只记「有一世卡住了」，**不记它卡在哪**。
+       *
+       * 于是报出来只有一个数字，而查的人得从头掷世界去撞那一世
+       * ——低频（六千分之一）的东西这么查等于查不了。
+       *
+       * 记下停在哪一卷哪一节、多大岁数。**证据只在发生那一刻存在**
+       * （`evidence-truncation`），这一行是为了让下一个人不必重掷。
+       */
+      tally.stalledAt.set(
+        `${narrative.sceneId}#${narrative.nodeId}@${character.age}岁`,
+        (tally.stalledAt.get(`${narrative.sceneId}#${narrative.nodeId}@${character.age}岁`) ?? 0) + 1,
+      )
+    }
 
     if (seenScenes.has(lifeFinale)) tally.reachedFinale += 1
     if ([...cultivationScenes].some((sceneId) => seenScenes.has(sceneId))) {
