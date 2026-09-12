@@ -28,6 +28,8 @@ export interface Funnel {
   两样都占上: number
   抽中了问人那一卷: number
   真问着了东西: number
+  /** 问着了东西的人里，攒到两条以上的 */
+  攒够两条: number
   两条对上了: number
 }
 
@@ -48,6 +50,7 @@ function emptyFunnel(): Funnel {
     两样都占上: 0,
     抽中了问人那一卷: 0,
     真问着了东西: 0,
+    攒够两条: 0,
     两条对上了: 0,
   }
 }
@@ -129,6 +132,7 @@ export function runShard(runs: number): SeekingShard {
     if (knows && wants) shard.funnel.两样都占上 += 1
     if (asked > 0) shard.funnel.抽中了问人那一卷 += 1
     if (leadsHeard().length > 0) shard.funnel.真问着了东西 += 1
+    if (leadsHeard().length >= 2) shard.funnel.攒够两条 += 1
     if (world.hasFlag('leads-crossed')) {
       shard.funnel.两条对上了 += 1
       shard.ages.set(crossedAt, (shard.ages.get(crossedAt) ?? 0) + 1)
