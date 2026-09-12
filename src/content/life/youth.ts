@@ -202,6 +202,47 @@ export const youthScenes: SceneLibrary = {
                 self: '你在铺子当伙计。会看秤，会算账，见的人多。',
               },
               { type: 'flag', key: 'has-shopwork', value: true },
+              /*
+               * 铺子里的两个人。
+               *
+               * 学徒那条的重心全在师傅身上——出师是**别人说的话**。
+               * 伙计这条从前一个人也没有，于是他在铺子里待了一辈子，
+               * 而那间铺子里没有任何一张脸。
+               *
+               * 两个人分工不同，这个分别是这一条的要害：
+               *
+               *     掌柜　　决定信不信他的人。往后那一卷的三个去处全经他的手
+               *     老伙计　教他**怎么在铺子里活**，不是教手艺——
+               *             哪些客人不能得罪、哪些货不能乱收
+               *
+               * ⚠️ 不写「师傅」那个 bond：伙计不是拜师。他是替人做事的人，
+               * 而那两件事在称谓层和 `present` 那一层都不是一回事。
+               */
+              {
+                type: 'meet',
+                id: 'shop-keeper',
+                calls: '掌柜',
+                delta: 8,
+                who: { surname: '周', given: '守仁', gender: '男', age: 44, doing: '开着这间铺子' },
+              },
+              {
+                type: 'meet',
+                id: 'old-clerk',
+                calls: '老徐',
+                delta: 12,
+                who: { surname: '徐', given: '进', gender: '男', age: 51, doing: '在这间铺子里坐店' },
+              },
+              /*
+               * 「在铺子里做伙计」是一件有始有终的事。
+               *
+               * 没有这一笔它就永远不结束——三颗种子实测 14/15/20% 的人
+               * 死的时候面板上还写着「伙计」，而 `chapters.ts` 那一格标的是
+               * 「正在做的事」。收尾在 `counter.ts`（柜台后头那些年），
+               * 跟出师、守孝同一条路子。
+               *
+               * 记 `who`，因为收尾那一卷要分「掌柜还在」和「掌柜没了」两种话。
+               */
+              { type: 'undertake', undertaking: 'shopwork', who: 'shop-keeper' },
             ],
             next: 'done',
           },

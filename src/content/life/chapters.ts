@@ -33,6 +33,7 @@ import { apprenticeEvents, apprenticeScenes } from './apprentice'
 import { attemptEvents, attemptScenes } from './attempt'
 import { bearingEvents, bearingScenes } from './bearing'
 import { candourEvents, candourScenes } from './candour'
+import { counterEvents, counterScenes } from './counter'
 import { festivalEvents, festivalScenes } from './festival'
 import { findingEvents, findingScenes } from './finding'
 import { goingUpEvents, goingUpScenes } from './going-up'
@@ -487,6 +488,46 @@ export const CHAPTERS: readonly Chapter[] = [
   },
 
   /**
+   * 柜台后头那些年。伙计那条路的出口。
+   *
+   * ## 它跟出师是一对，而它晚了很久才写
+   *
+   * `youth.ts` 给了十六七岁三条路，学徒那条十天前就有了收尾（`apprentice`），
+   * **而伙计那条一直没有**——三颗种子实测 14/15/20% 的人
+   * 死的时候面板上还写着「伙计」。
+   *
+   * 两卷的形状一样（一个 `undertake` 收尾、一个身份换词、一个事件窗口），
+   * 可里头那件事不一样：
+   *
+   *     出师　　是一个人带着你走过一段路——**出师是别人说的话**
+   *     这一卷　是一个地方留下了你，也改变了你
+   *
+   * ## 三个去处，不是一条单线
+   *
+   * 因为这一卷是那条路上唯一的出口（别的身份效果没有一处是为伙计写的），
+   * 只写一个去处就等于「所有伙计都成了同一种人」。
+   * 分岔按他这些年攒下的样子，不掷骰子。
+   *
+   * `identityKind` 标「终点」：管事、老伙计、农家子、佣工，
+   * 四个都不会因为别的事情不再是——**而「老伙计」这个词正是这一卷的要害**：
+   * 四十岁还在柜台后头不是未完成，可他早就不是当年那个伙计了。
+   */
+  {
+    id: 'counter',
+    scenes: counterScenes,
+    events: counterEvents,
+    called: ['年表'],
+    to: [],
+    age: [24, 48],
+    purpose: [
+      '伙计不是职业等级，是一段关系状态——终点不是升上去，是他有没有了自己的位置',
+      '一个地方留下了你，也改变了你',
+    ],
+    marks: ['undertake', 'identity'],
+    identityKind: '终点',
+  },
+
+  /**
    * 试着照书上说的做。修仙第一条纵切的最后一段。
    *
    * 前面几步库里都有：听说（`kin`）、找（`seeking`）、照面（`meeting`）、
@@ -881,7 +922,9 @@ export const CHAPTERS: readonly Chapter[] = [
      * 「学徒」「伙计」都是正在做的一件事——**不在铺子里了就不是伙计**。
      * 「农家子」混在同一章里，它更像终点，可这一格是按章标的，
      * 而这一章的主色是前两个：它们各自需要一卷内容接手。
-     * 学徒那条已经有了（`apprentice` 出师），**伙计那条还没有**。
+     * 学徒那条在 `apprentice`（出师），伙计那条在 `counter`（柜台后头那些年）
+     * ——**后者晚了十天才写**，在那之前三颗种子实测 14/15/20% 的人
+     * 死的时候面板上还写着「伙计」。
      */
     identityKind: '正在做的事',
   },
