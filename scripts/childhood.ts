@@ -27,12 +27,20 @@ import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
 import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
-import type { Choice, SceneNode } from '../src/types/game'
+import type { Choice, OriginId, SceneNode } from '../src/types/game'
 import { beOf } from './origin'
 
-function stage(origin: string = 'farm', age = 6): void {
+/**
+ * ⚠️ `origin` 收 `OriginId` 不收 `string`。
+ *
+ * 从前是 `origin: string` 加一句 `beOf(origin as 'farm')`——那个 `as` 把
+ * 类型层的活儿关掉了：出身表里删掉一行、或者这儿打错一个字母，
+ * `beOf` 拿不到就落回兜底，**五卷全在同一个出身上跑而门禁照样全绿**
+ * （`trades.ts` 的 `'merchant'` 正是这么错了十二处，`87a28f6` 才修）。
+ */
+function stage(origin: OriginId = 'farm', age = 6): void {
   setActivePinia(createPinia())
-  beOf(origin as 'farm')
+  beOf(origin)
   const household = useHouseholdStore()
   household.standing = 40
   const world = useWorldStore()
@@ -79,24 +87,83 @@ console.log('\n=== 孩童时代——五卷各自走得到吗 ===\n')
 let bad = 0
 
 /**
- * 一、child:memory（记事了）。
+ * 一、child:memory（记事了）——**每种出身各自去了对的地方吗**。
  *
- * open 节点按营生分流到不同节点（farm/shop/craft 等）。
- * 用农户出身走进去，确认走到了 farm 节点，然后走到 close。
+ * ## 这一条从前只摆一种出身，而那等于没验
+ *
+ * 旧版只摆 `farm`，断言「走到了 farm」。`open` 那一节有十二条 `branches`
+ * 按出身分流，而**农户那一条恰好排在最前面**——把条件层整个废掉
+ * （`meetsAll` 恒真），`branches` 取第一条成立的，照样走到 farm，判据不红。
+ *
+ * 「走得到吗」和「不同情形去不同地方」是两种判据。前一种的目的地写死在内容里，
+ * 条件层废不废它都走到那儿。**这一支要问的是后一种。**
+ *
+ * ## 分流表从内容现取，不在这儿抄第二份
+ *
+ * 抄一份的话，内容里加一种出身而这儿忘了加，**那一条新分流永远没人验**——
+ * 而门禁照样全绿（`ruler-standard-must-come-from-system` 那条）。
+ * 现取还有一个好处：内容里改了目的地，这儿当场跟着改。
  */
 {
   const SCENE = 'child:memory'
+  const scene = lifeScenes[SCENE]
+  const open = scene?.nodes[scene.entry ?? 'open']
 
-  stage('farm')
-  const farmWalked = play(SCENE)
-  if (!farmWalked.includes('farm')) {
-    console.log(`  ✗ memory 农户出身 → farm：没走到（走过 ${farmWalked.join(' → ')}）。`)
+  /** 内容里那张「哪种出身去哪一节」的表 */
+  const routes: Array<{ origin: OriginId; to: string }> = []
+  for (const branch of open?.branches ?? []) {
+    const origin = branch.requires?.find((one) => one.origin !== undefined)?.origin
+    if (origin === undefined || branch.next === undefined) continue
+    routes.push({ origin, to: branch.next })
+  }
+
+  if (routes.length < 2) {
+    // 尺子自检：取不到分流表，底下那一圈就什么也没验，而它会安静地全绿
+    console.log(`  ✗ 尺子自检：从 ${SCENE} 只取到 ${routes.length} 条分流——结构变了。`)
     bad += 1
   } else {
-    console.log(`  ✓ memory 农户出身 → farm：走到了 farm，共 ${farmWalked.length} 步。`)
+    const wrong: string[] = []
+    for (const { origin, to } of routes) {
+      stage(origin)
+      const walked = play(SCENE)
+      if (!walked.includes(to)) wrong.push(`${origin} 该去 ${to}，实际走过 ${walked.join('→')}`)
+    }
+    if (wrong.length > 0) {
+      console.log(`  ✗ memory 分流：${routes.length} 种出身里有 ${wrong.length} 种去错了地方。`)
+      for (const line of wrong) console.log(`      ${line}`)
+      bad += wrong.length
+    } else {
+      console.log(`  ✓ memory 分流：${routes.length} 种出身各自去了对的那一节。`)
+    }
+
+    /*
+     * 兜底那一条也要验：`next: 'craft'`——**十二条分流一条都不成立时去哪儿**。
+     * 它没有 `requires`，所以上面那一圈碰不到它，而它恰恰是最容易死的一条
+     * （十二条里加了第十三种出身，兜底就再也轮不到）。
+     */
+    const listed = new Set(routes.map((one) => one.origin))
+    const spare = (['craft', 'farm', 'tenant', 'hunt'] as const).find((one) => !listed.has(one))
+    if (spare === undefined) {
+      console.log('  ·  memory 兜底：每种出身都有专门的分流，兜底那一条已经没人走得到了。')
+    } else {
+      stage(spare)
+      const walked = play(SCENE)
+      const fallback = open?.next
+      if (fallback !== undefined && !walked.includes(fallback)) {
+        console.log(
+          `  ✗ memory 兜底：${spare} 出身没有专门分流，该落到 ${fallback}，` +
+            `实际走过 ${walked.join('→')}。`,
+        )
+        bad += 1
+      } else {
+        console.log(`  ✓ memory 兜底：${spare} 出身落到了 ${fallback}。`)
+      }
+    }
   }
 
   // close 节点也要走到
+  stage('farm')
+  const farmWalked = play(SCENE)
   if (!farmWalked.includes('close')) {
     console.log(`  ✗ memory → close：没走到（走过 ${farmWalked.join(' → ')}）。`)
     bad += 1
