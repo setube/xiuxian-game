@@ -231,6 +231,50 @@ for (const { scene, age, label } of ageCases) {
         }
       },
     },
+    {
+      /*
+       * ⚠️ 这两个局是 2026-09-12 补的，补的是**判据的局覆盖不全**。
+       *
+       * 老年卷那两条选项要「有活着的子」和「身子骨 ≥45」，
+       * 而原来那七个局里没有一个有孩子、没有一个特意摆过身子骨
+       * ——于是整卷「一条都不区分人」，判据判红。
+       *
+       * **而它先前一直绿**：流位置恰好让某个局掷出了够硬的身子骨。
+       * 一改 `beOf` 里那行的顺序就红了——**判据的局覆盖不全时，
+       * 它的绿取决于随机流**，那不是绿，是碰上了。
+       *
+       * 所以补局，不是放宽判据：放宽等于把这一卷的条件层弄瞎。
+       */
+      name: '有儿女的',
+      put: () => {
+        stage(65)
+        const people = usePeopleStore()
+        const world = useWorldStore()
+        people.enroll({
+          id: 'son',
+          surname: '江',
+          given: '小',
+          gender: '男',
+          bornYear: world.time.year - 30,
+          bornMonth: 4,
+          temper: '木讷',
+          health: 72,
+          place: world.place,
+          fate: '在',
+          history: [],
+        })
+        people.amend('son', { place: world.place, fate: '在' })
+        people.bind('me', 'son', '子')
+      },
+    },
+    {
+      name: '身子骨还硬朗的',
+      put: () => {
+        stage(65)
+        // 那两条门槛里最高的是 45，加满够得着（`adjustAttribute` 自己 clamp）
+        useCharacterStore().adjustAttribute('body', 100)
+      },
+    },
   ]
 
   for (const { scene, label } of ageCases) {
@@ -272,7 +316,8 @@ for (const { scene, age, label } of ageCases) {
       )
     }
     // 一次没露面的逐条印出来——零次要紧，而要紧的是让人看见
-    for (const one of never) console.log(`      ·  「${one.label}」在这 ${stages.length} 个局里一次也没露面`)
+    for (const one of never)
+      console.log(`      ·  「${one.label}」在这 ${stages.length} 个局里一次也没露面`)
   }
 }
 

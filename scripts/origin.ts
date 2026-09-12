@@ -41,27 +41,6 @@ import type { Condition, OriginId } from '../src/types/game'
 export function beOf(id: OriginId): void {
   const row = originById(id)
   const household = useHouseholdStore()
-  /*
-   * 先把「人」叫醒，再摆出身。
-   *
-   * ⚠️ 这一行不是可有可无的：`character` 的 setup 里掷体质、掷资质、掷寿数
-   * （`stores/character.ts` 的 `rollConstitution` / `rollAttributes` / `rollSpan`），
-   * **第一次 `useCharacterStore()` 会掷掉一批随机数**。
-   *
-   * 真实运行里它一开始就醒着，摆局却常常一次也不碰它——于是那一批骰子
-   * 被推迟到「第一次有人读 `character`」的那一刻。而读它的可能是
-   * `applyEffects`（`snapshotRoles` → `roleId('playmate')` → 我今年几岁），
-   * 于是**摆局里的人会在某一次 applyEffects 之后忽然老死**：
-   * 不是那条效果杀的，是那一刻流位置整个错开了。
-   *
-   * 症状是低频红——四颗种子绿、第五颗红，看着像闪红。2026-09-12
-   * 另一个会话在 `hardship` 上撞到，二分到「换一面无关的旗照样杀人」为止。
-   *
-   * 叫醒放在这里，那批骰子就掷在**摆局阶段的固定位置**上，
-   * 不再随「这一支门禁第几次调 applyEffects」浮动。
-   * 这一条属于「摆局跳过的引擎步骤」那一族：摆浅了，跳过的那段在真世里是有的。
-   */
-  useCharacterStore()
   household.origin = row.id
   household.census = row.census
   household.livelihood = row.livelihood
@@ -71,6 +50,28 @@ export function beOf(id: OriginId): void {
   // 贴补不是挑出身的五格之一，可它由行决定：不照表重掷，开 pinia 时随机掷到的那一行的
   // 针线活会留在一个布庄人家身上。要一户「还没有贴补」的农家，摆局之后自己归零
   household.sideline = rollSideline(row)
+  /*
+   * 五格摆完了才叫醒「人」。**顺序是这一行的全部分量所在。**
+   *
+   * ⚠️ `character` 的 setup 里掷体质、掷资质、掷寿数，而**立人、立户就发生在
+   * 第一次 `useCharacterStore()` 那一刻**（`scripts/lib/staged.ts:90` 那段注释
+   * 早写着这件事：「出身要在角色 store 建起来之前定……之后再 `beOf`
+   * 只改得了家境四格，改不了已经立起来的户」）。
+   *
+   * 所以它必须排在五格**之后**：
+   *
+   *     五格 → 叫醒      户按这一行立　　　　　　✓
+   *     叫醒 → 五格      户按默认出身立好了，再改五格只改得动家境
+   *                      ——摆 `court` 会得到一个「住在宅里的皇子」，
+   *                      而他有东西两邻（`mountain` 第五条当场红）
+   *
+   * 2026-09-12 我头一版把它放在开头，`mountain` 报「宫里长大的不该有东邻」。
+   *
+   * 那为什么非叫醒不可：**不叫醒就没有人**。探针 200 世实测——
+   * 叫醒的平均身边 8.14 个活人，不叫醒的 0.00 个、200 世里 200 世一个人也没有。
+   * 真实运行里 character 一开始就醒着，摆局不碰它就等于跳过了「出生」这一步。
+   */
+  useCharacterStore()
 }
 
 /**
