@@ -335,7 +335,21 @@ export function fillString(text: string, manner: Manner = '家常', roles?: Role
      * 「王婶」三个字，只能写「叫她的那个词」。称呼每次现算（`people.callOf`），
      * 九岁时是「王婶」，三十岁时是「王嫂」——同一句正文，落纸的字跟着人一起变老。
      */
-    if (token === 'call') return usePeopleStore().callOf(arg ?? '')
+    /*
+     * `{call:谁}`——玩家此刻怎么称呼这个人。
+     *
+     * 先过一次 `roleId`：**角色名换成此刻在身边那个人的 id，换不到就按原样当 id 用**
+     * （那多半本来就是个 id，像 `{call:east-wife}`）。跟底下 `{hail:}` 同一个写法。
+     *
+     * ⚠️ 这一句从前没有 `roleId`，于是 `{call:playmate}` 把「playmate」
+     * 当成人口册上的一个 id 去查，查不到——`callOf` 兜底印出「一个陌生人」。
+     * 一句通顺的话，类型过，没有任何机器会说，而 `stranger.ts` 那一支
+     * 正是为这个形状建的。
+     *
+     * `{elder}` / `{dam}` / `{child}` 躲过了这个坑只因为它们各有专门的分支
+     * （上面那三行），走的不是这条通用路径。
+     */
+    if (token === 'call') return usePeopleStore().callOf(roleId(arg ?? '') ?? arg ?? '')
     if (token === 'house') return houseCall(arg ?? '')
     /*
      * `{hail:east-wife}`——**那个人开口时怎么称呼你**，连着后面那个逗号。
