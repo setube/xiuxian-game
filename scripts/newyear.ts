@@ -184,6 +184,31 @@ function run(n: number): void {
      * 一步之内可能推进好几块，而 `stream` 是累积的；按下标切要自己维护
      * 游标，漏一次就丢一段。`kindred-lives.ts` 用的就是这个写法。
      */
+    /*
+     * ⚠️ **月份要在演出那一刻取，不能在步末取。**
+     *
+     * 从前这一支读的是 `world.time.month`（一步走完之后），拿它当
+     * 「年节演在几月」的代理。2026-09-12 那个代理失效了：
+     * 年节卷的收尾节点补了一笔 `{ type: 'time', months: 1 }`
+     * （管的是「这个年过完了」——不推的话日历停在正月，入场条件照旧成立，
+     * 同一个年可以接着再过一遍，同种子实测 43 回对 24 回）。
+     *
+     * 那一笔落在正文之后，而步末读到的是它推完的月份——
+     * 于是这一支报「只有 84.1% 落在正二月」，**而 `untilMonth` 好好的**。
+     * 判据守的是「`untilMonth` 生没生效」，收尾推月不在它的射程里。
+     *
+     * 所以挂 `narrative.locate`：年节卷的 `open` 落笔那一刻记下月份。
+     * 引擎是「先 `applyEffects(onEnter)` 再 `locate`」（`story.ts:306/308`），
+     * 那一刻 `untilMonth` 已经推完、收尾那一笔还没跑——**正是要量的时点**。
+     */
+    let atOpen: number | undefined
+    const prevLocate = narrative.locate
+    narrative.locate = (sceneId: string, nodeId: string): void => {
+      if (sceneId === 'kindred:newyear' && nodeId === 'open') atOpen = world.time.month
+      // 必须转调原来那个，否则引擎的落笔链断掉
+      prevLocate(sceneId, nodeId)
+    }
+
     const kept = new Set<string>()
     const drain = (): string[] => {
       const fresh: string[] = []
@@ -230,7 +255,9 @@ function run(n: number): void {
       if (fresh.some((line) => line.includes(NEW_YEAR))) {
         const pushers = PUSHER_LINES.filter((line) => fresh.some((one) => one.includes(line)))
         if (pushers.length > 1) ambiguous += 1
-        else when.push({ scene: 'kindred:newyear', month: monthBefore, after: world.time.month })
+        // 演出那一刻的月份优先；`locate` 没记到才退回步末（那是旧口径）
+        else when.push({ scene: 'kindred:newyear', month: monthBefore, after: atOpen ?? world.time.month })
+        atOpen = undefined
       }
     }
   }
