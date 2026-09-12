@@ -183,9 +183,7 @@ let bad = 0
     }
 
     const tally = [...seen.entries()].sort((a, b) => b[1] - a[1])
-    console.log(
-      `  ·  ${ROLLS} 次：` + tally.map(([v, n]) => `${v} ${n}`).join('，'),
-    )
+    console.log(`  ·  ${ROLLS} 次：` + tally.map(([v, n]) => `${v} ${n}`).join('，'))
 
     // 三档都要掷得到——有一档一次没掷出来，那一节的判据这一轮什么也没量
     const missing = [...routes.keys(), '兜底'].filter((v) =>

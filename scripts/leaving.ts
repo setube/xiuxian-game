@@ -199,7 +199,9 @@ function check(label: string, walked: string[], expected: string): void {
       console.log(`  ✗ hiring「${workChoice.id}」：农家子也走不了这条路——条件写得太紧。`)
       bad += 1
     } else if (openToManor) {
-      console.log(`  ✗ hiring「${workChoice.id}」：王府里的孩子照样去货栈做短工——那条 living 没在管事。`)
+      console.log(
+        `  ✗ hiring「${workChoice.id}」：王府里的孩子照样去货栈做短工——那条 living 没在管事。`,
+      )
       bad += 1
     } else {
       console.log(`  ✓ hiring「${workChoice.id}」：农家子走得了，王府里的孩子走不了。`)

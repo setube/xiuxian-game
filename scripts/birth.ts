@@ -362,9 +362,7 @@ let bad = 0
     console.log('  ✗ 出生分流：一档有封号的出身也没找到——TITLES 那张表或场景 id 变了。')
     bad += 1
   } else if (wrong === 0) {
-    console.log(
-      `  ✓ 出生分流：爹在不在各落一处，${titled.length} 档有封号的出身男女各落一处。`,
-    )
+    console.log(`  ✓ 出生分流：爹在不在各落一处，${titled.length} 档有封号的出身男女各落一处。`)
   }
 }
 

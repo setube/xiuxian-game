@@ -245,7 +245,9 @@ let bad = 0
      * 所以额外问一句：**不带 `tenure` 的那一档，别走进带 `tenure` 的那个去处**。
      */
     const loose = found.routes.find((one) => one.tenure === undefined)
-    const tight = found.routes.find((one) => one.tenure !== undefined && one.living === loose?.living)
+    const tight = found.routes.find(
+      (one) => one.tenure !== undefined && one.living === loose?.living,
+    )
     if (loose !== undefined && tight !== undefined) {
       liveLike(loose.living) // 不设 tenure：自耕农
       const walked = playFrom(sceneId, found.node)
