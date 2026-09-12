@@ -455,7 +455,24 @@ function born(id: OriginId): boolean {
     if (adopted) continue
     if (people.kinOf('生父').length === 0) continue
     if (!people.isAlive('mother')) continue
-    if (pickSiblingBond() === null) continue
+    /*
+     * ⚠️ 这一条从前是 `pickSiblingBond() === null`，**筛的是「有没有这条边」**，
+     * 而第三条判据要的是「**搬家之前兄在不在身边**」——两回事。
+     *
+     * 一个活着但住在别处的兄，这一条放行，然后判据当场报
+     * 「搬家之前兄就已经不在身边了，这一条没有起点」，
+     * 读着像被测系统坏了，实际是**摆局摆歪了**。
+     *
+     * 从前一直绿，是因为它**踩在边界上**：`beOf` 里加了一行
+     * `useCharacterStore()`（`7fa7791`，立基造人要它醒着）之后，
+     * 随机流整个挪了一格，那个兄就落到了别处。
+     * **不是那一笔造出的缺陷，是那一笔把它推过了线。**
+     *
+     * 这跟 `reunion` 那次是同一族：**筛「有没有」，而要的是「在不在」**。
+     */
+    const bond = pickSiblingBond()
+    if (bond === null) continue
+    if (!people.kinOf(bond).some((id) => people.isAlive(id) && isNearby(id))) continue
     return true
   }
   return false
