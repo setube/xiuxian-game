@@ -110,11 +110,30 @@ for (const { id, trip } of trips) {
  * 「跟人一起走反而快」那种写法是把这一层的意思写反了。
  */
 {
+  /*
+   * ⚠️ **同一个 pinia 里问两遍，不要各起各的。**
+   *
+   * 头一版两次 `setActivePinia(createPinia())`——**那是两个不同的人**：
+   * `reckonJourney` 的 `body` 那一格现读 `character.attributes.body`，
+   * 而身子骨是开 pinia 时掷的。于是「一个人走」和「有人同行」
+   * 比的是两个身子骨不同的人，`b-twelve/journey` 那颗种子上撞出 24 对 24。
+   *
+   * 而且 `days` 是 `Math.round(base × body × along × road)`——
+   * **取整会把小差别抹平**，两个人的 body 差一点就够翻盘。
+   *
+   * 同一个人问两遍，`along` 是唯一的变量，那才是这一条要问的。
+   * （「对照实验：拿两颗不同种子的数说事」那一族——
+   * 我这一轮在 `kindred` 上栽过同一跤：两次摆局是两个世界。）
+   */
   setActivePinia(createPinia())
   const alone = reckonJourney('云台', false)
-  setActivePinia(createPinia())
   const together = reckonJourney('云台', true)
-  if (together.days <= alone.days) {
+  if (together.along <= alone.along) {
+    wrong.push(
+      `有人同行该添一道耗（along 一个人 ${alone.along}、同行 ${together.along}）——那一格没起作用`,
+    )
+  }
+  if (together.days < alone.days) {
     wrong.push(`一个人 ${alone.days} 日、有人同行 ${together.days} 日——同行该慢不该快`)
   }
 }
