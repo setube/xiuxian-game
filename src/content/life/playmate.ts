@@ -106,7 +106,25 @@ export const playmateScenes: SceneLibrary = {
             echo: '你翻过那道墙。',
             effects: [
               { type: 'time', days: 1 },
-              { type: 'meet', id: 'playmate', delta: 6, note: '一起爬过那道矮墙。' },
+              {
+                type: 'meet',
+                id: 'playmate',
+                delta: 6,
+                note: '一起爬过那道矮墙。',
+                /*
+                 * **认出来这一次，就记下来。**
+                 *
+                 * 这一格是这一册最要紧的一笔，而它是被一个 906 次的 bug
+                 * 逼出来的：`idOfPlaymate` 从前每次现算「谁是玩伴」，
+                 * 判据之一是「跟那一户的户主差一辈」——而四十年后
+                 * **那一户的户主换成了当年那个孩子自己**，于是他被当成
+                 * 「那一户的大人」排掉。三卷的到达率因此是 83% / 65% / 15%。
+                 *
+                 * 「一起长大」是一件历史事实，不该每年重算一遍。
+                 * 引擎从这一笔往后直接找这个人，只问他现在怎么样。
+                 */
+                knownAs: 'playmate',
+              },
             ],
             next: 'went',
           },

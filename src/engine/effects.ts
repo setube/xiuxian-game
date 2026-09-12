@@ -685,7 +685,7 @@ function applyOne(
       }
       // 没写 calls 就是「已经认识的人」，只调好感，不改称呼
       const calls = effect.calls ?? people.known[effect.id]?.calls ?? '一个人'
-      const isNew = people.meet(effect.id, calls, effect.delta ?? 0, effect.note)
+      const isNew = people.meet(effect.id, calls, effect.delta ?? 0, effect.note, effect.knownAs)
       // 关系图上添一条边。`bind` 只往后添，旧的边一条也不覆盖
       if (effect.bond !== undefined) people.bind('me', effect.id, effect.bond)
       /*

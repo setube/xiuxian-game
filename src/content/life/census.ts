@@ -106,6 +106,22 @@ export const censusScenes: SceneLibrary = {
              */
             id: 'go-to-him',
             label: '去巷子那头找{call:playmate}',
+            /*
+             * ⚠️ **这一条要问他此刻还在不在，入场问过不算数。**
+             *
+             * 入场条件在这一卷开演**之前**判，而 `open` 的 `onEnter`
+             * 推三天——那三天里他可能就殁了。`present.ts` 当场报红：
+             *
+             *     〔选项〕east-child-1（玩家叫他「东头沈嫂」）：去巷子那头找东头沈嫂
+             *
+             * 人已经不在了，选项还挂着他的名字。探针逐条问过，
+             * 八条报红里那个称呼指向的人**全部是「殁」**——
+             * 不是称呼撞车，是真穿帮。
+             *
+             * （同一个形状：`playmate.ts` 那三卷的 `open` 都特意不推时间，
+             * 文件头写着「推完他可能就不是他了」。这一卷推了，所以要补这一格。）
+             */
+            requires: [{ family: { id: 'playmate', present: true } }],
             hint: '他在这条巷子里住得比谁都久',
             echo: '你去了巷子那头一趟。',
             effects: [

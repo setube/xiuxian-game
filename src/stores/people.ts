@@ -613,7 +613,7 @@ export const usePeopleStore = defineStore(
     }
 
     /** 玩家认识了他。已经认识的只调好感 */
-    function meet(id: string, calls: string, delta = 0, note?: string): boolean {
+    function meet(id: string, calls: string, delta = 0, note?: string, knownAs?: string): boolean {
       const existing = known.value[id]
       if (existing) {
         known.value = {
@@ -622,6 +622,9 @@ export const usePeopleStore = defineStore(
             ...existing,
             affinity: Math.min(100, Math.max(-100, existing.affinity + delta)),
             ...(note ? { note } : {}),
+            // 认过一次就认定了。**后来的 meet 不许把它改掉**——
+            // 那一格记的是历史事实，不是此刻的关系
+            ...(knownAs !== undefined && existing.knownAs === undefined ? { knownAs } : {}),
           },
         }
         return false
@@ -634,6 +637,7 @@ export const usePeopleStore = defineStore(
           knowsName: false,
           affinity: Math.min(100, Math.max(-100, delta)),
           ...(note ? { note } : {}),
+          ...(knownAs !== undefined ? { knownAs } : {}),
           // 哪一年认识的。「二十年没变样」那类话要它才写得出来
           metInYear: world.time.year,
         },
