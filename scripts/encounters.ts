@@ -21,6 +21,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
+import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
 import type { Choice, SceneNode } from '../src/types/game'
@@ -234,10 +235,95 @@ let bad = 0
   console.log('  ✓ 尺子自检：三卷各自都走进去了。')
 }
 
+/**
+ * 效果层：**三次遇见，做了什么就留下什么**。
+ *
+ * 上面那几条验的是「各支分叉走得到」——**把 `applyEffects` 整个改成空转，
+ * 它们纹丝不动**（2026-09-12 B 刀实测）。
+ *
+ * 三卷各是一次「路上遇见」，各留各的：
+ *
+ *     伤者   inspect 见识 +2   fetch 心志 +2   leave 落「走开了」的旗
+ *     旧书   buy 家底 -1       leaf 见识 +1
+ *     行商   talk 见识 +2      pour 心志 +2 且落「给他倒过茶」的旗
+ *
+ * ## 两面旗是这三卷唯一留到后头的东西
+ *
+ * `left-wounded-man` 和 `poured-for-merchant`——**别的都是几点属性，
+ * 只有这两面旗会被后头的卷读到**。走开那一次尤其：
+ * 它记的不是「你少拿了两点见识」，是**你从那个人身边走过去了**。
+ *
+ * 判「做了不同的事留下不同的东西」不判「inspect 正好 +2」。
+ */
+{
+  interface Left {
+    insight: number
+    will: number
+    standing: number
+    flags: string[]
+  }
+
+  const WATCHED = ['left-wounded-man', 'poured-for-merchant'] as const
+
+  function leftBy(scene: string, from: string, pick: string): Left {
+    stage()
+    const character = useCharacterStore()
+    const household = useHouseholdStore()
+    const world = useWorldStore()
+    const before = {
+      insight: character.attributes.insight,
+      will: character.attributes.will,
+      standing: household.standing,
+    }
+    playFrom(scene, from, (opts) => (opts.includes(pick) ? pick : opts[0]!))
+    return {
+      // 记增量：每次摆局各起各的 pinia，属性和家底起手都是现掷的
+      insight: character.attributes.insight - before.insight,
+      will: character.attributes.will - before.will,
+      standing: household.standing - before.standing,
+      flags: WATCHED.filter((one) => world.getFlag(one) === true),
+    }
+  }
+
+  const inspect = leftBy('omen:wounded', 'interest', 'inspect')
+  const fetch = leftBy('omen:wounded', 'interest', 'fetch')
+  const left = leftBy('omen:wounded', 'interest', 'leave')
+  const buy = leftBy('omen:book', 'interest', 'buy')
+  const pour = leftBy('omen:merchant', 'interest', 'pour')
+
+  const wrong: string[] = []
+  if (inspect.insight <= 0) wrong.push(`走近去看该长见识，实际 ${inspect.insight}`)
+  if (fetch.will <= 0) wrong.push(`跑一趟去取水该长心志，实际 ${fetch.will}`)
+  if (inspect.insight === fetch.insight && inspect.will === fetch.will) {
+    wrong.push('察看和取水落下同样的东西——那一节几条路没有分别')
+  }
+  if (!left.flags.includes('left-wounded-man')) {
+    wrong.push('从那个人身边走过去了，却没留下那面旗——这一卷唯一记得住的事丢了')
+  }
+  if (inspect.flags.includes('left-wounded-man')) {
+    wrong.push('走近去看了，却记成「走开了」')
+  }
+  if (buy.standing >= 0) wrong.push(`买了那本书该花钱，家底却是 ${buy.standing}`)
+  if (!pour.flags.includes('poured-for-merchant')) {
+    wrong.push('给行商倒过茶，却没留下那面旗')
+  }
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ 遇见效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ 遇见效果层：察看 +${inspect.insight} 见识、取水 +${fetch.will} 心志、` +
+        `走开留了旗；买书折 ${buy.standing}；倒茶留了旗。`,
+    )
+  }
+}
+
 console.log()
 if (bad > 0) {
   console.log(`  ✗ ${bad} 项不成立。\n`)
   process.exitCode = 1
 } else {
-  console.log('  路上遇见的那几件事，各自有人走过了。\n')
+  console.log('  路上遇见的那几件事，各自有人走过了，做了什么也各留各的。\n')
 }
