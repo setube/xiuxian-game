@@ -267,10 +267,112 @@ let bad = 0
   }
 }
 
+/**
+ * 效果层：**渡口那一刻你做了什么、想起什么，落下的不是同一样东西**。
+ *
+ * 上面那几条验的是「各入场路线走得到 river」和「两张分流表」——
+ * **把 `applyEffects` 整个改成空转，它们纹丝不动**（2026-09-12 B 刀实测）。
+ *
+ * `river` 那一节六条选项各有各的收成：
+ *
+ *     shake          心志 +6、见识 +2，落「甩开了护卫」的旗
+ *     recognize      见识 +4                     认出他是什么人
+ *     recall-warning 心志 +5、见识 +2            想起有人警告过
+ *     recall-tale    见识 +4                     想起听过的传闻
+ *     recall-breath  见识 +3、心志 +2            想起那套呼吸法
+ *
+ * ## 三条「想起」落的不是同一样
+ *
+ * 想起警告的长心志（他忍住了），想起传闻的长见识（他对上了），
+ * 想起呼吸法的两样都长一点——**同一个渡口，想起什么决定他带走什么**。
+ *
+ * 判「几条互不相同」不判「shake 正好 +6」；
+ * `shake` 那面旗单独判——**它是这一卷唯一留到后头的痕迹**。
+ */
+{
+  interface Took {
+    insight: number
+    will: number
+    slipped: boolean
+  }
+
+  /**
+   * ⚠️ **那几条选项各有各的前提，摆不齐就点不到。**
+   *
+   *     recall-warning  听说过修士 + 护送出身
+   *     recall-tale     知识「说书人讲的那一段」
+   *
+   * 不摆齐前提，`pick` 会**静默落空**（`playFrom` 里
+   * `open.find(...) ?? open[0]!` 那个兜底点第一条），
+   * 判据报「想起警告该长心志，实际 0」——**而他想起的是别的事**。
+   *
+   * 「摆局缺一格」今天第四次（house 的铺子、dearth 的念书、
+   * attempt 的 read、这一处）。
+   */
+  function tookBy(pick: string): Took {
+    setActivePinia(createPinia())
+    beOf('escort') // 护送出身：recall-warning 那一条要它
+    useHouseholdStore().standing = 40
+    const world = useWorldStore()
+    world.advanceTime({ years: 20 })
+    world.setFlag('heard-of-cultivators', true)
+    /*
+     * `shake`（甩开护卫）只有**还没塌墙的宗室**看得见（`riverman.ts:323`
+     * 那段注释：「连走上前去看一眼，他都要比农户的儿子多花一道功夫」）。
+     * 那一条要的就是这面旗。三条选项的前提摆在一起互不冲突。
+     */
+    world.setFlag('guarded', true)
+    const character = useCharacterStore()
+    applyEffects([
+      {
+        type: 'knowledge',
+        id: 'immortal-tale',
+        title: '说书人讲的那一段',
+        summary: '庙会上听过一段。',
+        contact: '听说',
+        category: '修行',
+      },
+    ])
+    const before = { ...character.attributes }
+    const walked = playFrom('river', (opts) => (opts.includes(pick) ? pick : opts[0]!))
+    void walked
+    return {
+      // 记增量：每次摆局各起各的 pinia，属性起手是现掷的
+      insight: character.attributes.insight - before.insight,
+      will: character.attributes.will - before.will,
+      slipped: world.getFlag('slipped-the-guards') === true,
+    }
+  }
+
+  const shake = tookBy('shake')
+  const warning = tookBy('recall-warning')
+  const tale = tookBy('recall-tale')
+
+  const wrong: string[] = []
+  if (!shake.slipped) wrong.push('甩开了护卫，却没落下那面旗——这一卷唯一留到后头的痕迹丢了')
+  if (warning.slipped) wrong.push('只是想起有人警告过，却落了「甩开护卫」那面旗')
+  if (warning.will <= 0) wrong.push(`想起有人警告过该长心志（他忍住了），实际 ${warning.will}`)
+  if (tale.insight <= 0) wrong.push(`想起听过的传闻该长见识（他对上了），实际 ${tale.insight}`)
+  if (warning.will === tale.will && warning.insight === tale.insight) {
+    wrong.push('想起警告和想起传闻落下同样的东西——那一节几条「想起」没有分别')
+  }
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ river 效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ river 效果层：甩开护卫心志 +${shake.will} 且落了旗；` +
+        `想起警告 +${warning.will} 心志、想起传闻 +${tale.insight} 见识——各带走各的。`,
+    )
+  }
+}
+
 console.log()
 if (bad > 0) {
   console.log(`  ✗ ${bad} 项不成立。\n`)
   process.exitCode = 1
 } else {
-  console.log('  渡口那一卷：各路人走到了，as-apprentice 正文干净。\n')
+  console.log('  渡口那一卷：各路人走到了，as-apprentice 正文干净，那一刻也各带走各的。\n')
 }
