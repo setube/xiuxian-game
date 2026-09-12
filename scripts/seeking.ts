@@ -111,6 +111,147 @@ console.log('\n=== 一、他听到的东西里，假的占大头 ===\n')
   }
 }
 
+/**
+ * 一之二、「两条撞上了」到底意味着什么。
+ *
+ * ## 「撞上」只能回答一个问题，而从前它被拿来回答三个
+ *
+ * 玩家唯一的工具是「两条不相干的消息指到同一处」。可**「不相干」
+ * 这三个字，引擎从来没有验过**——它只比 `points`。
+ *
+ * 于是同一个「撞上了」底下藏着三种完全不同的东西：
+ *
+ *     各自独立　　两个人各自知道一件事，恰好是同一处
+ *     同源·一个人 某人编的，往下传的都是他那一句——**玩家以为
+ *                 攒够了两个证据，实际是一个谣言的两次传播**
+ *     同源·一件事 两个不相干的人各自撞见同一件真事
+ *                 ——**这恰恰是最可靠的一种**
+ *
+ * ⚠️ **第三种最容易被想反。** 樵夫说三月总有外路人上山、驿站书办说
+ * 三月过所盖印多一倍，同出一源（`三月上云台`），可谁也没听谁说过。
+ * 把它跟第二种归成一类，等于把最可靠的碰撞判成最不可靠的。
+ *
+ * ## 这一节不判红，报数
+ *
+ * 它是一张**比例分布表**，而没有任何一档有天然的门槛
+ * ——「同源骗到的该占几成」是内容作者的取舍，不是这一支能定的
+ * （`threshold-with-no-author`：没有作者的数不该被定阈值）。
+ *
+ * 底下那一条判据守的是另一件事：**三类各自的去处不能糊在一起**。
+ */
+console.log('\n=== 一之二、撞上了，可那是两个证据还是一个谣言 ===\n')
+{
+  const pool = LEADS.map((one) => ({ w: one.weight, p: one.points, s: one.source }))
+  const weight = pool.reduce((a, b) => a + b.w, 0)
+
+  /** 一对线索撞上的概率，以及它是哪一类、通向哪儿 */
+  const pairs: Array<{ pr: number; kind: string; dest: string }> = []
+  for (let i = 0; i < pool.length; i += 1) {
+    for (let j = i + 1; j < pool.length; j += 1) {
+      const a = pool[i]!
+      const b = pool[j]!
+      if (a.p === undefined || a.p !== b.p) continue
+      // 不放回加权抽两条，先 a 后 b 和先 b 后 a 都算
+      const pr =
+        (a.w / weight) * (b.w / (weight - a.w)) + (b.w / weight) * (a.w / (weight - b.w))
+      const same = a.s !== undefined && b.s !== undefined && a.s.id === b.s.id
+      const one = PLACES.find((x) => x.id === a.p)
+      pairs.push({
+        pr,
+        kind: same ? `同源·${a.s?.kind ?? '?'}` : '各自独立',
+        dest: one?.real === true ? '真入口' : one?.instead !== undefined ? '错过仙缘' : '什么也没有',
+      })
+    }
+  }
+  const crossRate = pairs.reduce((a, b) => a + b.pr, 0)
+
+  console.log(`  攒够两条时撞上同一处：${(crossRate * 100).toFixed(2)}%`)
+  console.log('  而「撞上」底下是三样不同的东西（占撞上那些情形的比例）：\n')
+
+  const DESTS = ['真入口', '错过仙缘', '什么也没有'] as const
+  const grid = new Map<string, number>()
+  for (const one of pairs) {
+    const key = `${one.kind}␟${one.dest}`
+    grid.set(key, (grid.get(key) ?? 0) + one.pr)
+  }
+  const kinds = [...new Set(pairs.map((one) => one.kind))].sort()
+  console.log(`    ${'来源'.padEnd(12)}${DESTS.map((d) => d.padStart(10)).join('')}`)
+  for (const kind of kinds) {
+    const cells = DESTS.map((d) => {
+      const v = grid.get(`${kind}␟${d}`) ?? 0
+      return (v === 0 ? '—' : `${((v / crossRate) * 100).toFixed(0)}%`).padStart(10)
+    })
+    console.log(`    ${kind.padEnd(12)}${cells.join('')}`)
+  }
+
+  console.log()
+  console.log('  读法：「同源·一个人」那一行整行落在「什么也没有」——')
+  console.log('  他攒够了两个证据、凑了钱、跑了一趟，而那两句话是同一个人编的。')
+  console.log('  **这是这一册唯一一次让那个工具准确地骗他。**')
+  console.log('  而「同源·一件事」正相反：两个人各自撞见同一件真事，最可靠的一种。')
+
+  /**
+   * 三条判据，各守一个**有作者的**不变量。
+   *
+   * ⚠️ **不判比例**（那些数没有作者，见 `threshold-with-no-author`），
+   * 判的是三件「说出来就该成立」的事。
+   *
+   * ## 头一版问得太宽，打断验出来的
+   *
+   * 头一版问的是「有没有**任何一类**碰撞通向空地方」。
+   * 把老汉那条的 `source` 改成另一个源头（「同源·一个人」整类消失）之后，
+   * **判据没红**——因为「各自独立」那一行接管了那 21%。
+   *
+   * 它守住的是「这条路会骗人」，而**设计要的是「那一种骗法存在」**：
+   * 一个谣言传了两次，玩家以为攒够两个证据。两件事不是一回事。
+   */
+  const byKind = new Map<string, Set<string>>()
+  for (const one of pairs) {
+    byKind.set(one.kind, (byKind.get(one.kind) ?? new Set()).add(one.dest))
+  }
+
+  /*
+   * 一、「一个谣言传两次」这件事要真的会发生。
+   *
+   * `crossed()` 的注释里描述着它（「他会满怀把握地跑去一个根本不存在
+   * 的地方」），而 2026-09-12 之前那句话是假的：三个假去处各只有一条
+   * 线索，这种碰撞的概率是 0。**一句描述了概率为零的情形的注释，
+   * 比没有注释更坏。**
+   */
+  const gossip = byKind.get('同源·一个人')
+  if (gossip === undefined) {
+    console.log('\n  ✗ 没有一对线索是「同一个人编的，传成了两句」——')
+    console.log('    那「玩家以为攒够两个证据，实际是一个谣言」这件事概率为零，')
+    console.log('    而 `crossed()` 的注释里描述着它。')
+    failed += 1
+  } else if (!gossip.has('什么也没有')) {
+    console.log(`\n  ✗ 「同源·一个人」那一类通向 ${[...gossip].join('、')}，没有一次落空——`)
+    console.log('    一个人编出来的谣言指向了真地方，那是两句话打架。')
+    failed += 1
+  }
+
+  /*
+   * 二、「两个人各自撞见同一件真事」不该通向一处空地方。
+   *
+   * `kind: '一件事'` 说的正是**确有其事**。它要是指向一个什么也没有
+   * 的地方，那不是「玩家被骗了」，是**这一格的语义自相矛盾**。
+   */
+  const witnessed = byKind.get('同源·一件事')
+  if (witnessed?.has('什么也没有') === true) {
+    console.log('\n  ✗ 「同源·一件事」通向了一处什么也没有的地方——')
+    console.log('    那一格说的是「确有其事，各人各自看见的」。')
+    console.log('    要么那处地方该有东西，要么那两条线索不是同一件事。')
+    failed += 1
+  }
+
+  /* 三、总得有一类通得到真入口，否则这条路整个是死的 */
+  const kinds2 = [...byKind.keys()]
+  if (!kinds2.some((kind) => byKind.get(kind)?.has('真入口') === true)) {
+    console.log('\n  ✗ 没有任何一类碰撞通向真入口——那这条路整个是死的。')
+    failed += 1
+  }
+}
+
 // —— 二、打听多半什么也听不着 ——
 console.log('\n=== 二、问一回，多半什么也听不着 ===\n')
 {

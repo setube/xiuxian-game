@@ -31,6 +31,8 @@ export const LEADS: readonly Lead[] = [
     id: 'the-march-climb',
     truth: '真',
     from: '山脚下的樵夫',
+    // 他自己每年看见。跟驿站那本簿子是同一件事的两个侧面——而谁也没听谁说过
+    source: { kind: '一件事', id: '三月上云台' },
     says: '每年三月总有几个外路人往上走。上去的没见下来过。',
     believes: '山上三月有人上去，不下来。樵夫说了很多年了。',
     points: '云台',
@@ -40,6 +42,7 @@ export const LEADS: readonly Lead[] = [
     id: 'the-back-room',
     truth: '真',
     from: '当铺的伙计',
+    source: { kind: '一件事', id: '当铺后堂' },
     says: '后头那间屋不许人进。寅时有时候有动静，掌柜的说是耗子。',
     believes: '府城当铺后头那间屋，半夜有人进出。伙计说是耗子。',
     points: '当铺',
@@ -49,6 +52,8 @@ export const LEADS: readonly Lead[] = [
     id: 'the-one-who-did-not-age',
     truth: '真',
     from: '客栈的老板娘',
+    // 她自己记得那张脸。独一份，没有第二个人说过这件事
+    source: { kind: '一件事', id: '不老的客人' },
     says: '有个客人隔十来年来一回。头一回见他什么样，如今还是什么样。',
     believes: '有个人每隔十来年住一回店，一直没老。',
     points: '云台',
@@ -77,6 +82,8 @@ export const LEADS: readonly Lead[] = [
     id: 'the-ledger',
     truth: '真',
     from: '驿站的老书办',
+    // 同上：他查的是自己经手的簿子。**两个独立的人撞见同一件真事**
+    source: { kind: '一件事', id: '三月上云台' },
     says: '每年三月过所盖印的比别的月份多一倍，都是往西边山里去的。',
     believes: '驿站的簿子上，每年三月往西边山里去的人格外多。',
     points: '云台',
@@ -99,6 +106,8 @@ export const LEADS: readonly Lead[] = [
     id: 'the-northern-temple',
     truth: '半真',
     from: '走北路的脚夫',
+    // 观是真的，「不吃东西」是路上传岔的。传岔的那一段没有作者
+    source: { kind: '一件事', id: '北边那个观' },
     says: '往北三百里有个观，观里的道士不吃东西。',
     believes: '北边三百里有个观，里头的道士不吃东西。',
     points: '云台',
@@ -108,6 +117,7 @@ export const LEADS: readonly Lead[] = [
     id: 'the-old-physician',
     truth: '半真',
     from: '药铺的伙计',
+    source: { kind: '一件事', id: '城南那位坐堂的' },
     says: '城南那位坐堂的，八十多了还能扎针，手一点不抖。',
     believes: '城南有个八十多的郎中，手不抖。多半有点门道。',
     points: '当铺',
@@ -144,6 +154,9 @@ export const LEADS: readonly Lead[] = [
     id: 'the-water-carrier',
     truth: '半真',
     from: '挑担卖药材的',
+    // 他爹见过。跟走岔路的脚夫说的**不是同一件事**——那个人早不在了，
+    // 而脚夫见的是如今住在那儿的另一个人
+    source: { kind: '一件事', id: '南山早年那个道人' },
     says: '南山里头早年有个采药的道人。我爹那辈子还见过。',
     believes: '南山里早年有个采药的道人，卖药材的说他爹见过。',
     points: '南山',
@@ -159,6 +172,7 @@ export const LEADS: readonly Lead[] = [
     id: 'the-hut-in-the-hills',
     truth: '半真',
     from: '走岔了路的脚夫',
+    source: { kind: '一件事', id: '南山那间屋' },
     says: '有回我在南山里走岔了，见着一间屋。屋里那人不像种地的。',
     believes: '南山深处有间屋，住着个不像庄稼人的人。',
     points: '南山',
@@ -178,6 +192,8 @@ export const LEADS: readonly Lead[] = [
     id: 'the-storyteller',
     truth: '假',
     from: '茶楼说书的',
+    // 他编的。往下传的都是他这一句——底下那条卖菜老汉的就是
+    source: { kind: '一个人', id: '白石桥那段书' },
     says: '三十年前有位陆真人，在城东白石桥下点化过一个卖炭的。',
     believes: '三十年前城东白石桥下，有位陆真人点化过人。',
     points: '白石桥',
@@ -212,6 +228,16 @@ export const LEADS: readonly Lead[] = [
     id: 'the-bridge-story',
     truth: '假',
     from: '城东卖菜的老汉',
+    /*
+     * 跟说书人那条**同出一源，而源头就是说书人本人**。
+     *
+     * 全库十三条线索里，这是唯一一对 `kind: '一个人'` 的同源
+     * ——也就是唯一一次「玩家以为攒够了两个证据，实际是一个谣言
+     * 的两次传播」。别的同源都是 `一件事`（各人独立看见同一件真事，
+     * 那是最可靠的碰撞）或 `一套话`（骗子的行话，而它们指向不同去处，
+     * 本来也撞不上）。
+     */
+    source: { kind: '一个人', id: '白石桥那段书' },
     says: '白石桥下头那块石头，早年有人在那儿得了道。我小时候人人都这么说。',
     believes: '城东白石桥下早年有人得了道，卖菜的老汉小时候就听人这么说。',
     points: '白石桥',
@@ -221,6 +247,8 @@ export const LEADS: readonly Lead[] = [
     id: 'the-charm-seller',
     truth: '假',
     from: '庙会上卖符的',
+    // 跟茶摊上搭话的那个人是**同一套话术**，谁也没编谁——那套词本来就好用
+    source: { kind: '一套话', id: '引荐要点心意' },
     says: '这道符是茅山下来的。诚心带着，缘法自然会找上门。',
     believes: '庙会上那道符是茅山下来的。带着能招来缘法。',
     weight: 8,
@@ -229,6 +257,8 @@ export const LEADS: readonly Lead[] = [
     id: 'the-mountain-rumour',
     truth: '假',
     from: '同村的后生',
+    // 「我表哥进去过」——而他表哥也是听人说的。这句话没有源头，它是自己长出来的
+    source: { kind: '一个人', id: '南山洞那个说法' },
     says: '南山顶上有个洞，里头供着个不腐的人。我表哥进去过。',
     believes: '南山顶上有个洞，里头有个不腐的人。',
     points: '南山洞',
@@ -257,6 +287,7 @@ export const LEADS: readonly Lead[] = [
     id: 'the-fee',
     truth: '假',
     from: '茶摊上搭话的人',
+    source: { kind: '一套话', id: '引荐要点心意' },
     says: '我认得一位师父，就在南山里头。肯不肯收人全看有没有缘，引荐要点心意。',
     believes: '有人认得南山里一位师父，说引荐要点心意。',
     points: '南山',
@@ -266,6 +297,7 @@ export const LEADS: readonly Lead[] = [
     id: 'the-well',
     truth: '假',
     from: '街上的老婆子',
+    source: { kind: '一个人', id: '城隍庙那口井' },
     says: '城隍庙那口井，月圆的夜里照得见人。照见了就是有仙缘。',
     believes: '城隍庙那口井月圆夜里照得见人。照见了是有仙缘。',
     points: '城隍庙',
