@@ -81,7 +81,6 @@ const CLOSE_AT = ((): number => {
 
 console.log('\n=== 一起长大的那个——三卷走得到吗 ===\n')
 
-
 // ============================================================
 // 摆局：立一户邻居，生一个跟玩家年纪相近的孩子
 // ============================================================
@@ -545,9 +544,7 @@ function entryOf(eventId: string): readonly Condition[] {
       )
       bad += 1
     } else {
-      console.log(
-        `  ✓ years 那条线：${over} / ${sorted.length} 够得着——两支各有各的人走。`,
-      )
+      console.log(`  ✓ years 那条线：${over} / ${sorted.length} 够得着——两支各有各的人走。`)
     }
   }
 }
