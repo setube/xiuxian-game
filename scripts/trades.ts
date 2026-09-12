@@ -19,6 +19,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { lifeEvents, lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
+import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
 import type { Choice, SceneNode, OriginId } from '../src/types/game'
@@ -377,6 +378,110 @@ let bad = 0
 
   if (wrong === 0) {
     console.log(`  ✓ 五卷入场：各自只落在开那种铺子的人家，别家进不去。`)
+  }
+}
+
+/**
+ * 效果层：**这几间铺子是修仙那条路的入口**。
+ *
+ * 上面那几条验的是「各支分叉走得到」和五卷入场——
+ * **把 `applyEffects` 整个改成空转，它们纹丝不动**（2026-09-12 B 刀实测）。
+ *
+ * 这一卷跟别的卷不一样的地方在**它落的不是几点属性**：
+ *
+ *     close-look  旗 heard-of-cultivators + 认知「修士」+ 运气 3
+ *     listen      旗 heard-immortal-tale  + 认知「跑山人说的那件事」+ 见识 3
+ *     refill      同一面旗、同一条认知，**家底 -2 换见识 5、运气 2**
+ *
+ * ## 两面旗是「这世上有修士」这件事进到他脑子里的唯一路径
+ *
+ * 后头拜师那一卷问的就是它（`heard-of-cultivators`）。旗不落，
+ * 修仙那条纵切**整条对这个人关死**——他一辈子都不知道有那种人。
+ * 那不是少了三点运气，是**少了一种可能**。
+ *
+ * ## 花钱那一条要换来更多，否则那两文钱白花
+ *
+ * `listen` 站着白听，`refill` 把酒满上——家底掉两分，
+ * 换来的见识从 3 到 5、多两分运气，连认知的 summary 都更详细
+ * （「往北边去了」「他回头看过他一眼」）。
+ * **判「花了钱的那条拿得更多」，不判「正好 5」**。
+ */
+{
+  interface Got {
+    heardCultivators: boolean
+    heardTale: boolean
+    knows: string[]
+    insight: number
+    fortune: number
+    standing: number
+  }
+
+  const missed: string[] = []
+
+  function gotBy(scene: string, from: string, pick?: string): Got {
+    stage('tavern', '酒楼')
+    const world = useWorldStore()
+    const household = useHouseholdStore()
+    const character = useCharacterStore()
+    const before = {
+      insight: character.attributes.insight,
+      fortune: character.attributes.fortune,
+      standing: household.standing,
+    }
+    playFrom(scene, from, (opts) => {
+      if (pick === undefined) return opts[0]!
+      // 落空不许安静过去：点不到那一条时，底下几句问的是别条路的账
+      if (!opts.includes(pick)) missed.push(`${pick}（当时只有 ${opts.join('、')}）`)
+      return opts.includes(pick) ? pick : opts[0]!
+    })
+    return {
+      heardCultivators: world.getFlag('heard-of-cultivators') === true,
+      heardTale: world.getFlag('heard-immortal-tale') === true,
+      knows: character.knowledge.map((one) => one.id),
+      // 记增量：每次摆局各起各的 pinia，属性和家底起手都是现掷的
+      insight: character.attributes.insight - before.insight,
+      fortune: character.attributes.fortune - before.fortune,
+      standing: household.standing - before.standing,
+    }
+  }
+
+  const sawGuest = gotBy('trade:guest', 'close-look')
+  const listened = gotBy('trade:drunk', 'open', 'listen')
+  const refilled = gotBy('trade:drunk', 'open', 'refill')
+
+  const wrong: string[] = []
+  for (const one of missed) wrong.push(`摆局没摆出「${one}」这一条——底下那几句问的是别条路的账`)
+
+  if (!sawGuest.heardCultivators) {
+    wrong.push('看清了那位客人，却没落「听说过修士」那面旗——修仙那条路对他整个关死了')
+  }
+  if (!sawGuest.knows.includes('cultivators-exist')) {
+    wrong.push('看清了那位客人，「修士」那条认知却没进脑子')
+  }
+  if (!listened.heardTale) wrong.push('站着听完了，却没落「听过那个传闻」的旗')
+  if (!listened.knows.includes('immortal-tale')) {
+    wrong.push('站着听完了，「跑山人说的那件事」却没进脑子')
+  }
+  if (!refilled.heardTale) wrong.push('把酒满上听完了，却没落那面旗')
+  if (refilled.standing >= 0) {
+    wrong.push(`那壶酒记在自家账上，家底该掉，实际 ${refilled.standing}`)
+  }
+  if (refilled.insight <= listened.insight) {
+    wrong.push(
+      `花了钱的那条该听到更多（站着听 ${listened.insight} 见识、满上酒 ${refilled.insight}）` +
+        '——那两文钱白花了',
+    )
+  }
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ 铺子里效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ 铺子里效果层：看清客人落了「听说过修士」旗和那条认知；` +
+        `站着听 +${listened.insight} 见识，满上酒折 ${refilled.standing} 家底换 +${refilled.insight} 见识。`,
+    )
   }
 }
 
