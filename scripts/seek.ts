@@ -22,6 +22,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
+import { useCharacterStore } from '../src/stores/character'
 import { useWorldStore } from '../src/stores/world'
 import { useHouseholdStore } from '../src/stores/household'
 import type { Choice, SceneNode } from '../src/types/game'
@@ -279,6 +280,109 @@ let bad = 0
     }
   }
   console.log('  ✓ 尺子自检：四卷都走进去了。')
+}
+
+/**
+ * 效果层：**跟着那个人上了山，那一格就翻过去了**。
+ *
+ * 上面那五条验的是「各节点走得到」——**把 `applyEffects` 整个改成空转，
+ * 它们纹丝不动**（2026-09-12 B 刀实测）。
+ *
+ * 这一卷是修仙纵切的末一段：找了这些年，终于站到那扇门前。
+ * 而它落的东西里，有一笔是全库分量最重的之一：
+ *
+ *     taken   identity → 「门下」+ 一笔朱砂色的年表「你跟着那个人上了山」
+ *     stop    旗「不打听了」
+ *     later   旗「还在等」
+ *     go      家底 -2（跑一趟的盘缠）
+ *     ask     见识 +1
+ *
+ * ## `identity: '门下'` 是「他是什么」那四格里真正改命的一笔
+ *
+ * 在这一笔之前，他是种地人家的孩子、是学徒、是生员——**都在凡人那一册里**。
+ * 这一笔落下去，他从那一册里出来了。
+ * 后头讲山上的日子、讲师门、讲同门的内容，读的全是这一格。
+ *
+ * **那一格不翻，前头找了这些年的每一步都还在，而人没上去。**
+ *
+ * ## 两面旗各标一个相反的将来
+ *
+ * `stopped-asking`（不打听了）和 `kept-waiting`（还在等）——
+ * 一个断了念想，一个还没断。判「两条路记的不是同一件事」。
+ */
+{
+  interface Sought {
+    identity: string
+    stopped: boolean
+    waiting: boolean
+    standing: number
+    insight: number
+  }
+
+  const missed: string[] = []
+
+  function soughtBy(scene: string, from: string, pick?: string): Sought {
+    stage()
+    const world = useWorldStore()
+    const household = useHouseholdStore()
+    const character = useCharacterStore()
+    const before = { standing: household.standing, insight: character.attributes.insight }
+    /*
+     * 落空要整趟看，不能逐节点看：`pick` 在每一节都被问一次，
+     * 而下游那些节点本来就没有我要的那条。
+     */
+    let hit = pick === undefined
+    playFrom(scene, from, (opts) => {
+      if (pick !== undefined && opts.includes(pick)) {
+        hit = true
+        return pick
+      }
+      return opts[0]!
+    })
+    if (!hit && pick !== undefined) missed.push(pick)
+    return {
+      identity: character.identity,
+      stopped: world.getFlag('stopped-asking') === true,
+      waiting: world.getFlag('kept-waiting') === true,
+      // 记增量：每次摆局各起各的 pinia，家底和属性起手都是现掷的
+      standing: household.standing - before.standing,
+      insight: character.attributes.insight - before.insight,
+    }
+  }
+
+  const taken = soughtBy('seek:door', 'taken')
+  // ⚠️ 两条不在同一卷：`stop` 在问路那一卷、`later` 在去找那一卷。
+  // 头一版两条都写成 `seek:errand`，**落空检测当场抓住了**——
+  // 不加那一层的话，它们会安静地点到 open 的第一条，
+  // 底下报「却没落下那面旗」，读着像内容坏了。
+  const stopped = soughtBy('seek:asking', 'open', 'stop')
+  const waited = soughtBy('seek:crossed', 'open', 'later')
+
+  const wrong: string[] = []
+  for (const one of missed) wrong.push(`摆局没摆出「${one}」这一条——底下那几句问的是别条路的账`)
+
+  if (taken.identity !== '门下') {
+    wrong.push(
+      `跟着那个人上了山，那一格却还是「${taken.identity}」` +
+        '——找了这些年的每一步都还在，而人没上去',
+    )
+  }
+  if (stopped.identity === '门下') wrong.push('不打听了的人也成了门下——那一格没在认路')
+  if (!stopped.stopped) wrong.push('断了念想不再打听，却没落下那面旗')
+  if (!waited.waiting) wrong.push('还在等，却没落「还在等」那面旗')
+  if (stopped.waiting) wrong.push('不打听了，却记成「还在等」——两条路记成了同一件事')
+  if (waited.stopped) wrong.push('还在等，却记成「不打听了」')
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ 寻访效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ 寻访效果层：上了山那一格翻成「${taken.identity}」；` +
+        '断了念想的落「不打听了」、还等着的落「还在等」——两条路各标各的将来。',
+    )
+  }
 }
 
 console.log()
