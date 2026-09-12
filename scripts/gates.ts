@@ -32,6 +32,29 @@
  *      这一次按它从长到短排。最长的那支决定整批的下限，
  *      让它第一个上路，后面的短支才填得满空隙。
  *      没有记录时按给定顺序跑——头一次会慢一点，跑完就有数了。
+ *
+ * ## 这一批里有三种东西，报表上要分开
+ *
+ * 2026-09-12 定的分法。三类的**处置办法完全不同**，而从前它们印同一个 ✓：
+ *
+ *     禁止型　不该发生的有没有发生　　　　　　「死了的人还在正文里说话」
+ *     必达型　该发生的有没有因为条件错而消失　「摆出满足条件的世界，它必须触发」
+ *     走查型　报数给人看，不判成败　　　　　　「印一千世的分布，绿不绿它不回答」
+ *
+ * **头两类的红都是真红，第三类根本不会红。** 所以走查型在报表上印「·」不印「✓」，
+ * 收尾那句话也分开数——「108 支全部通过」这种说法里，
+ * 有四支说的不是「我查过了没问题」，是「我没有说话」。
+ *
+ * ⚠️ **必达型有个坑，别踩**：它不能问「三百世里这个节点出现过吗」——
+ * 那对低频内容是 `green-by-sample`（样本不够，它只能沉默）。
+ * 要问就摆局：**造出满足条件的世界状态，然后它必须触发**。
+ * 这跟「门禁要跑真世界」不冲突——真世跑答「这个局面常不常见」，
+ * 摆局答「条件齐了它走不走得到」，两个问题都要有人问。
+ *
+ * ⚠️ **第三类最危险的地方在于它会伪装成前两类**：一支印着统计数字的脚本，
+ * 只要不设失败出口，它在报表上就和一支全绿的真门禁一模一样。
+ * 判断一支属于哪类**看机制不看措辞**——注释里写着「走查」的有六十多支，
+ * 而真正没有失败出口的只有四支。
  */
 import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -75,6 +98,35 @@ const NOT_A_GATE: Readonly<Record<string, string>> = {
 
 /** 这些虽然列在排除表里，但它自己也判据，照跑 */
 const STILL_RUN = new Set(['origin'])
+
+/**
+ * 走查型：跑，但**它永远不会红**——报数给人看，不判成败。
+ *
+ * ## 为什么要把它们标出来
+ *
+ * 这四支自己的文件头都写着「走查」，而在报表上它们跟真门禁长得一模一样：
+ * 同一个 ✓，同一句「全部通过」。于是「108 支全部通过」这句话里，
+ * 有四支是**永远不会不通过的**——绿得没有含义。
+ *
+ * 这跟「绿不是一个布尔值」是同一件事：`green-by-proof`（我知道它为什么不会红）
+ * 和 `green-by-absence`（它根本不会红）在报表上分不开，而处置办法完全不同。
+ *
+ * ## 名单是量出来的，不是读注释读出来的
+ *
+ * 判据：**这支脚本有没有失败出口**（`process.exitCode` 或 `process.exit()`）。
+ * 一手扫出来正好这四支（外加 `origin`，它在排除表里另有说法）。
+ * 注释里写着「走查」的有六十多支——那个词在正文里到处都是，
+ * 按它筛会把一多半真门禁也划进来（`检索本身会报空` 的另一面：也会报得太满）。
+ *
+ * ⚠️ **新写一支不判成败的脚本，要自己加进这张表**。没加的话报表会把它
+ * 算成「通过」，而它只是没有说话。
+ */
+const WALKTHROUGH: Readonly<Record<string, string>> = {
+  perceive: '世界感知走查：同一年不同的人看见不同的东西，看不全、攒不出精确模型',
+  royal: '宗室加压走查：绕开权重把出身钉死各跑一千世，看坠落链走不走得完',
+  settle: '结算顺序走查：time 写在前还是后，会改变别的效果读到的「今天」',
+  shadow: '分支遮蔽走查：声明顺序即命运，看有没有分支被前面的挡住',
+}
 
 const GATES = readdirSync(join(ROOT, 'scripts'))
   .filter((file) => file.endsWith('.ts'))
@@ -257,7 +309,14 @@ async function worker(): Promise<void> {
     const result = await runGate(name)
     done.push(result)
     times[name] = result.ms
-    const mark = result.code === 0 ? '✓' : '✗'
+    /*
+     * 走查型印「·」不印「✓」。
+     *
+     * **它们永远是 0 退出码**（没有失败出口），所以印 ✓ 等于说
+     * 「这一支通过了」——而它根本不会不通过。同一个符号，两种含义。
+     */
+    const walkthrough = WALKTHROUGH[name] !== undefined
+    const mark = walkthrough ? '·' : result.code === 0 ? '✓' : '✗'
     const secs = (result.ms / 1000).toFixed(1).padStart(6)
     console.log(
       `  ${mark} ${secs}s  ${name}${result.code === 0 ? '' : `  ← 退出码 ${result.code}`}`,
@@ -269,6 +328,8 @@ await Promise.all(Array.from({ length: Math.min(JOBS, queue.length) }, worker))
 saveTimes(times)
 
 const failed = done.filter((one) => one.code !== 0)
+const walked = done.filter((one) => WALKTHROUGH[one.name] !== undefined)
+const judged = done.length - walked.length
 const wall = (Date.now() - started) / 1000
 const cpuTime = done.reduce((sum, one) => sum + one.ms, 0) / 1000
 
@@ -276,6 +337,24 @@ console.log(
   `\n墙上时间 ${(wall / 60).toFixed(1)} 分钟；` +
     `${done.length} 支加起来 ${(cpuTime / 60).toFixed(1)} 分钟的活，摊开快了 ${(cpuTime / wall).toFixed(1)} 倍\n`,
 )
+
+/*
+ * 把两种支分开报。
+ *
+ * 从前这里只有一句「全部通过」，而那句话把走查型算在内——
+ * 它们没有失败出口，**永远不会不通过**。一句「108 支全部通过」里
+ * 有四支说的不是「我查过了没问题」，是「我没有说话」。
+ *
+ * 这跟「绿不是一个布尔值」是同一件事：`green-by-proof` 和
+ * `green-by-absence` 在报表上分不开，而处置办法完全不同。
+ */
+if (walked.length > 0) {
+  console.log(`  ${walked.length} 支只报数不判成败（印「·」），名单和理由在 WALKTHROUGH：`)
+  for (const one of walked) {
+    console.log(`    · ${one.name}　${WALKTHROUGH[one.name]}`)
+  }
+  console.log('  它们的输出要人去读——绿不绿这件事它们不回答。\n')
+}
 
 if (failed.length > 0) {
   for (const one of failed) {
@@ -292,4 +371,8 @@ ${failed.length} 支不成立：${failed.map((one) => one.name).join('、')}`)
   process.exit(1)
 }
 
-console.log('全部通过。\n')
+console.log(`${judged} 支判成败，全绿。`)
+if (walked.length > 0) {
+  console.log(`另有 ${walked.length} 支只报数（上面那张单子）——它们不回答绿不绿。`)
+}
+console.log()
