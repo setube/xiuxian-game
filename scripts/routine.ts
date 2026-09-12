@@ -24,11 +24,13 @@ import './lib/seeded'
 
 import { createPinia, setActivePinia } from 'pinia'
 
-import { lifeScenes } from '../src/content/life'
+import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
+import { useStory } from '../src/engine/story'
 import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
+import { useNarrativeStore } from '../src/stores/narrative'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 import type { Choice, SceneNode } from '../src/types/game'
@@ -151,10 +153,43 @@ for (const { scene, age, label } of ageCases) {
       },
     },
     {
+      /*
+       * ⚠️ 王府那个局要**掷到真的生在王府为止**，`beOf('manor')` 摆不出来。
+       *
+       * 两版都试过，两版都错：
+       *
+       *     liveAs('manor')   只换了 living，家里一个人也没变
+       *     beOf('manor')     只摆户籍五格——**人口册里立的是默认那一套人**
+       *                       （实测：father、mother、东西邻，一个乳母也没有）
+       *
+       * `beOf` 自己的文档头一句就写着「它只摆那五格」。拿它摆王府局，
+       * 得到的是**户籍写着王府、家里人却是农家那一套**的杂交局，
+       * 而「整日跟着乳母」要的 `family: { id: 'nurse', alive: true }`
+       * 是 `birth.ts` 在**出生流程**里给王府/宫里的孩子立的真人。
+       *
+       * 所以走真出生流程，掷到出身是王府为止。掷不出来要说话——
+       * 不说的话这个局会安静地退化成又一个农家局，而报表上看不出来。
+       */
       name: '王府里的',
       put: () => {
-        stage(17)
-        useCharacterStore().liveAs('manor')
+        for (let n = 0; n < 400; n += 1) {
+          setActivePinia(createPinia())
+          useCharacterStore()
+          useHouseholdStore()
+          usePeopleStore()
+          useNarrativeStore()
+          const story = useStory(lifeScenes, {
+            events: lifeEvents,
+            routine: lifeRoutine,
+            finale: lifeFinale,
+          })
+          story.begin()
+          if (useHouseholdStore().origin !== 'manor') continue
+          useWorldStore().advanceTime({ years: 8 })
+          return
+        }
+        console.log('  ✗ 摆局：400 次也没掷出生在王府的一世——「王府里的」那个局是空的。')
+        bad += 1
       },
     },
     {
