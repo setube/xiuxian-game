@@ -172,6 +172,21 @@ const CHECKS = {
       const cause = people.personOf(family.id)?.death?.cause
       if (cause === undefined || !family.cause.includes(cause)) return false
     }
+    /*
+     * 好感。**不问死活**——跟上面 `health` 那一格正好相反。
+     *
+     * 身子骨是那个人身上的一格，死了就停在殁的那一天，拿它判「他还撑不撑得住」
+     * 是把死人当活人量。好感是**玩家心里**的一格：人没了，「你跟他感情多深」
+     * 这句话照样成立，而 `known` 那条记录也确实不删（`people.ts:317` 只改称呼）。
+     *
+     * 不在 `known` 表里的人一律不成立——**那不是「好感为零」，是这个问题问不出口**。
+     * 拿它当「没有好感」用会把「素不相识」和「认得但淡」混成一件事。
+     */
+    if (family.affinity !== undefined) {
+      const acquaintance = people.known[family.id]
+      if (acquaintance === undefined) return false
+      if (!within(acquaintance.affinity, family.affinity)) return false
+    }
     return true
   },
 
