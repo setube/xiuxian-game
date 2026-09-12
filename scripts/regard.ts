@@ -31,12 +31,14 @@ import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
 import { useStory } from '../src/engine/story'
+import { callMeBy, mayAsk } from '../src/engine/address'
 import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useNarrativeStore } from '../src/stores/narrative'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
 import type { Choice, SceneNode } from '../src/types/game'
+import { standing } from './lib/standing'
 import { beOf } from './origin'
 
 const SCENE = 'regard:homecoming'
@@ -240,6 +242,130 @@ let bad = 0
     bad += 1
   } else {
     console.log(`  ✓ 尺子自检：走了 ${walked.length} 节（${walked.join(' → ')}）。`)
+  }
+}
+
+/**
+ * 称谓层：**一个人的身份变了，最先变的从来不是他自己**。
+ *
+ * ## 为什么这一支补的不是效果层
+ *
+ * 全库这一轮在给各卷补效果层判据（B 刀：`applyEffects` 空转，判据该红）。
+ * 而这一卷**通篇只有五处效果，全是推时间，外加一条年表**
+ * ——文件头自己写着：
+ *
+ * > 这一卷不给任何东西。没有属性、没有旗标、没有家底变化。
+ * > 中了秀才那一节该给的都给过了。
+ *
+ * 所以 B 刀在这儿不红**不是缺陷**，是这一卷本来就不落东西。
+ * 硬造一条效果层判据只会立一把量不到东西的尺子。
+ *
+ * ## 它真正的分量在两个记号上，而那一层一直没人验
+ *
+ *     {hail:谁}   那个人开口时怎么称呼你
+ *     mayAsk      那个人够不够格说这一档的话
+ *
+ * 上面那几条验的是「走得到吗」和「谁迎着你」——
+ * **两个记号全砍掉，它们照样全绿**。
+ *
+ * 这一卷存在的理由是把 `exam.ts` 里那句旁白变成真的：
+ *
+ * > 村里人见你改了称呼。有几个从前不太理你的，如今站住了说话。
+ *
+ * 在这一卷之前，`identity` 换成了「生员」、正文报了一句「改了称呼」，
+ * **而库里每一处称呼照旧**。16.md 点的正是这个。
+ *
+ * ## 判两件事，各对着一个记号
+ *
+ *     同一个称呼记号，没有边的邻家妇人和十六年的家里人，叫出两种话
+ *     同一档家常，她问不出口，家里人张口就问
+ *
+ * ⚠️ **后一句一个称呼也没有，而那正是对的**——中文里熟人开口不带称呼。
+ * 所以判据问的是「两个人叫出来的不一样」，不是「都得有个称呼」。
+ * 问「都得有」会把这一整层的用意判反。
+ */
+{
+  const wrong: string[] = []
+
+  /*
+   * ⚠️ **先牵边，再推时间**——这条边要牵够十六年。
+   *
+   * `callMeBy` 第二档判的是 `boundFor(speakerId, bond) >= OLD_ENOUGH`，
+   * 而 `OLD_ENOUGH = 16` 正是文件头说的那个「十六年」。
+   * `bind` 记的 `since` 是牵边**当时**的年份，所以摆到 28 岁再牵，
+   * 那条边只牵了零年——他会跟陌生人一样叫你「相公」。
+   *
+   * 头一版正是这么写的，判据报「两个人叫出来的是同一句」，
+   * **读着像那个称呼记号坏了**，而坏的是我摆局的顺序。
+   */
+  stage(12)
+  const character = useCharacterStore()
+
+  // 中了秀才，身份那一格翻过去了——这一卷讲的就是这之后的事
+  character.setIdentity('生员')
+
+  /*
+   * 摆两个人，差别只在一处：**跟你有没有那条牵了十六年的边**。
+   *
+   * 邻家的妇人立在册上、没有任何一条关系边；
+   * 家里的大人牵上「生父」。
+   */
+  standing({ id: 'east-wife', older: 6, given: '氏', gender: '女' })
+  standing({ id: 'kin-elder', bond: '生父', older: 30, given: '大' })
+  // 牵完再推：这十六年是那条边的年头，不是他的岁数
+  useWorldStore().advanceTime({ years: 16 })
+
+  const strangerCall = callMeBy('east-wife')
+  const kinCall = callMeBy('kin-elder')
+
+  if (strangerCall === kinCall) {
+    wrong.push(
+      `邻家的妇人和家里的大人叫出来的是同一句（都是「${String(strangerCall)}」）` +
+        '——那个称呼记号没在认人',
+    )
+  }
+  if (strangerCall === undefined) {
+    wrong.push('没有交情的邻家妇人开口不带称呼——她还没熟到那一步')
+  }
+
+  /*
+   * 同一档家常：她够不够格问，跟家里人够不够格问，不该是一回事。
+   *
+   * ⚠️ `mayAsk` 回的是 `{ can, because }` 这个对象，**不是一句话**。
+   * 头一版直接 `strangerMay === kinMay` 比的是引用，两个新对象
+   * 永远不相等——**那条判据恒绿，而且报出来的话里印着
+   * `[object Object]`**。恒绿的判据比没有判据更坏：它占着位置。
+   *
+   * 所以比 `can` 和 `because` 两格，报话也印这两格。
+   */
+  const strangerMay = mayAsk('east-wife', '家常')
+  const kinMay = mayAsk('kin-elder', '家常')
+  const sameStanding =
+    strangerMay.can === kinMay.can && strangerMay.because === kinMay.because
+  if (sameStanding) {
+    wrong.push(
+      `邻家的妇人和家里的大人问同一档家常的资格一样（都是「${strangerMay.because}」）` +
+        '——「凭什么能问这句话」那一层没在管事',
+    )
+  }
+  if (kinMay.can !== true) {
+    wrong.push(`家里的大人问一句家常也不够格（「${kinMay.because}」）——他本来就在那个位置上`)
+  }
+  if (strangerMay.can === true && strangerMay.because === '家里人') {
+    wrong.push('隔壁的妇人被当成了家里人')
+  }
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ 称谓层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ 称谓层：邻家的妇人叫「${String(strangerCall)}」、家里的大人` +
+        `${kinCall === undefined ? '开口不带称呼' : `叫「${kinCall}」`}；` +
+        `同一档家常，她${strangerMay.can ? '' : '问不出口'}「${strangerMay.because}」，` +
+        `而他${kinMay.can ? '张口就问' : '问不出口'}「${kinMay.because}」。`,
+    )
   }
 }
 
