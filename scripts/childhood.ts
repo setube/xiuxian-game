@@ -25,6 +25,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
+import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
 import type { Choice, OriginId, SceneNode } from '../src/types/game'
@@ -284,10 +285,92 @@ let bad = 0
   if (allIn) console.log('  ✓ 尺子自检：五卷各自都走进去了。')
 }
 
+/**
+ * 效果层：**头一眼看见的世界不一样，学到的东西也不一样**。
+ *
+ * 上面那条十二档分流验的是「落在哪一节」——**把 `applyEffects` 整个改成空转，
+ * 它纹丝不动**（2026-09-12 B 刀实测）。落到了那一节，而那一节落下什么没人验。
+ *
+ * `child:memory` 各出身分档上落的东西各不相同：
+ *
+ *     shop / inn   知识「很远的地方」   布庄和客栈都见往来客商
+ *     tavern       知识「城里的闲话」   酒楼里听的是另一路话
+ *     herbs        知识 + 见识 +2       药铺的孩子还多认得几样东西
+ *     escort       心志 +2              走镖人家的孩子，胆子是练出来的
+ *     farm         （一条也没有）        地里长大的孩子，眼界就在这几亩地上
+ *
+ * **这一节的分量全在这儿**：出身不是属性面板上的一栏，
+ * 是**他头一眼看见的世界有多大**。
+ *
+ * ## 判「有的学到、有的学不到」，不判「shop 学的是 far-places」
+ *
+ * 写死哪一档配哪一条知识，内容调一次判据就红；
+ * **「种地的孩子学不到开铺子的孩子学到的那些」才是设计**。
+ * 效果空转时所有出身都学不到东西，这一条当场塌。
+ */
+{
+  const SCENE = 'child:memory'
+  const scene = lifeScenes[SCENE]
+  const fork = scene?.nodes[scene.entry ?? 'open']
+
+  interface Gained {
+    knows: number
+    insight: number
+    will: number
+  }
+
+  function gainedBy(origin: OriginId): Gained {
+    stage(origin)
+    const character = useCharacterStore()
+    const before = {
+      insight: character.attributes.insight,
+      will: character.attributes.will,
+    }
+    playFrom(SCENE, scene?.entry ?? 'open')
+    return {
+      knows: Object.keys(character.knowledge).length,
+      // 记增量：每次摆局各起各的 pinia，属性起手是现掷的
+      insight: character.attributes.insight - before.insight,
+      will: character.attributes.will - before.will,
+    }
+  }
+
+  const shop = gainedBy('cloth')
+  const herbs = gainedBy('herb')
+  const escort = gainedBy('escort')
+  const farm = gainedBy('farm')
+
+  const wrong: string[] = []
+  if (shop.knows === 0) wrong.push('布庄人家的孩子见往来客商，却一样东西也没记住')
+  if (shop.knows <= farm.knows) {
+    wrong.push(
+      `开铺子的孩子该比地里长大的多知道些：布庄 ${shop.knows} 条、农家 ${farm.knows} 条` +
+        '——出身没在这一节上留下分别',
+    )
+  }
+  if (herbs.insight <= 0) wrong.push(`药铺的孩子该多认得几样东西，见识却是 ${herbs.insight}`)
+  if (escort.will <= 0) wrong.push(`走镖人家的孩子胆子是练出来的，心志却是 ${escort.will}`)
+  if (fork === undefined) {
+    console.log(`  ✗ 尺子自检：${SCENE} 取不到入口那一节——结构变了。`)
+    bad += 1
+  }
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ memory 效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ memory 效果层：布庄记住 ${shop.knows} 条、农家 ${farm.knows} 条；` +
+        `药铺见识 +${herbs.insight}、走镖心志 +${escort.will}。`,
+    )
+  }
+}
+
 console.log()
 if (bad > 0) {
   console.log(`  ✗ ${bad} 项不成立。\n`)
   process.exitCode = 1
 } else {
-  console.log('  孩童时代那几年，各条路各自有人走过了。\n')
+  console.log('  孩童时代那几年，各条路各自有人走过了，各家的孩子也各有各的眼界。\n')
 }
