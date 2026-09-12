@@ -215,13 +215,25 @@ let bad = 0
       continue
     }
 
+    /*
+     * ⚠️ 判「落在哪」，不判「路过没路过」——分流的几个目标常常串在
+     * 同一条路径上，`includes` 会放错的答案过去（`regard` 那支实测过）。
+     */
+    const targets = [
+      ...found.routes.map((one) => one.to),
+      ...(found.fallback !== undefined ? [found.fallback] : []),
+    ]
+    const landedOn = (walked: readonly string[]): string | undefined =>
+      walked.find((one) => targets.includes(one))
+
     const wrong: string[] = []
     for (const route of found.routes) {
       liveLike(route.living, route.tenure)
       const walked = playFrom(sceneId, found.node)
-      if (!walked.includes(route.to)) {
+      const landed = landedOn(walked)
+      if (landed !== route.to) {
         const how = route.tenure === undefined ? route.living : `${route.living}+${route.tenure}`
-        wrong.push(`${how} 该去 ${route.to}，实际走过 ${walked.join('→')}`)
+        wrong.push(`${how} 该落在 ${route.to}，实际落在 ${landed ?? '哪儿也没落'}`)
       }
     }
 
@@ -237,7 +249,7 @@ let bad = 0
     if (loose !== undefined && tight !== undefined) {
       liveLike(loose.living) // 不设 tenure：自耕农
       const walked = playFrom(sceneId, found.node)
-      if (walked.includes(tight.to)) {
+      if (landedOn(walked) === tight.to) {
         wrong.push(
           `不是佃户却走到了 ${tight.to}——「${tight.living}+${tight.tenure}」那一条排在` +
             `「${loose.living}」后面了，顺序反了`,

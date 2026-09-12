@@ -117,6 +117,17 @@ let bad = 0
     routes.push({ origin, to: branch.next })
   }
 
+  /*
+   * ⚠️ 判「落在哪」，不判「路过没路过」。
+   *
+   * 分流的几个目标常常串在同一条路径上，`includes` 会让错的答案蒙混过关
+   * ——`regard` 那支 A 刀实测只红一条，头一档和末一档都逃掉了
+   * （2026-09-12，改问第一个落点之后红从 1 变 2）。
+   */
+  const targets = [...routes.map((one) => one.to), ...(open?.next !== undefined ? [open.next] : [])]
+  const landedOn = (walked: readonly string[]): string | undefined =>
+    walked.find((one) => targets.includes(one))
+
   if (routes.length < 2) {
     // 尺子自检：取不到分流表，底下那一圈就什么也没验，而它会安静地全绿
     console.log(`  ✗ 尺子自检：从 ${SCENE} 只取到 ${routes.length} 条分流——结构变了。`)
@@ -126,7 +137,10 @@ let bad = 0
     for (const { origin, to } of routes) {
       stage(origin)
       const walked = play(SCENE)
-      if (!walked.includes(to)) wrong.push(`${origin} 该去 ${to}，实际走过 ${walked.join('→')}`)
+      const landed = landedOn(walked)
+      if (landed !== to) {
+        wrong.push(`${origin} 该落在 ${to}，实际落在 ${landed ?? '哪儿也没落'}`)
+      }
     }
     if (wrong.length > 0) {
       console.log(`  ✗ memory 分流：${routes.length} 种出身里有 ${wrong.length} 种去错了地方。`)
@@ -149,7 +163,8 @@ let bad = 0
       stage(spare)
       const walked = play(SCENE)
       const fallback = open?.next
-      if (fallback !== undefined && !walked.includes(fallback)) {
+      const landed = landedOn(walked)
+      if (fallback !== undefined && landed !== fallback) {
         console.log(
           `  ✗ memory 兜底：${spare} 出身没有专门分流，该落到 ${fallback}，` +
             `实际走过 ${walked.join('→')}。`,

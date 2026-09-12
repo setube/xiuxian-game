@@ -105,6 +105,26 @@ export interface ForkReport {
 }
 
 /**
+ * 走到的**第一个**分流目标是哪一个。
+ *
+ * ## ⚠️ 为什么不能用 `walked.includes(to)`
+ *
+ * **分流的几个目标常常串在同一条路径上**——`regard:homecoming` 里
+ * `gate-east-wife` 演完接 `indoors`，于是「该去 indoors」那一档
+ * 在条件层整个失效时**照样成立**（路径确实流过了 indoors）。
+ *
+ * 2026-09-12 A 刀实测抓到这一点：`regard` 头一版三档里只红一条，
+ * 头一档因为排在最前面、末一档因为路径流经，**两头都逃掉了**。
+ * 改问「第一个落点」之后红从 1 变 2。
+ *
+ * 这是「输入不构成挑战，判据就永远绿」的一个变体：
+ * 判法本身给了错的答案一条活路。
+ */
+function landedOn(walked: readonly string[], targets: readonly string[]): string | undefined {
+  return walked.find((one) => targets.includes(one))
+}
+
+/**
  * 验一张分流表。
  *
  * @param sceneId  哪一卷
@@ -124,6 +144,11 @@ export function checkForking(
 
   const faults: string[] = []
   let checked = 0
+  // 这张表上所有的落点，含兜底——判「落在哪」要拿它们一起问
+  const targets = [
+    ...fork.branches.map((one) => one.to),
+    ...(fork.fallback !== undefined ? [fork.fallback] : []),
+  ]
 
   for (const branch of fork.branches) {
     if (!put(branch.requires)) {
@@ -132,8 +157,12 @@ export function checkForking(
     }
     checked += 1
     const walked = walkFrom(sceneId, fork.node)
-    if (!walked.includes(branch.to)) {
-      faults.push(`该去 ${branch.to} 的那一档，实际走过 ${walked.join('→')}`)
+    const landed = landedOn(walked, targets)
+    if (landed !== branch.to) {
+      faults.push(
+        `该落在 ${branch.to} 的那一档，实际落在 ${landed ?? '哪儿也没落'}` +
+          `（走过 ${walked.join('→')}）`,
+      )
     }
   }
 
@@ -148,8 +177,12 @@ export function checkForking(
     const anyBranchHolds = fork.branches.some((one) => meetsAll(one.requires))
     if (!anyBranchHolds) {
       checked += 1
-      if (!bare.includes(fork.fallback)) {
-        faults.push(`一档都不成立时该落到兜底 ${fork.fallback}，实际走过 ${bare.join('→')}`)
+      const landed = landedOn(bare, targets)
+      if (landed !== fork.fallback) {
+        faults.push(
+          `一档都不成立时该落到兜底 ${fork.fallback}，实际落在 ${landed ?? '哪儿也没落'}` +
+            `（走过 ${bare.join('→')}）`,
+        )
       }
     }
   }
