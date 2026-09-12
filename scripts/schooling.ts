@@ -23,11 +23,13 @@ import './lib/seeded'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { lifeScenes } from '../src/content/life'
+import { ORIGINS } from '../src/content/origins'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
 import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
 import type { Choice, SceneNode } from '../src/types/game'
+import { forkingOf } from './lib/forking'
 import { beOf } from './origin'
 
 function stage(standing: number, age = 7): void {
@@ -203,6 +205,112 @@ let bad = 0
     }
   }
   console.log('  ✓ 尺子自检：四卷各自都走进去了。')
+}
+
+/**
+ * 六、条件层：**这个孩子念不念得起书，念的是哪一种**。
+ *
+ * 上面那几条问的是「走得到吗」——`next` 写死在内容里，
+ * **`meetsAll` 恒真它们纹丝不动**（2026-09-12 打断实测）。
+ *
+ * `school:threshold` 的入口那一节按**家世和家境**分五档，
+ * 顺序从高到低，一档比一档窄：
+ *
+ *     origin court    → hall      皇子由翰林侍讲
+ *     origin manor    → study     世子有王府西席
+ *     station 仕宦    → tutor     官宦人家请西席
+ *     standing ≥ 46   → afford    供得起
+ *     standing ≥ 26   → strain    紧一紧也供得起
+ *     （都够不着）     → 兜底      供不起
+ *
+ * **顺序即含义**：`≥46` 排在 `≥26` 前面，两条对调的话
+ * 富户会走「紧一紧」那一节，而「走得到吗」那类判据一声不响。
+ *
+ * ⚠️ 家境那两档要**摆在两条门槛之间**才分得开：验 `≥26` 那一档得摆
+ * 26 到 45 之间的数，摆 50 会命中前一条。门槛从内容里读，
+ * 写死一个 46 在这儿，内容改了门槛这一条就废了。
+ */
+{
+  const SCENE = 'school:threshold'
+  const fork = forkingOf(SCENE, lifeScenes[SCENE]?.entry ?? 'open')
+  const fallback = fork?.fallback
+
+  if (fork === null || fallback === undefined) {
+    console.log(`  ✗ 尺子自检：${SCENE} 找不到分流或兜底——结构变了。`)
+    bad += 1
+  } else {
+    const targets = [...fork.branches.map((one) => one.to), fallback]
+    const landedOn = (walked: readonly string[]): string | undefined =>
+      walked.find((one) => targets.includes(one))
+
+    /** 家境那几档的门槛，从高到低——用来算「摆在哪两条线之间」 */
+    const bars = fork.branches
+      .map((one) => one.requires.find((c) => c.standing?.atLeast !== undefined)?.standing?.atLeast)
+      .filter((one): one is number => one !== undefined)
+      .sort((a, b) => b - a)
+
+    let checked = 0
+    let wrong = 0
+    for (const branch of fork.branches) {
+      const origin = branch.requires.find((c) => c.origin !== undefined)?.origin
+      const station = branch.requires.find((c) => c.station !== undefined)?.station
+      const bar = branch.requires.find((c) => c.standing?.atLeast !== undefined)?.standing?.atLeast
+
+      if (origin !== undefined) {
+        setActivePinia(createPinia())
+        beOf(origin)
+        useWorldStore().advanceTime({ years: 7 })
+      } else if (station !== undefined) {
+        // 家世那一格：找一行出身是这个家世的，照它摆
+        const row = ORIGINS.find((one) => one.station === station)
+        if (row === undefined) {
+          console.log(`  ·  家世〔${station}〕在出身表里找不到对应的一行，这一档没验。`)
+          continue
+        }
+        setActivePinia(createPinia())
+        beOf(row.id)
+        useWorldStore().advanceTime({ years: 7 })
+      } else if (bar !== undefined) {
+        // 摆在这条线和上一条线之间，才分得开两档家境
+        const above = bars.find((one) => one > bar)
+        stage(above === undefined ? bar + 10 : Math.floor((bar + above) / 2), 7)
+      } else {
+        console.log(`  ·  该去 ${branch.to} 的那一档我不会摆，没验。`)
+        continue
+      }
+
+      checked += 1
+      const landed = landedOn(playFrom(SCENE, fork.node))
+      if (landed !== branch.to) {
+        const how = origin ?? station ?? `家境 ≥${bar}`
+        console.log(
+          `  ✗ 入学分流〔${how}〕：该落在 ${branch.to}，实际落在 ${landed ?? '哪儿也没落'}。`,
+        )
+        bad += 1
+        wrong += 1
+      }
+    }
+
+    // 兜底：家境低于最低那条线，出身也不沾边
+    const lowest = bars[bars.length - 1]
+    stage(lowest === undefined ? 10 : Math.max(0, lowest - 10), 7)
+    const landed = landedOn(playFrom(SCENE, fork.node))
+    checked += 1
+    if (landed !== fallback) {
+      console.log(
+        `  ✗ 入学分流〔供不起〕：该落到兜底 ${fallback}，实际落在 ${landed ?? '哪儿也没落'}。`,
+      )
+      bad += 1
+      wrong += 1
+    }
+
+    if (checked === 0) {
+      console.log('  ✗ 入学分流：一档也没验到——这一条什么也没量。')
+      bad += 1
+    } else if (wrong === 0) {
+      console.log(`  ✓ 入学分流：验了 ${checked} 档（含兜底），各自落在对的那一节。`)
+    }
+  }
 }
 
 console.log()
