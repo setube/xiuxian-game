@@ -179,6 +179,22 @@ export const useWorldStore = defineStore(
     /** 归在哪一级聚落。没有居所的人也有聚落——他在哪个镇上讨饭 */
     const settlement = ref<string | null>(null)
 
+    /**
+     * 还没有任何一笔编年——也就是这一局还没开始。
+     *
+     * ⚠️ **目前没有消费者**（2026-09-13 一手扫过：全库非注释行零调用，
+     * 出自最早那版地基 `954a323`）。
+     *
+     * 而唯一一处问同一件事的地方**没有调它**：`ChroniclePanel.vue:20`
+     * 自己写了 `chronicle.length === 0`——逐字同义，各算各的。
+     *
+     * 所以它跟同一轮删掉的 `canSchool` 不是一类（那个的判据跟真在跑的
+     * 那把尺子对不上，是错契约），也跟 `livingParents` 不同（那个还没有
+     * 第一个使用者）：**这一个是重复**。
+     *
+     * 留着不删，因为它没有误导性——名字和实现说的是同一件事。
+     * 哪天 UI 那一侧要改这个判断，改这里、让那一处调过来就是。
+     */
     const isNewGame = computed(() => chronicle.value.length === 0)
 
     /**

@@ -25,8 +25,28 @@ import type {
 const STANDING_MIN = 0
 const STANDING_MAX = 100
 
-/** 低于此线，家里就供不起读书了 */
-export const STANDING_SCHOOLABLE = 42
+/*
+ * ⚠️ 这里从前有一条 `STANDING_SCHOOLABLE = 42` 和一个 `canSchool`
+ *（`standing >= 42 && debt === 0`），2026-09-13 删掉了。
+ *
+ * 它们从最早那版地基（`954a323`）起就没有任何消费者，
+ * 而「供不供得起读书」这件事**真正的判据在 `content/life/schooling.ts:44-45`**：
+ *
+ *     standing ≥ 46   供得起
+ *     standing ≥ 26   咬牙供
+ *     否则             供不起
+ *
+ * 三档是那一卷的立意（卷宗自己写着「供得起、咬牙供、供不起，是三种人生」），
+ * 不是实现细节。而 `canSchool` 只有二值、线画在没有来源的 42、
+ * 还多一个启蒙卷并不要求的 `debt === 0`——**三处都跟真在跑的那把尺子对不上**。
+ *
+ * 删它不是清死代码，是删一份**有误导性的旧契约**：那个名字太自然，
+ * 下一个要写「能不能供读书」的人会先 grep 到它，
+ * 而它的注释还声称「启蒙那几年反复问到」（实际零次）。
+ *
+ * 哪天真要一个公共接口，先定清楚它表达什么再造
+ *（多半不叫 `canSchool`——那个名字本身就诱导二值思维）。
+ */
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
@@ -156,10 +176,22 @@ export const useHouseholdStore = defineStore(
       return list
     })
 
-    /** 供得起读书吗。启蒙那几年反复问到 */
-    const canSchool = computed(() => standing.value >= STANDING_SCHOOLABLE && debt.value === 0)
-
-    /** 家里还剩几个大人。劳力少了，孩子就得顶上 */
+    /**
+     * 家里还剩几个大人。劳力少了，孩子就得顶上。
+     *
+     * ⚠️ **目前没有消费者**（2026-09-13 一手扫过：全库非注释行零调用，
+     * 和 `canSchool` 一样出自最早那版地基 `954a323`）。
+     *
+     * 留着不删，跟 `canSchool` 不同：**它没有跟谁冲突**。
+     * 「家里少个劳力」这条世界规律确实在库里跑着——`hardship` 那一卷的
+     * 宗旨第二条就是「把『家里少个劳力』变成后面事件读得到的事实，
+     * 而不是一句旁白」——只是那一卷用的是 `household.standing` 和旗，
+     * 不是数人头。
+     *
+     * 所以它是**一个还没有第一个使用者的表达**，不是一份错契约。
+     * 哪天有内容真要按「家里剩几个大人」分话，它在这儿；
+     * 而在那之前别为它造消费者。
+     */
     const livingParents = computed(() => {
       const people = usePeopleStore()
       return members.value.filter((m) => people.isAlive(m.person)).length
@@ -298,7 +330,6 @@ export const useHouseholdStore = defineStore(
       standing,
       debt,
       members,
-      canSchool,
       livingParents,
       living,
       outlook,
