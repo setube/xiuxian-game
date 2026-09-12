@@ -230,7 +230,13 @@ export const youthScenes: SceneLibrary = {
                 id: 'old-clerk',
                 calls: '老徐',
                 delta: 12,
-                who: { surname: '徐', given: '进', gender: '男', age: 51, doing: '在这间铺子里坐店' },
+                who: {
+                  surname: '徐',
+                  given: '进',
+                  gender: '男',
+                  age: 51,
+                  doing: '在这间铺子里坐店',
+                },
               },
               /*
                * 「在铺子里做伙计」是一件有始有终的事。

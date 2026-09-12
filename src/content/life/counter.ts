@@ -138,10 +138,7 @@ export const counterScenes: SceneLibrary = {
         branches: [
           { requires: [{ family: { id: 'shop-keeper', alive: false } }], next: 'shop-closed' },
           {
-            requires: [
-              { family: { id: 'shop-keeper', alive: true } },
-              { age: { atLeast: 40 } },
-            ],
+            requires: [{ family: { id: 'shop-keeper', alive: true } }, { age: { atLeast: 40 } }],
             next: 'entrusted',
           },
           { requires: [{ age: { atMost: 30 } }, { livelihood: '务农' }], next: 'went-home' },
