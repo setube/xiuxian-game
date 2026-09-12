@@ -165,6 +165,31 @@ for (let i = 0; i < RUNS; i += 1) {
     }
     return fresh
   }
+  /*
+   * ⚠️ **月份要在演出那一刻取，不能在步末取。**
+   *
+   * 从前这一支读的是 `world.time.month`（一步走完之后），拿它当
+   * 「这一卷演在几月」的代理。2026-09-12 那个代理失效了：
+   * 年节卷的收尾节点补了一笔 `{ type: 'time', months: 1 }`
+   * （管的是「这个年过完了」——不推的话日历停在正月，入场条件照旧成立，
+   * 同一个年可以接着再过一遍）。那一笔落在正文之后，
+   * 于是这一支报「89.0% 落在 1/2 月」，**而 `untilMonth` 好好的**。
+   *
+   * 判据守的是「`untilMonth` 生没生效」，收尾推月不在它的射程里。
+   * 所以挂 `narrative.locate`，各卷在自己的入口节点落笔那一刻记月份：
+   * 引擎是「先 `applyEffects(onEnter)` 再 `locate`」（`story.ts:306/308`），
+   * 那一刻 `untilMonth` 已推完、收尾那一笔还没跑——**正是要量的时点**。
+   *
+   * `newyear.ts` 那一支同一天同一处同一个改法。
+   */
+  const atOpen = new Map<string, number>()
+  const prevLocate = narrative.locate
+  narrative.locate = (sceneId: string, nodeId: string): void => {
+    if (nodeId === lifeScenes[sceneId]?.entry) atOpen.set(sceneId, world.time.month)
+    // 必须转调原来那个，否则引擎的落笔链断掉
+    prevLocate(sceneId, nodeId)
+  }
+
   // 开局那一批正文。**这是对照行的观测点**——它跟节令判据走同一条 `drain()`
   if (drain().length > 0) sawAnyText += 1
 
@@ -208,7 +233,9 @@ for (let i = 0; i < RUNS; i += 1) {
     } else if (fired.length === 1) {
       const one = fired[0]!
       const rows = when.get(one.id) ?? []
-      rows.push({ month: world.time.month, before: monthBefore })
+      // 演出那一刻的月份优先；`locate` 没记到才退回步末（旧口径）
+      rows.push({ month: atOpen.get(one.id) ?? world.time.month, before: monthBefore })
+      atOpen.delete(one.id)
       when.set(one.id, rows)
       /*
        * 这一步里节令把日历推了多远。
