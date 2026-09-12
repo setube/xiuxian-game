@@ -9,6 +9,7 @@
 import './lib/seeded'
 
 import { ORIGINS, originById, type Origin } from '../src/content/origins'
+import { useCharacterStore } from '../src/stores/character'
 import { rollSideline, useHouseholdStore } from '../src/stores/household'
 import type { Condition, OriginId } from '../src/types/game'
 
@@ -40,6 +41,27 @@ import type { Condition, OriginId } from '../src/types/game'
 export function beOf(id: OriginId): void {
   const row = originById(id)
   const household = useHouseholdStore()
+  /*
+   * 先把「人」叫醒，再摆出身。
+   *
+   * ⚠️ 这一行不是可有可无的：`character` 的 setup 里掷体质、掷资质、掷寿数
+   * （`stores/character.ts` 的 `rollConstitution` / `rollAttributes` / `rollSpan`），
+   * **第一次 `useCharacterStore()` 会掷掉一批随机数**。
+   *
+   * 真实运行里它一开始就醒着，摆局却常常一次也不碰它——于是那一批骰子
+   * 被推迟到「第一次有人读 `character`」的那一刻。而读它的可能是
+   * `applyEffects`（`snapshotRoles` → `roleId('playmate')` → 我今年几岁），
+   * 于是**摆局里的人会在某一次 applyEffects 之后忽然老死**：
+   * 不是那条效果杀的，是那一刻流位置整个错开了。
+   *
+   * 症状是低频红——四颗种子绿、第五颗红，看着像闪红。2026-09-12
+   * 另一个会话在 `hardship` 上撞到，二分到「换一面无关的旗照样杀人」为止。
+   *
+   * 叫醒放在这里，那批骰子就掷在**摆局阶段的固定位置**上，
+   * 不再随「这一支门禁第几次调 applyEffects」浮动。
+   * 这一条属于「摆局跳过的引擎步骤」那一族：摆浅了，跳过的那段在真世里是有的。
+   */
+  useCharacterStore()
   household.origin = row.id
   household.census = row.census
   household.livelihood = row.livelihood

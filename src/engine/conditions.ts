@@ -149,27 +149,44 @@ const CHECKS = {
 
   family: (family, { household }) => {
     const people = usePeopleStore()
-    if (family.exists !== undefined && exists(family.id) !== family.exists) return false
-    if (family.alive !== undefined && household.isAlive(family.id) !== family.alive) return false
-    if (family.present !== undefined && isPresent(family.id) !== family.present) return false
-    if (family.age !== undefined && !within(people.ageOf(family.id), family.age)) return false
+    /*
+     * 条件里写的也可能是角色记号（`'elder'`、`'playmate'`），换成此刻那个真人。
+     *
+     * ⚠️ **这一行从前没有，而效果层早就有了**（`effects.ts` 的 `aimAtPerson`）：
+     * 同一个 `'playmate'`，写在效果里换得到人，写在条件里却原样拿去查人口册
+     * ——册上没有叫「playmate」的人，于是**恒假**。
+     *
+     * 症状跟「这个条件太严了」一模一样：门禁绿、类型过、演出零次。
+     * `playmate` 那三卷的入场条件全是这个，一卷也演不到。
+     *
+     * 同一个文件里 `ask.who` 那一处（底下 `mayAsk` 那行）已经这么写了，
+     * 只是 `family` 这一格漏了。这里是补齐，不是发明新写法。
+     *
+     * 换不到人（身边没有这样的人）就用原字符串——那时它必然查不到，
+     * 各格照常返回 false，跟「没有这个人」是同一个答案。
+     */
+    const id = roleId(family.id) ?? family.id
+    if (family.exists !== undefined && exists(id) !== family.exists) return false
+    if (family.alive !== undefined && household.isAlive(id) !== family.alive) return false
+    if (family.present !== undefined && isPresent(id) !== family.present) return false
+    if (family.age !== undefined && !within(people.ageOf(id), family.age)) return false
     /*
      * 身子骨。跟 `age` 是两问：同样五十岁，有硬朗的也有垮了的。
      * 死了的人问不出来——他的 health 停在殁的那一天，拿它判「他还撑不撑得住」
      * 是把一个死人当活人量。
      */
     if (family.health !== undefined) {
-      const person = people.personOf(family.id)
-      if (person === undefined || !household.isAlive(family.id)) return false
+      const person = people.personOf(id)
+      if (person === undefined || !household.isAlive(id)) return false
       if (!within(person.health, family.health)) return false
     }
     if (family.livelihood !== undefined) {
       // 问的是他自己的营生；没有自己的就是他那一户的，死了的问不出来
-      const own = people.livelihoodOf(family.id)
+      const own = people.livelihoodOf(id)
       if (own === undefined || !family.livelihood.includes(own)) return false
     }
     if (family.cause !== undefined) {
-      const cause = people.personOf(family.id)?.death?.cause
+      const cause = people.personOf(id)?.death?.cause
       if (cause === undefined || !family.cause.includes(cause)) return false
     }
     /*
@@ -183,7 +200,7 @@ const CHECKS = {
      * 拿它当「没有好感」用会把「素不相识」和「认得但淡」混成一件事。
      */
     if (family.affinity !== undefined) {
-      const acquaintance = people.known[family.id]
+      const acquaintance = people.known[id]
       if (acquaintance === undefined) return false
       if (!within(acquaintance.affinity, family.affinity)) return false
     }

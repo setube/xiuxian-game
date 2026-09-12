@@ -22,6 +22,7 @@ import { nephewEvents, nephewScenes } from './nephew'
 import { reunionEvents, reunionScenes } from './reunion'
 import { refugeEvents, refugeScenes } from './refuge'
 import { regardEvents, regardScenes } from './regard'
+import { playmateEvents, playmateScenes } from './playmate'
 import { investEvents, investScenes } from './invest'
 import { unrestEvents, unrestScenes } from './unrest'
 import { rivermanEvents, rivermanScenes } from './riverman'
@@ -822,6 +823,31 @@ export const CHAPTERS: readonly Chapter[] = [
       '这一章不给任何东西：身份该给的 exam 已经给过，这里只让它在别人身上发生一次',
     ],
     marks: ['chronicle'],
+  },
+  /**
+   * 一起长大的那个人。
+   *
+   * 邻家的孩子出生那一刻就在人口册上（东西两邻各 0–3 个，400 世实测 84.3% 的人生认得出一个），
+   * 而在这一章之前**全库内容一处也没有具名写过他**——他只活在
+   * `alongNow()` 的「今天跟谁去玩」里，是个类别不是个人。
+   *
+   * 三卷同一个人、三个年纪：少年一起干的一件事、他成家那年、中年还走不走动。
+   * 照 `Footing` 那段立的规矩：同一个人见三回，三回不一样，
+   * 中间隔着的不是好感度条，是各自过了什么日子。
+   */
+  {
+    id: 'playmate',
+    scenes: playmateScenes,
+    events: playmateEvents,
+    called: ['年表'],
+    to: [],
+    age: [8, 70],
+    purpose: [
+      '邻家的孩子从一个类别变成一个人：{call:playmate} 按「邻户里跟你年纪最近、还在身边的」现算',
+      '三回三个年纪，不加状态格——分岔问的是已经有的东西（成没成家、这些年还走不走动）',
+      '约 16% 的人生里没有这样一个人，这三卷一卷也演不到：从小没有同龄玩伴是真实的人生，不保底',
+    ],
+    marks: [],
   },
 
   /**

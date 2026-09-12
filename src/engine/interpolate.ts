@@ -119,13 +119,36 @@ function idByBond(order: readonly Bond[]): string | undefined {
  * 那时它落到下一个——**而那正是对的**：一起玩的人走了，
  * 你还是会跟别的孩子玩，只是不再是他。
  *
- * ⚠️ 6.3% 的人生里两户一个孩子也没有（20000 次实测），这时它返回 `undefined`，
+ * ⚠️ 6.3% 的人生里两户一个孩子也没有（20000 次实测，正是 `(1/4)²`——
+ * 两户各掷 `randomBetween(0, 3)` 都掷中 0），这时它返回 `undefined`，
  * 那一条效果不落、那一句正文换成兜底。**从小没有同龄玩伴是一种真实的人生**，
  * 不给它保底。
+ *
+ * ⚠️ **这个数说的是「立基那一刻」，跟「某一年这个函数认不认得出人」不是一回事。**
+ * 玩家八岁那年实测认得出的是 84.3%（400 世）——差的那一截不全是掷 0：
+ * 底下两条门槛还会挡掉一些（跟户主差不满十六岁的算那一户的大人，
+ * 跟你差过十二岁的算哥哥辈）。两个数各自成立，**采样点不同**，
+ * 别把它们当成矛盾去「修」。
  */
 function idOfPlaymate(): string | undefined {
   const people = usePeopleStore()
-  const mine = people.ageOf('me')
+  /*
+   * 我今年几岁，问 `character`，**不问人口册**。
+   *
+   * ⚠️ 这一行从前是 `people.ageOf('me')`，而**「我」从来不在人口册上**
+   * （`'me'` 只是关系图上的节点名，没有任何地方 enroll 过它）——
+   * 于是它恒为 0，`gap` 退化成孩子自己的岁数，这个函数问的变成了
+   * 「邻家有没有不满十二岁的孩子」，跟玩家多大毫无关系。
+   *
+   * 症状是安静的：它照样返回一个真人、`{call:playmate}` 照样印出名字，
+   * 只是**挑错了人**——玩家四十岁那年，它指的仍然是巷子里最小的那个孩子。
+   * 400 世实测命中 13.5%，而至少有一个邻家孩子的是 84.8%：
+   * 差的那七成全被「你不满十二岁」这条没人写过的规矩挡在外面。
+   *
+   * `effects.ts` 那段注释早写过同一个坑（家里添的孩子一律落回「某」姓，
+   * 因为 `personOf('me')?.surname` 恒 undefined）。同一个 `'me'`，第二次。
+   */
+  const mine = useCharacterStore().age
   let best: string | undefined
   let closest = Number.POSITIVE_INFINITY
   for (const house of people.neighbourHouses()) {
@@ -193,14 +216,42 @@ export function roleId(role: string): string | undefined {
  */
 export type RoleSnapshot = Readonly<Record<RoleId, string | undefined>>
 
+/**
+ * ⚠️ 加角色的人注意：**这里少写一个键，`vue-tsc --build` 可能不告诉你**。
+ *
+ * 类型本身是咬得住的——`Record<RoleId, …>` 缺一个键就是 `TS2741`。
+ * 咬不住的是**增量构建**：`package.json` 里 `type-check` 是 `vue-tsc --build`，
+ * 它读 `node_modules/.tmp/*.tsbuildinfo`，改了别处没重编这一支时会安静放过。
+ *
+ * 我加第四个角色 `playmate` 时就漏了这一处，而连跑几次 `--noEmit` 全绿；
+ * 换 `--build --force` 当场三条错（这里两条、`ROLE_ORDER` 那里一条）。
+ * **CLAUDE.md 那条「拿它当验收门槛之前先跑 `--force`」说的正是这个。**
+ *
+ * 底下那句 `satisfies` 不是必需的（`Record` 自己就报），留着是因为它
+ * 多报一条更直白的 `TS1360`，把「哪个键缺了」写在错误信息里。
+ */
 export function snapshotRoles(): RoleSnapshot {
-  return { elder: roleId('elder'), dam: roleId('dam'), child: roleId('child') }
+  return {
+    elder: roleId('elder'),
+    dam: roleId('dam'),
+    child: roleId('child'),
+    playmate: roleId('playmate'),
+  } satisfies { [K in RoleId]-?: string | undefined }
 }
 
 /** 快照里那个人此刻怎么叫。人殁了也叫得出来（边不封口）——「爹那年入冬没能熬过去」说的就是他 */
 function snapshotCall(id: string | undefined, role: RoleId, manner: Manner): string {
   if (id === undefined) return '家里的大人'
   const people = usePeopleStore()
+  /*
+   * 玩伴没有亲属称谓，所以跳过 bond 那一圈。
+   *
+   * `ROLE_ORDER` 那张表是「这个角色按哪几条 bond 找人」，而邻家的孩子
+   * 不是亲属——他一条 bond 也没有（`idOfPlaymate` 按住处和年纪取）。
+   * 拿他去查 `kinCall` 只会一路落空，最后还是回到 `callOf`，
+   * 而 `callOf` 本来就会按邻居那一层现算（「西头沈家的」）。
+   */
+  if (role === 'playmate') return people.callOf(id)
   for (const bond of ROLE_ORDER[role]) {
     if (!people.kinOf(bond).includes(id)) continue
     return (
