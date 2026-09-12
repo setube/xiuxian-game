@@ -23,6 +23,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { lifeEvents, lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
+import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { usePeopleStore } from '../src/stores/people'
 import { useWorldStore } from '../src/stores/world'
@@ -273,10 +274,83 @@ function check(label: string, walked: string[], expected: string): void {
   }
 }
 
+/**
+ * 效果层：**去还是留，落的是相反的旗**。
+ *
+ * 上面那几条验的是「两条路各自走得到」和入场条件——
+ * **把 `applyEffects` 整个改成空转，它们纹丝不动**（2026-09-12 B 刀实测）。
+ *
+ * 三卷各落各的：
+ *
+ *     apprentice  go 落「去了镇上」+ 体魄 3、见识 4、心志 3
+ *                 stay 落「回了那份工」
+ *     homecoming  stay-home 落「回来了」+ 心志 2
+ *     emptied     stay-and-settle 心志 3
+ *
+ * ## 那两面旗是相反的，而且各标一个未来
+ *
+ * `went-to-town` 是 `homecoming` 和 `emptied` 两卷的入场条件——
+ * **去了镇上的人才有「回来」这件事**。而 `turned-down-shopwork`
+ * 记的是他没去。两面旗都不落，后头两卷一个人也读不到。
+ *
+ * 判「两条路落相反的旗」不判「go 正好 +4 见识」。
+ */
+{
+  interface Marked {
+    went: boolean
+    turned: boolean
+    insight: number
+    will: number
+  }
+
+  function markedBy(scene: string, pick: string): Marked {
+    stage()
+    // 学徒那一卷要「有人给过这份工」才进得来
+    const world = useWorldStore()
+    world.setFlag('offered-shopwork', true)
+    const character = useCharacterStore()
+    const before = { ...character.attributes }
+    play(scene, (opts) => (opts.includes(pick) ? pick : opts[0]!))
+    return {
+      went: world.getFlag('went-to-town') === true,
+      turned: world.getFlag('turned-down-shopwork') === true,
+      // 记增量：每次摆局各起各的 pinia，属性起手是现掷的
+      insight: character.attributes.insight - before.insight,
+      will: character.attributes.will - before.will,
+    }
+  }
+
+  const went = markedBy('reunion:apprentice', 'go')
+  const stayed = markedBy('reunion:apprentice', 'stay')
+
+  const wrong: string[] = []
+  if (!went.went) {
+    wrong.push('去了镇上，却没落「去了镇上」那面旗——后头两卷的入场就此关死')
+  }
+  if (went.turned) wrong.push('去了镇上，却记成「回了那份工」')
+  if (!stayed.turned) wrong.push('回了那份工，却没落下那面旗')
+  if (stayed.went) wrong.push('留下了，却记成「去了镇上」')
+  if (went.insight <= 0) wrong.push(`出去闯那几年该长见识，实际 ${went.insight}`)
+  if (went.insight === stayed.insight && went.will === stayed.will) {
+    wrong.push('去了和留下落的是同样的东西——那一节两条路没有分别')
+  }
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ 重逢效果层：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log(
+      `  ✓ 重逢效果层：去了落「去了镇上」旗、见识 +${went.insight}；` +
+        `留下落「回了那份工」旗——两面旗相反，各标一个未来。`,
+    )
+  }
+}
+
 console.log()
 if (bad > 0) {
   console.log(`  ✗ ${bad} 项不成立。\n`)
   process.exitCode = 1
 } else {
-  console.log('  重逢那几卷，各条路各自有人走过了。\n')
+  console.log('  重逢那几卷，各条路各自有人走过了，去还是留也各标各的。\n')
 }
