@@ -7,8 +7,11 @@
  *   open         结算节点（收掉「在铺子里做伙计」这件事），四条分流
  *   entrusted    掌柜把钥匙给你　→ 管事 + 营生「经商」
  *   went-home    回乡　　　　　　→ 农家子
- *   grew-old     老徐那条路　　　→ 老伙计（兜底，最多人走）
+ *   grew-old     老徐那条路　　　→ 老伙计（兜底那一条）
  *   shop-closed  掌柜没了铺子散了→ 佣工 + 营生「佣工」
+ *
+ * 1500 世真世实测：走进这一卷 73 世，回乡 46.6%、铺子关了 35.6%、
+ * 老伙计 9.6%、托付 8.2%——**兜底不等于最多**。
  *
  * ## 这一支为什么非有不可
  *
@@ -30,11 +33,19 @@
  * 分流目标常常串在同一条路径上，`walked.includes(目标)` 会让
  * 错的答案蒙混过关。这里只认**除 `open` 之外落到的第一个节点**。
  *
- * ## 三刀验收（A/B/D）
+ * ## 三刀验收（`bash scripts/cut.sh`）
  *
- *     A 刀　`meetsAll` 恒真／恒假　→ 分流那三条全歪，前三节该红
- *     B 刀　`applyEffects` 空转　　→ 底下第五节（身份和营生）该红
- *     D 刀　把岁数条件改掉　　　　 → 分布那一节该红
+ *     A 刀　`meetsAll` 恒真　　→ 分流那三条全歪，红 8 项
+ *     B 刀　`applyEffects` 空转→ 身份和营生全不落，红 6 项
+ *     C 刀　`meetsAll` 恒假　　→ 见底下
+ *
+ * ⚠️ **A 和 C 不是一刀的两种说法，A 照不出恒假的条件**——`meetsAll`
+ * 恒真的时候，一条恒假的条件也跟着成立了，于是那一卷反而「正常」。
+ *
+ * 这一点对这一支尤其要紧：**这一册最初的 bug 就是恒假条件**
+ * （前两版各有两条分流恒假，而 `identity.ts` 全绿）。
+ * 头一版文件头把两刀合成一条写，等于**写了一支专门抓恒假的门禁，
+ * 却记下一把照不出恒假的刀**——下一个人照它复验会少跑的正是那一刀。
  *
  * 跑法：bun scripts/counter.ts
  */
@@ -265,11 +276,16 @@ let bad = 0
 }
 
 // ============================================================
-// 四、老徐那条路：兜底，也是最多人走的一条
+// 四、老徐那条路：兜底那一条
 //
 // **四十岁还在柜台后头不是未完成，是一种结局**——而那正是
 // 这一卷要说的话。所以这一条要验的是身份真的换了一个词：
 // 挂着「伙计」进棺材是 bug，挂着「老伙计」进棺材不是。
+//
+// ⚠️ 这里从前写着「也是最多人走的一条」，**实测推翻了**：
+// 1500 世真世里走进这一卷 73 世，回乡 46.6%、铺子关了 35.6%、
+// 老伙计 9.6%、托付 8.2%。兜底不等于最多——
+// 前面三条各自筛掉一批人之后，剩到兜底的反而是少数。
 // ============================================================
 {
   const walked = stagedRun(35, true)
@@ -300,7 +316,67 @@ let bad = 0
 }
 
 // ============================================================
-// 五、四个去处互不相同
+// 五、那两个人真的进了册——`youth:apprentice#open:shop` 那一头
+//
+// ⚠️ **这一条是 `apart` 那支门禁逼出来的，而它报得对。**
+//
+// 我在 `youth:apprentice` 的 `shop` 选项上加了两笔 `meet`（掌柜、老徐）
+// 之后，那一处就进了 `apart` 的覆盖率表——它扫全库所有「会改变谁在
+// 你身边」的地方，要么自己走到，要么在移交表里写明谁量。
+// 而 `apart` 走的是 `craft` 那条（学手艺），`shop` 这条它一次没走到，
+// 于是当天报：「那条路没人量过」。
+//
+// **那不是它多事。** 这一册整个建在这两个人身上：
+// `open` 的分流问掌柜死活、`grew-old` 末尾那句 `seen` 问老徐死活。
+// 他们要是没入册，上面四节全部落进「掌柜没了」那一支——
+// 而报表上看起来只是「这一卷偏爱某个结局」。
+//
+// 所以这一条从 `shop` 那条选项本身演起，不摆局喂人。
+// ============================================================
+{
+  setActivePinia(createPinia())
+  beOf('farm')
+  useHouseholdStore().standing = 40
+  useWorldStore().advanceTime({ years: 17 })
+
+  const wrong: string[] = []
+  const node = lifeScenes['youth:apprentice']?.nodes['open']
+  const shop = node?.choices?.find((one) => one.id === 'shop')
+  if (shop === undefined) {
+    wrong.push('`youth:apprentice#open` 上没有 shop 那条选项了——这一册的入口不见了')
+  } else {
+    if (node?.onEnter) applyEffects(node.onEnter)
+    applyEffects(shop.effects)
+
+    const people = usePeopleStore()
+    const character = useCharacterStore()
+    for (const [id, who] of [
+      ['shop-keeper', '掌柜'],
+      ['old-clerk', '老徐'],
+    ] as const) {
+      if (people.personOf(id) === undefined) {
+        wrong.push(`进了铺子，而${who}（${id}）没有入册——这一册的分流全建在他身上`)
+      }
+    }
+    if (!character.doing('shopwork')) {
+      wrong.push('进了铺子，而「在铺子里做伙计」这件事没立起来——那一卷的入场条件问的正是它')
+    }
+    if (character.identity !== '伙计') {
+      wrong.push(`进了铺子，身份却是「${character.identity}」`)
+    }
+  }
+
+  if (wrong.length > 0) {
+    console.log(`  ✗ 进铺子那一头：${wrong.length} 处不成立。`)
+    for (const one of wrong) console.log(`      ${one}`)
+    bad += wrong.length
+  } else {
+    console.log('  ✓ 进铺子那一头：掌柜和老徐都入了册，那件事也立起来了。')
+  }
+}
+
+// ============================================================
+// 六、四个去处互不相同
 //
 // ⚠️ **这一条是这支门禁的尺子自检，也是它存在的直接理由。**
 //
@@ -338,7 +414,7 @@ let bad = 0
 }
 
 // ============================================================
-// 六、尺子自检：那四条效果真的挂在我起演的那几节上
+// 七、尺子自检：那四条效果真的挂在我起演的那几节上
 //
 // ⚠️ 防的是「从错的节点起演」——那时候一条效果也落不到，
 // 上面几节会整片报红，**读着像内容坏了**。
@@ -354,7 +430,9 @@ let bad = 0
   for (const { node, least } of checks) {
     const count = lifeScenes[SCENE]?.nodes[node]?.onEnter?.length ?? 0
     if (count < least) {
-      console.log(`  ✗ 尺子自检：「${node}」只挂着 ${count} 条效果（该有 ${least} 条往上）——结构变了。`)
+      console.log(
+        `  ✗ 尺子自检：「${node}」只挂着 ${count} 条效果（该有 ${least} 条往上）——结构变了。`,
+      )
       bad += 1
     }
   }

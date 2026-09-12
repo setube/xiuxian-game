@@ -1029,6 +1029,19 @@ const HANDED_OVER: Readonly<Record<string, string>> = {
    * `match.ts` 那一支专门摆两个局验它：穷的走得到、不穷的走不到，两头都验。
    */
   'match:offer#uxorial': 'match.ts',
+  /*
+   * 进铺子当伙计那一条：领掌柜和老徐进门。
+   *
+   * 这一支走的是同一节里的 `craft`（学手艺）那条，`shop` 这条走不到
+   * ——两条是同一个 `choices` 里的兄弟，各带各的人。
+   *
+   * `counter.ts`（柜台后头那些年）第五条从 `shop` 这条选项本身演起，
+   * 验两个人都入了册、「在铺子里做伙计」那件事也立起来了。
+   * 它非验不可：**那一册整个建在这两个人身上**——分流问掌柜死活，
+   * 末尾那句 `seen` 问老徐死活。他们要是没入册，四条路全落进
+   * 「掌柜没了」那一支，而报表上只显示「这一卷偏爱某个结局」。
+   */
+  'youth:apprentice#open:shop': 'counter.ts',
   'reunion:apprentice#open:go': 'kept.ts',
   'reunion:homecoming#open': 'kept.ts',
   'reunion:homecoming#open:back-to-town': 'kept.ts',
