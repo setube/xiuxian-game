@@ -33,6 +33,7 @@ import { apprenticeEvents, apprenticeScenes } from './apprentice'
 import { attemptEvents, attemptScenes } from './attempt'
 import { bearingEvents, bearingScenes } from './bearing'
 import { candourEvents, candourScenes } from './candour'
+import { censusEvents, censusScenes } from './census'
 import { counterEvents, counterScenes } from './counter'
 import { festivalEvents, festivalScenes } from './festival'
 import { findingEvents, findingScenes } from './finding'
@@ -512,6 +513,41 @@ export const CHAPTERS: readonly Chapter[] = [
    * 四个都不会因为别的事情不再是——**而「老伙计」这个词正是这一卷的要害**：
    * 四十岁还在柜台后头不是未完成，可他早就不是当年那个伙计了。
    */
+  /**
+   * 造册那年，册子上那一行跟你家对不上。
+   *
+   * ## 它验的是一件别的事：关系不是状态，是一种别人替代不了的能力
+   *
+   * 库里到今天为止，人际关系是**状态**：他在不在、活着没有、好感多少。
+   * 而这一卷里，那个人能办的事**只有他办得了**——不是因为他跟你好，
+   * 是因为**他见过**：他在这条巷子里长大，知道你家原先在哪头、哪一年搬的。
+   *
+   * ⚠️ **入场一格也不问「认识多少年」。** 条件是「他还在 + 此前还走动
+   * + 眼下真有这件事」。三十年是它读起来特别的原因，不是它成立的条件
+   * ——按年数判会造出一个「三十年老友系统」。
+   *
+   * 制度依据在 `design/ming-society.md` 第五节：邻居是法律关系
+   * （《大明律》以「邻佑」「四邻」为见证），而户婚田土这类小事
+   * 「不许辄便告官，务要经由本里老人、里甲断决」。
+   * **所以找他出面不是人情，是这个制度本身要求的形式。**
+   *
+   * `marks` 里没有 `identity`：这一卷什么身份也不改。它落的是两面旗
+   * 和一笔年表——**一件事办完了，而办法有两种**。
+   */
+  {
+    id: 'census',
+    scenes: censusScenes,
+    events: censusEvents,
+    called: ['年表'],
+    to: [],
+    age: [40, 66],
+    purpose: [
+      '过去认识的人，三十年后仍然是一个有现实作用的人',
+      '他能作证的只是他亲眼见过的那一部分——人提供事实，册子登记，官役核验',
+    ],
+    marks: ['flag', 'chronicle'],
+  },
+
   {
     id: 'counter',
     scenes: counterScenes,

@@ -325,6 +325,21 @@ export const playmateScenes: SceneLibrary = {
 
       close: {
         id: 'close',
+        /*
+         * 这一册的第一面旗，也是唯一一面。
+         *
+         * 它记的不是「好感够了」——那一格现算就有（`affinity`），
+         * 记它等于抄第二遍。它记的是**底下那句话说出口过**：
+         *
+         *     走的时候他说，有事言语一声。这句话你们说了几十年了。
+         *
+         * 那句话从前没有任何下文。一句说了几十年的客套，
+         * 要么一辈子是客套，要么有一天**当真了**——而后者得有人写。
+         *
+         * ⚠️ 落在这一支不落在别处：`apart` 那两个人点个头就走了，
+         * `gone` 里他已经不在。**只有这一支的两个人还说得上话。**
+         */
+        onEnter: [{ type: 'flag', key: 'said-come-to-me', value: true }],
         blocks: [
           { kind: 'narration', text: '入冬前你在巷口碰见{call:playmate}。' },
           { kind: 'narration', text: '他站住了，问你家里都还好。你们在巷口说了半盏茶的话。' },
