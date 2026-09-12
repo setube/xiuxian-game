@@ -32,9 +32,11 @@ import { createPinia, setActivePinia } from 'pinia'
 import { lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
+import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useWorldStore } from '../src/stores/world'
-import type { Choice, SceneNode } from '../src/types/game'
+import type { Choice, SceneNode, Condition } from '../src/types/game'
+import { checkForking } from './lib/forking'
 import { beOf } from './origin'
 
 const SCENE = 'riverman'
@@ -173,7 +175,86 @@ let bad = 0
 }
 
 /**
- * 四、尺子自检：场景 id 打对了，真的走进去了。
+ * 四、条件层：**两张分流表，不同的人去了不同的地方吗**。
+ *
+ * 上面那几条问的是「走得到吗」——把 `meetsAll` 整个改成恒真，
+ * **它们纹丝不动**（2026-09-12 打断实测）。
+ *
+ * 这一卷有两张分流表，从前一张也没人验：
+ *
+ *     open        按身份分   落难的 / 宗室 / 护送出身
+ *     approached  按物件分   薄册 / 怪根 / 货郎那本假书 / 身上带着邪气
+ *
+ * 第二张尤其要紧：**他看的是你，不是你想让他看的东西**——
+ * 身上揣着什么，这一眼就定了这一卷的结局。四条各有各的落点，
+ * 而「走得到吗」那类判据对它们一视同仁。
+ *
+ * 摆局用 `scripts/lib/forking.ts`：它自带兜底那一条的验证
+ * （`node.next` 没有 `requires`，逐档那一圈碰不到它，
+ * 而分流表里再加一档它就永远轮不到了）。
+ */
+{
+  /**
+   * 照一条条件摆局。摆不出来回 `false`——**那不是失败，是这一档我摆不了**。
+   *
+   * 只认这一卷真用到的那几格：身份、营生、物件、旗。
+   * 认不出的格子一律回 `false`，宁可少验一档，也不要摆一个自以为对的局
+   * ——摆歪了的局报出来的红，指的是内容，而错在摆局的人。
+   */
+  function put(requires: readonly Condition[]): boolean {
+    stage()
+    const world = useWorldStore()
+    const household = useHouseholdStore()
+    const character = useCharacterStore()
+    for (const one of requires) {
+      if (one.station !== undefined) {
+        household.station = one.station
+        continue
+      }
+      if (one.livelihood !== undefined) {
+        household.livelihood = one.livelihood
+        continue
+      }
+      if (one.item !== undefined) {
+        // `carry` 才是入口（`effects.ts` 的 `case 'item'` 走的也是它）。
+        // 名字只在面板上显示，这里给一个够用的
+        character.carry(one.item, one.item, 1, '件')
+        continue
+      }
+      if (one.flag?.key !== undefined && one.flag.equals === undefined) {
+        world.setFlag(one.flag.key, true)
+        continue
+      }
+      return false // 这一格我不会摆
+    }
+    return true
+  }
+
+  for (const node of ['open', 'approached'] as const) {
+    const report = checkForking(SCENE, put, node)
+    if (report.faults.length > 0) {
+      const real = report.faults.filter((one) => !one.startsWith('·'))
+      const skipped = report.faults.filter((one) => one.startsWith('·'))
+      for (const line of skipped) console.log(`      ${line}`)
+      if (real.length > 0) {
+        console.log(`  ✗ ${node} 分流：验了 ${report.checked} 档，${real.length} 处不对。`)
+        for (const line of real) console.log(`      ${line}`)
+        bad += real.length
+      } else {
+        console.log(`  ✓ ${node} 分流：验了 ${report.checked} 档，都去了对的那一节。`)
+      }
+    } else {
+      console.log(`  ✓ ${node} 分流：验了 ${report.checked} 档，都去了对的那一节。`)
+    }
+    if (report.checked === 0) {
+      console.log(`  ✗ ${node} 分流：一档也没验到——这一条什么也没量。`)
+      bad += 1
+    }
+  }
+}
+
+/**
+ * 五、尺子自检：场景 id 打对了，真的走进去了。
  */
 {
   stage()
