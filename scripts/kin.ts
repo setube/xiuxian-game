@@ -12,7 +12,11 @@
  * 一、dad:north press→told / quiet→untold 两条路各自走得到
  * 二、dad:adept ask→the-story / later→slept 两条路各自走得到
  * 三、mom:past 走进去了
- * 四、尺子自检：三卷各自都走进去了
+ * 四、**条件层**：mom:past 那一节掷出什么，就去了那一节吗　← A 刀要红的
+ * 五、尺子自检：三卷各自都走进去了
+ *
+ * ⚠️ 一到三那几条问「走得到吗」，next 写死在内容里，
+ * `meetsAll` 恒真它们纹丝不动。第四条是 2026-09-12 补的。
  *
  * 跑法：bun scripts/kin.ts
  */
@@ -158,7 +162,81 @@ function check(label: string, walked: string[], expected: string): void {
 }
 
 /**
- * 四、尺子自检：三卷各自都走进去了。
+ * 四、条件层：**娘那天说了什么，就去了那一节吗**。
+ *
+ * 上面几条问的是「选了这个选项走到那个节点了吗」——`next` 写死在内容里，
+ * **把 `meetsAll` 改成恒真它们纹丝不动**（2026-09-12 打断实测）。
+ *
+ * `mom:past` 的 `roll` 那一节按 `mom-told` 分四档：
+ *
+ *     娘家 → told      认字 → letters      荒年 → famine      （不说）→ silent
+ *
+ * ## ⚠️ 这面旗是那一节自己掷的，不能喂
+ *
+ * `onEnter` 里有一条 `roll`（娘家/认字/荒年/不说，带权重），
+ * 摆局喂进去的值会被当场覆盖——`illness` 那一支为这个栽过一次，
+ * 报「设了 died 却走到 lingering」，整体错位一档，看着像内容坏了。
+ *
+ * 所以不喂，改成掷很多次，记下**这一节掷出的值**和**实际走到的节点**，
+ * 再核对对应表。这同时验了两件事：四档都掷得到、每一档都去对了地方。
+ * （`scripts/lib/forking.ts` 的文件头写明了它不管这一种。）
+ */
+{
+  const SCENE = 'mom:past'
+  const scene = lifeScenes[SCENE]
+  const node = scene?.nodes['roll']
+
+  const routes = new Map<string, string>()
+  let flagKey: string | undefined
+  for (const branch of node?.branches ?? []) {
+    const flag = branch.requires?.find((one) => one.flag !== undefined)?.flag
+    if (flag?.equals === undefined || branch.next === undefined) continue
+    flagKey = flag.key
+    routes.set(String(flag.equals), branch.next)
+  }
+  const fallback = node?.next
+
+  if (routes.size < 2 || fallback === undefined || flagKey === undefined) {
+    console.log(
+      `  ✗ 尺子自检：从 ${SCENE}/roll 只取到 ${routes.size} 档分流` +
+        `（兜底 ${fallback ?? '没有'}）——结构变了。`,
+    )
+    bad += 1
+  } else {
+    const ROLLS = 300
+    const seen = new Map<string, number>()
+    const wrong: string[] = []
+    for (let n = 0; n < ROLLS; n += 1) {
+      stage()
+      const walked = playFrom(SCENE, 'roll')
+      const rolled = String(useWorldStore().getFlag(flagKey) ?? '(没掷)')
+      seen.set(rolled, (seen.get(rolled) ?? 0) + 1)
+      const want = routes.get(rolled) ?? fallback
+      if (!walked.includes(want) && wrong.length < 5) {
+        wrong.push(`掷出 ${rolled} 该去 ${want}，实际走过 ${walked.join('→')}`)
+      }
+    }
+
+    const tally = [...seen.entries()].sort((a, b) => b[1] - a[1])
+    console.log(`  ·  ${ROLLS} 次：` + tally.map(([v, n]) => `${v} ${n}`).join('，'))
+
+    // 每一档都要掷得到——有一档一次没掷出来，那一节的判据这一轮什么也没量
+    const missed = [...routes.keys()].filter((v) => !seen.has(v))
+    if (missed.length > 0) {
+      console.log(`  ✗ mom:past 分流：${ROLLS} 次里有几档一次也没掷出来（${missed.join('、')}）。`)
+      bad += 1
+    } else if (wrong.length > 0) {
+      console.log('  ✗ mom:past 分流：掷出来的值跟走到的节点对不上。')
+      for (const line of wrong) console.log(`      ${line}`)
+      bad += wrong.length
+    } else {
+      console.log(`  ✓ mom:past 分流：${routes.size} 档加兜底，掷出什么就去了那一节。`)
+    }
+  }
+}
+
+/**
+ * 五、尺子自检：三卷各自都走进去了。
  */
 {
   const scenes = ['dad:north', 'dad:adept', 'mom:past'] as const
