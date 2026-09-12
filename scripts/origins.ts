@@ -137,6 +137,35 @@ for (const [id, flag] of Object.entries(OWN_EVENT) as [OriginId, string][]) {
       `    「${id}」→ ${eventId}：出身那几格对得上；另有 ${wanted.length - byOrigin.length} 条问的是关系网，这把尺够不着，交给 present／verify。`,
     )
   }
+
+  /*
+   * ⚠️ 上面只问了「这一行人进得去吗」，**而那一半在条件层整个失效时照样成立**
+   * ——把 `meetsAll` 改成恒真，人人都进得去，这条判据一声不响
+   * （2026-09-12 A 刀实测）。
+   *
+   * 补的这一半问反过来：**换一行人，同一卷就不该进得去**。
+   * 那正是「出身有意义」这件事本身——文件头那句
+   * 「生在药铺和生在镖局如果走出来的人生一模一样，那就不是出身，是属性面板」
+   * 说的就是它，而从前没有任何判据在守。
+   *
+   * 只在**那一卷真的问了出身**的时候才判：`byOrigin` 为空的卷谁都进得去，
+   * 那是一种合法的映射（文件头写明了），判它红是冤枉。
+   */
+  if (byOrigin.length > 0) {
+    const others = ORIGINS.filter((row) => row.id !== id)
+    const alsoIn = others.filter((row) => {
+      setActivePinia(createPinia())
+      beOf(row.id)
+      return meetsAll(byOrigin)
+    })
+    if (alsoIn.length === others.length) {
+      console.log(
+        `  ✗ 「${id}」认的那一卷 ${eventId}，**别的 ${others.length} 行人也全进得去**` +
+          `——那几条出身条件没在挑人。`,
+      )
+      nameErrors += 1
+    }
+  }
 }
 if (nameErrors > 0) {
   console.log('    这几格会恒为 0%，而 0% 读起来像是世界设定，不像是配错了。\n')
