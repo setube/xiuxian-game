@@ -524,7 +524,45 @@ export const usePeopleStore = defineStore(
       houses.value = next
     }
 
-    /** 跟玩家自家相邻的那几户 */
+    /**
+     * 跟 `home` 那一户相邻的那几户。
+     *
+     * ## ⚠️ 锚点写死在 `'home'`，而 `'home'` 不总是「玩家此刻住的那一户」
+     *
+     * 出嫁、入赘之后玩家住进另一户（`joinHouse` 返回的 `theirs.id`），
+     * 而 `home` 被 `keepHeads` 的 `iAmGone` 清成空户——**这个函数照旧
+     * 返回娘家那条巷子的东西两邻**。
+     *
+     * 2026-09-13 实测（1200 世，采样点是玩家**活着**却已不算 `home` 的人）：
+     *
+     *     出现过这种情形                        262 世   21.8%
+     *       roleId('playmate') 认出一个不挨着的人  174 世   66.4%
+     *       认不出人（undefined）                  88 世   33.6%
+     *
+     * ## 而这一格【暂不改】，理由不是「不算坏」
+     *
+     * 位置语义的 `{call:playmate}` 目前**没有正文消费者**（全库 7 处
+     * 全是注释；那三卷上一轮已切成人语义 `{call:known/playmate}`）。
+     * 所以它坏的是一个没有业务读取的旧位置角色，不是正在演的假话。
+     *
+     * 而「邻居」锚在哪一户是**两个不同的概念**，不是同一个函数的两版实现：
+     *
+     *     童年时期的邻居    我从哪里长大，谁在我童年生活圈里　← 现状返回的是这个
+     *     此刻的邻居        我现在住哪儿，谁住我隔壁　　　　　← 目前一个内容也不需要
+     *
+     * 消费者越少，越不该把猜测固化成底层契约——**「趁早改」只在目标语义
+     * 已经拍板时才成立**。等第一个真实需求出现（某个事件明确要找
+     * 「此刻住我隔壁的孩子」），那时另立一个按用途命名的查询，
+     * 并且同时定清楚：出嫁/入赘/分家/寄居/离家做工各怎么算、
+     * 邻接是户对户还是住处对住处、要不要求活着、要不要求同一聚落。
+     *
+     * ⚠️ **数据层没有假定这个锚点**：`birth.ts:660/663` 建的是
+     * `home·east`／`home·west`／`east·west`，`divideHouse` 也照实改名并新建边。
+     * 写死只在这一侧的查询里。所以这是一处**待决**，不是一条设计。
+     *
+     * 要「一起长大的那个人」不要走这里，走 `knownOf('playmate')`
+     * ——那是认定过的历史人物，不会因为搬家换人。
+     */
     function neighbourHouses(): House[] {
       return adjacent.value
         .filter((edge) => edge.a === 'home' || edge.b === 'home')
@@ -532,7 +570,15 @@ export const usePeopleStore = defineStore(
         .filter((house): house is House => house !== undefined)
     }
 
-    /** 这个人是不是邻居家的人 */
+    /**
+     * 这个人是不是 `home` 那一户的邻居家的人。
+     *
+     * 锚点和限制同 `neighbourHouses`（出嫁入赘之后问的仍是娘家那条巷子）。
+     *
+     * ⚠️ **目前全库一处调用也没有**（2026-09-13 一手核验）。
+     * `interpolate.ts` 的 `idOfPlaymate` 从前的注释说它「按 `isNeighbour` 派生」
+     * ——那是错的，它调的是 `neighbourHouses`。
+     */
     function isNeighbour(personId: string): boolean {
       return neighbourHouses().some((house) => house.members.includes(personId))
     }

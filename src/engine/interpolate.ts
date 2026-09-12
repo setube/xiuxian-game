@@ -99,9 +99,18 @@ function idByBond(order: readonly Bond[]): string | undefined {
  * ## 为什么它不能照 `idByBond` 写
  *
  * 上面那三个角色都按 `Bond` 取——而邻家的孩子**没有 bond**。
- * 他不是亲属，是「住在挨着的那一户里的人」（`people.isNeighbour` 按住处派生），
+ * 他不是亲属，是「住在挨着的那一户里的人」（`people.neighbourHouses` 按住处派生），
  * 而且他的 id 是出生那一刻随机生成的（`east-child-1` / `west-child-2`…），
  * 数量 0–3，两户合起来平均三个。**内容层写不出他的 id。**
+ *
+ * ⚠️ **那个「挨着」锚在 `houses['home']`，不是「玩家此刻住的那一户」。**
+ * 出嫁入赘之后玩家住进另一户而 `home` 成了空户，这个函数照旧从
+ * 娘家那条巷子里挑人——1200 世实测，玩家活着却已不算 `home` 的人有 262 世，
+ * 其中 174 世（66.4%）这里认出的是一个不挨着的人。
+ *
+ * **暂不改**，理由和那两个概念的分别写在 `stores/people.ts` 的
+ * `neighbourHouses` 上。要「一起长大的那个人」不要走这里，
+ * 走 `people.knownOf('playmate')`——那是认定过的历史人物，搬家不换人。
  *
  * ## 取年纪最近的，不取第一个
  *
