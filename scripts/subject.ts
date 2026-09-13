@@ -495,7 +495,7 @@ console.log(
   `  其中 ${lifeEvents.filter((one) => namedInRequires(one.requires ?? []).size > 0).length} 件事件的入场点了名，是这一支的分母\n`,
 )
 
-console.log(`  ── 覆盖地图：被点名几次 / 其中几次世界往他身上落了东西 ──\n`)
+console.log(`  ── 已判候选中的主体缺口分布：被点名几次 / 其中几次落了东西 ──\n`)
 /**
  * 记号：**数字是事实，记号是走查结论。一个符号不同时承担两件事。**
  *
@@ -545,6 +545,12 @@ for (const [who, one] of [...covered.entries()].sort((a, b) => b[1].named - a[1]
   console.log(
     `    ${who.padEnd(16)} ${String(one.landed).padStart(2)} / ${String(one.named).padEnd(2)}${mark}`,
   )
+  // 一行的记号是【多条候选的合取】。把撑着它的那几条印出来——
+  // 打断验就能自己回答「我的刀砍中了没有」，不必先去怀疑记号是死的
+  for (const row of mine) {
+    const tag = !judgedOf(row) ? "未判" : realOf(row) ? "主体" : "非主体"
+    console.log(`        └ ${row.event.padEnd(22)} ${tag}`)
+  }
 }
 
 /**
