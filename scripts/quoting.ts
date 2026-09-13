@@ -118,7 +118,8 @@ const walk = (dir: string): void => {
   }
 }
 walk('src/content')
-const ALL = contentFiles.map((one) => readFileSync(one, 'utf8')).join('｜')
+const ALL_FILES = contentFiles.map((one) => readFileSync(one, 'utf8'))
+const ALL = ALL_FILES.join('｜')
 
 interface Lost {
   file: string
@@ -127,6 +128,8 @@ interface Lost {
 }
 
 const lost: Lost[] = []
+/** 在库里【不止一处】出现的：找得到，而那只证明「存在相容解释」 */
+const weak: Lost[] = []
 let quoted = 0
 const SELF = 'quoting.ts'
 
@@ -139,13 +142,40 @@ for (const file of readdirSync('scripts').filter((one) => one.endsWith('.ts') &&
       const said = hit[1]
       if (said === undefined) continue
       quoted += 1
-      if (!ALL.includes(said)) lost.push({ file, line: i + 1, said })
+      if (!ALL.includes(said)) {
+        lost.push({ file, line: i + 1, said })
+        continue
+      }
+      /*
+       * ⚠️ 「找得到」只证明【存在相容解释】，不证明【目标解释唯一成立】。
+       *
+       * `ALL` 是整个 `src/content/` 拼成的一个大字符串，所以一句话
+       * 「还在」只说明**某处有这些字**——正文在原地改了，
+       * 而别处碰巧有同样的字，这一支照样说找得到。
+       *
+       * 实测 82 句里 **20 句在不止一个文件里出现**
+       * （「别出去乱说」在 6 个文件里都有——山上那条线反复提它）。
+       *
+       * **多处出现不一定是缺陷**，那可能正是内容有意的回响。
+       * 但它意味着这 20 句的保护力比另外 62 句弱：
+       * 抄它的那一处改了，这一支看不见。
+       */
+      if (ALL_FILES.filter((one) => one.includes(said)).length > 1) {
+        weak.push({ file, line: i + 1, said })
+      }
     }
   })
 }
 
 console.log(`\n=== 判据里抄的那句正文，库里还在吗 ===\n`)
 console.log(`  ${quoted} 处抄了正文原句（四个汉字以上）。\n`)
+
+console.log(
+  `  ◆ 其中 ${weak.length} 句在【不止一个文件】里出现——「找得到」对它们` +
+    `只证明【存在相容解释】，不证明抄它的那一处还在。` +
+    `\n    多处出现不一定是缺陷（内容有意的回响），而这 ${weak.length} 句的` +
+    `保护力比另外 ${quoted - weak.length} 句弱。\n`,
+)
 
 if (lost.length === 0) {
   console.log(`  ✓ 每一句在内容库里都找得到。\n`)
