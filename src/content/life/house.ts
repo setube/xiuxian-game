@@ -261,6 +261,42 @@ export const houseScenes: SceneLibrary = {
             requires: [{ family: { id: 'east-head', alive: true } }],
             text: '中人请的是{call:east-head}，和族里的一位长辈。',
           },
+          /*
+           * ⚠️ 中人是什么人，决定他怎么当这个中人。
+           *
+           * 全库问性情的六个人**全是家里人**（娘 12 处、哥 8、配偶 7、
+           * 儿子 7、侄儿 4），加一个田主 2 处——**东邻零处**。
+           * 而田主那两处正是范本：荒年求他宽限租子，按性情分三支
+           * （`dearth.ts` 的 `rent-deferred` / `rent-refused`）。
+           *
+           * 「请他当中人」是这一卷唯一一处**要求他有某种分量**的用法，
+           * 而条件层从前只问他活着。他身上 `temper` 一直有值
+           * （温和 / 谨慎 / 刚硬 / 精明 / 木讷 / 暴躁），**没有人读过。**
+           *
+           * 三档照田主那一处的分法：**话多的把场面撑起来，
+           * 话少的坐着不吭声，硬的那种自己先有主张。**
+           */
+          {
+            requires: [
+              { family: { id: 'east-head', alive: true } },
+              { temper: { id: 'east-head', in: ['温和', '精明'] } },
+            ],
+            text: '他把两张分书都念了一遍，念得很慢，念完问哥和你还有没有话说。',
+          },
+          {
+            requires: [
+              { family: { id: 'east-head', alive: true } },
+              { temper: { id: 'east-head', in: ['木讷', '谨慎'] } },
+            ],
+            text: '他坐在下首，从头到尾没说几句话，末了在两张纸上都按了手印。',
+          },
+          {
+            requires: [
+              { family: { id: 'east-head', alive: true } },
+              { temper: { id: 'east-head', in: ['刚硬', '暴躁'] } },
+            ],
+            text: '他听哥说完，说了句「照老理儿，老屋归长子」，就不再开口了。',
+          },
           {
             requires: [{ family: { id: 'east-head', alive: false } }],
             text: '中人请的是族里的两位长辈。',
