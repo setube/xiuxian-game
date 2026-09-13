@@ -198,7 +198,40 @@ interface Lived {
   borrowing: string | null
   /** 邻居的称呼里有没有英文或 id */
   leaked: string[]
+  /** 东邻添丁那一卷演到了没有（`life/neighbour.ts`） */
+  eastBorn: boolean
+  /** 立基那一刻东邻有没有孩子——【分支条件本身】，出生那一刻就定了，之后不变 */
+  hadEastChild: boolean
+  /** 正文里【观察到】走了哪一支。跟上一格对照，就能问「条件和正文是不是一回事」 */
+  sawFirst: boolean
+  sawAnother: boolean
+  /** 那个娃落进了哪一户、姓跟那一户合不合、玩家走完时她多大 */
+  babyHouse: string | null
+  babySurnameMatches: boolean | null
+  babyAge: number | null
+  /**
+   * 玩家走完那一刻她还在不在。
+   *
+   * ⚠️ 这一格不是锦上添花，**上一格的判据离了它就是错的**：
+   * 殁了的人会被从 `members` 里滤掉（`stores/people.ts` 结算那一段），
+   * 于是「她此刻在哪一户」对死人恒为「哪一户也不在」。
+   * 55 世里 24 世撞上，看着正像落户坏了——而那 44% 恰恰是她也会死的证据。
+   */
+  babyAlive: boolean | null
 }
+
+/**
+ * 两支的特征句【从库里现取】，不照印象抄。
+ *
+ * 取第二段：两支的头一段是同一句（「第二天晌午…」），认不出谁是谁。
+ */
+const markOf = (node: string, nth: number): string => {
+  const blocks = lifeScenes['neighbour:east-born']?.nodes[node]?.blocks ?? []
+  const texts = blocks.map((b) => ('text' in b ? b.text : '')).filter((t) => t.length > 0)
+  return texts[nth] ?? texts[0] ?? ''
+}
+const FIRST_MARK = markOf('first-one', 1)
+const ANOTHER_MARK = markOf('another', 1)
 
 const lives: Lived[] = []
 const borrowingsSoFar = (): number => lives.filter((l) => l.borrowing !== null).length
@@ -218,6 +251,11 @@ while (
 
   const hasEastWife = people.personOf('east-wife') !== undefined
   const callAtBirth = hasEastWife ? people.callOf('east-wife') : null
+  // 立基那一刻东邻有没有孩子。`east-child-1` 是立基顺序排的头一个（`content/birth.ts`）
+  const hadEastChild = people.personOf('east-child-1') !== undefined
+  let sawFirst = false
+  let sawAnother = false
+  const readBlocks = new Set<string>()
 
   let borrowing: string | null = null
   let seen = 0
@@ -232,7 +270,25 @@ while (
       if (text && text.includes('还有没有余粮') && borrowing === null) borrowing = text
     }
     seen = narrative.stream.length
+    /*
+     * 这一卷的正文另收一份。
+     *
+     * ⚠️ 不跟上头那个 `slice(seen)` 合用：`narrative.stream` 会滚动，
+     * 按下标切在流被裁掉之后会【跳过】新内容（`length` 变小，slice 从
+     * 一个太大的下标起 → 空）。认 id 不会。
+     */
+    for (const item of narrative.stream) {
+      if (readBlocks.has(item.id)) continue
+      readBlocks.add(item.id)
+      const line = 'text' in item.block ? item.block.text : null
+      if (line === null) continue
+      if (line.includes(FIRST_MARK)) sawFirst = true
+      if (line.includes(ANOTHER_MARK)) sawAnother = true
+    }
   }
+
+  const baby = people.personOf('east-newborn')
+  const eastHouse = people.houses['east']
 
   const leaked: string[] = []
   for (const house of people.neighbourHouses()) {
@@ -248,6 +304,15 @@ while (
     callAtDeath: hasEastWife && people.isAlive('east-wife') ? people.callOf('east-wife') : null,
     borrowing,
     leaked,
+    eastBorn: baby !== undefined,
+    hadEastChild,
+    sawFirst,
+    sawAnother,
+    babyHouse: baby === undefined ? null : (people.houseOf('east-newborn')?.id ?? null),
+    babySurnameMatches:
+      baby === undefined || eastHouse === undefined ? null : baby.surname === eastHouse.surname,
+    babyAge: baby === undefined ? null : people.ageOf('east-newborn'),
+    babyAlive: baby === undefined ? null : people.isAlive('east-newborn'),
   })
 }
 
@@ -304,7 +369,120 @@ while (
 }
 
 // ============================================================
-// 五：尺子自检
+// 五：东邻添丁——邻居头一次成为「发生了什么」的那个人
+// ============================================================
+/*
+ * `life/neighbour.ts` 那一卷。`apart.ts` 把 `neighbour:east-born#night`
+ * 移交到这儿（见那边的 HANDED_OVER）——它那一支摆局跑走不到邻居这一卷。
+ *
+ * 这一段守五件事，头一件最要紧：
+ *
+ *   一、娃落进【东邻那一户】，姓跟【那一户】合
+ *       ⚠️ 这一条不是形式检查。`who` 不写 surname 是「跟本家同姓」，
+ *       而那一问从前不带户（答的是玩家爹的姓）。`old-home` 跟玩家同姓
+ *       是结构保证的，所以两个既有使用者都没露。东邻是头一户姓不一样的
+ *       ——把那个参数撤回去，77 世里 77 世姓错。
+ *   二、两支都走得到（他家本来有没有孩子）
+ *   三、正文观察到的支，跟【世界事实推出来的】对得上
+ *   四、她进了生命周期——玩家走完时她有岁数，不是一个永远零岁的格子
+ *   五、这一卷【不改玩家家】：娃一个也不落进 home
+ */
+{
+  const played = lives.filter((one) => one.eastBorn)
+  const rate = ((played.length / lives.length) * 100).toFixed(1)
+
+  if (played.length < 12) {
+    // 样本不够就说判不了，别拿沉默冒充绿（另见 seen.ts 同一种处置）
+    console.log(
+      `
+  ◇ 东邻添丁：${lives.length} 世里只演到 ${played.length} 次，样本不够，这一段判不了`,
+    )
+  } else {
+    const faults: string[] = []
+
+    // 只问【还活着的】那些：殁了的人会被从 members 里滤掉，对死人问这个恒假
+    const stillHere = played.filter((one) => one.babyAlive === true)
+    const wrongHouse = stillHere.filter((one) => one.babyHouse !== 'east')
+    if (wrongHouse.length > 0) {
+      faults.push(
+        `${wrongHouse.length} 世里那个娃活着而没在东邻那一户（在 ` +
+          `${[...new Set(wrongHouse.map((one) => one.babyHouse ?? '哪一户也不在'))].join('、')}）`,
+      )
+    }
+    if (stillHere.length === 0) {
+      faults.push(`${played.length} 世里她一次也没活到玩家走完——这个数不该是零`)
+    }
+
+    const wrongSurname = played.filter((one) => one.babySurnameMatches === false)
+    if (wrongSurname.length > 0) {
+      faults.push(
+        `${wrongSurname.length} 世里那个娃的姓跟东邻那一户对不上` +
+          `——住在人家院里，报的是别家的姓`,
+      )
+    }
+
+    const first = played.filter((one) => !one.hadEastChild)
+    const again = played.filter((one) => one.hadEastChild)
+    if (first.length === 0) faults.push('「方家头一个孩子」那一支一次也没走到')
+    if (again.length === 0) faults.push('「又添了一个」那一支一次也没走到')
+
+    // 条件推出来的支 vs 正文里真读到的支。两者分家就是分流坏了
+    const mismatched = played.filter(
+      (one) => one.sawFirst !== !one.hadEastChild || one.sawAnother !== one.hadEastChild,
+    )
+    if (mismatched.length > 0) {
+      faults.push(
+        `${mismatched.length} 世里【条件推出来的支】跟【正文读到的支】对不上` +
+          `——分流跟世界事实分家了`,
+      )
+    }
+
+    /*
+     * 她进没进人口的生命周期。两个方向都要非零：
+     *   长了岁数 → `live()` 每年在推她
+     *   有人殁了 → 她也在掷天年和 frailty，不是一个不死的格子
+     * 只问头一个的话，一个「永远活着的零岁娃」照样绿。
+     */
+    const aged = played.filter((one) => (one.babyAge ?? 0) > 0)
+    const gone = played.filter((one) => one.babyAlive === false)
+    if (aged.length === 0) {
+      faults.push(
+        `${played.length} 世里她一世也没长过岁数——` +
+          `那说明她只是 members 上的一个名字，没进人口的生命周期`,
+      )
+    }
+    if (gone.length === 0) {
+      faults.push(`${played.length} 世里她一次也没殁过——她该跟别人守同一套天年和老病`)
+    }
+
+    const intoMyHouse = stillHere.filter((one) => one.babyHouse === 'home')
+    if (intoMyHouse.length > 0) {
+      faults.push(`${intoMyHouse.length} 世里那个娃落进了【玩家自己那一户】`)
+    }
+
+    if (faults.length > 0) {
+      console.log(`
+  ✗ 东邻添丁（${played.length} 世演到，占 ${rate}%）：`)
+      for (const one of faults) console.log(`      ${one}`)
+      bad += 1
+    } else {
+      const years = [...played.map((one) => one.babyAge ?? 0)].sort((x, y) => x - y)
+      console.log(
+        `
+  ✓ 东邻添丁：${lives.length} 世里演到 ${played.length} 次（${rate}%），` +
+          `头一个孩子 ${first.length} 次、又添一个 ${again.length} 次；
+` +
+          `    活着的 ${stillHere.length} 世一律在东邻那一户、姓跟那一户合；` +
+          `玩家走完时她中位 ${years[Math.floor(years.length / 2)]} 岁，
+` +
+          `    其中 ${gone.length} 世她先走一步——她跟别人守同一套天年和老病。`,
+      )
+    }
+  }
+}
+
+// ============================================================
+// 六：尺子自检
 // ============================================================
 {
   // 「说话的是谁」这一维要是空的，孩子和大人叫出来会是同一个词

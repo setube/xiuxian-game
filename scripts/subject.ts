@@ -160,6 +160,40 @@ import { usePeopleStore } from '../src/stores/people'
  */
 const CALLED: readonly { key: string; role: string; why: string }[] = [
   {
+    key: 'east-head',
+    role: '背景（存在条件）',
+    why: [
+      'neighbour:east-born 问他在不在（2 条：入场那一条和分流那一条）。',
+      '  问的是【那一户还不还是一户人家】——男主人没了是另一回事，不在这一卷里。',
+      '',
+      '  ⚠️ 他不是执行者。这一卷里做那件事的是他媳妇，而承受的是【那一户】。',
+      '  头一个方案本来是让他病一场、从此种不动地，判成「候选成立、不能立案」：',
+      '  病 → health 下降 的生产机制不明，而且那个形状是 B 链',
+      '  （年老 → doing 变 → 家人接手）的复刻。account 记在 design/subject-facts.md。',
+    ].join('\n'),
+  },
+  {
+    key: 'east-wife',
+    role: '执行者，而她身上一笔也没有——【真候选】，跟玩家那一卷卡在同一处依据上',
+    why: [
+      'neighbour:east-born 问她在不在、过没过育龄，正文里她抱着孩子出来。',
+      '',
+      '  ⚠️ 这一条【判成候选，立案不修】，理由跟 bearing-await 是同一个：',
+      '',
+      '    这个世界里「生了一个孩子」落下来的事实，只有【多了一个人】。',
+      '    生她的那个女人身上，一笔也没有。',
+      '',
+      '  玩家自己那一卷（bearing）也是这样——`alive: false` 和 `health↓`',
+      '  是两个世界事实，而史料只支撑得起前者。**在邻居这儿硬补，等于',
+      '  给邻居发明一套玩家都没有的生育风险。** 等那处依据定下来再一起动。',
+      '',
+      '  ⚠️ 而这一卷【真正的承受者不是她，是那一户】：east.members 多了一个人，',
+      '  那个人进 roster、每年长一岁、掷天年、按 frailty 会殁',
+      '  （`neighbours.ts` 量到 120 世里 55 世演到，其中 24 世她先于玩家走）。',
+      '  承接落在户这一格上，不在人这一格上——而这一卷承诺的正是前者。',
+    ].join('\n'),
+  },
+  {
     key: 'teacher',
     role: '执行者（2 条）+ 背景（1 条）',
     why: [
@@ -206,9 +240,7 @@ const CALLED: readonly { key: string; role: string; why: string }[] = [
   {
     key: 'nephew-wife',
     role: '背景',
-    why: [
-      'kindred-grandnephew：要有侄媳才有侄孙。这一卷讲的是隔了两代那个孩子。',
-    ].join('\n'),
+    why: ['kindred-grandnephew：要有侄媳才有侄孙。这一卷讲的是隔了两代那个孩子。'].join('\n'),
   },
   {
     key: 'grandnephew',
@@ -260,7 +292,7 @@ const CALLED: readonly { key: string; role: string; why: string }[] = [
       '',
       '    mountain:shut    「药庐那位不再让你去了。」',
       '                     声明了后续 → flag shut-out-by-the-shed',
-      '                     读取端三个（going-up.ts:411、mountain.ts:806 等）✓ 兑现',
+      '                     读取端三个（going-up、mountain 两卷；grep 那个旗标名）✓ 兑现',
       '',
       '  跟 GPT 定的两句：',
       '',
@@ -538,7 +570,11 @@ for (let i = 0; i < 120; i += 1) {
   // 这些【人生中途才立起来的人一个都不在里头】。
   // 于是三栏都在拿一张残缺的名单当「这是不是一个人」的判据，
   // 而被滤掉的恰恰是这一族最关心的那些人（B 链的分流承受者就是嫂子）。
-  const story = useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale })
+  const story = useStory(lifeScenes, {
+    events: lifeEvents,
+    routine: lifeRoutine,
+    finale: lifeFinale,
+  })
   story.begin()
   let turns = 0
   while (!narrative.ended && turns < 200) {
@@ -697,9 +733,7 @@ const BRANCH_CALLED: readonly { key: string; role: string; why: string }[] = [
   {
     key: 'branch:bond:师',
     role: '岔口',
-    why: [
-      'craft:out 的 gone：出师那天师傅在不在。承受者是玩家。',
-    ].join('\n'),
+    why: ['craft:out 的 gone：出师那天师傅在不在。承受者是玩家。'].join('\n'),
   },
   {
     key: 'branch:bond:女',
@@ -712,9 +746,7 @@ const BRANCH_CALLED: readonly { key: string; role: string; why: string }[] = [
   {
     key: 'branch:bond:徒',
     role: '岔口',
-    why: [
-      '同上，ending 的 kin：临终那一刻徒弟在不在。',
-    ].join('\n'),
+    why: ['同上，ending 的 kin：临终那一刻徒弟在不在。'].join('\n'),
   },
   {
     key: 'branch:brother-wife',
@@ -994,18 +1026,23 @@ for (const event of lifeEvents) {
   const created = new Set<string>()
   const dig = (one: unknown): void => {
     if (Array.isArray(one)) return one.forEach(dig)
-    if (one === null || typeof one !== "object") return
+    if (one === null || typeof one !== 'object') return
     const rec = one as Record<string, unknown>
-    if (rec.type === "meet" && typeof rec.id === "string") created.add(rec.id)
+    if (rec.type === 'meet' && typeof rec.id === 'string') created.add(rec.id)
     Object.values(rec).forEach(dig)
   }
   for (const node of Object.values(scene.nodes)) dig(node)
 
   for (const who of touchedByScene(event.scene)) {
     if (named.has(who)) continue
-    if ([...named].some((one) => one.startsWith("bond:") && BOND_TO_ID.get(one.slice(5))?.has(who))) continue
+    if ([...named].some((one) => one.startsWith('bond:') && BOND_TO_ID.get(one.slice(5))?.has(who)))
+      continue
     if (!PEOPLE.has(who)) continue
-    originRows.push({ event: event.id, who, how: created.has(who) ? "created-in-scene" : "unknown" })
+    originRows.push({
+      event: event.id,
+      who,
+      how: created.has(who) ? 'created-in-scene' : 'unknown',
+    })
   }
 }
 
@@ -1090,9 +1127,9 @@ if (PEOPLE.size === 0) broken.push('人口册一个人也没收到')
   const written = new Set<string>()
   const dig = (one: unknown): void => {
     if (Array.isArray(one)) return one.forEach(dig)
-    if (one === null || typeof one !== "object") return
+    if (one === null || typeof one !== 'object') return
     const rec = one as Record<string, unknown>
-    if (["person", "meet"].includes(String(rec.type)) && typeof rec.id === "string") {
+    if (['person', 'meet'].includes(String(rec.type)) && typeof rec.id === 'string') {
       written.add(rec.id)
     }
     Object.values(rec).forEach(dig)
@@ -1100,14 +1137,14 @@ if (PEOPLE.size === 0) broken.push('人口册一个人也没收到')
   for (const scene of Object.values(lifeScenes)) {
     for (const node of Object.values(scene.nodes)) dig(node)
   }
-  const ROLE_TOKENS = ["elder", "dam", "child", "playmate"]
-  const RARE = ["baker", "chancellor"]
+  const ROLE_TOKENS = ['elder', 'dam', 'child', 'playmate']
+  const RARE = ['baker', 'chancellor']
   const lost = [...written].filter(
     (one) => !PEOPLE.has(one) && !ROLE_TOKENS.includes(one) && !RARE.includes(one),
   )
   if (lost.length > 0) {
     broken.push(
-      `观察宇宙不完备：内容层写过而名册收不到的有 ${lost.length} 个（${lost.join("、")}）`,
+      `观察宇宙不完备：内容层写过而名册收不到的有 ${lost.length} 个（${lost.join('、')}）`,
     )
   }
 }
@@ -1197,15 +1234,7 @@ for (const [who, one] of [...covered.entries()].sort((a, b) => b[1].named - a[1]
   const real = mine.some(realOf)
   const bound = mine.some(boundOf)
   const mark =
-    mine.length === 0
-      ? '  ✓'
-      : unjudged.length > 0
-        ? '  ⚠️'
-        : real
-          ? '  ●'
-          : bound
-            ? '  ◈'
-            : '  ○'
+    mine.length === 0 ? '  ✓' : unjudged.length > 0 ? '  ⚠️' : real ? '  ●' : bound ? '  ◈' : '  ○'
   console.log(
     `    ${who.padEnd(16)} ${String(one.landed).padStart(2)} / ${String(one.named).padEnd(2)}${mark}`,
   )

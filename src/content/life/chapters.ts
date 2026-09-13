@@ -19,6 +19,7 @@ import { leavingEvents, leavingScenes } from './leaving'
 import { meetingEvents, meetingScenes } from './meeting'
 import { awayEvents, awayScenes } from './away'
 import { nephewEvents, nephewScenes } from './nephew'
+import { neighbourEvents, neighbourScenes } from './neighbour'
 import { reunionEvents, reunionScenes } from './reunion'
 import { refugeEvents, refugeScenes } from './refuge'
 import { regardEvents, regardScenes } from './regard'
@@ -449,6 +450,41 @@ export const CHAPTERS: readonly Chapter[] = [
     age: [18, 45],
     purpose: ['想要一个孩子和有一个孩子，在这个时代里是两件事'],
     marks: ['undertake', 'meet', 'flag', 'roll'],
+  },
+
+  /**
+   * 隔壁。
+   *
+   * ## 全库四十四册里，邻居出现过六次，六次都是同一个形状
+   *
+   * ```
+   * 他来到你家门口 → 说了句话 → 你的日子变了一点 → 他退场
+   * ```
+   *
+   * 他是背景、是岔口、是送信的人，**从来不是那个「发生了什么」的人**。
+   * 这一章是头一次反过来：**事情发生在他家，玩家只是隔着墙听见了。**
+   *
+   * ## 它不引入新机制
+   *
+   * 「某户新增人口 → 全局人口生命周期」这条路库里已经走过两次
+   * （`kindred` 的侄儿、侄孙，都落 `house: 'old-home'`）。
+   * 这一章只是**头一次把它用在亲属之外**。
+   *
+   * 少了它，「邻居有自己的生活」就只是 `design/` 里的一句话——
+   * 引擎允许，而四十四册内容里一次也没发生过。
+   */
+  {
+    id: 'neighbour',
+    scenes: neighbourScenes,
+    events: neighbourEvents,
+    called: ['年表'],
+    to: [],
+    age: [5, 14],
+    purpose: [
+      '邻居头一次成为「发生了什么」的那个人，而不是来到你家门口的人',
+      '玩家家之外的人口自然增长——这个世界本来就允许，只是从没有人写过',
+    ],
+    marks: ['meet'],
   },
 
   /**
