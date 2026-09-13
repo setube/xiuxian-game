@@ -114,8 +114,17 @@ import { lifeEvents, lifeScenes } from '../src/content/life'
 import { ROLE_IDS } from '../src/engine/interpolate'
 import type { Condition } from '../src/types/game'
 
-/** 条件里指人的那几个键。`tie` 那种一条边两头都算 */
-const WHO_KEYS = ['id', 'from', 'to'] as const
+/**
+ * 条件里指人的那几个键。`tie` 那种一条边两头都算。
+ *
+ * ⚠️ `who` 是第九种漏掉的写法：`{ mayAsk: { who: 'east-head', how: '寒暄' } }`
+ * 问的是「能不能跟这个人说上这种话」——**一种真实的观察面**，
+ * 而头一版按 `id` 归户，认不出它。
+ *
+ * 全库只有四处（都在 `regard.ts`），而它恰好落在
+ * 「`east-head` 五卷里只有一格」那笔账上——**那一格本来就不止一格。**
+ */
+const WHO_KEYS = ['id', 'from', 'to', 'who'] as const
 
 /**
  * 一条条件问了谁的哪一格。
