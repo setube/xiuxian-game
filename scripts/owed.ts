@@ -141,6 +141,21 @@ let bad = 0
     else {
       applyEffects([{ type: 'person', id: 'brother', fate: '殁', cause: '病' }])
       const texts = play('kindred:brother-gone')
+      /*
+       * ⚠️ 这一条拿「粮」「银子」两个字认【债】，而短词认事有撞车的风险
+       * ——`ruin.ts` 那处拿「爹」认人就撞上了（别人口中的「我爹」指的是兄）。
+       *
+       * 2026-09-14 核过这一卷：那两个字全库只有一种用法，**全都是债**。
+       *
+       * ```
+       * 「那笔粮，谁也没提。」
+       * 「那二两银子，你没提，他也没提。」
+       * 「他欠你的那笔粮，人没了，你没再提。」
+       * ```
+       *
+       * 所以这一处的辨识力够，**不必像 `ruin.ts` 那样另加一条前提断言**。
+       * 而这个结论有保质期：那一卷里哪天写了「今年的粮收得早」，它就失效。
+       */
       if (texts.some((line) => line.includes('粮') || line.includes('银子')))
         wrong.push(
           `没有债，丧事上却提了：${texts.find((l) => l.includes('粮') || l.includes('银子'))}`,
