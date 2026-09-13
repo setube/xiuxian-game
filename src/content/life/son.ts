@@ -61,6 +61,23 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  * 哪天真有内容要引用「他记得家里的账」这类事实（比如他接管账目、
  * 质疑你的记法），**那时候再落**——不是现在为了让它有用而落。
  *
+ * ## 唯一落下的一格是 `doing`，而它不是奖励
+ *
+ * 四条分支各落一句 `person.doing`（「跟着家里做活，做法是他自己的」之类）。
+ * 这跟上面那条不矛盾：**`doing` 是世界事实，不是给玩家的回报**
+ * ——它答的是「这个人此刻在做什么」，人物面板上那一行。
+ *
+ * 而且 `types/game.ts` 的 `doing` 那一格自己等着这件事：
+ *
+ * > 一个孩子长到十几岁真的开始做活，该由**内容**把这一格填上
+ * > （他下了地、进了铺子、出了远门），不该由一句按年龄现编的话顶着。
+ * > **那是这一格唯一诚实的填法，也还没有人写。**
+ *
+ * 这一卷是那个「还没有人写」的内容。
+ *
+ * ⚠️ 措辞对所有营生成立（`doing` 存的是定值，用不了 `{chore}`）：
+ * 写「跟着家里做活」，不写「下地」——那一年家里过的日子有七种。
+ *
  * ## 硬事实（动笔前量的，600 世）
  *
  * ```
@@ -115,6 +132,7 @@ export const sonScenes: SceneLibrary = {
       /** 刚硬、暴躁：他有自己的主意，而且已经不问你了 */
       headstrong: {
         id: 'headstrong',
+        onEnter: [{ type: 'person', id: 'son', doing: '跟着家里做活，做法是他自己的' }],
         blocks: [
           {
             kind: 'narration',
@@ -135,6 +153,7 @@ export const sonScenes: SceneLibrary = {
        */
       shrewd: {
         id: 'shrewd',
+        onEnter: [{ type: 'person', id: 'son', doing: '跟着家里做活，也开始留心家里的进项' }],
         blocks: [
           {
             kind: 'narration',
@@ -148,6 +167,7 @@ export const sonScenes: SceneLibrary = {
       /** 木讷、谨慎：他把该做的都做了，一句话也没有 */
       quiet: {
         id: 'quiet',
+        onEnter: [{ type: 'person', id: 'son', doing: '跟着家里做活，做完一样接一样' }],
         blocks: [
           {
             kind: 'narration',
@@ -161,6 +181,7 @@ export const sonScenes: SceneLibrary = {
       /** 温和：他先想到的是别人 */
       gentle: {
         id: 'gentle',
+        onEnter: [{ type: 'person', id: 'son', doing: '跟着家里做活，顺手替人照看东西' }],
         blocks: [
           {
             kind: 'narration',
