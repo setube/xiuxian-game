@@ -124,7 +124,7 @@ const WHO_KEYS = ['id', 'from', 'to'] as const
  * 认的是形状：顶层 key 是种类，值里带 `id` / `from` / `to` 的就是在问某个人，
  * 值里别的键就是在问那个人的哪一格。
  */
-function probe(cond: Condition, out: Map<string, Set<string>>): void {
+function probe(cond: Condition, out: Map<string, Set<string>>, where: string): void {
   for (const [kind, value] of Object.entries(cond as Record<string, unknown>)) {
     if (value === null || typeof value !== 'object') continue
     const inner = value as Record<string, unknown>
@@ -145,6 +145,8 @@ function probe(cond: Condition, out: Map<string, Set<string>>): void {
         cells.add(name)
         const key = `${id}␟${name}`
         howOften.set(key, (howOften.get(key) ?? 0) + 1)
+        if (!wheres.has(id)) wheres.set(id, new Set())
+        wheres.get(id)?.add(where)
       }
     }
   }
@@ -168,17 +170,38 @@ const asked = new Map<string, Set<string>>()
  * 当二进制，一行匹配都不打印（`engine/kinTree.ts` 正踩着那个坑）。
  */
 const howOften = new Map<string, number>()
+/**
+ * 这个人**在几卷里**被观察过。
+ *
+ * ⚠️ 第三维，而它比格子数还要紧：
+ *
+ * ```
+ * craft-master  4 格，【全在 refuge 一卷里】  → 那一卷之外他是隐形的
+ * nephew        6 格，分布在六七卷            → 世界反复在观察他
+ * ```
+ *
+ * 两者在「格子数」那一栏里长得一模一样，**而含义相反**。
+ * 四格全在一卷不是「四个口」，是**一个口开了四格**。
+ *
+ * 而它跟嫂子那一族同构：她五格，可让她躲孩子、跟哥吵架的那几节一格不问
+ * ——**观察面集中在少数几卷，等于别处全是盲区。**
+ */
+const wheres = new Map<string, Set<string>>()
 
 // 一、年表事件的入场条件
-for (const event of lifeEvents) for (const one of event.requires ?? []) probe(one, asked)
+for (const event of lifeEvents) {
+  for (const one of event.requires ?? []) probe(one, asked, event.scene ?? event.id)
+}
 
 // 二、卷里的分支、seen、选项
-for (const scene of Object.values(lifeScenes)) {
+for (const [sceneId, scene] of Object.entries(lifeScenes)) {
   for (const node of Object.values(scene.nodes)) {
-    for (const branch of node.branches ?? []) for (const one of branch.requires) probe(one, asked)
-    for (const seen of node.seen ?? []) for (const one of seen.requires) probe(one, asked)
+    for (const branch of node.branches ?? []) {
+      for (const one of branch.requires) probe(one, asked, sceneId)
+    }
+    for (const seen of node.seen ?? []) for (const one of seen.requires) probe(one, asked, sceneId)
     for (const choice of node.choices ?? []) {
-      for (const one of choice.requires ?? []) probe(one, asked)
+      for (const one of choice.requires ?? []) probe(one, asked, sceneId)
     }
   }
 }
@@ -215,8 +238,23 @@ for (const token of ROLE_IDS) known.delete(token)
  */
 const PLACEHOLDER = new RegExp('\\{(?:call|hail):([^}]+)\\}', 'g')
 const used = new Map<string, number>()
-const bump = (id: string): void => {
+/**
+ * 正文在**哪几卷**专指消费他。跟 `wheres`（条件层在哪几卷观察他）成对。
+ *
+ * ⚠️ 这一对是这一支最后一层，也是最有力的一层：
+ *
+ * > **这个实体的世界模型，是否在它【真正被世界使用的地方】保持可观察。**
+ *
+ * 两组卷集合求差——`usedIn - wheres` 就是**风险卷**：
+ * 正文在那一卷里用了他，而条件层在那一卷里一句也没问过他。
+ *
+ * 嫂子那五处穿帮全部落在这个差集里，**而它们本可以在动笔之前就被标出来。**
+ */
+const usedIn = new Map<string, Set<string>>()
+const bump = (id: string, where: string): void => {
   used.set(id, (used.get(id) ?? 0) + 1)
+  if (!usedIn.has(id)) usedIn.set(id, new Set())
+  usedIn.get(id)?.add(where)
 }
 
 /** 字面称呼 → 谁。从内容层的 meet 现取，不列凭印象的表 */
@@ -232,7 +270,7 @@ for (const scene of Object.values(lifeScenes)) {
     }
   }
 }
-for (const scene of Object.values(lifeScenes)) {
+for (const [sid, scene] of Object.entries(lifeScenes)) {
   for (const node of Object.values(scene.nodes)) {
     const texts: string[] = []
     for (const blk of node.blocks) if ('text' in blk) texts.push(blk.text)
@@ -242,7 +280,7 @@ for (const scene of Object.values(lifeScenes)) {
       for (const found of text.matchAll(PLACEHOLDER)) {
         const rawId = found[1]
         if (rawId === undefined) continue
-        bump(rawId.includes('/') ? (rawId.split('/')[1] ?? rawId) : rawId)
+        bump(rawId.includes('/') ? (rawId.split('/')[1] ?? rawId) : rawId, sid)
       }
       /*
        * 写死的称呼。⚠️ **只认专指的那些**——一个称呼映射到几个人，
@@ -261,7 +299,7 @@ for (const scene of Object.values(lifeScenes)) {
         if (ids.length !== 1) continue
         if (!text.includes(word)) continue
         const only = ids[0]
-        if (only !== undefined) bump(only)
+        if (only !== undefined) bump(only, sid)
       }
     }
   }
@@ -293,7 +331,11 @@ for (const row of rows) {
   if (row.cells.length === 0) continue
   const n = used.get(row.id) ?? 0
   const seen = n === 0 ? '正文不点他' : `正文点他 ${String(n).padStart(2)} 处`
-  const head = `  ${row.id.padEnd(20)} ${String(row.cells.length).padStart(2)} 格 · ${seen.padEnd(13)}`
+  const spread = wheres.get(row.id)?.size ?? 0
+  const only = spread === 1 ? '⚠️ ' : ''
+  const head =
+    `  ${row.id.padEnd(20)} ${String(row.cells.length).padStart(2)} 格 · ` +
+    `${only}${String(spread).padStart(2)} 卷 · ${seen.padEnd(13)}`
   // 一格只被问过一处的，标个 ·  ——那一格【刚开了一个口】，还写得进去
   const cells = row.cells.map((cell) => {
     const n = howOften.get(`${row.id}␟${cell}`) ?? 0
@@ -308,6 +350,37 @@ for (const row of rows) {
  * > `daughter` 零格本身不是嫂子问题；
  * > 「正文已经消费她，而条件层观察面为零」才是嫂子问题的同构形式。
  */
+/*
+ * ⚠️ 最后一层，也是最有力的一层。
+ *
+ * > **这个实体的世界模型，是否在它【真正被世界使用的地方】保持可观察。**
+ *
+ * 两组卷集合求差：`正文专指用过他的卷` − `条件层观察过他的卷`。
+ * 差集里的每一卷都是【正文在那儿用了他，而那儿一句也没问过他】。
+ *
+ * 嫂子那五处穿帮全部落在这个差集里——**而它们本可以在动笔之前被标出来。**
+ */
+const risky: { id: string; scenes: string[] }[] = []
+for (const [id, scenes] of usedIn) {
+  const watched = wheres.get(id) ?? new Set<string>()
+  const gap = [...scenes].filter((one) => !watched.has(one)).sort()
+  if (gap.length > 0) risky.push({ id, scenes: gap })
+}
+risky.sort((x, y) => y.scenes.length - x.scenes.length)
+if (risky.length > 0) {
+  console.log(
+    `\n  ⚠️ 正文在这些卷里【专指用了他】，而这些卷【一句也没问过他】：`,
+  )
+  for (const row of risky) {
+    const head = `      ${row.id.padEnd(18)} ${String(row.scenes.length).padStart(2)} 卷`
+    console.log(`${head}   ${row.scenes.slice(0, 4).join('  ')}${row.scenes.length > 4 ? '  …' : ''}`)
+  }
+  console.log(
+    `      ——不是每一处都是穿帮（回想、说他不在了、整卷讲死人都算正当），` +
+      `\n      而【那五处已经修掉的嫂子穿帮，当时全在这张表上】。`,
+  )
+}
+
 const mute = rows.filter((row) => row.cells.length === 0)
 const quiet = mute.filter((row) => (used.get(row.id) ?? 0) === 0)
 const loud = mute
