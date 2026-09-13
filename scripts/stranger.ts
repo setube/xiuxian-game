@@ -42,7 +42,7 @@ import './lib/seeded'
 
 import { createPinia, setActivePinia } from 'pinia'
 
-import { lifeScenes } from '../src/content/life'
+import { lifeEvents, lifeScenes } from '../src/content/life'
 import { fillString } from '../src/engine/interpolate'
 
 /** `callOf` 找不到人时答的那句话。改了它这一支要跟着改 */
@@ -250,6 +250,67 @@ for (const [sceneId, scene] of Object.entries(lifeScenes)) {
           )
         }
       }
+    }
+  }
+}
+
+/*
+ * 五、写「她」指配偶的那几卷，入场必须钉住玩家性别。
+ *
+ * ## 这一条是从一次「不是查出来的」发现补上来的
+ *
+ * 2026-09-13 有人交付了 `wife.ts`，入场只问
+ * `{ bond: { kind: '配偶', alive: true, near: true } }`，正文通篇写「她」。
+ * 而**玩家有 48.5% 是女的**（2000 世实测 971/2000），
+ * 女玩家的配偶是男的（`match.ts` 的 `husband` 那一支）。于是这种句子
+ * 会落在一个男人身上：
+ *
+ *     「你躺着没出声。过了一会儿【她】才回来。」
+ *
+ * **当时十一支门禁全绿，没有一支抓得到它。** 发现它的路子是量另一件事时
+ * 看见一个对不上的比例（立边亲厚 29 次而读到只有 5 次，平常 48 次却读到 35 次
+ * ——那 35 次里大半是压根没走过立边那一节的女玩家，全落进兜底）。
+ *
+ * > **那个缺陷本身不会红，是它在另一个数上留下的偏斜把它供出来的。**
+ *
+ * 靠这种路子发现的东西，下一次未必有人顺手看那一眼。所以钉成判据。
+ *
+ * ## 这一条只查得动一半，另一半仍然归人
+ *
+ *     查得动   正文里有「她」+ 提到配偶 + 入场不钉性别   ← 静态，就是这一条
+ *     查不动   「她」指的到底是配偶还是别的女人          ← 要读正文
+ *
+ * 所以判据的范围写窄：**只报「同时提到配偶又写了她、而入场不问性别」的卷**。
+ * 娘、嫂子、女儿那些本来就是女性的人，正文写「她」是对的——全库 22 卷出现
+ * 「她」，绝大多数是那一类，**不能一律报**。
+ *
+ * ⚠️ 反过来也不能只看性别条件：一卷钉了 `gender: '男'` 不代表那个「她」指的
+ * 就是配偶。这一条抓的是**缺了那道钉子**，不是「钉了就一定对」。
+ */
+{
+  const evOf = new Map(lifeEvents.map((one) => [one.scene, one]))
+  for (const [sceneId, scene] of Object.entries(lifeScenes)) {
+    let mentionsSpouse = false
+    let herLines = 0
+    for (const node of Object.values(scene.nodes)) {
+      const texts = [
+        ...(node.blocks ?? []).map((b) => ('text' in b ? b.text : '')),
+        ...(node.seen ?? []).map((s) => s.text),
+        ...(node.choices ?? []).flatMap((c) => [c.label ?? '', c.echo ?? '']),
+      ]
+      for (const text of texts) {
+        if (text.includes('{call:spouse}')) mentionsSpouse = true
+        if (text.includes('她')) herLines += 1
+      }
+    }
+    if (!mentionsSpouse || herLines === 0) continue
+    // 入场那一层钉没钉性别。整串 JSON 里找 `gender`——条件可以嵌在 bond/family 里
+    const pinned = JSON.stringify(evOf.get(sceneId)?.requires ?? []).includes('gender')
+    if (!pinned) {
+      wrong.push(
+        `${sceneId} 正文里 ${herLines} 句写了「她」且提到配偶，而入场不问玩家性别——` +
+          '女玩家的配偶是男的，这几句会落在一个男人身上',
+      )
     }
   }
 }
