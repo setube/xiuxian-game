@@ -56,8 +56,31 @@
  *          ——它们运行时才解析成谁，而条件层是拿 bond 问的，不是拿 id
  * ```
  *
- * ⚠️ **判不了的那 36 处单列一栏报数，不混进结论里。**
+ * ⚠️ **判不了的那些单列一栏报数，不混进结论里。**
  * 一个判不了的东西被算进「已检查」，比不检查更坏。
+ *
+ * ## ⚠️ 而最大的一条边界是：写死的称呼，这一支一个也看不见
+ *
+ * `present.ts` 在真人生里抓到过这一句：
+ *
+ * ```
+ * 府里裁了两个人。乳母说，年景不好，禄米又拖了。
+ * ```
+ *
+ * **那两个字是写死的，不是 `{call:nurse}`。** 这一支扫的是占位符，
+ * 所以它连看都看不见——而那一句是真穿帮（那时乳母已经不在了）。
+ *
+ * ```
+ * {call:X} / {hail:X}   占位符      这一支扫得到
+ * 「乳母」「先生」「嫂子」 写死的字   ← 【一个也看不见】
+ * ```
+ *
+ * 两支的分工因此比「静态 vs 动态」更具体：
+ *
+ *     这一支     占位符指向的人，条件层保证了没有       全覆盖，不依赖撞上
+ *     present    正文里出现死者的称呼（不论怎么来的）   要撞上，但不挑写法
+ *
+ * **谁也不能宣称自己扫完了这一族。**
  *
  * ## 报数，不判成败
  *
@@ -148,16 +171,53 @@ function rawCallCount(node: SceneNode): number {
   return n
 }
 
-/** 一个节点里点到的名字。同一节里点两遍算一处 */
-function callsIn(node: SceneNode): Set<string> {
-  const found = new Set<string>()
-  for (const text of textsOf(node)) {
+/**
+ * 一个节点里点到的名字，连同**那一句自己带的守卫**。
+ *
+ * ⚠️ `seen` 的每一条和 `choices` 的每一条**各有各的 `requires`**，
+ * 而那正是内容层处理这件事最常用、也最干净的写法：
+ *
+ * ```ts
+ * seen: [
+ *   { requires: [{ family: { id: 'east-head', alive: true } }],
+ *     text: '中人请的是{call:east-head}，和族里的一位长辈。' },
+ *   { requires: [{ family: { id: 'east-head', alive: false } }],
+ *     text: '中人请的是族里的两位长辈。' },
+ * ]
+ * ```
+ *
+ * 头一版收了这些字、却没读它们的条件，于是 `house:divide` 那两处被报成候选
+ * ——**而那一卷早把两种情形都写了**。
+ *
+ * 这是这一支第四次栽在同一个形状上：**判据看不懂一种正当的写法，
+ * 于是把一处做对了的地方报成问题。** 前三次是 `chronicle`、`hail`、`bond`。
+ */
+function callsIn(node: SceneNode): { who: string; guards: Set<string> }[] {
+  const out: { who: string; guards: Set<string> }[] = []
+  const add = (text: string, guards: Set<string>): void => {
     for (const hit of text.matchAll(PLACEHOLDER)) {
       const raw = hit[1]
-      if (raw !== undefined) found.add(raw)
+      if (raw !== undefined) out.push({ who: raw, guards })
     }
   }
-  return found
+  const none = new Set<string>()
+  for (const block of node.blocks) if ('text' in block) add(block.text, none)
+  for (const one of node.seen ?? []) add(one.text, guaranteedAlive(one.requires))
+  for (const choice of node.choices ?? []) {
+    const guards = guaranteedAlive(choice.requires)
+    add(choice.label, guards)
+    if (choice.hint !== undefined) add(choice.hint, guards)
+    if (choice.echo !== undefined) add(choice.echo, guards)
+    for (const one of choice.effects ?? []) {
+      const text = (one as { text?: string }).text
+      if (typeof text === 'string') add(text, guards)
+    }
+  }
+  for (const one of node.onEnter ?? []) {
+    const text = (one as { text?: string }).text
+    if (typeof text === 'string') add(text, none)
+  }
+  return out
 }
 
 /**
@@ -333,14 +393,20 @@ for (const [sceneId, scene] of Object.entries(lifeScenes)) {
   const assured = assuredAt(scene, fromEvent)
   for (const [nodeId, node] of Object.entries(scene.nodes)) {
     rawTotal += rawCallCount(node)
-    for (const who of callsIn(node)) {
+    const here = assured.get(nodeId) ?? new Set<string>()
+    const done = new Set<string>()
+    for (const { who, guards } of callsIn(node)) {
+      // 同一节里点两遍算一处
+      if (done.has(who)) continue
+      done.add(who)
       totalCalls += 1
       const bareId = who.includes('/') ? (who.split('/')[1] ?? who) : who
       if (ROLE_TOKENS.includes(bareId)) {
         roleish.push({ scene: sceneId, node: nodeId, who })
         continue
       }
-      if ((assured.get(nodeId) ?? new Set()).has(bareId)) {
+      // 路上保证的，加上这一句自己带的守卫
+      if (here.has(bareId) || guards.has(bareId)) {
         covered += 1
         continue
       }
