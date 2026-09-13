@@ -87,11 +87,44 @@ export function runShard(runs: number, rules: readonly GhostRule[]): VerifyRelat
       turns += 1
     }
 
+    /**
+     * 在册活人的名字，扫之前要从正文里抹掉。
+     *
+     * ⚠️ **「娘」既是生母的叫法，也是配偶的名字**——引擎给配偶的 `given` 永远是「娘」
+     * （`design/the-wife.md` 一手量过：姓氏会变，名字四处全是「娘」）。
+     * 于是落纸时两个人长得像同一个词：
+     *
+     * ```
+     * 生母   光杆「娘」        「娘在老屋没了」「，娘说给孙子留着」
+     * 配偶   姓+娘            「秦娘说都好」「林娘问起过药庐那边」
+     * ```
+     *
+     * 而 `生母` 那条 ghost 里有 `娘(说|在|回|走|去|问|叫)`，**它把配偶说的话
+     * 报成了「娘还活着」**。这不是内容错，是判据分不开这两个人。
+     *
+     * 抹名字而不是改正则，因为**认人只能靠身份解析的结果，不能靠哪个字看着像姓**
+     * （改成「娘前面不许是汉字」会顺手挡掉「那天娘说」这种真·生母句）。
+     * 抹完「秦娘说都好」不剩 `娘说`，而「娘说给孙子留着」原样留着。
+     *
+     * 姓或名缺一个就跳过：`'' + '娘'` 会把光杆「娘」也抹光，那等于把这条判据关掉。
+     *
+     * ⚠️ **不问她死没死。** 头一版写了 `people.isAlive(one.id)`，而这段扫的是
+     * **一辈子演完之后**的整条流水——她中途殁了，名字就不在排除表里，
+     * 于是她生前说的那句话又被报成穿帮。打断验里剩的那 1 次正是这么来的。
+     * **名字不因人死而改**，抹的是名字不是活人。
+     */
+    const aliases = Object.values(people.roster)
+      .filter((one) => one.surname && one.given)
+      .map((one) => `${one.surname}${one.given}`)
+
     for (const item of narrative.stream) {
       const block = item.block
       if (!('text' in block)) continue
+      // 换成「·」不是删掉：删会把前后两截接起来，接出来的字可能是原文没有的
+      let text = block.text
+      for (const alias of aliases) text = text.split(alias).join('·')
       for (const rule of missing) {
-        if (!rule.ghost.test(block.text)) continue
+        if (!rule.ghost.test(text)) continue
         const key = `${rule.bond}::${block.text}`
         shard.counts.set(key, (shard.counts.get(key) ?? 0) + 1)
       }

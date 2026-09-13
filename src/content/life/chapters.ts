@@ -48,6 +48,7 @@ import { seekingEvents, seekingScenes } from './seeking'
 import { sonEvents, sonScenes } from './son'
 import { tradeEvents, tradeScenes } from './trades'
 import { tutelageEvents, tutelageScenes } from './tutelage'
+import { wifeEvents, wifeScenes } from './wife'
 import { youthEvents, youthScenes } from './youth'
 
 /**
@@ -300,6 +301,49 @@ export const CHAPTERS: readonly Chapter[] = [
     purpose: ['一门亲事从有人提起到成或不成，中间那段时间真的存在过'],
     // 这一章留下的痕迹：议亲那件事的起止（undertake），以及成了之后进门的那个人（meet）
     marks: ['undertake', 'meet'],
+  },
+
+  /**
+   * 她：一个天天在场而从未被看见的人。
+   *
+   * ## 由来是三个一手量的数（`design/the-wife.md`）
+   *
+   * ```
+   * 她的 doing 一辈子变过几种   1 种（800 世里成过亲的 354 世全部）
+   * 引擎给了她性情，六种都出     而【零处内容读它】
+   * 她一辈子说过六句话           全在同一个晚上，而那一族分母 0.37%
+   * ```
+   *
+   * 全库读性情的处数：娘 10 · 哥 8 · 儿子 7 · 侄儿 4 · 田主 2 ·
+   * 嫂子 2 · **配偶 0**——连隔着一户的嫂子都有两处。
+   *
+   * ## 这一册验的是比儿子那册更基础的一条
+   *
+   * ```
+   * 儿子   一个人【离开】玩家视野之后仍然在生活
+   * 她     一个【始终在你身边】的人，是不是真的作为独立的人在变化
+   * ```
+   *
+   * 也就是：**「天天在场」是不是被等价成了「没有生命周期」**。
+   *
+   * 头一卷只验一件事：一个已有性情的人，会不会做出一件
+   * **玩家没教过、而能体现她性情的事**。写她做的那件事，**然后停住**
+   * ——不写「你这才发现她原来是个谨慎的人」，那把玩家该自己形成的
+   * 认知抢走了。
+   */
+  {
+    id: 'wife',
+    scenes: wifeScenes,
+    events: wifeEvents,
+    called: ['年表'],
+    to: [],
+    age: [20, 72],
+    purpose: [
+      '「天天在场」不等于「没有生命周期」——她也有自己的做法',
+      '性情那一格第一次有人读：全库娘 10 处、嫂子 2 处，而配偶从前是 0 处',
+      '写她做的那件事然后停住，评价留给玩家自己下',
+    ],
+    marks: [],
   },
 
   /**
