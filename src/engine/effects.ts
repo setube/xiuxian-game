@@ -652,8 +652,12 @@ function applyOne(
          *
          * 现在问的是 `houseSurname`，跟出生那一刻定姓、跟添弟弟妹妹
          * 走的是同一份规矩，不是第三份抄写。
+         *
+         * ⚠️ 带上 `who.house`：**姓跟着户走，不跟着玩家走。**
+         * 落进 `old-home` 的（侄儿、侄孙）本来就跟玩家同姓，两种算法同解；
+         * 而落进东邻那一户的，姓是人家自己的。
          */
-        const surname = effect.who.surname ?? houseSurname(people)
+        const surname = effect.who.surname ?? houseSurname(people, effect.who.house)
         // 住在别的户里的人（老屋的嫂子、侄儿），落脚在那一户所在的地方——户里多数人在哪，
         // 不是户主在哪：哥在镇上做木匠，侄媳妇进的门在老屋
         const place =
@@ -1225,7 +1229,7 @@ function applyOne(
        * 眼下远行没有 `Doing` 上下文（那是日常那一层的东西），
        * 所以这一趟一律算独自；等「带着人出远门」真有内容了再把它接上。
        */
-      const to = effect.to ?? ((world.getFlag('following') as string | undefined) ?? '')
+      const to = effect.to ?? (world.getFlag('following') as string | undefined) ?? ''
       const trip = reckonJourney(to, false)
       return applyOne({ type: 'time', days: trip.days }, world, character, household, people)
     }

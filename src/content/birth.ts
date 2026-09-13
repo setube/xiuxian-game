@@ -682,8 +682,36 @@ function settleNeighbours(input: {
  * 只是报在一支没人盯着的走查脚本的标准错误里。
  *
  * **同一条规矩写第三遍的时候，第三遍是错的。** 现在只有这一份。
+ *
+ * ## `houseId`：问的是哪一户姓什么
+ *
+ * 底下那一路问的是**玩家的爹**——它答的其实是「玩家家姓什么」，
+ * 而这一直够用，因为 `who.house` 从前只指向过 `old-home`：
+ * 老屋是 `{ ...home, id: 'old-home' }` 展开来的（`stores/people.ts`
+ * 分家那一段），姓原样带着，**跟玩家同姓是结构保证的**。
+ *
+ * **东邻是头一户姓不一样的。** 立基造邻居时 `taken` 里先放了本家的姓，
+ * 掷到重的就重掷（见上头 `NEIGHBOUR_SIDES` 那一段），实测
+ * **1385 世里一世也没撞上**。所以不问这一格的话，
+ * 落进方家的那个孩子会姓玩家的姓——住在人家院里，报的是你家的姓。
+ *
+ * ⚠️ **这个洞在 `life/neighbour.ts` 之前就在这儿，只是没有触发条件**——
+ * 别看 git blame 把这一格算在写邻居那一笔上。一手数过（`grep "house: '" src/content/`），
+ * 全库 `who.house` 只有四处，四处全是 `old-home`：
+ *
+ * ```
+ * kindred 娶进门的嫂子、侄媳妇   surname 显式给了（娘家的姓）  走不到这个默认
+ * kindred 出生的侄儿、侄孙       surname 省略                  老屋跟玩家同姓，新旧同解
+ * ```
+ *
+ * 那一卷是**头一个让 `who.house` 指向别人家的内容**，
+ * 于是把一个零照度的洞抬到了 100%。
  */
-export function houseSurname(people: ReturnType<typeof usePeopleStore>): string {
+export function houseSurname(people: ReturnType<typeof usePeopleStore>, houseId?: string): string {
+  if (houseId !== undefined) {
+    const house = people.houses[houseId]
+    if (house) return house.surname
+  }
   const father = people.personOf('father')
   if (father) return father.surname
   for (const relation of people.relations) {
