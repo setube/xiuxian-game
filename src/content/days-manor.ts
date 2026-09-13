@@ -155,5 +155,17 @@ export const MANOR_BEATS: readonly Beat[] = [
     weight: 18,
     requires: [MANOR, { family: { id: 'nurse', alive: true } }],
     text: ['{call:nurse}今日说起她乡下的孩子，跟你差不多大。', '说了两句，她就不说了。'],
+    /*
+     * ⚠️ 这一句正文早就在说她那件往事，而那件往事【一直没被翻开】。
+     *
+     * 立基给她掷了 `own-child`（`birth.ts`：「自己的孩子留在乡下，
+     * 托给了娘家」），`known: false`。一手数过：**全库只有写入端那一处，
+     * 读取端零。** 而这一句日常已经把那件事写出来了
+     * ——两头各说各的，中间那条线断着。
+     *
+     * `recall` 接上它：玩家此后在人际面板上看得见这一条，
+     * 而不是只读过一句就过去了。**不造新东西，把已有的两头连上。**
+     */
+    effects: [{ type: 'recall', id: 'nurse', chapter: 'own-child' }],
   },
 ]
