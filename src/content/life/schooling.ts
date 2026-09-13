@@ -96,9 +96,9 @@ export const schoolingScenes: SceneLibrary = {
         ],
         blocks: [
           { kind: 'narration', text: '开蒙的日子是钦天监选的，连时辰都定好了。' },
-          { kind: 'narration', text: '侍讲姓周，翰林出身，行过礼才敢坐下。' },
+          { kind: 'narration', text: '侍讲姓沈，翰林出身，行过礼才敢坐下。' },
           { kind: 'narration', text: '书房里只有你一个人，三个伺候的站在门外。' },
-          { kind: 'dialogue', speaker: '周侍讲', text: '请把手伸出来。' },
+          { kind: 'dialogue', speaker: '沈侍讲', text: '请把手伸出来。' },
           { kind: 'narration', text: '他没有碰你的手，只是看了一眼，就收回了目光。' },
           { kind: 'event', text: '你开始认字了。' },
           { kind: 'divider', variant: 'dots' },
