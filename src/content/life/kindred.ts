@@ -516,8 +516,71 @@ export const kindredScenes: SceneLibrary = {
       'sister-in-law': {
         id: 'sister-in-law',
         blocks: [],
-        branches: [{ requires: [COLD_SISTER_IN_LAW], next: 'cold' }],
+        /*
+         * ⚠️ 「她不在了」必须排头一条：`branches` 取第一条满足的就走。
+         *
+         * 从前这儿只有 `COLD_SISTER_IN_LAW` 一条加一个兜底，而
+         * **两支都不问她在不在**：
+         *
+         *     她殁了 + 性情暴躁/刚硬 → cold「照旧没多话」   ← 死人在场
+         *     她殁了 + 性情温和      → warm「留你住了一夜」 ← 死人在场
+         *
+         * `COLD_SISTER_IN_LAW` 问的是 `temper`，而**性情不因人死而变**，
+         * 所以那一支对死人照样成立；`warm` 是兜底，它什么也不问。
+         * 这一卷的 `requires` 只问侄儿活着，一格也不问他娘。
+         *
+         * 这一处是另一个会话拿 `present` 抓出来的（它守「不在了的人还在
+         * 正文里露面」），而抓到它要先修掉那一支自己的取证缺陷——
+         * 从前它用 `stream.slice(seen)` 收正文，四百块之后恒为空，
+         * 而死人集中在人生后半段，正好落在瞎掉的那一段里。
+         *
+         * ## 处置照 `royal.ts` 那一卷的口径：给「她没了」写一支
+         *
+         * 不是给 `warm` 加一个 `alive: true` 就完——那样她殁了这一节
+         * 直接没有正文，玩家什么也读不到（「该出现的沉默了比不该出现的
+         * 出现了更难查」）。**写的是她缺席的后果，不是解释她死了。**
+         *
+         * ⚠️ `exists: true` 不能省：`alive: false` 对【从未存在】的人
+         * 也成立（`conditions.ts` 那一格是 `isAlive(id) !== family.alive`，
+         * 人不在册 → false）。没有嫂子的世界会走进这一支。
+         */
+        branches: [
+          {
+            requires: [{ family: { id: 'brother-wife', exists: true, alive: false } }],
+            next: 'she-is-gone',
+          },
+          { requires: [COLD_SISTER_IN_LAW], next: 'cold' },
+        ],
         next: 'warm',
+      },
+      /**
+       * 她不在了的那个正月。
+       *
+       * ⚠️ 一个字也不点她的称呼——`present` 那一支抓的正是「死者的称呼
+       * 出现在正文里」，而这一节的意思本来就不靠点名：
+       * **从前是灶上有人喊一句，你就留下了。** 那一句没有了，
+       * 也就没有人留你——它对着 `warm` 那一支写。
+       *
+       * ## ⚠️ 这两句是【有意】写成「每次都一样」的，不是漏了「头一回」
+       *
+       * 这一卷 `repeatable: true`（过年是每年的事）。一手量过：
+       * 她殁了之后这一支一世里会走到 1–8 次，中位 4 次
+       * ——跟 `cold`（「照旧没多话」）重复的次数是一档的。
+       *
+       * 所以正文写的是**每次回去都一样的那个状态**，不是那一年的新闻。
+       * 写成「今年灶上头一回没人喊你」的话，第二遍读就穿帮了。
+       *
+       * 而真正值钱的不是这一支本身，是**同一个人生里的先后**：
+       * 先读到「她留你住了一夜」，几十年后读到「灶上没人喊你留下」。
+       * 那个对比就是这一支的全部意思。
+       */
+      'she-is-gone': {
+        id: 'she-is-gone',
+        blocks: [
+          { kind: 'narration', text: '灶上没人喊你留下。这一趟你吃完饭就回了。' },
+          { kind: 'narration', text: '老屋的正月比从前短。', tone: 'faint' },
+        ],
+        next: 'lane',
       },
       cold: {
         id: 'cold',
