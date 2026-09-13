@@ -160,6 +160,37 @@ import { usePeopleStore } from '../src/stores/people'
  */
 const CALLED: readonly { key: string; role: string; why: string }[] = [
   {
+    key: 'herbalist-at-the-shed',
+    role: '承受者，而在【承诺边界内】（零效果不等于零承接）',
+    why: [
+      '药庐那位（陶仲）。他被点名 11 次，而身上【一笔 person 效果也没有】',
+      '  ——全库六处 id，五处是条件（alive: true），一处是立人。',
+      '',
+      '  ⚠️ 而这不是缺口，是【承诺边界内】：',
+      '',
+      '    mountain:unaged  「你头一回进这扇门的时候，他也是这个样子。」',
+      '                     声明的是【他不老】，而那已经实现了',
+      '                     ——他身上什么都不变，才是这一卷的内容。',
+      '                     **给他落一笔「变化」反而是错的。**',
+      '',
+      '    mountain:shut    「药庐那位不再让你去了。」',
+      '                     声明了后续 → flag shut-out-by-the-shed',
+      '                     读取端三个（going-up.ts:411、mountain.ts:806 等）✓ 兑现',
+      '',
+      '  跟 GPT 定的两句：',
+      '',
+      '  > **零效果不等于零承接。** 承接可以表现为状态产生、状态持续、',
+      '  > 状态保持、关系成立、认知兑现或后续机制消费。',
+      '  > 对「保持不变」的稳定性承诺，制造变化反而违反承诺。',
+      '',
+      '  > **承诺边界不是第八种角色，而是与角色【正交】的语义维度**',
+      '  > ——同一人物可以同时具有角色身份和承诺状态。',
+      '',
+      '  ⚠️ 而让 unaged 那一卷清白的是【正文语义】，不是 alive: true 这个条件',
+      '  ——条件只说「他得活着」，「他不老」是正文说的。',
+    ].join('\n'),
+  },
+  {
     key: 'bond:兄',
     role: '背景',
     why: [
@@ -907,16 +938,36 @@ console.log(`  ── 已判候选中的主体缺口分布：被点名几次 / �
  */
 const judgedKeys = new Set(CALLED.map((one) => one.key))
 const isReal = new Map(CALLED.map((one) => [one.key, one.role.includes('真候选')] as const))
+/**
+ * 判在【承诺边界内】的那些——它们是承受者，而那一卷承诺的正是「不变」。
+ *
+ * ⚠️ 跟 GPT 定的：**承诺边界不是第八种角色，而是与角色正交的语义维度**。
+ * 所以它不进角色表，而单独一个记号：**◈**。
+ * 同一个人可以既是承受者、又落在承诺边界内（陶仲就是）。
+ */
+const inBounds = new Map(CALLED.map((one) => [one.key, one.role.includes('承诺边界')] as const))
 const judgedOf = (row: { event: string; who: string }): boolean =>
   judgedKeys.has(row.who) || judgedKeys.has(row.event)
 const realOf = (row: { event: string; who: string }): boolean =>
   isReal.get(row.who) === true || isReal.get(row.event) === true
+const boundOf = (row: { event: string; who: string }): boolean =>
+  inBounds.get(row.who) === true || inBounds.get(row.event) === true
 
 for (const [who, one] of [...covered.entries()].sort((a, b) => b[1].named - a[1].named)) {
   const mine = rows.filter((row) => row.who === who)
   const unjudged = mine.filter((row) => !judgedOf(row))
   const real = mine.some(realOf)
-  const mark = mine.length === 0 ? '  ✓' : unjudged.length > 0 ? '  ⚠️' : real ? '  ●' : '  ○'
+  const bound = mine.some(boundOf)
+  const mark =
+    mine.length === 0
+      ? '  ✓'
+      : unjudged.length > 0
+        ? '  ⚠️'
+        : real
+          ? '  ●'
+          : bound
+            ? '  ◈'
+            : '  ○'
   console.log(
     `    ${who.padEnd(16)} ${String(one.landed).padStart(2)} / ${String(one.named).padEnd(2)}${mark}`,
   )
@@ -961,7 +1012,8 @@ console.log(
     `    判过 ${judgedRows.length} / ${rows.length} 条候选；其中判为【主体】的 ${subjects.length} 条，` +
       `分属 ${subjectEvents.size} 卷，而这 ${subjectEvents.size} 卷**一卷也没有落点**`,
     '',
-    '    ✓ 这一行没有候选　○ 判过了，不是主体　⚠️ 有还没判过的　● 判过了，是主体而没落点',
+    '    ✓ 这一行没有候选　○ 判过了，不是主体　⚠️ 有还没判过的',
+    '    ● 判过了，是主体而没落点　◈ 是主体，而这一卷承诺的正是「不变」',
     '',
     '    ⚠️ 行末的 ✓ 不等于「这一行的主体都有落点」——落了点的对子不会成为候选，',
     '    没人给它们标过角色。「主体且有落点」这一格这一支给不出来。',
