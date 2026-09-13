@@ -196,6 +196,21 @@ for (const scene of Object.values(lifeScenes)) {
   }
 }
 
+/** 哪一卷自己把谁领进门了。那一卷的正文用他，不算风险 */
+const bornIn = new Map<string, Set<string>>()
+for (const [sceneId, scene] of Object.entries(lifeScenes)) {
+  for (const node of Object.values(scene.nodes)) {
+    const fx = [...(node.onEnter ?? []), ...(node.choices ?? []).flatMap((c) => c.effects ?? [])]
+    for (const one of fx) {
+      const rec = one as { type?: string; id?: string }
+      if (rec.type !== 'meet' && rec.type !== 'person') continue
+      if (typeof rec.id !== 'string') continue
+      if (!bornIn.has(sceneId)) bornIn.set(sceneId, new Set())
+      bornIn.get(sceneId)?.add(rec.id)
+    }
+  }
+}
+
 const asked = new Map<string, Set<string>>()
 /**
  * 每一格【被问过几处】。
@@ -431,6 +446,23 @@ for (const row of rows) {
  * ⚠️ `omen:book` 那句嵌在**货郎转述见闻**里——**隔了两层**，
  * 而静态扫只看见「掌柜」两个字。
  *
+ * 剩下三处也判完了，**零缺陷**：
+ *
+ * ```
+ * chancellor  school:threshold   「教授是【长史司】的属官」  ← 撞的是【衙门名】
+ * apprentice  refuge:master      「上个月遣了一个徒弟回家」  ← 那位老师傅的徒弟
+ * sibling     kindred:brother-gone 入边问 house.head='弟'    ← 户主不留死人
+ * ```
+ *
+ * ⚠️ `chancellor` 那处把同词碰撞又推了一层：**撞的不是另一个人，是一个机构**
+ * （`长史司`）。「从字面到人」那一跳跨不过去的，不止是人名。
+ *
+ * ### 合起来：风险栏五个人八处，全部判完，零缺陷
+ *
+ * 而它们只用了三种理由（同词碰撞 ×5、正在说他没了 ×2、别处已有保证 ×1）
+ * ——**可解释性本身就是这张表在工作的证据**，而同一张表上
+ * `brother-wife` 那五处修完就退下去了。
+ *
  * **四处零缺陷，而它们只命中三种理由：**
  *
  * ```
@@ -514,7 +546,23 @@ for (const [id, scenes] of usedIn) {
   // 角色记号是位置不是人（`{elder}` 落到谁身上现算），风险栏也不收
   if (ROLE_IDS.includes(id as (typeof ROLE_IDS)[number])) continue
   const watched = wheres.get(id) ?? new Set<string>()
-  const gap = [...scenes].filter((one) => !watched.has(one)).sort()
+  const gap = [...scenes]
+    /*
+     * ⚠️ 这一卷【自己把他领进门】的，不算风险。
+     *
+     * `onEnter` 是进那一节时结算的，所以那一节的正文当然用得上他
+     * ——`school:threshold` 造完 `tutor` 紧接着就说「侍讲姓沈」，
+     * 中间隔不了任何东西。
+     *
+     * 头一版没这一层，`tutor` / `chancellor` 都因此被报进风险栏。
+     * 这跟 `absent.ts` 的 `bornHere` 是同一条，**而两支各写了一遍**
+     * ——没合成公用函数是有意的：那两支的输入不同（一个按节点、
+     * 一个按卷），合起来会多出一层「按什么粒度」的参数，
+     * 而那正是这一族最容易出错的地方。
+     */
+    .filter((one) => !bornIn.get(one)?.has(id))
+    .filter((one) => !watched.has(one))
+    .sort()
   if (gap.length > 0) risky.push({ id, scenes: gap })
 }
 risky.sort((x, y) => y.scenes.length - x.scenes.length)
