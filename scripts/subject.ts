@@ -531,22 +531,59 @@ console.log(`  ── 覆盖地图：被点名几次 / 其中几次世界往他�
  * `0/3 ○` 自动变成 `0/4 ⚠️`（多了个没判过的），判完再落回 `○` 或 `●`。
  */
 const judgedKeys = new Set(CALLED.map((one) => one.key))
-const isReal = new Map(
-  CALLED.map((one) => [one.key, one.role.includes('真候选')] as const),
-)
+const isReal = new Map(CALLED.map((one) => [one.key, one.role.includes('真候选')] as const))
+const judgedOf = (row: { event: string; who: string }): boolean =>
+  judgedKeys.has(row.who) || judgedKeys.has(row.event)
+const realOf = (row: { event: string; who: string }): boolean =>
+  isReal.get(row.who) === true || isReal.get(row.event) === true
+
 for (const [who, one] of [...covered.entries()].sort((a, b) => b[1].named - a[1].named)) {
   const mine = rows.filter((row) => row.who === who)
-  const unjudged = mine.filter((row) => !judgedKeys.has(row.who) && !judgedKeys.has(row.event))
-  const real = mine.some((row) => isReal.get(row.who) === true || isReal.get(row.event) === true)
+  const unjudged = mine.filter((row) => !judgedOf(row))
+  const real = mine.some(realOf)
   const mark = mine.length === 0 ? '  ✓' : unjudged.length > 0 ? '  ⚠️' : real ? '  ●' : '  ○'
   console.log(
     `    ${who.padEnd(16)} ${String(one.landed).padStart(2)} / ${String(one.named).padEnd(2)}${mark}`,
   )
 }
+
+/**
+ * 汇总两行：**「判过几条」和「判为主体的那些落点如何」是两个数，分开报。**
+ *
+ * ⚠️ 跟 GPT 定的：**「不知道」和「判断为不是」要从数据模型上分开**，
+ * 任何没标注的都不许伪装成「合法的非主体」。所以 `⚠️` 只表示**没判过**，
+ * 跟「判过了，不是主体」（`○`）是两个记号，不共用。
+ *
+ * ⚠️ 而四态里有一格这一支**给不出来**，得说在明处：
+ *
+ * ```
+ * ⚠️ 未判          给得出
+ * ○  非主体        给得出
+ * ●  主体但无落点   给得出   ← 三颗真候选
+ * ✓  主体且有落点   【给不出】
+ * ```
+ *
+ * **因为落了点的那些对子根本不会成为候选**——尺子只把「没落点」的挑出来，
+ * 于是没有人给它们登记过角色。行末那个 `✓` 说的是「这一行没有候选」，
+ * **不是「这一行的主体都有落点」**，两者不是一回事。
+ *
+ * 要真给出「主体覆盖率」，得把落了点的那些对子也逐条标角色——
+ * 配偶 16 处标得完，全库标不完。所以这一支报的是**判过的那部分里**
+ * 主体有几条、其中几条没落点，而不是一个全库比值。
+ */
+const judgedRows = rows.filter(judgedOf)
+const subjects = rows.filter(realOf)
+const subjectEvents = new Set(subjects.map((one) => one.event))
 console.log(
   [
     '',
-    '    ✓ 事事有落点　○ 候选都判过且都合法　⚠️ 有没判过的　● 判出了真缺口',
+    `    判过 ${judgedRows.length} / ${rows.length} 条候选；其中判为【主体】的 ${subjects.length} 条，` +
+      `分属 ${subjectEvents.size} 卷，而这 ${subjectEvents.size} 卷**一卷也没有落点**`,
+    '',
+    '    ✓ 这一行没有候选　○ 判过了，不是主体　⚠️ 有还没判过的　● 判过了，是主体而没落点',
+    '',
+    '    ⚠️ 行末的 ✓ 不等于「这一行的主体都有落点」——落了点的对子不会成为候选，',
+    '    没人给它们标过角色。「主体且有落点」这一格这一支给不出来。',
     '',
     '    ⚠️ 而这张图【不能拿行覆盖率排名】：`bond:兄 13/20` 混着两种东西',
     '    ——哥是主体的那些卷，和「只要有个哥」这个前提。同一个人用',
