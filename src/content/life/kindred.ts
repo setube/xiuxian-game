@@ -336,13 +336,17 @@ export const kindredScenes: SceneLibrary = {
         ],
         next: 'tall',
       },
+      /*
+       * ⚠️ 那半句拆到 `seen` 里：**没有一处问过侄儿他娘还在不在。**
+       * 这一卷的 requires 问的是侄儿活着且 ≥3 岁，而她可能已经走了
+       * ——一个孩子躲不到一个不在的人身后。
+       */
       small: {
         id: 'small',
-        blocks: [
-          {
-            kind: 'narration',
-            text: '{call:nephew}已经{age:nephew}了，见了你先躲到{call:brother-wife}身后，过一会儿才出来。',
-          },
+        blocks: [{ kind: 'narration', text: '{call:nephew}已经{age:nephew}了。' }],
+        seen: [
+          { requires: [{ family: { id: 'brother-wife', alive: true } }], text: '见了你先躲到{call:brother-wife}身后，过一会儿才出来。' },
+          { requires: [{ family: { id: 'brother-wife', alive: false } }], text: '见了你先往门后躲，过一会儿才出来。' },
         ],
         next: 'back',
       },
@@ -706,7 +710,23 @@ export const kindredScenes: SceneLibrary = {
           { kind: 'narration', text: '{call:nephew}自己跑来了，一个人，鞋上都是泥。' },
           { kind: 'narration', text: '他说想来看看。你留他吃了饭，天黑前送他回去。' },
         ],
-        branches: [{ requires: [COLD_SISTER_IN_LAW], next: 'behind-her-back' }],
+        /*
+         * ⚠️ 加 `alive: true` 而不是给「她没了」另写一支——
+         * 跟这一册别处的口径不同，而理由在这一节的性质：
+         *
+         *     主线正文  她不在了就得有话可说，否则玩家读到一片空白
+         *     附加一句  「他没跟她说」这件事【在她不在时根本不存在】
+         *
+         * 这一句是后者。走不到就走 `done`（空节点），玩家什么也不少读。
+         *
+         * `COLD_SISTER_IN_LAW` 问的是性情，而性情不因人死而变。
+         */
+        branches: [
+          {
+            requires: [COLD_SISTER_IN_LAW, { family: { id: 'brother-wife', alive: true } }],
+            next: 'behind-her-back',
+          },
+        ],
         next: 'done',
       },
       'behind-her-back': {
@@ -845,9 +865,14 @@ export const kindredScenes: SceneLibrary = {
         blocks: [
           {
             kind: 'narration',
-            text: '他从镇上回来成的亲，过了正月又回镇上去了。{call:nephew-wife}留在老屋，{call:brother-wife}多了个帮手。',
+            text: '他从镇上回来成的亲，过了正月又回镇上去了。',
             tone: 'faint',
           },
+        ],
+        /* 侄媳妇是这一卷刚领进门的，而他娘不是——她可能已经走了 */
+        seen: [
+          { requires: [{ family: { id: 'brother-wife', alive: true } }], text: '{call:nephew-wife}留在老屋，{call:brother-wife}多了个帮手。' },
+          { requires: [{ family: { id: 'brother-wife', alive: false } }], text: '{call:nephew-wife}留在老屋。老屋多了个做活的人。' },
         ],
       },
       done: {
@@ -1392,9 +1417,51 @@ export const kindredScenes: SceneLibrary = {
         id: 'who-was-there',
         blocks: [],
         branches: [
+          /*
+           * ⚠️ 「她走在前头」排头一条：`branches` 取第一条满足的就走。
+           *
+           * 底下三支按婆媳那条 `tie` 和性情分档，而**三支都不问她在不在**
+           * ——`tie` 和 `temper` 那两格都不因人死而变。这一卷开到玩家七十岁，
+           * 那时她多半也不在了，而正文照旧写她在跟前、跟哥吵架。
+           *
+           * `kindred-mourning` 的 requires 问的是【娘殁了】，一格也不问她。
+           */
+          {
+            requires: [{ family: { id: 'brother-wife', exists: true, alive: false } }],
+            next: 'she-went-first',
+          },
           { requires: [INLAWS_FOND], next: 'fond' },
           { requires: [INLAWS_SOUR], next: 'sour' },
           { requires: [COLD_SISTER_IN_LAW], next: 'cold' },
+        ],
+        next: 'done',
+      },
+      /**
+       * 她走在老人家前头。
+       *
+       * ⚠️ **一个字也不点她的称呼**，而这一条是口径不是文风：
+       * 她的 `calls` 就是「嫂子」两个字（`kindred` 造她那处写着），
+       * 而 `present.ts` 抓的正是「死者的称呼出现在正文里」。
+       * 写「嫂子走在前头」会被它报成穿帮——**而那是一句正确的话**。
+       *
+       * 所以这一族的处置有个固定形状：
+       *
+       *     给「她没了」写一支    ✓ 她缺席的【后果】
+       *                          ✗ 点她的名说她没了
+       *
+       * 这里说的是「身边没有儿媳了」——从老人家那一头说，
+       * 而这一卷讲的本来就是老人家最后那几年。
+       *
+       * 「没有人跟你提过」也不点哥：这一卷不问哥在不在，他可能也走了。
+       */
+      'she-went-first': {
+        id: 'she-went-first',
+        blocks: [
+          {
+            kind: 'narration',
+            text: '老人家最后那两年，身边没有儿媳了。那两年的事，没有人跟你提过，你也没问。',
+          },
+          { kind: 'narration', text: '头七那晚院子里很静。', tone: 'faint' },
         ],
         next: 'done',
       },

@@ -264,6 +264,21 @@ function guaranteedAlive(requires: readonly Condition[] | undefined): Set<string
     if (bond?.kind !== undefined && bond.alive === true) {
       for (const id of BOND_TO_ID.get(bond.kind) ?? []) out.add(id)
     }
+    /*
+     * ⚠️ 问「这一户的户主是谁」也是一种保证——**户主不留死人**。
+     *
+     * 一手核过：`stores/people.ts` 的结算里，户主殁了当场换人
+     * （那一行记的是 `how: headAlive ? '交' : '殁'`）。
+     * 所以 `{ house: { id: 'old-home', head: '弟' } }` 成立，
+     * 就意味着那个弟弟此刻是活的。
+     *
+     * 这是第七种正当写法——`kindred:brother-gone#uncle`
+     * 「老屋如今是{call:sibling}当家」本来就被这一条罩着。
+     */
+    const house = (one as { house?: { head?: string } }).house
+    if (house?.head !== undefined) {
+      for (const id of BOND_TO_ID.get(house.head) ?? []) out.add(id)
+    }
   }
   return out
 }
@@ -463,12 +478,19 @@ const JUDGED: readonly { at: string; verdict: string; why: string }[] = [
   },
   {
     at: 'kindred:brother-gone#uncle',
-    verdict: '真候选',
+    verdict: '安全，而这一支【连不上】那条保证',
     why: [
       '「老屋如今是{call:sibling}当家。侄儿还小，轮不到他。」',
-      '哥没了，弟弟接户——而【没有一处问过这个弟弟还在不在】。',
-      '⚠️ 这一条跟别的五条不同：它点的是 `sibling`，',
-      '而那不是角色记号（ROLE_IDS 只有 elder/dam/child/playmate），是真 id。',
+      '入边问的是 { house: { id: old-home, head: 「弟」 } }，而【户主不留死人】',
+      '——`stores/people.ts` 的结算里户主殁了当场换人（那一行记 how: 交／殁）。',
+      '所以这一条成立就意味着那个弟弟活着，**正文是对的**。',
+      '',
+      '⚠️ 而这一支连不上那条保证：`sibling` 的 bond 是【运行时按性别掷的】',
+      '（`birth.ts` 的 bearKin：女为「妹」男为「弟」），而这里的 bond↔id 映射',
+      '是从内容层的静态 meet 效果取的，掷出来的边它看不见。',
+      '',
+      '**没有硬改判据去追这一条**——那要把出生那一支的运行时逻辑搬进来，',
+      '判据会变脆，而换来的只是少报一条。宁可让它留在名单上带着这段话。',
     ].join('\n'),
   },
 ]
