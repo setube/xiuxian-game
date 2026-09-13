@@ -286,9 +286,31 @@ for (const [sceneId, scene] of Object.entries(lifeScenes)) {
  *
  * ⚠️ 反过来也不能只看性别条件：一卷钉了 `gender: '男'` 不代表那个「她」指的
  * 就是配偶。这一条抓的是**缺了那道钉子**，不是「钉了就一定对」。
+ *
+ * ## ⚠️ 「查不了」和「没钉」是两件事，不能压成一种
+ *
+ * 头一版写的是 `evOf.get(sceneId)?.requires ?? []`，而那个 `?? []` 把两种
+ * 完全不同的情形压成了同一个答案：
+ *
+ *     查不了   这一卷不由事件挂进来（由别的卷 `next` 过去、或挂在
+ *              routine / finale 上），**压根没有 requires 这一层**  → 该报数
+ *     没钉     有 requires，而里头没有 gender                        → 该报红
+ *
+ * `?? []` 让前者伪装成后者，于是那种卷会收到**一条修不掉的红**——
+ * 它没有地方可以钉那道钉子。
+ *
+ * **而头一版没红，纯属运气**：落在这一类的全库只有 `wife:her-own-way` 一卷，
+ * 而它恰好是事件卷。**n=1 的时候什么写法都是对的。**
+ * 照出它的条件是「以后有人写一卷非事件的、正文提配偶又写她」——
+ * 也就是说**这条判据的正确性，由别人未来写什么决定**。
+ * （同族：`circumstance` 那个合并标准误的公式在 n=2 时恰好等于正确答案。）
+ *
+ * 所以分开：拿不到事件的报进那一行统计，不计入 `wrong`。
  */
 {
   const evOf = new Map(lifeEvents.map((one) => [one.scene, one]))
+  /** 正文提了配偶又写了「她」，而这一卷不由事件挂进来——这一条管不到它 */
+  const outOfReach: string[] = []
   for (const [sceneId, scene] of Object.entries(lifeScenes)) {
     let mentionsSpouse = false
     let herLines = 0
@@ -304,14 +326,26 @@ for (const [sceneId, scene] of Object.entries(lifeScenes)) {
       }
     }
     if (!mentionsSpouse || herLines === 0) continue
+    const event = evOf.get(sceneId)
+    if (event === undefined) {
+      // 不由事件挂进来，没有 requires 那一层可钉——这一条管不到它，报数不判红
+      outOfReach.push(`${sceneId}（${herLines} 句）`)
+      continue
+    }
     // 入场那一层钉没钉性别。整串 JSON 里找 `gender`——条件可以嵌在 bond/family 里
-    const pinned = JSON.stringify(evOf.get(sceneId)?.requires ?? []).includes('gender')
+    const pinned = JSON.stringify(event.requires ?? []).includes('gender')
     if (!pinned) {
       wrong.push(
         `${sceneId} 正文里 ${herLines} 句写了「她」且提到配偶，而入场不问玩家性别——` +
           '女玩家的配偶是男的，这几句会落在一个男人身上',
       )
     }
+  }
+  if (outOfReach.length > 0) {
+    console.log(
+      `\n  · ${outOfReach.length} 卷提了配偶又写了「她」，而它们不由事件挂进来——` +
+        `这一条管不到（报数不判红）：${outOfReach.join('、')}`,
+    )
   }
 }
 
