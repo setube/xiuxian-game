@@ -365,7 +365,17 @@ export const useHouseholdStore = defineStore(
   },
 )
 
-/** 按出身取名。识字人家才用雅字，名字本身就是家世。 */
+/**
+ * 按出身取名。识字人家才用雅字，名字本身就是家世。
+ *
+ * ⚠️ **没有消费者**（2026-09-13 一手扫过）：真正取名的是
+ * `content/birth.ts:254`，而它**比这里多做一件事**——生父在的随生父姓，
+ * 不在的才现掷（`finalSurname`）。这个函数只会现掷。
+ *
+ * 所以它不是「还没人用」，是**被一个更完整的实现取代了**。
+ * 留着不删，但**别拿它当取名的正路**——照它取出来的名字
+ * 会丢掉随姓那一层。
+ */
 export function rollName(id: OriginId): string {
   return `${pick(SURNAMES) ?? '沈'}${pick(originById(id).given) ?? '生'}`
 }
@@ -380,7 +390,17 @@ export function originAttributes(id: OriginId): Omit<Attributes, 'root' | 'spiri
   return { ...originById(id).attributes }
 }
 
-/** 取某一出身的开场正文 */
+/**
+ * 取某一出身的开场正文。
+ *
+ * ⚠️ **没有消费者**（2026-09-13 一手扫过）：真正用开场的是
+ * `content/life/birth.ts:240`，而它是**就地展开**的——
+ *
+ *     [...origin.opening, { kind: 'divider' }, ...NAMING[id]]
+ *
+ * 开场和取名之间要插一条分隔线，所以那一处拿的是数组本身，
+ * 用不上一个只返回开场的函数。同 `rollName`：**被取代，不是没人需要**。
+ */
 export function originOpening(id: OriginId): readonly NarrativeBlock[] {
   return originById(id).opening
 }

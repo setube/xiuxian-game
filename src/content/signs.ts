@@ -415,7 +415,22 @@ export interface SignMeta {
   tone?: InkTone
 }
 
-/** 按 id 取一条征象的元信息 */
+/**
+ * 按 id 取一条征象的元信息。
+ *
+ * ⚠️ **没有消费者，而那不是因为没人需要它**（2026-09-13 一手扫过）：
+ *
+ *     engine/perceive.ts:49   SIGNS.filter(...)          按条件筛　　真在用
+ *     scripts/dwelling.ts:44  SIGNS.find(s => s.id...)   按 id 取　　自己重写了
+ *
+ * **门禁自己写了一遍这件事，而库里正有一个函数干这个。**
+ * 引擎那一侧要的是「此刻看得见哪几条」（按条件筛），
+ * 从来不按 id 取——于是这个 helper 没人知道它存在。
+ *
+ * 留着不删：它是对的，而且下一个要按 id 取征象的人该用它。
+ * （同一天在 `scripts/unused.ts` 归的第六类雏形：**调用方式变了，
+ * 旧 helper 留下**——跟「没人用」不是一回事。）
+ */
 export function signRuleById(id: string): SignRule | undefined {
   return SIGNS.find((rule) => rule.id === id)
 }
