@@ -374,6 +374,234 @@ export const sonScenes: SceneLibrary = {
       },
     },
   },
+
+  /**
+   * 他去了没有。
+   *
+   * ## ⚠️ 这是三卷里【唯一会真正改变世界状态】的一卷
+   *
+   * ```
+   * son:grown              认知节点，不改世界
+   * son:heard-of-a-place   消息到了，不改世界
+   * son:goes-to-town       ← 这一卷：person.place / livelihood / 家里少个劳力
+   * ```
+   *
+   * ## 核心原则：选项改变【过程】，不指定【结果】
+   *
+   * > 选项改变过程中的事实与关系，结果由这些事实参与后续判断，
+   * > **而不是由选项直接指定**。
+   *
+   * 选项不是「结果按钮」，**但也不能只是装饰**。分界在这儿：
+   *
+   * ```
+   * 伪选择   选了什么都一样，后续关系、消息、时间、条件全部相同
+   * 真选择   选项【影响过程，不保证结果】
+   * ```
+   *
+   * 所以「跟他说家里眼下离不开人」**不会把他锁在家里**——
+   * 它改变的是他动身前那一段：先把这一季忙完、走的时候是沉默还是争执。
+   *
+   * ## 「父亲态度」不抽象成 support/oppose，写成具体行为
+   *
+   * ```
+   * ✗  fatherAttitude = oppose → 儿子不去      ← 隐藏开关，禁止
+   * ✓  「跟他说家里眼下离不开人」                ← 这是世界事实
+   * ```
+   *
+   * 三个选项**重量级相同**，都发生在家中当下的对话里。
+   *
+   * ⚠️ **「托人去镇上打听一句」没放进来**：它不是态度表达，
+   * 是一条**新的行动链**（找谁去 → 他愿不愿意 → 去没去成 → 带回什么），
+   * 放进来就成了「点一下系统自动给调查结果」。等有了合资格的
+   * 现实联系人再说。
+   *
+   * ## 三段式：不「选完立刻判去不去」
+   *
+   * ```
+   * open      父亲的回应        玩家选一个具体行为
+   * 中间那节  儿子的反应        ← 【不立即分「去」和「不去」】
+   *                             只写他对父亲行为的反应
+   * 末节      真正的去向        由性情和那一刻的家境定，不由选项定
+   * ```
+   *
+   * **中间那一层是关键**：让玩家看见选项确实进入了人物之间的现实互动，
+   * 而不是变成一次隐藏骰子。
+   *
+   * ## 他真走了之后，落的是什么
+   *
+   * 照 `nephew:goes` 那一卷的形状（**人在镇上，户在家里，
+   * 营生是他自己的**），加上 `hardship` 那一族表达「少个劳力」的办法
+   * （`household.standing` 掉一档 + 一面可读的旗）。
+   *
+   * ⚠️ **头一年是净损失**：少一个劳力是眼下的事，
+   * 他捎钱回来是往后的事——不在同一笔里抵掉。
+   */
+  'son:goes-to-town': {
+    id: 'son:goes-to-town',
+    title: '他自己拿了主意',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [{ type: 'time', days: 2 }],
+        blocks: [
+          {
+            kind: 'narration',
+            text: '过了些日子，{call:son}自己提起那件事。他说想去看看。',
+          },
+        ],
+        choices: [
+          {
+            /**
+             * 说家里离不开人。
+             *
+             * ⚠️ **这不是「不同意」**——它是一句实话，
+             * 而它改变的是他动身前那一段，不是他去不去。
+             */
+            id: 'need-him',
+            label: '跟他说家里眼下离不开人',
+            hint: '这是实话，不是不许',
+            echo: '你说了家里眼下的光景。',
+            effects: [{ type: 'time', days: 1 }],
+            next: 'he-heard-the-weight',
+          },
+          {
+            /** 问东家是什么人——关心的是这条路靠不靠得住 */
+            id: 'ask-who',
+            label: '问他那家铺子的东家是什么人',
+            hint: '去不去是一回事，去了托付给谁是另一回事',
+            echo: '你问了几句那家铺子。',
+            effects: [{ type: 'time', days: 1 }],
+            next: 'he-had-asked',
+          },
+          {
+            /** 什么也没说。**不介入也是一件事实** */
+            id: 'said-nothing',
+            label: '什么也没说',
+            hint: '他已经十七了',
+            echo: '你没说什么。',
+            effects: [{ type: 'time', days: 1 }],
+            next: 'he-waited',
+          },
+        ],
+      },
+
+      /**
+       * 他听懂了那句话的分量——**而这不等于他不走**。
+       *
+       * 四种反应由性情分，跟前两卷同一把尺子。
+       */
+      'he-heard-the-weight': {
+        id: 'he-heard-the-weight',
+        blocks: [
+          { kind: 'narration', text: '他没有争。听完点了点头，说那就等忙完这一季。' },
+        ],
+        next: 'later',
+      },
+
+      /** 他早问过了——这一支照出他不是一时起意 */
+      'he-had-asked': {
+        id: 'he-had-asked',
+        blocks: [
+          {
+            kind: 'narration',
+            text: '他说那家姓周，铺子在南街上，开了二十年。他已经打听过了。',
+          },
+          { kind: 'narration', text: '你没想到他先去打听了。', tone: 'faint' },
+        ],
+        next: 'later',
+      },
+
+      /** 你没说话，而他在等 */
+      'he-waited': {
+        id: 'he-waited',
+        blocks: [
+          { kind: 'narration', text: '他等了一会儿，见你不说话，也就没再往下说。' },
+          { kind: 'narration', text: '那天晚上他屋里的灯亮到很晚。', tone: 'faint' },
+        ],
+        next: 'later',
+      },
+
+      /**
+       * 过了一段时间。
+       *
+       * ⚠️ **去不去在这里定，而它不读上面选的哪一条**——
+       * 读的是他的性情和那一刻家里的光景。这正是
+       * 「选项改变过程，不指定结果」那条原则的落点。
+       *
+       * 分流表的顺序有讲究（`story.ts` 取第一条满足的）：
+       * **家里实在紧**排在最前——那种时候连木讷的孩子也会走，
+       * 「更可能」不是「只允许」（用户 2026-09-07 在侄儿那一册定过）。
+       */
+      later: {
+        id: 'later',
+        onEnter: [{ type: 'time', months: 4 }],
+        blocks: [],
+        branches: [
+          { requires: [{ standing: { atMost: 30 } }], next: 'went' },
+          { requires: [{ temper: { id: 'son', in: ['刚硬', '暴躁', '精明'] } }], next: 'went' },
+        ],
+        next: 'stayed',
+      },
+
+      /**
+       * 他去了。
+       *
+       * 照 `nephew:goes` 的形状：**人在镇上，户在家里，营生是他自己的**。
+       */
+      went: {
+        id: 'went',
+        onEnter: [
+          {
+            type: 'person',
+            id: 'son',
+            livelihood: '佣工',
+            place: '{province} · {prefecture} · 镇上',
+            doing: '在镇上铺子里当学徒',
+          },
+          // 少一个劳力是眼下的事；他捎钱回来是往后的事，不在这一笔里抵
+          { type: 'household', standing: -5 },
+          { type: 'flag', key: 'son-in-town', value: true },
+          { type: 'chronicle', text: '{call:son}去镇上当学徒了。', tone: 'deep' },
+        ],
+        blocks: [
+          { kind: 'narration', text: '开春他走的。带了两件衣裳，一床被。' },
+          {
+            kind: 'narration',
+            text: '送到村口他就说不用送了。你站着看他走上那条道，走了很久还看得见。',
+            tone: 'faint',
+          },
+        ],
+      },
+
+      /**
+       * 他没去。
+       *
+       * ⚠️ **这不是「你拦住了他」**——这一节一个字也不提你说过什么。
+       * 是他自己没走成，或者自己不想走了。
+       *
+       * ⚠️ **正文不许假定他家种地。** 头一版写的是
+       * 「农忙的时候他照旧下地」，`upbringing` 那支门禁当场抓住
+       *（「新写的：son:goes-to-town:stayed · 下地 / 农忙」）——
+       * 而那正是这一册地基文档自己定的硬约束：那一年家里过的日子
+       * 有七种（farm 36 · shop 16 · craft 10 · yamen 7 · hunt 7 · clinic 5）。
+       *
+       * 改用 `{chore}`（「这家人过的是什么日子」）。
+       */
+      stayed: {
+        id: 'stayed',
+        onEnter: [{ type: 'flag', key: 'son-stayed', value: true }],
+        blocks: [
+          { kind: 'narration', text: '后来那件事就没有再提。' },
+          {
+            kind: 'narration',
+            text: '他照旧做他那一份活。有一回你看见他在门口望着那条道。',
+            tone: 'faint',
+          },
+        ],
+      },
+    },
+  },
 }
 
 export const sonEvents: readonly LifeEvent[] = [
@@ -447,5 +675,40 @@ export const sonEvents: readonly LifeEvent[] = [
     scene: 'son:heard-of-a-place',
     weight: 5,
     chance: 0.35,
+  },
+  {
+    /**
+     * 他去了没有。
+     *
+     * ## 接在第二卷之后，而且是【它演过】不是「它落了旗」
+     *
+     * `event:son-heard-of-a-place` 由引擎落
+     *（`chronology.ts` 的 `markFired`）——第二卷自己不落任何旗，
+     * 那是它的设计（`✗ 儿子已经想走` 那一串）。所以这一卷问的是
+     * **那一卷演过没有**，不是「他有没有想走」。
+     *
+     * ## 窗口 37–62：比第二卷晚一岁起
+     *
+     * 第二卷落在儿子 17–20 岁，而这一卷的 `open` 里他「自己提起那件事」
+     * ——**得隔一段时间**。儿子 18–22：过了二十二该说亲了，
+     * 这条路自己会关上。
+     *
+     * ⚠️ 窗口只负责不把它挡在外头，真门槛在 `requires`
+     *（「摆局验不了这一卷开到几岁」那条踩过的坑）。
+     *
+     * ## `weight: 9` 比第二卷高
+     *
+     * 那一卷是「碰巧有人来说了一句」，这一卷是**他自己提起来了**
+     * ——一旦到了这一步，它该被看见。
+     */
+    id: 'son-goes-to-town',
+    window: { from: 37, to: 62 },
+    requires: [
+      { flag: { key: 'event:son-heard-of-a-place' } },
+      { family: { id: 'son', alive: true, present: true, age: { atLeast: 18, atMost: 22 } } },
+      { living: { notIn: ['palace', 'manor', 'temple', 'begging', 'adrift'] } },
+    ],
+    scene: 'son:goes-to-town',
+    weight: 9,
   },
 ]
