@@ -23,6 +23,10 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  * （经 `engine/effects.ts` 的 `beat.omen` 落进旗里）——
  * **加第三个值之前，先去 `days.ts` 加产它的那个 beat**。
  *
+ * ⚠️ **而它只在上午/下午那两段判**：傍晚的三个去处都在家附近，
+ * 进不了镇上和山路，而那两个 beat 恰好要 `doing: 'town'` / `'hill'`。
+ * 详见 `evening-out` 那一节的注释。
+ *
  * 2026-09-13 删掉过三条 `day-omen === 'merchant'` 的分支
  *（morning / afternoon / evening 各一处）：**没有任何 beat 产这个值**，
  * 三处恒假。而商人那一卷（`omen:merchant`）活得好好的，
@@ -256,14 +260,37 @@ export const dayScenes: SceneLibrary = {
       },
 
       // 世界回应他这一段。撞上一件事，这一天就交给它
+      /**
+       * 傍晚这一段**不判 `day-omen`**，而那不是漏写。
+       *
+       * 天黑之后活动范围收回家附近——这一段的三个去处是
+       * 「找家里的大人说话」「待在家里」「什么也不做」，
+       * **一个也不会进镇上或山路**。而两处产 omen 的 beat 恰好要那两处：
+       *
+       * ```
+       * omen: 'book'     doing: 'town'   庙前那个货郎的摊角
+       * omen: 'wounded'  doing: 'hill'   转过那道弯，草丛压平了一片
+       * ```
+       *
+       * 所以 `day-omen` 在这一时段不参与判定。
+       *
+       * 2026-09-13 删掉过跟着上午/下午模板抄来的那两条 branches
+       *（`wounded` / `book`）。1000 世实测三段到达次数几乎相同，
+       * 而只有傍晚零命中：
+       *
+       * ```
+       * morning-out    7039 次   wounded 19 · book  5
+       * afternoon-out  7015 次   wounded 12 · book 13
+       * evening-out    6990 次   一次也没有（1000 世时节到 17199 次，仍然零）
+       * ```
+       *
+       * 那两条不是「还没实现的缺口」，是**模板残留**——
+       * 留着会让代码结构表达一种不存在的可能性。
+       */
       'evening-out': {
         id: 'evening-out',
         onEnter: [{ type: 'daily', slot: '傍晚' }],
         blocks: [],
-        branches: [
-          { requires: [{ flag: { key: 'day-omen', equals: 'wounded' } }], next: 'omen:wounded' },
-          { requires: [{ flag: { key: 'day-omen', equals: 'book' } }], next: 'omen:book' },
-        ],
         next: 'close',
       },
 
