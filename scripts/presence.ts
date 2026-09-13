@@ -167,10 +167,29 @@ const SPEAKER_BONDS: Readonly<Record<string, Bond>> = {
   母亲: '生母',
   娘: '生母',
 }
+/**
+ * 对白里那个署名，指的是谁。
+ *
+ * ⚠️ **这张表是照库里真写的字抄的，所以正文改了它就过期。**
+ *
+ * 头一版三条全姓周，而库里那两个人只有两个真姓周：
+ *
+ * ```
+ * 周先生 → teacher   schooling 造他时 surname: '周'  ✓
+ * 周教授 → tutor     manor 那一支     surname: '周'  ✓
+ * 周侍讲 → tutor     court 那一支     surname: '沈'  ✗ ← 跟着一处错正文抄的
+ * ```
+ *
+ * 那处正文（「侍讲姓周」「speaker: 周侍讲」）本身是穿帮：
+ * 宫里那位造出来姓沈，而正文把王府教授的姓写到了他头上。
+ * 正文修好之后这一条才跟着改对——**表错了两年，因为它抄的那处正文也错着。**
+ *
+ * `scripts/surname.ts` 现在守着那一族：正文写死的姓要跟同一节造的人对得上。
+ */
 const SPEAKER_IDS: Readonly<Record<string, string>> = {
   周先生: 'teacher',
   周教授: 'tutor',
-  周侍讲: 'tutor',
+  沈侍讲: 'tutor',
 }
 /** 不是世上的某个人：你自己、书场里的说书人 */
 const NOBODY_IN_PARTICULAR: readonly string[] = ['你', '说书人']

@@ -49,8 +49,19 @@ import './lib/seeded'
 
 import { lifeScenes } from '../src/content/life'
 
-/** 正文里「姓X」那种写法 */
-const SURNAMED = /姓([一-龥])/g
+/**
+ * 正文里「姓X」那种写法。
+ *
+ * ⚠️ **不用汉字做字符范围的端点。** 头一版写的是 `[一-龥]`，
+ * 而 `namesake` 当场报红：那个「一」撞上了人名「沈一贯」的「一」。
+ *
+ * 它报得对——**判据源码里的汉字字面量，机器分不出哪个是「认的词」、
+ * 哪个是「范围端点」**，而下一个人读到 `[一-龥]` 也得停下来想一秒。
+ * 换成 Unicode 脚本属性，歧义本身就没有了。
+ *
+ * 这比往 `namesake` 的登记表里加一条例外好：**能消除的就别登记。**
+ */
+const SURNAMED = /姓(\p{Script=Han})/gu
 
 interface Fault {
   at: string
@@ -65,7 +76,10 @@ let nodesWithBirth = 0
 
 for (const [sceneId, scene] of Object.entries(lifeScenes)) {
   for (const [nodeId, node] of Object.entries(scene.nodes)) {
-    const effects = [...(node.onEnter ?? []), ...(node.choices ?? []).flatMap((c) => c.effects ?? [])]
+    const effects = [
+      ...(node.onEnter ?? []),
+      ...(node.choices ?? []).flatMap((c) => c.effects ?? []),
+    ]
     const born: { id: string; surname: string; given: string }[] = []
     for (const one of effects) {
       const rec = one as { type?: string; id?: string; who?: { surname?: string; given?: string } }
@@ -93,16 +107,19 @@ for (const [sceneId, scene] of Object.entries(lifeScenes)) {
       for (const hit of all.matchAll(SURNAMED)) {
         const said = hit[1]
         if (said === undefined || said === one.surname) continue
-        faults.push({ at: `${sceneId}#${nodeId}`, made: `${one.surname}${one.given}`, id: one.id, said })
+        faults.push({
+          at: `${sceneId}#${nodeId}`,
+          made: `${one.surname}${one.given}`,
+          id: one.id,
+          said,
+        })
       }
     }
   }
 }
 
 console.log(`\n=== 正文写死的姓，跟同一节造的人对得上吗 ===\n`)
-console.log(
-  `  全库 ${nodesWithBirth} 个节点在 onEnter 里带姓造人，共 ${made} 个人。\n`,
-)
+console.log(`  全库 ${nodesWithBirth} 个节点在 onEnter 里带姓造人，共 ${made} 个人。\n`)
 
 if (faults.length > 0) {
   console.log(`  ✗ ${faults.length} 处对不上：`)
