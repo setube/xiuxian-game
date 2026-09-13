@@ -92,6 +92,27 @@ const canRuin = (): boolean => meetsAll(eventOf('debt-fields')?.requires)
       wrong.push('编年里没有「地抵了债」')
     }
     if (!texts.some((line) => line.includes('租子'))) wrong.push('正文没讲从此要交租')
+    /*
+     * 父亲不在了，这一卷里不该提到他。
+     *
+     * ⚠️ 这一条拿「父亲／爹」两个字认人，而**那两个字可能由别人说出口**
+     * ——`nephew.ts` 里侄儿说的「我爹」指的是玩家的兄，不是玩家的爹。
+     * 那种句子一旦进了这一卷，这一条会误报，**而报错文案指向的是内容**，
+     * 查的人会直奔那一卷去改一句没毛病的话。
+     *
+     * 眼下安全，而**安全来自这一卷碰巧没那么写**，不是判据挡住了。
+     * 所以把那个前提写成可执行的断言：一旦有人在这一卷里写下
+     * 「他说……我爹」那种句子，先红在这儿，而不是红在上面那一条。
+     */
+    const spokenByOthers = texts.filter(
+      (line) => /[他她]说|「[^」]*[我你]爹/.test(line) && line.includes('爹'),
+    )
+    if (spokenByOthers.length > 0) {
+      wrong.push(
+        `这一卷里出现了别人口中的「爹」（${spokenByOthers[0]?.slice(0, 20)}…）——` +
+          '底下那一条拿「爹」两个字认人，会把它误报成「父亲不在了却提到他」',
+      )
+    }
     if (texts.some((line) => line.includes('父亲') || line.includes('爹'))) {
       wrong.push('父亲不在了，这一卷里却提到了他')
     }
