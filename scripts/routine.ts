@@ -365,9 +365,44 @@ for (const { scene, age, label } of ageCases) {
   const missed: string[] = []
 
   function grewBy(pick: string): Grew {
-    stage(8)
-    // 「整日跟着娘」要 `family: { id: 'mother', alive: true }`——按死这一格
-    usePeopleStore().amend('mother', { fate: '在' })
+    /*
+     * ⚠️ **掷到娘在册为止**——`amend` 造不出人。
+     *
+     * `beOf('farm')` 有概率掷出一个**没有娘**的世界，而
+     * `people.amend` 对不在册的人是**静默返回**（`people.ts:642`
+     * `if (!person) return`）。于是那一局里：
+     *
+     * ```
+     * 娘不在册 → follow-mother 的 requires 不成立 → 那一条根本不在选项里
+     *          → pick 落空 → 判据报「摆局没摆出 follow-mother」
+     * ```
+     *
+     * 2026-09-13 插探针印出来的真相（同一次运行的三次调用）：
+     *
+     * ```
+     * pick=follow-mother   娘在册=false   ← 头一次就掷到了没娘的世界
+     * pick=run             娘在册=true
+     * pick=alone           娘在册=true
+     * ```
+     *
+     * 判据报的话没错（那一条确实没摆出来），**而它读着像内容坏了**
+     * ——实际是这一局根本没有娘。这是「摆局不干净」那一族里的
+     * 「beOf 不立人」：`amend` 只改得了已有的人。
+     */
+    let tries = 0
+    do {
+      stage(8)
+      // 「整日跟着娘」要 `family: { id: 'mother', alive: true }`——按死这一格
+      usePeopleStore().amend('mother', { fate: '在' })
+      tries += 1
+    } while (usePeopleStore().personOf('mother') === undefined && tries < 60)
+
+    if (usePeopleStore().personOf('mother') === undefined) {
+      // 掷六十次都没有娘：那不是内容的账，是这一支的摆局立不起来
+      console.log('  ✗ 摆局立不起来：掷了 60 局，一局也没有娘——底下那几问问不出东西。')
+      missed.push(`${pick}（摆局无娘）`)
+    }
+
     const character = useCharacterStore()
     const before = { ...character.attributes }
     /*
