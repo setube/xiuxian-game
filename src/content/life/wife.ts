@@ -173,6 +173,107 @@ export const wifeScenes: SceneLibrary = {
       },
     },
   },
+  /**
+   * 娘病的那阵子。
+   *
+   * ## 这一卷存在的理由：上一卷造了一条【没有读取端】的边
+   *
+   * 过门那天立的 `spouse → mother` 那条 `tie`，交付的时候全库读它的条件是
+   * **零处**——写入端有、读取端零，正是这个库记了一整族的那种毛病。
+   *
+   * 对照嫂子那条边（`brother-wife → mother`），它有四个消费端：
+   *
+   * ```
+   * kindred.ts:403-405    一幕按它分流
+   * kindred.ts:1332-1333  娘的丧事按它分流
+   * kindred-quarrel       要【亲厚或平常】——处得来的才有得翻，不睦的早就不说话了
+   * kindred-mend          要【不睦】
+   * ```
+   *
+   * ## ⚠️ 关系不决定她做不做，只决定那段日子是什么样子
+   *
+   * 这一条是跟 GPT 过时定死的，它挡的是一种很容易滑进去的写法：
+   *
+   * ```
+   * ✗ 亲厚 → 她伺候；不睦 → 她不伺候        ← 从 tie 直接推行为，那是游戏规则
+   * ✓ 同住一屋，娘病了她都在跟前——【这不由关系决定】
+   *   关系决定的是：那半个月是什么样子
+   * ```
+   *
+   * 三支里她都没少做。不睦那一支尤其要写清楚：**不是她不肯做，是娘不肯受。**
+   * 少了这一层，这一卷就成了「关系好的媳妇孝顺」，而那是标签不是世界。
+   *
+   * ## 措辞对所有营生成立
+   *
+   * 跟前两卷同一条硬约束：写的是药、碗、灯、夜里——**每一户人家都有的东西**。
+   */
+  'wife:that-winter': {
+    id: 'wife:that-winter',
+    title: '娘病的那半个月',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [{ type: 'time', days: 15 }],
+        blocks: [],
+        branches: [
+          {
+            requires: [{ tie: { from: 'spouse', to: 'mother', terms: ['亲厚'] } }],
+            next: 'fond',
+          },
+          {
+            requires: [{ tie: { from: 'spouse', to: 'mother', terms: ['不睦'] } }],
+            next: 'sour',
+          },
+        ],
+        next: 'plain',
+      },
+
+      /** 亲厚 */
+      fond: {
+        id: 'fond',
+        blocks: [
+          { kind: 'narration', text: '娘病了半个月。夜里是她守着。' },
+          {
+            kind: 'narration',
+            text: '有一夜娘迷糊，叫了她的名字。后来娘好了，那半个月谁也没再提。',
+            tone: 'faint',
+          },
+        ],
+      },
+
+      /** 不睦：她一样没少做，是娘不肯受 */
+      sour: {
+        id: 'sour',
+        blocks: [
+          { kind: 'narration', text: '娘病了半个月。药是她煎的，一顿没落下。' },
+          {
+            kind: 'narration',
+            text: '娘不肯让她喂，自己端着碗。她就把碗放下，站在一边等娘喝完。',
+            tone: 'faint',
+          },
+        ],
+      },
+
+      /**
+       * 平常。
+       *
+       * ⚠️ 这一支是兜底（`next`），所以它也接住「那条边没立起来」的局
+       * ——写得住任何一种处境。
+       */
+      plain: {
+        id: 'plain',
+        blocks: [
+          { kind: 'narration', text: '娘病了半个月。药是她煎的，饭是她端的，一顿没落下。' },
+          {
+            kind: 'narration',
+            text: '两个人话不多。娘好了之后，屋里跟从前一样。',
+            tone: 'faint',
+          },
+        ],
+      },
+    },
+  },
 }
 
 export const wifeEvents: readonly LifeEvent[] = [
@@ -180,11 +281,24 @@ export const wifeEvents: readonly LifeEvent[] = [
     /**
      * 她自己的做法。
      *
-     * ## 门槛只有一条，而那是有意的
+     * ## 门槛两条
      *
      * ```
-     * bond 配偶、活着、在身边   这一卷说的就是「天天在场的那个人」
+     * gender 男                 正文通篇写「她」
+     * bond 配偶、活着、在身边    这一卷说的就是「天天在场的那个人」
      * ```
+     *
+     * ⚠️ **性别那一条是后来补的，而它堵的是一个已经交付出去的洞。**
+     * 头一版只问 `bond: 配偶`——而玩家**有 48.5% 是女的**（2000 世实测），
+     * 她们的配偶是男的（`match.ts` 的 `husband` 那一支，`given: '大'`）。
+     * 于是「过了一会儿她才回来」这种句子落在一个男人身上。
+     *
+     * **十一支门禁全绿，没有一支抓得到它**——那是「内容措辞 ↔ 玩家收到的事实」
+     * 那一层，机器够不着（`semantic-correctness-is-a-third-thing`）。
+     * 是量第三卷分流数的时候，发现兜底那一支吃掉了太多局，追下去才撞见的。
+     *
+     * 女玩家那边的丈夫是另一册，不是把这几句换个人称能写的
+     * ——就像 `match.ts` 的 `inlaws` 也没接 `husband` 那一支。
      *
      * ⚠️ **不问「成亲那一卷演过没有」**。我头一版写了
      * `flag: event:match-wed`，而一手核验发现：
@@ -236,9 +350,54 @@ export const wifeEvents: readonly LifeEvent[] = [
      */
     id: 'wife-her-own-way',
     window: { from: 20, to: 72 },
-    requires: [{ bond: { kind: '配偶', alive: true, near: true } }],
+    requires: [{ gender: '男' }, { bond: { kind: '配偶', alive: true, near: true } }],
     scene: 'wife:her-own-way',
     weight: 6,
     chance: 0.2,
+  },
+  {
+    /**
+     * 娘病的那半个月。
+     *
+     * ## 这一卷是上一卷那条边的读取端
+     *
+     * 过门那天（`match.ts` 的 `inlaws` 那几节）立下 `spouse → mother` 的 `tie`，
+     * 而交付那天全库读它的条件是**零处**。这一卷补的就是那一头。
+     *
+     * ## 门槛四条，缺一条这件事就说不通
+     *
+     * ```
+     * gender 男              正文通篇写「她」，跟上一卷同一个理由
+     * house.with 生母        娘活着【而且跟你同户】——不同户的话「她在跟前」不成立
+     * bond 配偶 活着 在身边   她也得在
+     * family mother ≥ 58     病一场要有年纪撑着。哥那边用的是 60（`away-father-old`）、
+     *                        娘老了那条用 55（`kindred-mend`），取中间
+     * ```
+     *
+     * ⚠️ **不问那条 tie 在不在**。理由跟第一卷不问 `event:match-wed` 是同一条：
+     * 兜底那一支（`plain`）本来就写得住「边没立起来」的局，多问一条只会
+     * 把射程砍掉一截，换不来任何东西。
+     *
+     * ## 窗口 22–78
+     *
+     * 成亲中位 17 岁（600 世实测），娘那时四十上下；等她到 58，玩家在三十往后。
+     * 窗口只负责不挡住，真门槛在 `requires`。
+     *
+     * ## `chance: 0.25`
+     *
+     * 比第一卷略高：娘病这件事在一辈子里**该演到**，它是那条边唯一的消费端。
+     * 而不设成必演——不是每个人的娘都会在你眼皮底下病那么一场。
+     */
+    id: 'wife-that-winter',
+    window: { from: 22, to: 78 },
+    requires: [
+      { house: { with: '生母' } },
+      { gender: '男' },
+      { bond: { kind: '配偶', alive: true, near: true } },
+      { family: { id: 'mother', alive: true, age: { atLeast: 58 } } },
+    ],
+    scene: 'wife:that-winter',
+    weight: 8,
+    chance: 0.25,
   },
 ]
