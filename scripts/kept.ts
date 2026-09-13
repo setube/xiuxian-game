@@ -63,7 +63,7 @@ import { BEATS } from '../src/content/days'
 import { lifeEvents, lifeScenes } from '../src/content/life'
 import { meetsAll } from '../src/engine/conditions'
 import { applyEffects } from '../src/engine/effects'
-import { fillString } from '../src/engine/interpolate'
+import { fillString, roleId } from '../src/engine/interpolate'
 import { isNearby } from '../src/engine/nearby'
 import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
@@ -142,8 +142,15 @@ interface Snap {
   keepers: Record<string, Folk>
   /** 在外头新认识的那个人。他是「陌生人」那一侧的对照 */
   stranger: Folk | null
-  /** `{dam}` 这个记号此刻落在谁身上 */
+  /** `{dam}` 这个记号此刻念出来是什么 */
   dam: string
+  /** `{dam}` 此刻落在【谁】身上。比 id 比比称呼准——称呼会随年纪变，id 不变 */
+  damId: string | null
+  /** 那个人此刻还在不在。娘殁了 `{dam}` 落到别人身上是【对的行为】 */
+  damAlive: boolean
+  /** 生母此刻在不在身边 */
+  damMotherNear: boolean
+  aliveById: Readonly<Record<string, boolean>>
   /**
    * 拿条件层去问的那几句话。
    *
@@ -192,6 +199,26 @@ function snap(where: string): Snap {
     keepers,
     stranger: STRANGER_ID === null ? null : folkOf(STRANGER_ID),
     dam: fillString('{dam}'),
+    /*
+     * `{dam}` 此刻落在【谁】身上。
+     *
+     * ⚠️ 比 id 比比称呼准：称呼会随年纪变（「娘」→「娘」不变，
+     * 可邻家那位「王婶」老了就成「王婆婆」），而 id 不变。
+     * 而且娘殁了 `{dam}` 会落到别人身上——**那是对的行为**，
+     * 只有比 id 才分得出「换了人」和「同一个人换了称呼」。
+     */
+    damId: roleId('dam') ?? null,
+    damAlive: (() => {
+      const id = roleId('dam')
+      return id === undefined ? false : people.roster[id]?.fate === '在'
+    })(),
+    /** 取证用：生母此刻在不在身边。`{dam}` 问的是 isNearby，不是活着 */
+    damMotherNear: people.kinOf('生母').some((id) => isNearby(id)),
+    /** 取证：直接照 isNearby 的定义算一遍，看跟它自己答的一样不 */
+    /** 按 id 查这个人此刻活没活。问「出门前那个人」用得着 */
+    aliveById: Object.fromEntries(
+      Object.entries(people.roster).map(([id, who]) => [id, who.fate === '在']),
+    ),
     asks: {
       有这层抚养关系: meetsAll([{ bond: { kind: '抚养' } }]),
       抚养人里还有活人: meetsAll([{ bond: { kind: '抚养', alive: true } }]),
@@ -565,10 +592,54 @@ function reunionKeeps(): string[] {
         '不在身边的人还在替正文当主语，`callByBond` 那一层没在问远近',
     )
   }
-  if (back.dam !== trip.before.dam) {
+  /*
+   * ⚠️ 回来之后该认回原来那个人——**而这一条要先问她还在不在。**
+   *
+   * `{dam}` 是个【位置】（解析顺序 生母 → 抚养 → 生父），
+   * 娘在那三年里殁了，它落到别人身上**是对的行为，不是穿帮**。
+   * 头一版只比称呼字符串，于是那种世界被报成「认不回原来那个人」
+   * ——五颗种子里零次，第六颗撞上了。
+   *
+   * 现在比 id、并且只在【出门前那个人回来时还在】的前提下要求认回。
+   */
+  /*
+   * ⚠️ 前提要问【出门前那个人现在还在不在】，不是「现在 dam 落到谁」。
+   *
+   * 头一版我写的是 `back.damAlive`——那问的是**回来时 dam 解析到的那个人**
+   * （已经是爹了，爹活着），于是前提恒真、红照旧。
+   * **判据的前提问错了对象，比判据本身错更难看出来**：
+   * 它长得完全像一条已经加了保护的判据。
+   *
+   * 真因查出来花了五轮取证，而最后一行是：
+   *
+   *     自检=mother:fate=殁;same=true;near=false
+   *
+   * ——娘的 `place` 跟家逐字相同，而 `isNearby` 头一步就问 `fate !== '在'`。
+   * **她在那三年里没了。**
+   */
+  const beforeStillAlive =
+    trip.before.damId !== null && back.aliveById[trip.before.damId] === true
+  const sameOne = back.damId === trip.before.damId
+  // 取证只能在这儿印——独立脚本从随机流开头取，拿到的是另一个世界
+  if (!sameOne) {
+    console.log(
+      `  ◇ 取证：出门前 dam=${trip.before.damId}（${trip.before.dam}）、` +
+        `回来 dam=${back.damId}（${back.dam}）；` +
+        `玩家家在 ${back.home}；娘 nearby=${back.damMotherNear}、` +
+        `出门前那个人此刻${beforeStillAlive ? '还在' : '已经没了'}`,
+    )
+  }
+  if (!sameOne && beforeStillAlive) {
     wrong.push(
-      `回来之后 {dam} 念的是「${back.dam}」，出门前念的是「${trip.before.dam}」——` +
+      `回来之后 {dam} 落在「${back.dam}」(${back.damId ?? '没人'})，` +
+        `出门前是「${trip.before.dam}」(${trip.before.damId})，而那个人还在——` +
         '回到家了却认不回原来那个人',
+    )
+  }
+  if (!sameOne && trip.before.damId !== null && !beforeStillAlive) {
+    console.log(
+      `  ◇ 出门那三年里「${trip.before.dam}」没了，{dam} 落到「${back.dam}」` +
+        '——`{dam}` 是个位置，换了人是对的行为，这一条不算穿帮',
     )
   }
   return wrong
