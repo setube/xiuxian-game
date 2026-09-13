@@ -24,6 +24,7 @@ import { ALL_LIVINGS } from '../src/content/living'
 import { SIGNS } from '../src/content/signs'
 import { meetsAll } from '../src/engine/conditions'
 import { useStory } from '../src/engine/story'
+import { titleFor } from '../src/content/address'
 import { useCharacterStore } from '../src/stores/character'
 import { useHouseholdStore } from '../src/stores/household'
 import { useNarrativeStore } from '../src/stores/narrative'
@@ -65,7 +66,34 @@ const TOO_COMMON: readonly string[] = ['孩子', '徒弟', '老人', '家里人'
  * 「问那人，父亲埋在哪里」——**同一件事两种说法，写死其中一种就漏掉另一种**。
  * 这跟底下 `ALSO_CALLED` 是同一个毛病的两次发作。
  */
-const TALKING_ABOUT_DEATH = /不在了|没了|殁|走了|下葬|坟|埋|丧|头七|再没有消息|留下的|留下来/
+const TALKING_ABOUT_DEATH =
+  /不在了|没了|殁|走了|下葬|坟|埋|丧|头七|再没有消息|留下的|留下来|走在前头|先走一步|过世|去世|故去|不在人世/
+
+/**
+ * ## 2026-09-14 补了五个说法，而补它们的理由不是「漏了」
+ *
+ * 原表收了「走了」没收「走在前头」，收了「殁」没收「过世」。实测：
+ *
+ *     ★报红   嫂子走在前头 / 嫂子先走一步 / 嫂子过世那年
+ *     豁免     嫂子没了
+ *
+ * 三句里前三句**都是完全正确的话**，而判据会把它们报成穿帮。
+ *
+ * ⚠️ **真正的代价不是误报，是内容绕着判据写。** 同伴那一轮写「她没了」那一支时，
+ * 选择不点她的称呼，理由之一是「否则会被那支报成穿帮」——那一处他另有更好的
+ * 理由（从老人家那一头说更贴），**可下一个人未必有**。
+ *
+ * > **判据的词表不全，于是内容绕着它写。绕一次两次没事，
+ * > 绕多了，内容库的措辞就被一张不完整的正则塑形了。**
+ *
+ * 这是「判据的措辞会跟它的数分家」的另一面：那一条说判据**说错话**，
+ * 这一条说判据**改变了被测的东西**——一支只读不写的走查，照样能反过来塑形内容。
+ *
+ * ## 为什么不收「先走」两个字
+ *
+ * 「你先走，我随后就到」——短词撞得狠，跟「哥」「姐」进 `TOO_COMMON` 同一个理由。
+ * **只收四字以上的固定说法**，这条边界写在这儿，免得下一个人顺手把它加回来。
+ */
 
 /**
  * 明说在回想的那些话，撞上不算数。
@@ -167,6 +195,58 @@ function stillSomeoneAlive(calls: string, dead: string): boolean {
     if (people.callOf(id) === calls) return true
   }
   return false
+}
+
+/**
+ * 这个词此刻是不是**别人对玩家**的称呼。
+ *
+ * ## 第三种同词碰撞，而它跟前两种方向相反
+ *
+ * ```
+ * 同名  「娘」既是生母的叫法，也是配偶的名字（姓+娘）   → 抹在册人的姓+名
+ * 同词  「我爹」由别人说出口时指别人的爹                → SPEAKER_ANCHORED
+ * 反向  「先生」是【别人对玩家】的称呼                  ← 这一条
+ * ```
+ *
+ * **前两种里那个词至少指向某个 NPC，只是指错了人。这一种根本不指向 NPC。**
+ *
+ * 2026-09-14 实撞（`SEED=e5`）：
+ *
+ * ```
+ * 〔正文〕teacher（玩家叫他「先生」）：先生，你可算回来了。
+ * ```
+ *
+ * 而库里那句是 `reunion.ts:342` 的**纯白话**「你可算回来了。」，
+ * 说话的是隔壁婶子。「先生」两个字是 `{hail:}` 拼上去的：
+ *
+ *     interpolate.ts:471   `{hail:X}` 是「**那个人开口时怎么称呼你**」，
+ *                          跟 `{call:}` 朝相反的方向
+ *     content/address.ts   HONORIFICS 里 { identity: '塾师', word: '先生' }
+ *
+ * **玩家当过塾师，所以别人叫他「先生」**——跟那位死掉的教书先生只是撞了字。
+ *
+ * ## 为什么问身份称谓，不问 `{hail:}` 的形状
+ *
+ * 两条更差的解法先排除掉：
+ *
+ *     判「紧跟逗号」　　不成立。`callMeBy` 对旧交返回 `undefined`
+ *                       （`interpolate.ts`：「熟人开口本来就不带称呼，
+ *                       那正是『熟』的样子」），所以 `hail` 有时是空的
+ *     改 interpolate　　记下每个 hail 段落的区间让判据跳过。准，
+ *                       但那是共享代码，而这一问不用碰它
+ *
+ * 这一问**从系统取**（`titleFor(character.identity, gender)`）：
+ * `HONORIFICS` 里添一个词它自动跟上，不用在这边另抄一张表。
+ *
+ * ⚠️ **边界**：玩家的身份称谓若**恰好等于**某个死者的 `calls`，这一条会
+ * 放过一条真穿帮。那是拿误报换漏报——而在这一族里值：
+ * **误报会让看的人直奔一处没毛病的地方去查**（同伴那支一轮报出九处误报，
+ * 差点把十几条真候选淹掉）。
+ */
+function isMyOwnTitle(word: string): boolean {
+  const character = useCharacterStore()
+  const household = useHouseholdStore()
+  return titleFor(character.identity, household.gender) === word
 }
 
 /**
@@ -365,6 +445,7 @@ for (let i = 0; i < RUNS; i += 1) {
         if (innocent(text, hit)) continue
         // 那个称呼此刻还指着一个活人——是撞车，不是穿帮
         if (stillSomeoneAlive(hit, id)) continue
+        if (isMyOwnTitle(hit)) continue
         ghosts.push({ who: id, calls: hit, where: '正文', text })
       }
       for (const option of narrative.options) {
@@ -376,6 +457,7 @@ for (let i = 0; i < RUNS; i += 1) {
         if (SPEAKER_ANCHORED.test(label)) continue
         if (innocent(label, hit)) continue
         if (stillSomeoneAlive(hit, id)) continue
+        if (isMyOwnTitle(hit)) continue
         ghosts.push({ who: id, calls: hit, where: '选项', text: label })
       }
     }
