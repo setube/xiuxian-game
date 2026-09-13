@@ -160,6 +160,91 @@ import { usePeopleStore } from '../src/stores/people'
  */
 const CALLED: readonly { key: string; role: string; why: string }[] = [
   {
+    key: 'teacher',
+    role: '执行者（2 条）+ 背景（1 条）',
+    why: [
+      'school:praise 「那天散学，先生把你留了一下。」「他让你把前天教的一段背一遍。」',
+      'youth:exam   「先生把你叫到跟前，问你想不想。」',
+      '  两卷里他都是【做那件事的人】，而事落在玩家身上（他的学业、他的选择）',
+      '  ——跟产婆、跟取名的爹同一格。',
+      '',
+      'school:fair  「三月三，城隍庙有庙会。家里让……」',
+      '  先生只是那一句里的背景，这一卷讲的是庙会。',
+    ].join('\n'),
+  },
+  {
+    key: 'son-heard-of-a-place',
+    role: '承受者，而在【承诺边界内】',
+    why: [
+      '「镇上有人来问，说他家铺子想寻个……」「人还没走远，{call:son}就问那是哪一家。」',
+      '  这一卷只落 { type: time }——一笔状态也没有。',
+      '',
+      '  ⚠️ 而它的承诺边界写在自己的注释里（我写这一卷时定的）：',
+      '',
+      '  > 这一卷表现的是「一个家庭第一次听见外部去处」，',
+      '  > 不是「按家庭职业生成适配机会」。',
+      '  > 「镇上有铺子要人」对哪种人家都成立——',
+      '  > **同一件事的不同读法，正文不点破是哪一种。**',
+      '',
+      '  **它承诺的就是「听见了」这件事本身**，不承诺任何后续状态。',
+      '  给儿子在这一卷落一笔「他要去了」，恰恰是这一卷明文拒绝的东西。',
+      '  跟陶仲那一族同一种（零效果不等于零承接），只是那边承诺「不变」，',
+      '  这边承诺「只是听见，还没定」。',
+    ].join('\n'),
+  },
+  {
+    key: 'nephew',
+    role: '关系双方（3 条）+ 背景（1 条）',
+    why: [
+      'kindred-newyear「正月里」、kindred-nephew-weds（侄儿娶妻）、',
+      'kindred-grandnephew（侄孙）——这几卷写的是【你跟侄儿之间】那些事，',
+      '  他是另一头。而 kindred:newyear 那几支落的正是 tie（nephew → brother）。',
+      '',
+      'descend-grandnephew 那一条里他是背景：要有侄儿才有侄孙。',
+    ].join('\n'),
+  },
+  {
+    key: 'nephew-wife',
+    role: '背景',
+    why: [
+      'kindred-grandnephew：要有侄媳才有侄孙。这一卷讲的是隔了两代那个孩子。',
+    ].join('\n'),
+  },
+  {
+    key: 'grandnephew',
+    role: '关系双方',
+    why: [
+      'descend-grandnephew：隔了两代的那个孩子认不认得你。',
+      '  这一卷写的就是你跟他之间那一面，没有单方面的承载者。',
+    ].join('\n'),
+  },
+  {
+    key: 'brother-wife',
+    role: '背景',
+    why: [
+      'kindred-nephew：要有嫂子才有侄儿。这一卷讲的是侄儿。',
+      '  ⚠️ 而嫂子在别处【是】承受者（away-father-old 里侄儿不回来，地由她种）',
+      '  ——同一个人在不同卷里角色不同，这正是「候选身份由来源位置决定」那一条。',
+    ].join('\n'),
+  },
+  {
+    key: 'house-divide-younger',
+    role: '背景',
+    why: [
+      '分家（弟弟那一支）：{ bond: 弟 } 是「分得出去」的前提。',
+      '  跟 house-divide 同一种——这一卷讲的是户怎么分，真正经历者是这一户。',
+    ].join('\n'),
+  },
+  {
+    key: 'craft-master',
+    role: '关系双方',
+    why: [
+      'refuge-master：师傅那一头。这一卷写的是你跟他之间的事，',
+      '  而它的入场条件正是 { family: { id: craft-master, health: { atMost: 60 } } }',
+      '  ——全库唯一一处读 health 的内容。',
+    ].join('\n'),
+  },
+  {
     key: 'herbalist-at-the-shed',
     role: '承受者，而在【承诺边界内】（零效果不等于零承接）',
     why: [
