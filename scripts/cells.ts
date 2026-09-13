@@ -45,6 +45,31 @@
  * 所以一格「内容层零处问过」不等于死的（引擎可能在读），
  * 但**它确实等于「改了它，没有任何一句正文或一条分支会因此不同」**。
  *
+ * ## 四种，而这一支只判得了前三种
+ *
+ * ```
+ * A  有条件观察面                          nephew 6 格、brother 6 格…
+ * B  没有观察面，正文也不专门点他          不是问题（多数配角）
+ * C  没有观察面，【而正文一直在用他】      内容层把他当活人使，条件系统问不了
+ * ────────────────────────────────
+ * D  【有观察面，而用到他的那几节没问】    ← 这一支【判不了】
+ * ```
+ *
+ * ⚠️ **嫂子那五处穿帮是 D，不是 C。** 她在这一支里报 5 格
+ * （`family.alive` / `exists` / `present` / `temper.in` / `tie.terms`）
+ * ——**问过，只是不在让她躲孩子、跟哥吵架、在老人跟前的那几节问。**
+ *
+ * D 归 `absent.ts`：它算的正是「到达某一节的所有路径上，那个人的存活
+ * 有没有被保证」。两支的分工因此是：
+ *
+ * ```
+ * cells.ts    这个人【整体上】有没有观察面     A / B / C
+ * absent.ts   【具体那一节】保证了没有         D
+ * ```
+ *
+ * **一个人可以同时是 A 和 D**——那正是嫂子，也正是最难看见的那一种：
+ * 报表上她有五格，看着比谁都健全。
+ *
  * ## ⚠️ 两条边界
  *
  * **一、`bond` 那种写法它认不出指的是谁。**
@@ -132,6 +157,73 @@ for (const scene of Object.values(lifeScenes)) {
 for (const id of ['east-head', 'east-wife', 'west-head', 'west-wife']) known.add(id)
 // 角色记号是位置不是人（elder 落到谁身上现算），从「零格」那一栏里排掉
 for (const token of ROLE_IDS) known.delete(token)
+/**
+ * 正文消费了他几次：占位符 + 写死的称呼。
+ *
+ * ⚠️ 这一维是这一支的【第二根轴】，而没有它「0 格」判不了任何事：
+ *
+ * ```
+ * 0 格 + 正文也不点他   他只是「目前没进条件层的实体」——不是问题
+ * 0 格 + 正文一直在用他 内容层把他当活人使，而条件系统【没能力问他的状态】
+ * ```
+ *
+ * **后者才是嫂子那一族的同构形式。** 那五处穿帮正是这么来的：
+ * 正文让她躲孩子、跟哥吵架、在老人跟前，而那几卷一格也不问她。
+ */
+const PLACEHOLDER = new RegExp('\\{(?:call|hail):([^}]+)\\}', 'g')
+const used = new Map<string, number>()
+const bump = (id: string): void => {
+  used.set(id, (used.get(id) ?? 0) + 1)
+}
+
+/** 字面称呼 → 谁。从内容层的 meet 现取，不列凭印象的表 */
+const literal = new Map<string, string[]>()
+for (const scene of Object.values(lifeScenes)) {
+  for (const node of Object.values(scene.nodes)) {
+    const fx = [...(node.onEnter ?? []), ...(node.choices ?? []).flatMap((c) => c.effects ?? [])]
+    for (const one of fx) {
+      const rec = one as { type?: string; id?: string; calls?: string }
+      if (rec.type !== 'meet' || typeof rec.id !== 'string') continue
+      if (typeof rec.calls !== 'string') continue
+      literal.set(rec.calls, [...(literal.get(rec.calls) ?? []), rec.id])
+    }
+  }
+}
+for (const scene of Object.values(lifeScenes)) {
+  for (const node of Object.values(scene.nodes)) {
+    const texts: string[] = []
+    for (const blk of node.blocks) if ('text' in blk) texts.push(blk.text)
+    for (const one of node.seen ?? []) texts.push(one.text)
+    for (const choice of node.choices ?? []) texts.push(choice.label)
+    for (const text of texts) {
+      for (const found of text.matchAll(PLACEHOLDER)) {
+        const rawId = found[1]
+        if (rawId === undefined) continue
+        bump(rawId.includes('/') ? (rawId.split('/')[1] ?? rawId) : rawId)
+      }
+      /*
+       * 写死的称呼。⚠️ **只认专指的那些**——一个称呼映射到几个人，
+       * 它就不是在点谁。
+       *
+       * 这个判据从系统取，不列一张凭印象的通用词表：
+       *
+       *     calls: '孩子' → son 和 daughter 两个人   → 不专指，不算
+       *     calls: '徒弟' → apprentice 一个人        → 专指，算
+       *
+       * 头一版没这一条，`daughter` 报出「正文点她 35 处」，
+       * **而其中 32 处是「孩子」两个字**——那个数是虚的，
+       * 而它恰好会把 C 类头一名做实。
+       */
+      for (const [word, ids] of literal) {
+        if (ids.length !== 1) continue
+        if (!text.includes(word)) continue
+        const only = ids[0]
+        if (only !== undefined) bump(only)
+      }
+    }
+  }
+}
+
 
 console.log(`\n=== 这个人身上，哪几格是活的 ===\n`)
 console.log(
@@ -146,19 +238,41 @@ const rows = [...new Set([...asked.keys(), ...known])]
 
 for (const row of rows) {
   if (row.cells.length === 0) continue
-  console.log(`  ${row.id.padEnd(22)} ${String(row.cells.length).padStart(2)} 格   ${row.cells.join('  ')}`)
+  console.log(
+    `  ${row.id.padEnd(22)} ${String(row.cells.length).padStart(2)} 格   ${row.cells.join('  ')}`,
+  )
 }
 
+/*
+ * 三分类。**只有 C 值得审**——「0 格」本身判不了任何事。
+ *
+ * > `daughter` 零格本身不是嫂子问题；
+ * > 「正文已经消费她，而条件层观察面为零」才是嫂子问题的同构形式。
+ */
 const mute = rows.filter((row) => row.cells.length === 0)
-if (mute.length > 0) {
+const quiet = mute.filter((row) => (used.get(row.id) ?? 0) === 0)
+const loud = mute
+  .filter((row) => (used.get(row.id) ?? 0) > 0)
+  .sort((x, y) => (used.get(y.id) ?? 0) - (used.get(x.id) ?? 0))
+
+if (quiet.length > 0) {
   console.log(
-    `\n  ◇ 内容层立过、而【一格也没被问过】的 ${mute.length} 个：\n      ${mute.map((r) => r.id).join('、')}`,
-  )
-  console.log(
-    `      ——不是缺陷：多数人本来就只需要「他在」。\n` +
-      `      而给他们写内容之前值得先看一眼，改了哪一格会有人接。`,
+    `\n  ◇ B 类 ${quiet.length} 个：没有条件观察面，正文也不点他——【不是问题】` +
+      `\n      ${quiet.map((r) => r.id).join('、')}`,
   )
 }
+if (loud.length > 0) {
+  console.log(`\n  ⚠️ C 类 ${loud.length} 个：正文【一直在用他】，而条件层一格也问不了：`)
+  for (const row of loud) {
+    const n = String(used.get(row.id) ?? 0).padStart(2)
+    console.log(`      ${row.id.padEnd(20)} 正文点他 ${n} 处`)
+  }
+  console.log(
+    `      ——内容层把他当活人使，而条件系统没有能力询问他的状态。` +
+      `\n      **这才是要审的那一栏**，「零格」本身不是。`,
+  )
+}
+
 
 console.log(
   `\n  ⚠️ 一格「零处问过」不等于死的（引擎可能在读），\n` +
