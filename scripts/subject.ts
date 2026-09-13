@@ -27,6 +27,8 @@
  * 记录者    编年落在玩家名下             ← 这是玩家视角的游戏，本来就该这样
  * 执行者    产婆                        ← 她连 id 都没有，压根不在册
  * 关系双方  tie 的两头
+ * 岔口      有他，这件事【走这一支】       ← 判 55 条 branches 时冒出来的
+ * 约束      有他，这件事【走不成】         ← 同上，而它比岔口重一档
  * 【真正经历者】                        ← 只有这一格该问「世界记下了吗」
  * ```
  *
@@ -502,6 +504,91 @@ for (const event of lifeEvents) {
  * （十三卷出身的 `open → kept` 是同一件事的十三种家境版本）。
  */
 const BRANCH_CALLED: readonly { key: string; role: string; why: string }[] = [
+  {
+    key: 'branch:brother',
+    role: '关系双方',
+    why: [
+      '十一条分布在 kindred:newyear / nephew-grown / nephew-weds / repay / mourning、',
+      '  nephew:goes（侄儿想去镇上，爹准不准）、away:i-repay。',
+      '  nephew:goes 的 blessed / allowed 那几支【落的正是 tie】（nephew → brother）',
+      '  ——哥是那条边的一头，不是单方面的承受者。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:bond:生母',
+    role: '关系双方（5 条）+ 岔口（4 条）',
+    why: [
+      '五条落 tie：match:offer 的 inlaws-*（2026-09-13 我写的过门那一节）四支，',
+      '  加 kindred:wedding 的 done——娘是那条边的一头。',
+      '',
+      '  另四条是岔口：festival:midautumn 的 parent-away、kindred:nephew 的 granny、',
+      '  kindred:newyear 的 mother / mother-tells——她在不在决定走哪一支。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:bond:配偶',
+    role: '约束（2 条）+ 岔口（2 条）',
+    why: [
+      'going-up:sent-for 的 cannot-leave / wife-only：「那一趟你没有去成。」',
+      '',
+      '  ⚠️ 她在这儿是【约束】，而那是第六种角色，前五种都装不下它：',
+      '    背景  有她，这件事才成立',
+      '    岔口  有她，这件事走这一支',
+      '    约束  有她，这件事【走不成】   ← 她拦住了玩家',
+      '',
+      '  三者的处置一样（都不该往她身上落），而说的世界事实一层比一层重：',
+      '  从「需要她在」到「她改变了样子」到「她改变了结局」。',
+      '',
+      '  另两条是岔口：playmate:wed 的 both、ending 的 spouse（临终那一节她在床边）。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:landlord',
+    role: '关系双方',
+    why: [
+      'dearth:price 三支：「米价涨了，租子照旧。」',
+      '  「{house:landlord}的人来过一趟，站在门口……」',
+      '  荒年催不催租，写的就是你跟田主之间那件事。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:east-wife',
+    role: '执行者',
+    why: [
+      'regard:homecoming：「{hail:east-wife}你可算回来了。」',
+      '  她来搭话、问起你家往后的打算——跟产婆、跟来敲门报信的邻居同一格。',
+      '  这一节的承受者是玩家（他此刻被人怎么称呼）。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:east-head',
+    role: '执行者',
+    why: [
+      '同上，regard:homecoming 的另一支。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:bond:生父',
+    role: '岔口',
+    why: [
+      'regard:homecoming 的 greeted：爹在不在，决定回村那天谁先开的口。',
+      '  承受者是玩家。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:steward',
+    role: '岔口',
+    why: [
+      'royal:dismissal 的 no-steward：管家在不在，决定这一节走哪一支。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:sister',
+    role: '岔口',
+    why: [
+      'house:succeed 的 handed：承户那一刻姐姐在不在。承受者是这一户。',
+    ].join('\n'),
+  },
   {
     key: 'branch:bond:兄',
     role: '关系双方（8 条）+ 岔口（2 条）',
