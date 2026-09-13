@@ -551,6 +551,7 @@ export const matchScenes: SceneLibrary = {
             tone: 'faint',
           },
         ],
+        next: 'inlaws',
       },
 
       wife: {
@@ -569,6 +570,7 @@ export const matchScenes: SceneLibrary = {
           { type: 'chronicle', text: '你成了亲。', tone: 'deep' },
         ],
         blocks: [{ kind: 'narration', text: '她话不多，手脚很快。' }],
+        next: 'inlaws',
       },
 
       'wife-rich': {
@@ -596,6 +598,142 @@ export const matchScenes: SceneLibrary = {
             text: '此后她管着家里的账，村里那些没有字的婆子见了她都客气几分。',
             tone: 'faint',
           },
+        ],
+        next: 'inlaws',
+      },
+
+      /**
+       * 过门之后头一个月：她和娘，共同生活的边界头一回要商量。
+       *
+       * ## 为什么这一节在这儿，而不是另起一卷
+       *
+       * 哥娶妻那边同样的一节在 `kindred.ts` 的婚事场里（`inlaws-sour` /
+       * `inlaws-fond` / `inlaws-plain`）——**那条边是过门那天立的**，
+       * 不是后来补的。我娶妻这一节也只能在这儿。
+       *
+       * ## ⚠️ 它补的不是「缺一件事」，是一个被抹掉的主语
+       *
+       * 上头 `wife-poor` 那句「家里把压箱底的布拿出来」，代码里压着一段注释，
+       * 说原话是「**你娘**把家里压箱底的布拿出来」，后来把娘这个主语去掉了
+       * ——因为那一节无条件触发，在娘已经不在的人生里同样会演。
+       *
+       * **所以接触那件事一直在场，被刻意抽掉的是「娘」。** 那个抽象是为了
+       * 让没有娘的人生也说得通；而这一节的条件里就要求娘在，**不需要那个抽象**。
+       *
+       * ## 这一节只在娘还在、且跟你同户时开
+       *
+       * 一手量的（600 世，逐世盯着配偶那条边头一次出现的那一刻）：
+       *
+       * ```
+       * 成过亲            47.5%
+       * · 娘还活着        65.3%（占成过亲的）
+       * · 娘跟我【同户】  37.9%   ← 这一节的分母
+       * · 娘在【别的户】  27.4%
+       * · 有一边查不到户   0.0%   ← 拆出来是为了确认 37.9% 没被漏测压低
+       * ```
+       *
+       * ⚠️ **那 27.4% 不写分支，也不需要补偿性内容。**
+       * 这一节不判断娘有没有参加成亲，也不补写娘不在场时发生的事
+       * ——上头那三档已经覆盖了过门当天的普遍事实。
+       * 这一节只在娘当时仍与你同户时，把那件事**具体归给她**，
+       * 并让它成为她与新妇的头一次共同经历。
+       * 看见「娘在别的户」没有分支的人，不要以为漏了内容。
+       *
+       * ## 写的不是打招呼，也不是谁当家
+       *
+       * 哥那三句写的是照面（「头一天就没说上话」「拉着她的手不放」
+       * 「客客气气的」），而**那一节玩家是旁观者**。这儿不一样：
+       * 娘的屋里从此多一个人过日子，**共同生活的边界头一回要商量**。
+       *
+       * ⚠️ 措辞守两条线：
+       *
+       * ```
+       * 不写谁当家       那会滑成「家庭权力结构」，而这个库不做那种系统
+       * 不假定营生       家里过的日子有七种，写「屋里的东西」「屋里的事」，
+       *                  不写灶上、不写田里
+       * ```
+       */
+      inlaws: {
+        id: 'inlaws',
+        blocks: [],
+        branches: [
+          {
+            requires: [
+              { house: { with: '生母' } },
+              { temper: { id: 'mother', in: ['暴躁', '刚硬'] } },
+              { temper: { id: 'spouse', in: ['暴躁', '刚硬'] } },
+            ],
+            next: 'inlaws-neither-gave',
+          },
+          {
+            requires: [{ house: { with: '生母' } }, { temper: { id: 'spouse', in: ['温和'] } }],
+            next: 'inlaws-she-gave',
+          },
+          {
+            requires: [{ house: { with: '生母' } }, { temper: { id: 'mother', in: ['温和'] } }],
+            next: 'inlaws-mother-gave',
+          },
+          { requires: [{ house: { with: '生母' } }], next: 'inlaws-halved' },
+        ],
+      },
+
+      /** 两个都硬：谁也没让 */
+      'inlaws-neither-gave': {
+        id: 'inlaws-neither-gave',
+        onEnter: [{ type: 'tie', from: 'spouse', to: 'mother', bond: '亲戚', terms: '不睦' }],
+        blocks: [
+          {
+            kind: 'narration',
+            text: '过门第三天，屋里有两处地方各收拾了一遍，收的是同几样东西。',
+          },
+          { kind: 'narration', text: '娘没说什么。她也没说什么。', tone: 'faint' },
+        ],
+      },
+
+      /** 她温和：她让了，而娘看见了 */
+      'inlaws-she-gave': {
+        id: 'inlaws-she-gave',
+        onEnter: [{ type: 'tie', from: 'spouse', to: 'mother', bond: '亲戚', terms: '亲厚' }],
+        blocks: [
+          {
+            kind: 'narration',
+            text: '屋里的东西原先放在哪，她问过一遍才动。娘说了两处，她记下了。',
+          },
+          { kind: 'narration', text: '第三处娘没说，她就没动。', tone: 'faint' },
+        ],
+      },
+
+      /** 娘温和：娘让了 */
+      'inlaws-mother-gave': {
+        id: 'inlaws-mother-gave',
+        onEnter: [{ type: 'tie', from: 'spouse', to: 'mother', bond: '亲戚', terms: '亲厚' }],
+        blocks: [
+          {
+            kind: 'narration',
+            text: '有两样东西她摆错了地方。娘看见了，没说，隔天自己挪了回去。',
+          },
+          {
+            kind: 'narration',
+            text: '又过两天，娘把那两样重新摆到了她顺手的地方。',
+            tone: 'faint',
+          },
+        ],
+      },
+
+      /**
+       * 兜底：各管各的。
+       *
+       * ⚠️ 这一支也接住「性情那一格没立起来」的局——写得住任何两个人。
+       */
+      'inlaws-halved': {
+        id: 'inlaws-halved',
+        onEnter: [{ type: 'tie', from: 'spouse', to: 'mother', bond: '亲戚', terms: '平常' }],
+        blocks: [
+          {
+            kind: 'narration',
+            text: '头一个月，屋里的事她做一半，娘做一半，各做各的那一半。',
+          },
+          { kind: 'narration', text: '谁也没说该怎么分，就这么分下来了。', tone: 'faint' },
         ],
       },
 

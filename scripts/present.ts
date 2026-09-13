@@ -139,6 +139,57 @@ function stillSomeoneAlive(calls: string, dead: string): boolean {
   return false
 }
 
+/**
+ * 撞上的那个字，是不是长在【别人的名字】里。
+ *
+ * ## 这是上面那一问的另一面
+ *
+ * `stillSomeoneAlive` 问的是「这个**称呼**此刻还指着活人吗」。
+ * 而还有一种撞车它够不着：**那个字不是谁的称呼，是谁名字里的一个零件。**
+ *
+ * 2026-09-13 实撞（`SEED=18bt1eize8h0`）：
+ *
+ * ```
+ * 〔正文〕mother（玩家叫他「娘」）：有人上门说了句不中听的话。秦娘没恼……
+ * ```
+ *
+ * **「秦娘」是妻子。** `match.ts` 四条议亲对象的 `given` 都是「娘」
+ *（一手核：`grep -rn "given: '娘'" src/` → `match.ts` 四条，`src/engine/` 零处），
+ * 落纸就是「秦娘」「陈娘」「林娘」。而妻子的称呼是「妻子」，
+ * 所以 `stillSomeoneAlive('娘', …)` 找不到她——**撞的不是称呼，是名字**。
+ *
+ * `INNOCENT_CONTEXTS` 也挡不住：那张表收的是「姑娘」「新娘」「娘娘」这类
+ * **固定词**，而「姓+娘」不是固定词，姓是掷出来的。
+ *
+ * ⚠️ **而这个洞早有人碰到过。** 那张表的注释里写着「或者一枚回执
+ * 『原来他叫 · 秦娘』」，于是 `'原来他叫'` 被加了进去——**那是照当时撞见的
+ * 那一句话的说法补的**，只罩住回执那一种句式。正文里换个说法
+ *（「有人上门说了句不中听的话。秦娘没恼」）就照样撞。
+ *
+ * 所以这一条不往那张表里再加词：**要挡的不是某一句话，是「名字」这一类。**
+ *
+ * ## 只抹别人的，不抹正在查的这一个
+ *
+ * ⚠️ 这儿**不能照搬 `verify` 那边的抹法**（`tasks/verify-relations.ts` 把在册
+ * 所有人的姓+名都抹掉）。那一支找的是「娘说」这种亲属称谓的鬼影，全抹安全；
+ * **而这一支找的就是死者的称呼，全抹等于把它弄瞎。**
+ *
+ * 所以按 `self` 排除：查娘的时候，抹掉的是别人的名字，娘自己的留着。
+ * 姓或名缺一个也跳过——`'' + '娘'` 会把光杆「娘」抹光，那就是弄瞎它。
+ *
+ * 换成「·」不是删掉：删会把前后两截接起来，接出来的字可能是原文没有的。
+ */
+function maskOtherNames(text: string, self: string): string {
+  const people = usePeopleStore()
+  let out = text
+  for (const one of Object.values(people.roster)) {
+    if (one.id === self) continue
+    if (!one.surname || !one.given) continue
+    out = out.split(`${one.surname}${one.given}`).join('·')
+  }
+  return out
+}
+
 /** 这一句里的「娘」是不是别的词的零件 */
 function innocent(text: string, calls: string): boolean {
   if (calls.length > 1) return false
@@ -250,7 +301,8 @@ for (let i = 0; i < RUNS; i += 1) {
         const text = 'text' in item.block ? item.block.text : null
         if (!text) continue
         // 撞上哪个词要记住：底下 `innocent` 和报错那行说的都得是撞上的那一个
-        const hit = names.find((name) => text.includes(name))
+        // 撞的可能是别人名字里的零件（「秦娘」里的「娘」），先把别人的名字抹掉
+        const hit = names.find((name) => maskOtherNames(text, id).includes(name))
         if (hit === undefined) continue
         if (TALKING_ABOUT_DEATH.test(text)) continue
         if (REMEMBERING_ALOUD.test(text)) continue
@@ -261,7 +313,7 @@ for (let i = 0; i < RUNS; i += 1) {
       }
       for (const option of narrative.options) {
         const label = option.choice.label
-        const hit = names.find((name) => label.includes(name))
+        const hit = names.find((name) => maskOtherNames(label, id).includes(name))
         if (hit === undefined) continue
         if (TALKING_ABOUT_DEATH.test(label)) continue
         if (REMEMBERING_ALOUD.test(label)) continue
