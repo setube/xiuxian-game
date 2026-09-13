@@ -661,6 +661,123 @@ for (const event of lifeEvents) {
  */
 const BRANCH_CALLED: readonly { key: string; role: string; why: string }[] = [
   {
+    key: 'branch:son',
+    role: '岔口（7 条），而其中三条在【承诺边界内】',
+    why: [
+      'son:grown 的 headstrong / shrewd / quiet——【他的性情】决定这一节走哪一支。',
+      '  ⚠️ 这一卷是我写的，跟 wife:her-own-way 同一种：认知节点，明写着不落状态',
+      '  （父亲看见儿子做事 → 意识到「他已经有自己的做法」）。',
+      '  **所以「没落点」正是这一卷的意思。**',
+      '',
+      '  son:heard-of-a-place 的 he-asked / he-figured / he-said-nothing',
+      '  ——同上，那一卷承诺的是「一个家庭第一次听见外部去处」，不承诺后续。',
+      '',
+      '  son:goes-to-town 的 went 是真岔口：他去没去，决定这一节走哪一支。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:craft-master',
+    role: '岔口',
+    why: [
+      'refuge:master 的 gone / lean——师傅还在不在、身子骨如何，',
+      '  决定这一节走哪一支。而这一卷的承受者是玩家（他还有没有地方去）。',
+      '',
+      '  ⚠️ 而它的入场条件 { family: { id: craft-master, health: { atMost: 60 } } }',
+      '  是全库唯一一处读 health 的内容——师傅那一格【有人读】。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:shop-keeper',
+    role: '岔口',
+    why: [
+      'counter:years 的 shop-closed / entrusted——铺子还在不在、东家托没托付，',
+      '  决定这一节走哪一支。承受者是玩家（他这些年在柜上的位置）。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:bond:师',
+    role: '岔口',
+    why: [
+      'craft:out 的 gone：出师那天师傅在不在。承受者是玩家。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:bond:女',
+    role: '岔口',
+    why: [
+      'ending 的 kin：临终那一刻谁在跟前。',
+      '  ⚠️ 跟 bond:子 那一条同一节——有没有孩子决定走哪一支，而承受者是玩家。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:bond:徒',
+    role: '岔口',
+    why: [
+      '同上，ending 的 kin：临终那一刻徒弟在不在。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:brother-wife',
+    role: '关系双方（5 条）+ 岔口（4 条）',
+    why: [
+      'kindred:wedding 的 inlaws-sour / inlaws-fond（哥娶妻那天她跟娘的第一条边）',
+      '  ——落的正是 tie（brother-wife → mother），她是那条边的一头。',
+      '  kindred:nephew-comes 的 behind-her-back、',
+      '  kindred:brother-gone 的 silver-widow（哥没了之后她一个人撑着）同理。',
+      '',
+      '  另几条（kindred:wedding / newyear / mourning 的 cold）是岔口：',
+      '  她跟娘那条边【冷着】，所以这几节走这一支。',
+      '',
+      '  ⚠️ 而她在 away-father-old 里【是】承受者（侄儿不回来，地由她种）',
+      '  ——同一个人在不同卷里角色不同。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:spouse',
+    role: '岔口（5 条）+ 关系双方（2 条）',
+    why: [
+      'wife:her-own-way 的 careful / shrewd / firm / quick / quiet 五支',
+      '  ——那是【她的性情】决定这一节走哪一支。⚠️ 这一卷是我写的，',
+      '  而它明写着「不落任何状态」：认知节点，改变的是玩家对她的理解。',
+      '  所以「没落点」正是这一卷的意思，跟陶仲那一族同一种。',
+      '',
+      '  另两条 match:offer 的 inlaws-neither-gave / inlaws-she-gave',
+      '  落的正是 tie（spouse → mother），她是那条边的一头。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:nephew',
+    role: '关系双方',
+    why: [
+      '七条分布在 kindred / descend 那几卷——写的都是你跟侄儿之间的事，',
+      '  而那几节落的正是 tie（nephew → brother）。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:teacher',
+    role: '执行者（4 条）+ 岔口（1 条）',
+    why: [
+      'exam:first 的 told / thank / let-be（放榜之后先生说了什么）、',
+      '  riverman 的 as-student——他做那件事，而事落在玩家身上。',
+      '',
+      '  omen:book 的 literate 是岔口：识不识字决定这一节走哪一支，',
+      '  而识字这件事的承受者是玩家。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:bond:子',
+    role: '岔口',
+    why: [
+      'festival:midautumn 的 child-away（孩子不在身边）、',
+      '  going-up:sent-for 的 cannot-leave（走不成）、ending 的 kin（临终谁在跟前）',
+      '  ——有没有孩子决定这三节走哪一支，而承受者都是玩家。',
+      '',
+      '  ⚠️ cannot-leave 那一条跟 bond:配偶 在同一节，同属【约束】那一族：',
+      '  正文是「交代到第三天你就知道交代不完」，是他自己交代不完，',
+      '  不是孩子拦他。',
+    ].join('\n'),
+  },
+  {
     key: 'branch:brother',
     role: '关系双方',
     why: [
@@ -1161,7 +1278,13 @@ const branchBy = new Map<string, number>()
 for (const one of branchRows) branchBy.set(one.who, (branchBy.get(one.who) ?? 0) + 1)
 console.log(`  ── 第二栏：branches 里点了名而没落东西（${branchRows.length} 条）──\n`)
 const branchJudged = new Map(BRANCH_CALLED.map((one) => [one.key, one]))
-for (const [who, n] of [...branchBy.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12)) {
+// ⚠️ 【没判过的一定印】，判过的才截断。
+// 头一版一律 slice(0, 12)，于是「还没判的 11 条」写着，而【是哪 11 条印不出来】
+// ——报表自己把待办藏起来了，那比不报还坏。
+const branchShown = [...branchBy.entries()]
+  .sort((a, b) => b[1] - a[1])
+  .filter((one, idx) => idx < 12 || !branchJudged.has(`branch:${one[0]}`))
+for (const [who, n] of branchShown) {
   const seen = branchJudged.get(`branch:${who}`)
   console.log(`    ${who.padEnd(16)} ${String(n).padStart(3)} 条  ${seen ? '○' : '⚠️'}`)
 }
