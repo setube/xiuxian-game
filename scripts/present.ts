@@ -263,7 +263,32 @@ for (let i = 0; i < RUNS; i += 1) {
   })
 
   story.begin()
-  let seen = narrative.stream.length
+  /*
+   * 已经看过的正文块，按**块 id** 记，不按下标。
+   *
+   * ## 为什么不能用 `stream.slice(seen)`
+   *
+   * `narrative.stream` 有上限（`stores/narrative.ts` 的 `MAX_STREAM_LENGTH = 400`），
+   * 满了之后 `append()` 从**头部**裁。于是 `length` 封顶恒等于 400，
+   * `seen` 也就恒等于 400，**`slice(400)` 稳定返回空**。
+   *
+   * 2026-09-14 一手量过（100 世）：
+   *
+   *     按块 id 收到的正文块   73751
+   *     slice(seen) 收到的     37084
+   *     漏掉                   36667 块（49.7%）
+   *     头一次撞上限           第 60 步（一辈子约 200 步，后四分之三基本全漏）
+   *
+   * ⚠️ **而漏报完全静默**：`seen` 从来不会超出 `length`，没有任何越界迹象。
+   * 我头一版探针问的是「`seen > length` 几次」，200 世**零次**，差点判没问题——
+   * **「问有没有异常」对「没有异常只有沉默」的故障天然无效**，
+   * 换成「两种收法的总数并排比」才量得出来。
+   *
+   * 这条坑 `stores/narrative.ts:15` 早就写着：「门禁走查也不能拿
+   * `stream.slice(seen)` 当全部正文——四百块之后它返回的永远是空，得按块 id 收。」
+   * **写上限的人当时就预见到了，而两支门禁照样那么写了**（另一支是 `neighbours.ts`）。
+   */
+  const seenIds = new Set<string>(narrative.stream.map((one) => one.id))
   const gone = new Map<string, string>()
   let turns = 0
 
@@ -289,8 +314,8 @@ for (let i = 0; i < RUNS; i += 1) {
     story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
     turns += 1
 
-    const fresh = narrative.stream.slice(seen)
-    seen = narrative.stream.length
+    const fresh = narrative.stream.filter((one) => !seenIds.has(one.id))
+    for (const one of fresh) seenIds.add(one.id)
 
     // 整卷都是回想的那几卷跳过。人可以想起死去的人，那不是穿帮
     if (REMEMBERING.some((id) => (narrative.sceneId ?? '').startsWith(id))) continue
