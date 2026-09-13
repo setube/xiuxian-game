@@ -45,6 +45,7 @@ import { routineScenes } from './routine'
 import { royalEvents, royalScenes } from './royal'
 import { schoolingEvents, schoolingScenes } from './schooling'
 import { seekingEvents, seekingScenes } from './seeking'
+import { sonEvents, sonScenes } from './son'
 import { tradeEvents, tradeScenes } from './trades'
 import { tutelageEvents, tutelageScenes } from './tutelage'
 import { youthEvents, youthScenes } from './youth'
@@ -401,6 +402,41 @@ export const CHAPTERS: readonly Chapter[] = [
     age: [18, 45],
     purpose: ['想要一个孩子和有一个孩子，在这个时代里是两件事'],
     marks: ['undertake', 'meet', 'flag', 'roll'],
+  },
+
+  /**
+   * 儿子长大了。
+   *
+   * ## 这一册的由来是一个被问了 665 次、一次没成立的条件
+   *
+   * 全库扫条件挖到的：`festival:midautumn` 的 `CHILD_AWAY`
+   * （「孩子今年没回来」）零成立，而全库提到玩家儿子的只有
+   * `bearing.ts` 三处——**全在出生那一刻**。出生之后世界对他是空白。
+   *
+   * ## 头一卷只做一件事：让世界注意到他是个人
+   *
+   * 不分路、不做决定、不落旗、不进编年。十六岁那年他身上有一件
+   * 具体的事被你看见，看见什么由**他的性情**定（引擎在他出生那一刻
+   * 就随机给了）。而**这一节没有选项**——「他长大了」不是一件
+   * 需要你处理的事，是一件正在发生的事。
+   *
+   * 口径立在 `design/son-grows-up.md`：**他从「你的孩子」变成「一个人」**，
+   * 父亲的意见很重要但不是世界规则。往后那三条路（留下／去镇上／读书）
+   * 各有自己的卷，而它们的条件从世界已有的东西里出，不从这一卷落的旗里出。
+   */
+  {
+    id: 'son',
+    scenes: sonScenes,
+    events: sonEvents,
+    called: ['年表'],
+    to: [],
+    age: [30, 70],
+    purpose: [
+      '他从「你的孩子」变成「一个人」——父亲的意见很重要，但不是世界规则',
+      '看见的是一件具体的事，不是一句评价；看见什么由他的性情定',
+      '这一卷不给选项：「他长大了」不是要你处理的事，是正在发生的事',
+    ],
+    marks: [],
   },
 
   /**
