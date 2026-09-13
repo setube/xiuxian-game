@@ -153,6 +153,10 @@ function probe(cond: Condition, out: Map<string, Set<string>>, where: string): v
     if (who.length === 0 && kind === 'knownAs' && typeof kindOf === 'string') {
       who.push(`known/${kindOf}`)
     }
+    // `{ bond: { kind: '配偶', … } }` 问的是关系种类，落在谁身上从内容层现取
+    if (who.length === 0 && kind === 'bond' && typeof kindOf === 'string') {
+      for (const id of BOND_TO_ID.get(kindOf) ?? []) who.push(id)
+    }
     if (who.length === 0) continue
     for (const id of who) {
       if (!out.has(id)) out.set(id, new Set())
@@ -168,6 +172,26 @@ function probe(cond: Condition, out: Map<string, Set<string>>, where: string): v
         if (!wheres.has(id)) wheres.set(id, new Set())
         wheres.get(id)?.add(where)
       }
+    }
+  }
+}
+
+/**
+ * 哪种关系落在哪个 id 上。**从内容层的 `meet` 效果现取，不列凭印象的表。**
+ *
+ * ⚠️ 没有它，`{ bond: { kind: '配偶', alive: true } }` 这种写法认不出在问谁
+ * ——`mountain:asked-home` 的入场条件明写着那一条，而 `spouse`
+ * 照样被报进风险栏。**判据看不懂的写法，属于射程问题，该修。**
+ */
+const BOND_TO_ID = new Map<string, Set<string>>()
+for (const scene of Object.values(lifeScenes)) {
+  for (const node of Object.values(scene.nodes)) {
+    const fx = [...(node.onEnter ?? []), ...(node.choices ?? []).flatMap((c) => c.effects ?? [])]
+    for (const one of fx) {
+      const rec = one as { id?: string; bond?: string }
+      if (typeof rec.id !== 'string' || typeof rec.bond !== 'string') continue
+      if (!BOND_TO_ID.has(rec.bond)) BOND_TO_ID.set(rec.bond, new Set())
+      BOND_TO_ID.get(rec.bond)?.add(rec.id)
     }
   }
 }
@@ -414,6 +438,30 @@ for (const row of rows) {
  * 二  正在说他没了  那句话本身就是他不在了的陈述
  * 三  时间点错开    那句话发生在他存在【之前】（拜师、收徒那一刻）
  * ```
+ *
+ * ## ⚠️ 而那四处里有两处，判定的理由【只看见了一层】
+ *
+ * 后来给这一支补上「认 `bond` 那种写法」之后，`craft:out` 和
+ * `youth:apprentice` 自己从表上退下去了——**那两卷用 `bond` 问过他**。
+ *
+ * ```
+ * 我当时判的   正文在说他没了 / 拜师那一刻他还不存在    ← 没错
+ * 而同时还有   那一卷的入场条件用 bond 问过他          ← 我没看见
+ * ```
+ *
+ * **判定结论对，而理由只写了一半。** 真正的教训在流程上：
+ * **逐处读正文判「正当」的时候，我没有去看那一卷的入场条件。**
+ * 看了就会发现它们根本不该出现在表上。
+ *
+ * 所以判一处风险候选，两件事都要做：
+ *
+ * ```
+ * 一  读那句正文        它在说什么（同词碰撞？在说他没了？他还没出现？）
+ * 二  读那一卷的条件    是不是已经有一层保证，而这一支没认出来
+ * ```
+ *
+ * ⚠️ **只做第一件，会把「判据的射程问题」记成「内容的正当例外」**
+ * ——而那两者的处置相反：前者该修判据，后者该留着不动。
  *
  * ⚠️ **所以这一栏报的是风险面，不是缺陷清单。**
  * 四处全正当不是「这一支没用」——它把该看的四处摆了出来，人看完判定没问题。
