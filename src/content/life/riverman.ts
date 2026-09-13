@@ -231,11 +231,25 @@ export const rivermanScenes: SceneLibrary = {
         next: 'river',
       },
 
+      /**
+       * 在铺子里当伙计。
+       *
+       * ⚠️ **跟上面 `as-apprentice` 同一个坑，而这一支当初漏改了。**
+       * 原文是「掌柜的让你去渡口盘一批到岸的货」——`shop-keeper`
+       * 是主语，而这一节在**他已殁的人生里照样触发**
+       *（`present.ts` 按称呼字面匹配，认不出「追述」和「在场」的分别）。
+       *
+       * 2026-09-13 别处加了一个事件、年表排期一变就撞出来了：
+       * 「1 种说法里，不在了的人还在露面」。
+       *
+       * 改法同上：去掉主语。**内容一个字也不少**——
+       * 差事还是那件差事，他只是不再是发令的那个人。
+       */
       'as-clerk': {
         id: 'as-clerk',
         onEnter: [{ type: 'time', days: 2 }],
         blocks: [
-          { kind: 'narration', text: '入秋那几日，掌柜的让你去渡口盘一批到岸的货。' },
+          { kind: 'narration', text: '入秋那几日，铺子里派你去渡口盘一批到岸的货。' },
           { kind: 'narration', text: '货点清了，船还没走。' },
         ],
         next: 'river',

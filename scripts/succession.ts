@@ -271,6 +271,20 @@ function live(): Lived {
     }
 
     // 三、分家（自己分出去）
+    /*
+     * ⚠️ **分家【之前】过的什么日子要记下来**——底下第五问要用。
+     *
+     * 那一问原来假定「farm 出身分完家就该过 farm」，
+     * 而**日子在分家之前就可能已经变过**：`refuge:taken`
+     *（回师傅的铺子里帮工）把 `living` 改成 `hired`，
+     * 逃难那一族也会。分家不动它，判据却报「farm 该过 farm，过的是 hired」。
+     *
+     * 2026-09-13 撞到：160 世里 1 世。一手验过那一世
+     * 「分家前的日子 = hired，分家后 = hired」——**分家什么也没改**。
+     * 而它先前一直绿，是因为那条路本来就稀；
+     * 别处加了一个事件、年表排期一变，它就出来了。
+     */
+    const livingBefore = character.living.id
     const chose = `${sceneBefore}#${nodeBefore}:${pick.choice.id}`
     if (chose === 'house:divide#choose:stay' || chose === 'house:divide#choose:town') {
       out.divided = true
@@ -300,17 +314,23 @@ function live(): Lived {
       // 五、分完家过什么日子：铺子归了哥、役、进城、没学成手艺的匠家孩子→给人做工；其余照旧
       const shopFamily = ['cloth', 'inn', 'tavern', 'herb'].includes(household.origin)
       const craftless = household.origin === 'craft' && !world.hasFlag('has-craft')
+      /*
+       * ⚠️ **「其余照旧」的「旧」是【分家之前那个日子】，不是出身。**
+       *
+       * 原来写的是「farm 出身 → 该过 farm」，而那假定了
+       * **分家之前他还在过本行的日子**。实际上日子在那之前就可能变过
+       *（`refuge:taken` 回师傅铺子帮工、逃难那一族），而**分家不动它**。
+       *
+       * 判据该问的是「**分家改没改他的日子**」，不是「他的日子配不配得上出身」。
+       * 所以照旧那一支拿 `livingBefore` 比，不拿出身推。
+       */
       const should =
         chose === 'house:divide#choose:town' ||
         shopFamily ||
         craftless ||
         household.origin === 'yamen'
           ? 'hired'
-          : household.origin === 'farm'
-            ? 'farm'
-            : household.origin === 'hunt'
-              ? 'hunt'
-              : character.living.id
+          : livingBefore
       out.livingAfter = { is: character.living.id, should }
       if (chose === 'house:divide#choose:town') {
         out.wentToTown = true
