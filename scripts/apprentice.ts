@@ -49,6 +49,22 @@ function stage(age = 25): void {
  *
  * `bond: { kind: '师', alive: false }` 是 `gone` 分支的条件，
  * 所以 fate 参数控制走哪条路。
+ *
+ * ## ⚠️ 师傅得**熬得过那四个月**
+ *
+ * `craft:out` 的 `open` 第一条 `onEnter` 就是 `{ type: 'time', months: 4 }`，
+ * 而摆局到判 `branches` 之间隔着它（引擎顺序：`applyEffects(onEnter)`
+ * → 渲染正文 → 判 `branches`）。
+ *
+ * 2026-09-13 撞到：头一版摆的是 50 岁、`health: 70` 的师傅，
+ * 某些种子下他**在那四个月里殁了**，于是摆的是「师傅在」，
+ * 判的时候却成立了「师傅不在」——判据报
+ * 「given 没走到（走过 open → gone）」，读着像内容坏了。
+ *
+ * 一手验过：同一颗种子推四个月前 `fate = 在`，推完 `fate = 殁`。
+ *
+ * 改法是**摆一个熬得过去的师傅**（38 岁、`health: 92`），
+ * 并在推完之后断言他还在——**不断言的话，下一次它老死了照样静默**。
  */
 function enrollMaster(alive: boolean): void {
   const people = usePeopleStore()
@@ -58,10 +74,10 @@ function enrollMaster(alive: boolean): void {
     surname: '陈',
     given: '大',
     gender: '男',
-    bornYear: world.time.year - 50,
+    bornYear: world.time.year - 38,
     bornMonth: 3,
     temper: '木讷',
-    health: 70,
+    health: 92,
     place: world.place,
     fate: alive ? '在' : '殁',
     history: [],
@@ -109,6 +125,20 @@ let bad = 0
   stage()
   enrollMaster(true)
   const walked = play()
+
+  /*
+   * ⚠️ **先断言前提还在，再判结果。**
+   *
+   * `open` 的 `onEnter` 推四个月，师傅可能就在那四个月里殁了
+   *（详见 `enrollMaster` 的注释）。不断言的话，底下那条判据会报
+   * 「given 没走到」——**读着像内容坏了，实际是摆的人没了**。
+   */
+  const master = usePeopleStore().personOf('craft-master')
+  if (master?.fate !== '在') {
+    console.log(`  ✗ 摆局前提没守住：推完那四个月师傅已经「${String(master?.fate)}」了。`)
+    console.log('    这一条红说的是【门禁摆的人活不过那一步】，不是内容坏了。')
+    bad += 1
+  }
 
   if (!walked.includes('given')) {
     console.log(`  ✗ given（师傅在）：没走到（走过 ${walked.join(' → ')}）。`)

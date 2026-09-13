@@ -86,6 +86,33 @@ function enrollKin(id: string, doing: string): void {
   })
 }
 
+/**
+ * 老屋那一户。**摆局从前一处也没立它**，于是 `OLD_HOME_FARMS`
+ *（问 `house: { id: 'old-home' }`）在这支门禁里恒假——户不存在时
+ * `conditions.ts` 的 `house` 一律 `return false`。
+ *
+ * 2026-09-13 `BROTHER_CARPENTER` 改成两条之后这一格才露出来：
+ * 那个常量现在要「哥的营生是木工」**且**「老屋还是种地的人家」，
+ * 因为只问前一条会把**匠户出身**的哥也圈进来，而他跟玩家住一个院子
+ *（详见 `content/life/kindred.ts` 那个常量的注释）。
+ *
+ * 立成什么营生由调用方给：`hold` 摆务农（改行去镇上的哥），
+ * `drop` 摆木工（生来就是匠户的哥）——**两侧摆的正是那条新加的差别**，
+ * 不然打断验不出它。
+ */
+function enrollOldHome(livelihood: Livelihood): void {
+  const people = usePeopleStore()
+  const world = useWorldStore()
+  people.enrollHouse({
+    id: 'old-home',
+    surname: '江',
+    head: 'brother',
+    members: ['brother'],
+    residence: world.place,
+    livelihood,
+  })
+}
+
 function playFrom(
   scene: string,
   from: string,
@@ -285,15 +312,17 @@ function check(label: string, walked: string[], expected: string): void {
       scene: 'away:i-repay',
       node: 'open',
       to: 'in-town',
-      label: '哥改行做了木匠',
-      other: '哥还在种地',
+      label: '哥改行去镇上做了木匠',
+      other: '哥生来就是匠户，跟你住一个院子',
       hold: () => {
         stage()
         enrollKin('brother', '木工')
+        enrollOldHome('务农') // 老屋还是种地的人家——他是【改行去镇上】的那种
       },
       drop: () => {
         stage()
-        enrollKin('brother', '务农')
+        enrollKin('brother', '木工')
+        enrollOldHome('木工') // 整户都是匠户——他没去过镇上，这一支不该走 in-town
       },
     },
     {
