@@ -949,6 +949,42 @@ const BRANCH_CALLED: readonly { key: string; role: string; why: string }[] = [
  * 叫「**146 件事件里，23 件带着需要解释来源的承受者**」。
  * 经过来源分类，大量会落进 created-in-scene，剩下的 unknown 才值得啃。
  */
+/**
+ * 第三栏判过的来源（7 条，2026-09-13 判完）。
+ *
+ * ```
+ * royal-demote      steward / gatekeeper / maid / page   条件被【有意】去掉
+ * match-offer       mother                               关系解析
+ * kindred-wedding   mother                               关系解析
+ * kindred-quarrel   mother                               关系解析
+ * kindred-mourning  mother                               关系解析
+ * kindred-brother-gone  nephew                           关系解析
+ * away-father-old   brother-wife                         【分流承受者】
+ * ```
+ *
+ * ## ⚠️ royal-demote 那四条：条件是被 `doors.ts` 逼着去掉的
+ *
+ * 理由写在 `royal.ts` 自己的注释里：
+ *
+ * > 从前这一卷的 `requires` 里挂着 `{ family: { id: steward, alive: true } }`
+ * > ——理由充分：他在正文里说了两句话，而这一卷的决定就是他做的。
+ * > 可他比玩家大 42–60 岁，而窗口是玩家九到十三岁……
+ * > **一半以上的府里孩子读不到这一卷，而没有任何东西会报错。**
+ * > 所以不是放宽那条 requires，是【给「他没了」写一支】。
+ *
+ * **所以「没被点名」在这儿是设计结论，不是疏漏**——那一卷改成按
+ * 「他在不在」分流，而正文两支都写了。
+ *
+ * ## brother-wife 那一条正是建这一栏的起因
+ *
+ * `away-father-old`：哥种不动地了，侄儿不回来，**那几亩地由嫂子种**。
+ * 她是分流承受者——前两栏结构上看不见她，因为她从没被点名。
+ *
+ * ## mother / nephew 那几条是关系解析
+ *
+ * 条件问的是 `bond:生母` / `bond:兄` 这类关系种类，而效果落在解析出来的
+ * 具体 id 上。**来源闭合**——只是我这把尺子的反查没把每一种关系都接上。
+ */
 const originRows: { event: string; who: string; how: string }[] = []
 for (const event of lifeEvents) {
   const named = namedInRequires(event.requires ?? [])
