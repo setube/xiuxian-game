@@ -768,4 +768,24 @@ export function cultivatorById(id: string): Cultivator | undefined {
   return ALL.find((one) => one.id === id)
 }
 
+/**
+ * 全表，给门禁遍历用。
+ *
+ * ⚠️ **`src/` 里一处也不引它**（2026-09-13 一手核验），
+ * 六支门禁引用 24 次。这不是死代码，是**观察窗口**：
+ *
+ *     ALL
+ *      ├─ cultivatorById(id)   运行时唯一入口，按 id 取
+ *      └─ CULTIVATORS          门禁遍历全表用
+ *
+ * 运行时按 id 查（`engine/meeting.ts`、`engine/tutelage.ts`），
+ * 门禁要的是「每一位都满足某种约束吗」——**访问形态不同，
+ * 而读的是同一份 `ALL`**。
+ *
+ * 判它是不是正常窗口，最好验的一条是：**删掉它，世界行为变不变**。
+ * 这里不变——修士照旧通过 `ALL` 活着，只是门禁失去遍历口。
+ *
+ * ⚠️ 反过来不成立：**不能靠「新增一支门禁去读它」给一个没接入世界的
+ * 接口发合法性**。五条完整判定写在 `scripts/unused.ts` 的文件头。
+ */
 export const CULTIVATORS = ALL

@@ -75,7 +75,19 @@ function meetsRegion(answer: Answer, state: Record<RegionKey, number>): boolean 
   return true
 }
 
-/** 此刻能去问的人 */
+/**
+ * 此刻能去问的人。
+ *
+ * ⚠️ **目前没有消费者**（2026-09-13 一手扫过）。它和底下的 `topicsFor`
+ * 是**为问话界面准备的**：「能去问谁」「他能答哪几件事」——
+ * 那是要摆出一张单子的时候才用得上，而那个界面还没做。
+ *
+ * 内容层和引擎走的是第三个入口 `ask(informantId, topic)`：**直接指定
+ * 谁和哪件事**（`effects.ts:33`、`errand.ts:8` 都在用）。所以这个模块
+ * 是接上了的，只是**集合视图那两个入口还没有第一个使用者**。
+ *
+ * 别为它造消费者——等真要做那张单子的时候它在这儿。
+ */
 export function availableInformants(): Informant[] {
   const people = usePeopleStore()
   return INFORMANTS.filter((informant) => {
@@ -87,7 +99,12 @@ export function availableInformants(): Informant[] {
   })
 }
 
-/** 他能答哪几件事。答不上来的不列出来——玩家不该看见「他有个答案但拿不到」 */
+/**
+ * 他能答哪几件事。答不上来的不列出来——玩家不该看见「他有个答案但拿不到」。
+ *
+ * ⚠️ 同 `availableInformants`：**目前没有消费者**，它是问话界面那一侧的
+ * 集合视图，而那个界面还没做。走 `ask` 的路径直接指定话题，不经过它。
+ */
 export function topicsFor(informant: Informant): Topic[] {
   const world = useWorldStore()
   const state = world.regionState() as unknown as Record<RegionKey, number>
