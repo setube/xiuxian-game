@@ -72,7 +72,18 @@ import './lib/seeded'
 import { readdirSync, readFileSync } from 'node:fs'
 
 /** 判据里抄的整句：四个汉字以上，允许带标点 */
-const QUOTED = /includes\('([一-龥，。、！？：；「」]{4,})'\)/g
+/**
+ * 判据里抄的整句：四个汉字以上，允许带标点。
+ *
+ * ⚠️ **不用汉字做字符范围的端点。** 头一版写 `[一-龥…]`，
+ * 而 `namesake` 当场报红：那个「一」撞上人名「沈一贯」的「一」。
+ * 同一处第二次了（`surname.ts` 头一版一样）——**这个坑会反复踩，
+ * 因为 `[一-龥]` 是写中文正则最顺手的那个写法。**
+ *
+ * 处置照上次：换成 Unicode 脚本属性，**消除歧义本身，
+ * 不往 `namesake` 的登记表里加例外。**
+ */
+const QUOTED = /includes\('((?:\p{Script=Han}|[，。、！？：；「」]){4,})'\)/gu
 
 /**
  * 干草堆：**整个 `src/content/` 的源文本**，不是 `lifeScenes` 摊出来的那一份。
