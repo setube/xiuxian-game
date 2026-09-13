@@ -500,6 +500,7 @@ interface Row {
   node: string
   who: string
 }
+const byProof = new Map<string, number>()
 const bare: Row[] = []
 const roleish: Row[] = []
 let totalCalls = 0
@@ -512,6 +513,7 @@ for (const [sceneId, scene] of Object.entries(lifeScenes)) {
   for (const [nodeId, node] of Object.entries(scene.nodes)) {
     rawTotal += rawCallCount(node)
     const here = assured.get(nodeId) ?? new Set<string>()
+    const born = bornHere(node.onEnter)
     const done = new Set<string>()
     for (const { who, guards } of callsIn(node)) {
       // 同一节里点两遍算一处
@@ -523,9 +525,27 @@ for (const [sceneId, scene] of Object.entries(lifeScenes)) {
         roleish.push({ scene: sceneId, node: nodeId, who })
         continue
       }
-      // 路上保证的，加上这一句自己带的守卫
-      if (here.has(bareId) || guards.has(bareId)) {
+      /*
+       * 是哪一种证据保住了他。由近及远问——**报出来的是「凭什么」，
+       * 不只是「行不行」**。
+       *
+       * ⚠️ 这四栏不是装饰。一栏长期为零，说明要么内容层不那么写、
+       * 要么这一支认不出那种写法——而后者会变成误报，
+       * 而误报会让看的人直奔一处没毛病的地方去查。
+       */
+      const proof =
+        guards.has(bareId)
+          ? '就近的条件'
+          : born.has(bareId)
+            ? '这一节领进门'
+            : fromEvent.has(bareId)
+              ? '入场条件'
+              : here.has(bareId)
+                ? '路上的分支'
+                : null
+      if (proof !== null) {
         covered += 1
+        byProof.set(proof, (byProof.get(proof) ?? 0) + 1)
         continue
       }
       bare.push({ scene: sceneId, node: nodeId, who: bareId })
@@ -579,6 +599,28 @@ for (const row of bare) {
   if (!byWho.has(row.who)) byWho.set(row.who, [])
   byWho.get(row.who)?.push(row)
 }
+/*
+ * ⚠️ 分栏而不是只报一个数，是用户和 GPT 定的那条不变量逼出来的：
+ *
+ * > **审计器只能指出「存在性证明缺口」，不能决定「证明必须通过 requires 补齐」。
+ * > requires 只是证明方式之一。**
+ *
+ * 这一支头一版输出的是「N 个需要加 alive 的地方」，而那个说法本身就在替
+ * 设计者做决定。25 处候选里只有 5 处该动内容，另 20 处是这支尺子
+ * **不认识那种证明方式**——照着它一路加 requires，会加错 20 处，
+ * 而每一处都不报错、门禁照样绿、可达世界悄悄缩小一圈。
+ */
+console.log(`  凭什么算「保住了」：`)
+for (const [kind, n] of [...byProof.entries()].sort((x, y) => y[1] - x[1])) {
+  console.log(`      ${kind.padEnd(14)} ${String(n).padStart(2)} 处`)
+}
+for (const kind of ['就近的条件', '这一节领进门', '入场条件', '路上的分支']) {
+  if (!byProof.has(kind)) {
+    console.log(`      ⚠️ 「${kind}」一处也没有——要么内容不那么写，要么这一支认不出它`)
+  }
+}
+console.log()
+
 const judgedAt = new Map(JUDGED.map((one) => [one.at, one] as const))
 let unjudged = 0
 for (const [who, rows] of [...byWho.entries()].sort((a, b) => b[1].length - a[1].length)) {
