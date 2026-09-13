@@ -140,13 +140,34 @@ function probe(cond: Condition, out: Map<string, Set<string>>): void {
       if (cells === undefined) continue
       // 只问了「是谁」而没问别的格 → 记成这个种类本身（family 那种就是问在不在）
       const others = Object.keys(inner).filter((k) => !(WHO_KEYS as readonly string[]).includes(k))
-      if (others.length === 0) cells.add(kind)
-      for (const cell of others) cells.add(`${kind}.${cell}`)
+      const names = others.length === 0 ? [kind] : others.map((cell) => `${kind}.${cell}`)
+      for (const name of names) {
+        cells.add(name)
+        const key = `${id}␟${name}`
+        howOften.set(key, (howOften.get(key) ?? 0) + 1)
+      }
     }
   }
 }
 
 const asked = new Map<string, Set<string>>()
+/**
+ * 每一格【被问过几处】。
+ *
+ * ⚠️ 只报「问过没有」是不够的：一格被问过一处和被问过八处，
+ * 在布尔那一栏里长得一模一样，**而它们对「还能不能往这儿写」
+ * 给出的是相反的答案**。
+ *
+ * ```
+ * family.health   craft-master 一处   ← 全库唯一一处读 health 的内容
+ *                                        这一格【刚开了一个口】
+ * family.alive    到处都是            ← 已经用满了
+ * ```
+ *
+ * 分隔符用 ␟（U+241F），不用 NUL——真 NUL 会让 grep 把整个源文件
+ * 当二进制，一行匹配都不打印（`engine/kinTree.ts` 正踩着那个坑）。
+ */
+const howOften = new Map<string, number>()
 
 // 一、年表事件的入场条件
 for (const event of lifeEvents) for (const one of event.requires ?? []) probe(one, asked)
@@ -273,7 +294,12 @@ for (const row of rows) {
   const n = used.get(row.id) ?? 0
   const seen = n === 0 ? '正文不点他' : `正文点他 ${String(n).padStart(2)} 处`
   const head = `  ${row.id.padEnd(20)} ${String(row.cells.length).padStart(2)} 格 · ${seen.padEnd(13)}`
-  console.log(`${head} ${row.cells.join('  ')}`)
+  // 一格只被问过一处的，标个 ·  ——那一格【刚开了一个口】，还写得进去
+  const cells = row.cells.map((cell) => {
+    const n = howOften.get(`${row.id}␟${cell}`) ?? 0
+    return n === 1 ? `${cell}·` : cell
+  })
+  console.log(`${head} ${cells.join('  ')}`)
 }
 
 /*
@@ -308,6 +334,8 @@ if (loud.length > 0) {
 
 
 console.log(
-  `\n  ⚠️ 一格「零处问过」不等于死的（引擎可能在读），\n` +
+  `\n  格子后头的「·」表示【全库只被问过一处】——那一格刚开了个口，还写得进去。
+
+  ⚠️ 一格「零处问过」不等于死的（引擎可能在读），\n` +
     `  但它确实等于【改了它，没有任何一句正文或一条分支会因此不同】。\n`,
 )
