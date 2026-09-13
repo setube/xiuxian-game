@@ -442,6 +442,55 @@ for (const event of lifeEvents) {
 }
 
 /**
+ * 第二种射程：`branches` 里点了名的人。
+ *
+ * ⚠️ **跟 `requires` 分开统计，两栏不合并。** 它们连「点名」的含义都不同：
+ *
+ * ```
+ * requires   点到的人是「这件事成不成立」的条件
+ * branches   点到的人常常【就是分流依据本身】——有他就走这一支
+ * ```
+ *
+ * 所以角色里多一档 **「岔口」**：跟「背景」一样不该落东西，**而理由不同**。
+ * 背景说的是「这件事需要他存在」，岔口说的是「**他的存在改变了这件事的样子**」
+ * ——后者其实更接近「他在这个世界里有分量」，跟背景混成一档会读丢那一层。
+ *
+ * ## ⚠️ 而这一档有个真实的风险，防线写在这儿
+ *
+ * `branches` 里的点名**几乎全部**都是分流依据（那是 `branches` 的定义），
+ * 所以「岔口」会一口气吞掉这一栏的绝大多数候选。跟 GPT 定的防线：
+ *
+ * > **角色分类用于解释候选，不用于预先淘汰候选**；
+ * > 只有完成角色判定后，才能决定它是否进入主体缺口统计。
+ *
+ * 就是说：这一栏 95% 判成岔口也行，**但必须是逐条看过之后**，
+ * 不能事先写一条「`branches` 里的都不算」。所以这一栏现在**全部是未判**，
+ * 而那个数摆在明处——**自动那半永远完整，人工那半永远显式暴露缺口**。
+ *
+ * 而这一栏本身也值得读：要是判完发现「岔口 80 / 主体 20」，
+ * 那就得查**为什么有这么多分流条件其实在描述人物自身的经历**。
+ */
+const branchRows: { scene: string; who: string }[] = []
+for (const [sceneId, scene] of Object.entries(lifeScenes)) {
+  const touched = touchedByScene(sceneId)
+  for (const node of Object.values(scene.nodes)) {
+    for (const branch of node.branches ?? []) {
+      for (const who of namedInRequires(branch.requires ?? [])) {
+        if (who.startsWith('bond:')) {
+          const ids = BOND_TO_ID.get(who.slice(5))
+          if (!ids || ids.size === 0) continue
+          if ([...ids].some((id) => touched.has(id))) continue
+        } else {
+          if (!PEOPLE.has(who)) continue
+          if (touched.has(who)) continue
+        }
+        branchRows.push({ scene: sceneId, who })
+      }
+    }
+  }
+}
+
+/**
  * 尺子自检：坏掉的尺子跟「库里很干净」印出来一模一样。
  *
  * ⚠️ **而这几条线的数字自己也会画在噪声里，我当天就栽过一次。**
@@ -591,8 +640,7 @@ console.log(
     '    ⚠️ 行末的 ✓ 不等于「这一行的主体都有落点」——落了点的对子不会成为候选，',
     '    没人给它们标过角色。「主体且有落点」这一格这一支给不出来。',
     '',
-    '    ⚠️ 而这张图【不能拿行覆盖率排名】：`bond:兄 13/20` 混着两种东西',
-    '    ——哥是主体的那些卷，和「只要有个哥」这个前提。同一个人用',
+    '    ⚠️ 而这张图【不能拿行覆盖率排名】：`bond:兄 13/20` 混着两种东西',    '    ——哥是主体的那些卷，和「只要有个哥」这个前提。同一个人用',
     '    `id: brother` 点名时是 8/8，用 `bond: 兄` 点名时是 13/20，',
     '    差别在内容层怎么点他，不在这个人身上。',
     '',
@@ -632,3 +680,35 @@ if (fresh.length > 0) {
 console.log('  这一支不判成败。「点了名」不等于「这件事发生在他身上」——')
 console.log('  背景、记录者、执行者、关系双方、真正经历者，只有最后一格该问')
 console.log('  「世界记下了吗」，而那一格静态判不出来。判完往 CALLED 里登记。\n')
+
+/**
+ * 第二栏：`branches` 里点了名而没落东西的。**跟上面那栏分开报，不合并。**
+ *
+ * ⚠️ **55 这个数不要拿去对 135。** 全库带人物条件的分支有 118 条，
+ * 展开成「分支 × 谁」的对子 135 个，而进这一栏的只有 55——
+ * **另外 80 个是「落了东西的」，被滤掉了**，那正是这支尺子该做的事。
+ * 这一栏数的是【没落点的那些】，不是【所有点名】。
+ *
+ * 这一栏现在**全部是未判**——按 GPT 那条防线，
+ * 「角色分类用于解释候选，不用于预先淘汰候选」，
+ * 所以不能事先写一条「`branches` 里的都算岔口」把它们消掉。
+ */
+const branchBy = new Map<string, number>()
+for (const one of branchRows) branchBy.set(one.who, (branchBy.get(one.who) ?? 0) + 1)
+console.log(`  ── 第二栏：branches 里点了名而没落东西（${branchRows.length} 条，全部未判）──\n`)
+for (const [who, n] of [...branchBy.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12)) {
+  console.log(`    ${who.padEnd(16)} ${String(n).padStart(3)} 条  ⚠️`)
+}
+console.log(
+  [
+    '',
+    `    共 ${branchBy.size} 个不同的「谁」。⚠️ 全部未判——而这个数摆在明处是有意的：`,
+    '    自动那半永远完整，人工那半永远显式暴露缺口。',
+    '',
+    '    ⚠️ 这一栏预计绝大多数会判成【岔口】（有他就走这一支），因为那正是',
+    '    branches 的定义。而那必须是【逐条看过之后】的结论，不是一条预先的规则。',
+    '    判完要是出现「岔口 80 / 主体 20」，就得查为什么这么多分流条件',
+    '    其实在描述人物自身的经历。',
+    '',
+  ].join('\n'),
+)
