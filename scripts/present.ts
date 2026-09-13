@@ -362,6 +362,46 @@ interface Ghost {
 const ghosts: Ghost[] = []
 let deathsSeen = 0
 
+/**
+ * 被 `TOO_COMMON` 整个滤掉的那些人，殁过几世。
+ *
+ * ## 判据承认自己分不出，于是把事实摆出来
+ *
+ * `TOO_COMMON` 是**按词**豁免的，而那张表里混着两类：
+ *
+ *     真通用词    「孩子」「老人」「家里人」——这个词本来就不专指某一个人
+ *     泛指／特指  「徒弟」——同一个词，有时泛指一类人，有时特指那一个
+ *
+ * 2026-09-14 实测（120 世）：「收个徒弟」这个可反复选的日常项出现 734 次，
+ * 其中 403 次徒弟**已经在册**；徒弟已殁而这句话还在选项里的有 2 次。
+ *
+ *     收个徒弟   泛指一类人   ← 正当，413 次
+ *     徒弟没来   特指那一个   ← 他殁了就是穿帮
+ *
+ * ⚠️ **而这一层中文里没有形式标记，机器分不出。** 三条路都试过：
+ *
+ *     拿掉豁免           两处稳定误报回来（「收个徒弟」「你收了个徒弟」）
+ *     问「他入册了吗」   不成立——收过徒弟之后那个选项照样出现（403/734）
+ *     硬编码那两句       把**一整类时刻**记成两个实例，下一句同形状的又漏
+ *
+ * 所以处置是：**豁免照旧，把它遮住的次数报出来，不判红。**
+ * **我分不出的东西，不该假装分出来了。**
+ *
+ * ## ⚠️ 三行数各有各的来源，别读成一次测量
+ *
+ *     这个词在正文里出现过几次        本支量的，客观可数
+ *     其中几次那个人已经不在了        本支量的，客观可数
+ *     而这个人一格也没被条件层问过    **另一支量的**（`scripts/cells.ts`）
+ *
+ * 第三行是 2026-09-14 同伴那支走查给的：`apprentice` **零格**——
+ * 连 `alive` 都没有任何内容问过。所以那 2 次**不是这张豁免表放过了它，
+ * 是压根没有人在守这个人**，这张表改不改对他都没区别。
+ *
+ * **合成一句会让读的人以为它们出自同一次测量**，而下次谁改了其中一支，
+ * 另一半会静默失效。所以分行写，并注明来源。
+ */
+const muted = new Map<string, number>()
+
 for (let i = 0; i < RUNS; i += 1) {
   setActivePinia(createPinia())
   const narrative = useNarrativeStore()
@@ -414,7 +454,12 @@ for (let i = 0; i < RUNS; i += 1) {
     for (const person of Object.values(people.roster)) {
       if (person.fate === '在' || gone.has(person.id)) continue
       const calls = people.known[person.id]?.calls
-      if (!calls || TOO_COMMON.includes(calls)) continue
+      if (!calls) continue
+      if (TOO_COMMON.includes(calls)) {
+        // 这个人被整个滤掉了。底下把他殁过几世报出来，不判红
+        muted.set(calls, (muted.get(calls) ?? 0) + 1)
+        continue
+      }
       gone.set(person.id, calls)
       deathsSeen += 1
     }
@@ -492,6 +537,14 @@ let bad = 0
     bad += 1
   } else {
     console.log(`  ✓ ${deathsSeen} 个人不在了之后，没有谁还在正文或选项里露面。`)
+  }
+  if (muted.size > 0) {
+    const rows = [...muted.entries()].sort((a, b) => b[1] - a[1])
+    console.log(
+      `
+  · ${rows.length} 个称呼被 TOO_COMMON 整个滤掉，他们殁过的世数（报数不判红——` +
+        `判据分不出这个词是泛指还是特指）：${rows.map(([w, n]) => `${w} ${n} 世`).join('、')}`,
+    )
   }
 }
 
