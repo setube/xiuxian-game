@@ -371,6 +371,17 @@ for (const [sid, scene] of Object.entries(lifeScenes)) {
       for (const [word, ids] of literal) {
         if (ids.length !== 1) continue
         if (!text.includes(word)) continue
+        /*
+         * ⚠️ 称呼后面紧跟【司／局／房／院】的，那是**衙门不是人**。
+         *
+         * `chancellor` 的 `calls` 是「长史」，而 `schooling` 里写的是
+         * 「教授是【长史司】的属官」——风险栏因此把他报了出来。
+         *
+         * 一手量过全库：那八个称呼后面跟的字，只有「长史」被机构名吃掉
+         * （八次里八次跟着「司」）。其余跟的都是标点、动词、引号。
+         * **所以这一条窄得很，而它恰好盖住那唯一的一处。**
+         */
+        if (new RegExp(`${word}[司局房院]`).test(text)) continue
         const only = ids[0]
         if (only !== undefined) bump(only, sid)
       }
