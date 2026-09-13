@@ -122,6 +122,31 @@ const CALLED: readonly { key: string; role: string; why: string }[] = [
     ].join('\n'),
   },
   {
+    key: 'house-divide',
+    role: '背景',
+    why: [
+      '分家：成了家的儿子分出去。入场是 { house: { head: 兄 } } + { bond: 配偶, alive }',
+      '  ——「成了家」是分得出去的【前提】，而这一卷讲的是户怎么分，',
+      '  真正经历者是这一户和玩家自己。配偶不是这件事的承受者。',
+    ].join('\n'),
+  },
+  {
+    key: 'bearing-await',
+    role: '⚠️ 真候选（已立案，卡在依据上）',
+    why: [
+      '添丁：等着的那几年。入场要 { bond: 配偶, alive }，而效果落在',
+      '  son / daughter 和编年上——【spouse 身上零笔】。三次掷也没有一次掷她',
+      '  （怀上没有 / 孩子活不活 / 男女）。',
+      '',
+      '  ⚠️ 这一条跟 wife-that-winter 卡在同一处：要落 health 就得先定义',
+      '  「生育存在母体身体风险」这条世界规则，而史料支撑得起',
+      '  「农村家庭分娩的母体死亡风险显著」，支撑不起「有 X% 的幸存妇女',
+      '  留下足以缩短余寿的长期身体损害」。',
+      '  **alive=false 和 health↓ 是两个不同的世界事实，证据要分别对应。**',
+      '  口径和状态在 design/the-wife.md 第八、九节。',
+    ].join('\n'),
+  },
+  {
     key: 'wife-that-winter',
     role: '⚠️ 真候选（第一颗真阳性，2026-09-13）',
     why: [
@@ -221,6 +246,25 @@ if (!rows.some((one) => one.event === 'wife-that-winter')) {
 
 console.log(`\n=== 事件的另一半（${lifeEvents.length} 件事件）===\n`)
 
+/**
+ * ⚠️ **把「这一支实际站在几个样本上」印出来。**
+ *
+ * 2026-09-13 一天之内三支门禁栽在同一处：`RUNS` 是所有人都看得见的旋钮，
+ * **而「落到那一小撮上的样本有几个」没有任何地方印出来**：
+ *
+ * ```
+ * circumstance  4000 世，而「一个血亲也没有」只占 6%  → 240 个样本
+ * world          300 世，而撞上旱灾的只有十几世       → 十几个样本
+ * ```
+ *
+ * 两支都因此把阈值画在了噪声里。这一支不判成败，**所以更该把分母印出来**
+ * ——读的人得看得见这 28 条是从多大的底子上捞出来的。
+ */
+console.log(`  底子：${PEOPLE.size} 个人、${BOND_TO_ID.size} 种关系（120 世收的）`)
+console.log(
+  `  其中 ${lifeEvents.filter((one) => namedInRequires(one.requires ?? []).size > 0).length} 件事件的入场点了名，是这一支的分母\n`,
+)
+
 if (broken.length > 0) {
   console.log('  ✗ 尺子坏了，底下的清单不能当结论读：\n')
   for (const line of broken) console.log(`    ${line}`)
@@ -233,7 +277,9 @@ if (broken.length > 0) {
 const judged = new Map(CALLED.map((one) => [one.key, one]))
 const fresh = rows.filter((one) => !judged.has(one.who) && !judged.has(one.event))
 
-console.log(`  候选 ${rows.length} 条，判过 ${rows.length - fresh.length} 条，没判过 ${fresh.length} 条\n`)
+console.log(
+  `  候选 ${rows.length} 条，判过 ${rows.length - fresh.length} 条，没判过 ${fresh.length} 条\n`,
+)
 
 for (const one of CALLED) {
   const hit = rows.filter((row) => row.who === one.key || row.event === one.key)
