@@ -258,30 +258,40 @@ while (
   const readBlocks = new Set<string>()
 
   let borrowing: string | null = null
-  let seen = 0
   let turns = 0
   while (!narrative.ended && turns < 200) {
     const open = narrative.options.filter((o) => !o.locked)
     if (open.length === 0) break
     story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
     turns += 1
-    for (const item of narrative.stream.slice(seen)) {
-      const text = 'text' in item.block ? item.block.text : null
-      if (text && text.includes('还有没有余粮') && borrowing === null) borrowing = text
-    }
-    seen = narrative.stream.length
+
     /*
-     * 这一卷的正文另收一份。
+     * 这一世的正文按【块 id】收，不按下标切。
      *
-     * ⚠️ 不跟上头那个 `slice(seen)` 合用：`narrative.stream` 会滚动，
-     * 按下标切在流被裁掉之后会【跳过】新内容（`length` 变小，slice 从
-     * 一个太大的下标起 → 空）。认 id 不会。
+     * ⚠️ 从前这儿是 `narrative.stream.slice(seen)` + `seen = stream.length`，
+     * 而那个写法在这个 store 上是【静默失效】的：
+     *
+     *     MAX_STREAM_LENGTH = 400，超出从头裁（`stores/narrative.ts` 的 append）
+     *     裁完 length 恒等于 400 → seen 恒等于 400 → slice(400) 恒为空
+     *
+     * 一手量过：一世产生正文 432–991 块（中位 760），**40 世里 40 世越过 400**，
+     * 头一次越过在第 36–66 步。**从那一步起它读到的永远是空。**
+     *
+     * ⚠️ 而这不是「出错」，是稳定地什么也不做——没有越界、没有异常，
+     * 问「seen 有没有超出 length」查不出来（另一个会话实测 200 世零次）。
+     * 能分辨它的提问是【两种收法的总数对比】：按 id 收 73751 块，
+     * 按下标切 37084 块，漏掉 49.7%。
+     *
+     * 而这条警告本来就写在 `stores/narrative.ts` 的文件头上：
+     * 「门禁走查也不能拿 `stream.slice(seen)` 当全部正文
+     * ——四百块之后它返回的永远是空，得按块 id 收。」
      */
     for (const item of narrative.stream) {
       if (readBlocks.has(item.id)) continue
       readBlocks.add(item.id)
       const line = 'text' in item.block ? item.block.text : null
       if (line === null) continue
+      if (borrowing === null && line.includes('还有没有余粮')) borrowing = line
       if (line.includes(FIRST_MARK)) sawFirst = true
       if (line.includes(ANOTHER_MARK)) sawAnother = true
     }
