@@ -133,6 +133,26 @@ function probe(cond: Condition, out: Map<string, Set<string>>, where: string): v
       const v = inner[key]
       if (typeof v === 'string') who.push(v)
     }
+    /*
+     * ⚠️ `knownAs` 没有 `id`，它问的是「当年认定的那一个」：
+     *
+     *     { knownAs: { kind: 'playmate', present: true } }
+     *
+     * 而正文那一头用的正是 `{call:known/playmate}`——**同一个指称**。
+     * 所以把它记成 `known/<kind>`，两头才对得上。
+     *
+     * 头一版认不出它，于是 `playmate` 那三卷全被报进风险栏
+     * （`census:mismatch` / `playmate:wed` / `playmate:years`），
+     * **而那三卷的入场条件全都写着 `present: true`**——一处也不是风险。
+     *
+     * ⚠️ 这是第八次修射程，而它属于「判据看不懂的写法」那一类：
+     * 该修。跟「判据看得懂、而我不想看见的结果」要分开
+     * （后者记成已判定的反例就够了，见底下风险栏那一段）。
+     */
+    const kindOf = inner['kind']
+    if (who.length === 0 && kind === 'knownAs' && typeof kindOf === 'string') {
+      who.push(`known/${kindOf}`)
+    }
     if (who.length === 0) continue
     for (const id of who) {
       if (!out.has(id)) out.set(id, new Set())
@@ -280,7 +300,21 @@ for (const [sid, scene] of Object.entries(lifeScenes)) {
       for (const found of text.matchAll(PLACEHOLDER)) {
         const rawId = found[1]
         if (rawId === undefined) continue
-        bump(rawId.includes('/') ? (rawId.split('/')[1] ?? rawId) : rawId, sid)
+        /*
+         * ⚠️ **不截 `known/` 那个前缀。**
+         *
+         * `{call:playmate}` 和 `{call:known/playmate}` 是【两个指称】：
+         * 前者是此刻顶上的那个孩子，后者是当年认定的那一个
+         * （`engine/interpolate.ts` 那段注释分过，而那两者常常不是同一个人）。
+         *
+         * 条件那一头也分：`family: { id: 'playmate' }` 问前者，
+         * `knownAs: { kind: 'playmate' }` 问后者。**各对各的。**
+         *
+         * 头一版把 `known/playmate` 截成 `playmate`，于是正文那头记成前者、
+         * 条件那头记成后者，两头对不上——`playmate` 那三卷因此全被报进风险栏，
+         * **而它们的入场条件全都写着 `present: true`。**
+         */
+        bump(rawId, sid)
       }
       /*
        * 写死的称呼。⚠️ **只认专指的那些**——一个称呼映射到几个人，
@@ -418,6 +452,8 @@ for (const row of rows) {
  */
 const risky: { id: string; scenes: string[] }[] = []
 for (const [id, scenes] of usedIn) {
+  // 角色记号是位置不是人（`{elder}` 落到谁身上现算），风险栏也不收
+  if (ROLE_IDS.includes(id as (typeof ROLE_IDS)[number])) continue
   const watched = wheres.get(id) ?? new Set<string>()
   const gap = [...scenes].filter((one) => !watched.has(one)).sort()
   if (gap.length > 0) risky.push({ id, scenes: gap })
