@@ -72,10 +72,51 @@ export const OLD_HOME_FARMS = { house: { id: 'old-home', livelihood: '务农' } 
 export const BROTHER_FARMS = {
   family: { id: 'brother', alive: true, livelihood: ['务农'] },
 } as const
-/** 哥在镇上做木匠 */
-export const BROTHER_CARPENTER = {
-  family: { id: 'brother', alive: true, livelihood: ['木工'] },
-} as const
+/**
+ * 哥在镇上做木匠。
+ *
+ * ## ⚠️ 两条缺一不可，只问营生会挑错人
+ *
+ * 全库有**两种**「营生是木工的哥」，而只问 `livelihood: ['木工']` 两种都命中：
+ *
+ * ```
+ * 出身就是匠户（`content/origins.ts` 那一档，全家 livelihood 木工）
+ *   → 跟你住一个院子，一辈子没去过镇上　　　500 世里 12 世
+ * 改行去镇上（`kindred:brother-turns`）
+ *   → 住铺子里，农忙年节才回来　　　　　　　500 世里  5 世
+ * ```
+ *
+ * **七成是前一种**，而凡是读这个条件的正文说的全是后一种：
+ *
+ * ```
+ * kindred  「哥从镇上回来过年，手上多了几道口子」
+ * kindred  「彩礼是哥在镇上一锤一锤攒出来的」
+ * kindred  「哥从镇上赶回来已是第三天，没赶上下葬」
+ * away     「秋后你去了一趟镇上……哥在铺子里刨木头，满身刨花」
+ * away     「入冬前哥从镇上回来了一趟……说铺子里刚结了工钱」
+ * ```
+ *
+ * 匠户哥就住在同一个院子里——让他「从镇上赶回来已是第三天」是**穿帮**。
+ *
+ * ## 分开两者不用加旗，库里现成
+ *
+ * `kindred:brother-turns` 落的时候把**户的营生**和**人的营生**分开了
+ *（那一卷的注释：「老屋还是种地的人家，哥自己是木工」）。
+ * 实测这两格恰好把两种人切干净：
+ *
+ * ```
+ * 生来是匠户   老屋营生 = 木工
+ * 改行来的     老屋营生 = 务农　← OLD_HOME_FARMS
+ * ```
+ *
+ * 所以这是**一串**不是一条，用的时候 `...BROTHER_CARPENTER` 展开。
+ * 写成数组是为了让漏掉那一条当场露馅——十一处调用点漏一处，
+ * 就是一个静默穿帮（2026-09-13 查出时正是这个形状）。
+ */
+export const BROTHER_CARPENTER = [
+  { family: { id: 'brother', alive: true, livelihood: ['木工'] } },
+  OLD_HOME_FARMS,
+] as const
 /** 侄儿在老屋的地上（自己没有营生，就是老屋的营生） */
 export const NEPHEW_FARMS = { family: { id: 'nephew', alive: true, livelihood: ['务农'] } } as const
 /** 侄儿在镇上当学徒：他自己的营生是佣工，老屋仍是务农的户 */
@@ -329,7 +370,7 @@ export const kindredScenes: SceneLibrary = {
       back: {
         id: 'back',
         blocks: [],
-        branches: [{ requires: [BROTHER_CARPENTER], next: 'from-town' }],
+        branches: [{ requires: [...BROTHER_CARPENTER], next: 'from-town' }],
         next: 'back-nephew',
       },
       'from-town': {
@@ -720,7 +761,7 @@ export const kindredScenes: SceneLibrary = {
             text: '那天你又回去吃了喜酒。上一回坐在上首的是哥，这一回哥坐到了一边。',
           },
         ],
-        branches: [{ requires: [BROTHER_CARPENTER], next: 'paid-by-father' }],
+        branches: [{ requires: [...BROTHER_CARPENTER], next: 'paid-by-father' }],
         next: 'groom-away',
       },
       /** 财产从营生里出：木匠有的是银钱 */
@@ -1125,7 +1166,7 @@ export const kindredScenes: SceneLibrary = {
         onEnter: [{ type: 'time', days: 1 }],
         blocks: [],
         branches: [
-          { requires: [BROTHER_CARPENTER], next: 'work-back' },
+          { requires: [...BROTHER_CARPENTER], next: 'work-back' },
           {
             requires: [OLD_HOME_FARMS, { region: { harvest: { atLeast: 50 } } }],
             next: 'grain-back',
@@ -1258,7 +1299,7 @@ export const kindredScenes: SceneLibrary = {
           { type: 'undertake', undertaking: 'mourning', who: 'mother' },
         ],
         blocks: [{ kind: 'narration', text: '老屋捎话来，娘没了。' }],
-        branches: [{ requires: [BROTHER_CARPENTER], next: 'late' }],
+        branches: [{ requires: [...BROTHER_CARPENTER], next: 'late' }],
         next: 'together',
       },
       together: {

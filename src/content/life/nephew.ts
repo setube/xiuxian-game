@@ -246,7 +246,7 @@ export const nephewScenes: SceneLibrary = {
           { type: 'flag', key: 'nephew-went', value: true },
         ],
         blocks: [],
-        branches: [{ requires: [BROTHER_CARPENTER], next: 'father-back' }],
+        branches: [{ requires: [...BROTHER_CARPENTER], next: 'father-back' }],
         next: 'done',
       },
       /**

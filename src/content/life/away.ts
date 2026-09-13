@@ -109,7 +109,7 @@ export const awayScenes: SceneLibrary = {
           { type: 'chronicle', text: '你把哥的银子还了。' },
         ],
         blocks: [],
-        branches: [{ requires: [BROTHER_CARPENTER], next: 'in-town' }],
+        branches: [{ requires: [...BROTHER_CARPENTER], next: 'in-town' }],
         next: 'at-home',
       },
       'in-town': {
@@ -310,7 +310,13 @@ export const awayEvents: readonly LifeEvent[] = [
     window: { from: 35, to: 75 },
     requires: [
       ...TWO_HOUSES,
-      BROTHER_CARPENTER,
+      /*
+       * ⚠️ `BROTHER_CARPENTER` 是**一串**不是一条（要 `...` 展开）：
+       * 只问「营生是木工」会把匠户出身的哥也圈进来，而他就住在同一个院子里
+       * ——正文说的是「从镇上回来」「铺子里刚结了工钱」。
+       * 两种人怎么分、为什么分，写在 `kindred.ts` 那个常量上。
+       */
+      ...BROTHER_CARPENTER,
       { region: { grain: { atLeast: 126 } } },
       { standing: { atMost: 45 } },
     ],
@@ -339,7 +345,7 @@ export const awayEvents: readonly LifeEvent[] = [
     window: { from: 36, to: 75 },
     requires: [
       ...TWO_HOUSES,
-      BROTHER_CARPENTER,
+      ...BROTHER_CARPENTER,
       { family: { id: 'brother', age: { atMost: 57 } } },
     ],
     scene: 'away:hurt',
@@ -351,7 +357,7 @@ export const awayEvents: readonly LifeEvent[] = [
     window: { from: 40, to: 80 },
     requires: [
       ...TWO_HOUSES,
-      BROTHER_CARPENTER,
+      ...BROTHER_CARPENTER,
       { family: { id: 'brother', age: { atLeast: 58 } } },
     ],
     scene: 'away:old',
