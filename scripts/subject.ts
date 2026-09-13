@@ -372,6 +372,27 @@ for (let i = 0; i < 120; i += 1) {
 }
 
 const rows: { event: string; who: string }[] = []
+/**
+ * 覆盖地图：**每个人被点名几次，其中几次世界往他身上落了东西。**
+ *
+ * ⚠️ 这一张不是「一个人身上有多少种事实」——那个数会长成
+ * 「中位 2、P90 4、最多 7」这种漂亮而**没有作者**的东西，
+ * 而下一步自然就会问「那是不是至少 2 种」，又拍出一个阈值。
+ *
+ * 跟 GPT 定的口径：
+ *
+ * > 量的是「**一个人作为主体经历了多少事，其中多少事留下了属于这个主体的事实**」。
+ * > 这样三颗真候选就是这张地图上的三个红点，而不是三个样本拿来拍一个阈值。
+ *
+ * **它不需要门槛**：比值本身就是那句话，读的人看得见 0/6 和 5/6 的差别。
+ */
+const covered = new Map<string, { named: number; landed: number }>()
+const bump = (who: string, landed: boolean): void => {
+  const one = covered.get(who) ?? { named: 0, landed: 0 }
+  one.named += 1
+  if (landed) one.landed += 1
+  covered.set(who, one)
+}
 for (const event of lifeEvents) {
   const named = namedInRequires(event.requires ?? [])
   if (named.size === 0) continue
@@ -381,12 +402,16 @@ for (const event of lifeEvents) {
       const ids = BOND_TO_ID.get(who.slice(5))
       // 这一百二十世里没出现过的关系种类，解不出 id——别当成缺席
       if (!ids || ids.size === 0) continue
-      if ([...ids].some((id) => touched.has(id))) continue
+      const landed = [...ids].some((id) => touched.has(id))
+      bump(who, landed)
+      if (landed) continue
       rows.push({ event: event.id, who })
       continue
     }
     if (!PEOPLE.has(who)) continue
-    if (touched.has(who)) continue
+    const landed = touched.has(who)
+    bump(who, landed)
+    if (landed) continue
     rows.push({ event: event.id, who })
   }
 }
@@ -405,10 +430,19 @@ for (const event of lifeEvents) {
  * 同样的毛病这一天在三支门禁上各现一次（`circumstance` 的 240 个样本、
  * `world` 的十几个样本、这儿的 19 个人）——**总量够，而落到这一撮上的数不够**，
  * 而我在写这一条时刚给前两支写完修复注释。
+ *
+ * ⚠️ **而线该画在 0 上，不是画在一个「安全余量」上。** 头一个修法写的是
+ * `< 10`——那还是在估分布，只是估得松一点。跟 GPT 过完定的：
+ *
+ * > 自检要跟**意图同构**。这一条的意图是「一个人也没收到」，
+ * > 那就写 `=== 0`。只有探针本身会有正常噪声时，才需要安全阈值。
+ *
+ * > **写自检时问的不该是「多少算少」，是「真坏的时候这个数是几」。**
+ * > 前者要估分布，后者是确定的。
  */
 const broken: string[] = []
-if (PEOPLE.size < 10) broken.push(`人口册只收到 ${PEOPLE.size} 个人——压根没收到`)
-if (BOND_TO_ID.size < 3) broken.push(`关系只解出 ${BOND_TO_ID.size} 种——压根没解出来`)
+if (PEOPLE.size === 0) broken.push('人口册一个人也没收到')
+if (BOND_TO_ID.size === 0) broken.push('关系一种也没解出来')
 if (PEOPLE.has('old-home')) broken.push('「old-home」进了人口册——那是户不是人')
 if (!BOND_TO_ID.get('兄')?.has('brother')) broken.push('「兄 → brother」没解出来')
 if (!rows.some((one) => one.event === 'wife-that-winter')) {
@@ -434,6 +468,67 @@ console.log(`\n=== 事件的另一半（${lifeEvents.length} 件事件）===\n`)
 console.log(`  底子：${PEOPLE.size} 个人、${BOND_TO_ID.size} 种关系（120 世收的）`)
 console.log(
   `  其中 ${lifeEvents.filter((one) => namedInRequires(one.requires ?? []).size > 0).length} 件事件的入场点了名，是这一支的分母\n`,
+)
+
+console.log(`  ── 覆盖地图：被点名几次 / 其中几次世界往他身上落了东西 ──\n`)
+/**
+ * 记号：**数字是事实，记号是走查结论。一个符号不同时承担两件事。**
+ *
+ * ```
+ * ○   这一行的候选都判过了，而且都合法
+ * ⚠️  这一行有还没判过的候选
+ * ●   判出来这一行有真缺口
+ * ```
+ *
+ * ⚠️ 这么分是跟 GPT 过完定的，它挡的是一种具体的腐烂：
+ * 头一版只用 ⚠️ 标「一次也没落过」，而 `bond:抚养` 那一行的三条候选
+ * 我逐条判过、**全是合法的**（关系双方 / 主体事实由别处落的 / 尺子对不上）。
+ * 一行永远顶着刺眼记号而永远没问题，**会训练人无视这张图**
+ * ——这个库记过「一道会无故红的门禁比没有门禁更坏」。
+ *
+ * ⚠️ `CALLED` 的 `key` 是**走查记录的归并键**，而不是「人」或「事件」中的某一种。
+ * 取哪一种**由结论的粒度决定**，两种形态都合法：
+ *
+ * ```
+ * key: 'bond:兄'              七条共用一条——逐条确认过，而【结论是同一个】
+ * key: 'reunion-homecoming'   逐事件各一条——三条的【误报原因各不相同】
+ *                             （关系双方 / 主体事实由别处落的 / 尺子对不上）
+ * ```
+ *
+ * 共用得起是因为结论一样；`bond:抚养` 那三条要是共用，
+ * **反而会把三个不同的误报原因盖成一个**。
+ *
+ * 所以底下判「这一行判过没有」时两种都要查。
+ * ⚠️ 我头一版注释写成「`bond:抚养` 那三条」，而那个键在 `CALLED` 里压根不存在
+ * ——打断验时锚点对不上才发现。
+ *
+ * 而这么分之后这张图会自己往前走：哪天有人加第四条 `bond:抚养` 的内容，
+ * `0/3 ○` 自动变成 `0/4 ⚠️`（多了个没判过的），判完再落回 `○` 或 `●`。
+ */
+const judgedKeys = new Set(CALLED.map((one) => one.key))
+const isReal = new Map(
+  CALLED.map((one) => [one.key, one.role.includes('真候选')] as const),
+)
+for (const [who, one] of [...covered.entries()].sort((a, b) => b[1].named - a[1].named)) {
+  const mine = rows.filter((row) => row.who === who)
+  const unjudged = mine.filter((row) => !judgedKeys.has(row.who) && !judgedKeys.has(row.event))
+  const real = mine.some((row) => isReal.get(row.who) === true || isReal.get(row.event) === true)
+  const mark = mine.length === 0 ? '  ✓' : unjudged.length > 0 ? '  ⚠️' : real ? '  ●' : '  ○'
+  console.log(
+    `    ${who.padEnd(16)} ${String(one.landed).padStart(2)} / ${String(one.named).padEnd(2)}${mark}`,
+  )
+}
+console.log(
+  [
+    '',
+    '    ✓ 事事有落点　○ 候选都判过且都合法　⚠️ 有没判过的　● 判出了真缺口',
+    '',
+    '    ⚠️ 而这张图【不能拿行覆盖率排名】：`bond:兄 13/20` 混着两种东西',
+    '    ——哥是主体的那些卷，和「只要有个哥」这个前提。同一个人用',
+    '    `id: brother` 点名时是 8/8，用 `bond: 兄` 点名时是 13/20，',
+    '    差别在内容层怎么点他，不在这个人身上。',
+    '',
+  ].join('\n'),
 )
 
 if (broken.length > 0) {
