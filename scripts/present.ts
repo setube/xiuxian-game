@@ -94,6 +94,36 @@ const TALKING_ABOUT_DEATH = /不在了|没了|殁|走了|下葬|坟|埋|丧|头�
 const REMEMBERING_ALOUD = /想起|记得|想到|梦见|梦里|问过|说过|讲过|教过|告诉过/
 
 /**
+ * 对白里的亲属称谓，锚在**说话人**身上，不锚在玩家身上。
+ *
+ * ## 这不是一句例外，是一整类
+ *
+ * `{call:X}` 解析出来的称呼是**玩家视角**的——「爹」指玩家的爹。
+ * 可正文里还有别人说的话，而**他嘴里的「我爹」是他的爹**：
+ *
+ *     nephew.ts:119   他先来找的你。他说，叔，你替我跟我爹讲一句。
+ *     mountain 那句   南山里头早年有个采药的道人。我爹那辈子还见过。
+ *
+ * 玩家的爹早殁了，判据按「爹」这个字匹配就报「死人还在露面」——
+ * **而那两句话一个字也没错**。
+ *
+ * ## 跟「同一个词指两个人」是同族的另一面
+ *
+ *     同名   「娘」既是生母的叫法，也是配偶的名字（姓+娘）
+ *            → 抹掉在册人的姓+名再扫（`verify-relations.ts` 那一支）
+ *     同词   「爹」由别人说出口时指的是别人的爹
+ *            → **抹名字挡不住这一种**，因为「爹」根本不是名字
+ *
+ * ⚠️ 范围写清：豁免的是**带人称领属的亲属称谓**（「我爹」「你哥」「他婶」），
+ * 不是所有含「爹」的句子。一句「爹站在门口」照样该红——单测过三句：
+ *
+ *     照红  吴婆婆留你住了一夜。
+ *     豁免  他先来找的你。他说，叔，你替我跟我爹讲一句。
+ *     照红  爹站在门口
+ */
+const SPEAKER_ANCHORED = /[我你他][爹娘哥姐弟妹叔婶伯]/
+
+/**
  * 一个字的称呼是别的词的零件，撞上不算数。
  *
  * 娘没了之后，正文里出现「姑娘」「新娘」「娘娘」，或者一枚回执
@@ -331,6 +361,7 @@ for (let i = 0; i < RUNS; i += 1) {
         if (hit === undefined) continue
         if (TALKING_ABOUT_DEATH.test(text)) continue
         if (REMEMBERING_ALOUD.test(text)) continue
+        if (SPEAKER_ANCHORED.test(text)) continue
         if (innocent(text, hit)) continue
         // 那个称呼此刻还指着一个活人——是撞车，不是穿帮
         if (stillSomeoneAlive(hit, id)) continue
@@ -342,6 +373,7 @@ for (let i = 0; i < RUNS; i += 1) {
         if (hit === undefined) continue
         if (TALKING_ABOUT_DEATH.test(label)) continue
         if (REMEMBERING_ALOUD.test(label)) continue
+        if (SPEAKER_ANCHORED.test(label)) continue
         if (innocent(label, hit)) continue
         if (stillSomeoneAlive(hit, id)) continue
         ghosts.push({ who: id, calls: hit, where: '选项', text: label })
