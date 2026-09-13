@@ -23,7 +23,27 @@ import { useHouseholdStore } from '../src/stores/household'
 import { usePeopleStore } from '../src/stores/people'
 import type { Constitution } from '../src/types/game'
 
-const RUNS = 4000
+/**
+ * 世数由第三条（`root` 中位数比对）定，不是由前两条定。
+ *
+ * ⚠️ **决定它的是最小的那个分组，不是总数。** 「一个血亲也没有」只占 6%，
+ * 4000 世里它只有 240 个样本——而判据比的是这 240 个的**中位数**。
+ * 2026-09-13 一手量的（`SEED=1q74dvp1ifwl/circumstance` 那颗在全套里报红）：
+ *
+ * ```
+ * RUNS    无血亲 n   六颗种子里最大的那个差距   每跑
+ *  4000      240     10 分  ← 越过阈值 8，而它是噪声
+ * 12000      720      2 分                      4.2 秒
+ * 20000     1200      2 分                      6.5 秒
+ * ```
+ *
+ * 10 分那一颗**不是「无血亲更强」**：同一颗种子把世数抬到 40000，
+ * 差距自己塌回 4 分。有血亲那组（n=3760）五颗种子是 49/51/50/50/51 纹丝不动，
+ * 晃的自始至终是 240 个样本的那一组。
+ *
+ * 取 12000 不取 20000：两档最坏都是 2 分，而前者便宜 2.3 秒。
+ */
+const RUNS = 12000
 
 function born() {
   setActivePinia(createPinia())
@@ -136,15 +156,54 @@ console.log(`\n=== 铁律：没有「最强开局」 ===\n`)
 console.log(`  修行资质（root）在各种境况下的中位数——必须一样：\n`)
 let spread = 0
 const medians: number[] = []
+const means: number[] = []
 for (const [shape, values] of Object.entries(rootBy)) {
   const sorted = [...values].sort((a, b) => a - b)
   const median = sorted[Math.floor(sorted.length / 2)] ?? 0
+  const mean = values.reduce((sum, one) => sum + one, 0) / (values.length || 1)
   medians.push(median)
-  console.log(`    ${shape.padEnd(6)} n=${String(values.length).padStart(4)}  中位 ${median}`)
+  means.push(mean)
+  console.log(
+    `    ${shape.padEnd(6)} n=${String(values.length).padStart(5)}  中位 ${median}  均值 ${mean.toFixed(1)}`,
+  )
 }
 spread = Math.max(...medians) - Math.min(...medians)
 console.log(
   `\n  最大差距 ${spread} 分${spread <= 8 ? '——出生境况不决定你能走多远。' : '——太大了，出现了「更强的开局」。'}`,
 )
 if (spread > 8) process.exitCode = 1
+
+/**
+ * 第二把尺子：均值。**中位数那把量不到 9 分以内的优势。**
+ *
+ * 2026-09-13 打断验出来的——给「无血亲」那组注入 +9 分（一个真实的「更强开局」），
+ * 三颗种子里中位数只抓住两颗：
+ *
+ * ```
+ * 1q74dvp1ifwl  10 分  红
+ * aaa1           7 分  【绿】← 真有 9 分优势，放过去了
+ * ddd4           9 分  红
+ * ```
+ *
+ * 病根不是阈值定高了，是**中位数在这个分布上只有 ±3 分的分辨率**：
+ * 十二颗种子实测 0/0/0/1/1/1/1/2/2/2/3/3，而世数从 12000 抬到 40000
+ * 反倒出现过 4 分——**加样本买不来分辨率**，它是整数统计量卡在分布的平坦段上。
+ *
+ * 均值没有这个毛病：700 个样本的均值标准误不到 1 分。
+ * 阈值 3.0 是这么定的——十二颗种子的均值差实测：
+ *
+ * ```
+ * 0.1 0.1 0.4 0.5 0.7 0.9 1.0 1.2 1.2 1.3 1.6 1.7
+ * ```
+ *
+ * 最坏 1.7，取 3.0 留了将近一倍的余量。（用的是量中位数噪声那同一批种子。）
+ *
+ * ⚠️ 两把尺子都留着，不是冗余：中位数管「分布的腰挪了没有」，
+ * 均值管「有没有整体抬升」。只抬尾巴的偏斜动均值不动中位，反过来也一样。
+ */
+const meanSpread = Math.max(...means) - Math.min(...means)
+console.log(
+  `  均值差距 ${meanSpread.toFixed(1)} 分${meanSpread <= 3 ? '——两组的整体高度也一样。' : '——太大了，有一组被整体抬高了。'}`,
+)
+if (meanSpread > 3) process.exitCode = 1
 console.log()
