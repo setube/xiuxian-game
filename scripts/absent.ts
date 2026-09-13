@@ -268,6 +268,26 @@ function guaranteedAlive(requires: readonly Condition[] | undefined): Set<string
   return out
 }
 
+/**
+ * 这一节把谁领进门了。
+ *
+ * ⚠️ `onEnter` 是**进这一节时**结算的，所以这一节自己的正文就用得上——
+ * `kindred:wedding` 那一卷正是这样：嫂子在入口那一节被 `meet` 造出来，
+ * 底下 `cold`/`warm` 两支写的是她进门头一天。**她当然活着。**
+ *
+ * 头一版没算这一层，于是那两支被报成候选。这是第六种正当写法
+ * （前五种：chronicle 字段、hail 一族、bond 写法、seen 各自的 requires、
+ * 写死的称呼）——而它跟前几种一样，**误报的是一处本来就做对了的地方**。
+ */
+function bornHere(effects: readonly unknown[] | undefined): Set<string> {
+  const out = new Set<string>()
+  for (const one of effects ?? []) {
+    const rec = one as { type?: string; id?: string }
+    if ((rec.type === 'meet' || rec.type === 'person') && typeof rec.id === 'string') out.add(rec.id)
+  }
+  return out
+}
+
 /** 一条 branch 问的是「他不在了」吗——排在它后面的路都因此被保证 */
 function assertsGone(requires: readonly Condition[] | undefined): Set<string> {
   const out = new Set<string>()
@@ -320,7 +340,10 @@ function assuredAt(scene: Scene, fromEvent: Set<string>): Map<string, Set<string
   const assured = new Map<string, Set<string>>()
   const ids = Object.keys(scene.nodes)
   for (const id of ids) assured.set(id, new Set<string>())
-  assured.set(scene.entry, new Set(fromEvent))
+  assured.set(
+    scene.entry,
+    new Set([...fromEvent, ...bornHere(scene.nodes[scene.entry]?.onEnter)]),
+  )
 
   const incoming = new Map<string, { from: string; adds: Set<string> }[]>()
   for (const id of ids) incoming.set(id, [])
@@ -341,6 +364,7 @@ function assuredAt(scene: Scene, fromEvent: Set<string>): Map<string, Set<string
       const ins = incoming.get(id) ?? []
       // 够不着的节点。这一支不管可达性，那是别的门禁的活
       if (ins.length === 0) continue
+      const node = scene.nodes[id]
       let merged: Set<string> | null = null
       for (const edge of ins) {
         const here = new Set<string>(fromEvent)
@@ -357,6 +381,8 @@ function assuredAt(scene: Scene, fromEvent: Set<string>): Map<string, Set<string
       }
       const before = assured.get(id) ?? new Set<string>()
       const after = merged ?? new Set<string>()
+      // 这一节自己领进门的人，在这一节的正文里当然还在
+      for (const x of bornHere(node?.onEnter)) after.add(x)
       const same = before.size === after.size && [...after].every((x) => before.has(x))
       if (!same) {
         assured.set(id, after)
@@ -376,6 +402,76 @@ for (const event of lifeEvents) {
   if (event.scene === undefined) continue
   requiresOf.set(event.scene, [...(event.requires ?? [])])
 }
+
+/**
+ * 判过的候选。**判过不等于修了**——这张表记的是判定，不是处置。
+ *
+ * 2026-09-14 头一轮判完六条，六条【全是真候选】：正文里那个人在做事
+ * （躲到她身后、瞒着她、跟她吵架、在跟前、当家），而没有任何一处问过他还在。
+ *
+ * ⚠️ 六条里五条在 `kindred` 那一册，而那不是巧合：
+ * **老屋那一族的人活得久、戏份多，而那一册的入场条件问的多半是【侄儿】**
+ * ——`kindred-newyear` 问侄儿活着、`kindred-mourning` 问娘殁了，
+ * 嫂子从头到尾没人问过，她只是「那个一直在那儿的人」。
+ *
+ * 处置口径照 `kindred:newyear` 已经做过的那样：**给「她没了」写一支**，
+ * 而不是加个 `alive: true` 把玩家挡在外面——那样她殁了这一节直接没正文。
+ */
+const JUDGED: readonly { at: string; verdict: string; why: string }[] = [
+  {
+    at: 'kindred:newyear#small',
+    verdict: '真候选',
+    why: [
+      '「{call:nephew}已经{age:nephew}了，见了你先躲到{call:brother-wife}身后」',
+      '——侄儿躲到他娘身后。她殁了这一句就没法读。',
+      '⚠️ 同一节里还有个 {age:nephew}，那一族另论（死人的岁数说得通）。',
+    ].join('\n'),
+  },
+  {
+    at: 'kindred:nephew-comes#behind-her-back',
+    verdict: '真候选',
+    why: [
+      '「他没跟{call:brother-wife}说。」——节点名就是「背着她」。',
+      '这一节的全部意思是【他瞒着他娘】，而瞒不了一个已经不在的人。',
+    ].join('\n'),
+  },
+  {
+    at: 'kindred:nephew-weds#groom-back-to-town',
+    verdict: '真候选',
+    why: [
+      '侄儿成亲之后回镇上，正文写他媳妇留在老屋、跟他娘一处。',
+      '侄媳妇是这一卷刚领进门的（不报），而他娘不是。',
+    ].join('\n'),
+  },
+  {
+    at: 'kindred:mourning#cold',
+    verdict: '真候选，而且最硬',
+    why: [
+      '「头七那晚哥跟{call:brother-wife}吵了一架，隔着院子都听得见。」',
+      '**死人吵不了架。** 这六处里最没有回旋余地的一条。',
+    ].join('\n'),
+  },
+  {
+    at: 'kindred:mourning#sour',
+    verdict: '真候选',
+    why: [
+      '「老人家没了的时候，是嫂子在跟前。她跟你说，没受罪。」',
+      '⚠️ 而 `kindred-mourning` 那一卷的 requires 只问',
+      '{ bond: { kind: 「生母」, alive: false } }——【一个字不问嫂子】。',
+      '奔丧那一卷开到玩家七十岁，那时嫂子多半也不在了。',
+    ].join('\n'),
+  },
+  {
+    at: 'kindred:brother-gone#uncle',
+    verdict: '真候选',
+    why: [
+      '「老屋如今是{call:sibling}当家。侄儿还小，轮不到他。」',
+      '哥没了，弟弟接户——而【没有一处问过这个弟弟还在不在】。',
+      '⚠️ 这一条跟别的五条不同：它点的是 `sibling`，',
+      '而那不是角色记号（ROLE_IDS 只有 elder/dam/child/playmate），是真 id。',
+    ].join('\n'),
+  },
+]
 
 interface Row {
   scene: string
@@ -461,10 +557,22 @@ for (const row of bare) {
   if (!byWho.has(row.who)) byWho.set(row.who, [])
   byWho.get(row.who)?.push(row)
 }
+const judgedAt = new Map(JUDGED.map((one) => [one.at, one] as const))
+let unjudged = 0
 for (const [who, rows] of [...byWho.entries()].sort((a, b) => b[1].length - a[1].length)) {
   console.log(`  ${who.padEnd(24)} ${String(rows.length).padStart(2)} 处`)
-  for (const row of rows) console.log(`      ${row.scene}#${row.node}`)
+  for (const row of rows) {
+    const at = `${row.scene}#${row.node}`
+    const judged = judgedAt.get(at)
+    if (judged === undefined) unjudged += 1
+    console.log(`      ${judged === undefined ? '⚠️ 还没判' : `〔${judged.verdict}〕`} ${at}`)
+  }
 }
+console.log(
+  `
+  判过 ${bare.length - unjudged} / ${bare.length} 条` +
+    (unjudged > 0 ? `，还有 ${unjudged} 条没判过` : '——【判过不等于修了】，处置见各条的 why'),
+)
 
 if (roleish.length > 0) {
   const kinds = new Map<string, number>()
