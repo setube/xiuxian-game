@@ -17,6 +17,20 @@ import type { LifeEvent, SceneLibrary } from '@/types/game'
  * 每一段结算完都看一眼 `day-omen`：山那边才有山道上那个人，
  * 镇上才有货郎摊上那册书。撞上了，这一天就整个交给它——
  * 机缘不是年表发下来的，是**他自己走过去的**。
+ *
+ * ⚠️ **`day-omen` 的合法值只有两个**：`wounded`、`book`。
+ * 它们由 `content/days.ts` 里带 `omen:` 的 beat 产出
+ * （经 `engine/effects.ts` 的 `beat.omen` 落进旗里）——
+ * **加第三个值之前，先去 `days.ts` 加产它的那个 beat**。
+ *
+ * 2026-09-13 删掉过三条 `day-omen === 'merchant'` 的分支
+ *（morning / afternoon / evening 各一处）：**没有任何 beat 产这个值**，
+ * 三处恒假。而商人那一卷（`omen:merchant`）活得好好的，
+ * 走的是 `content/life/encounters.ts` 那五个入场（按 `business`
+ * 布庄/客栈/酒楼进场）——**同一卷内容，两条路，一条在跑一条等着
+ * 一个永远不来的值**。
+ *
+ * 留着那三条比删掉更坏：它会让人以为三个值都是合法的。
  */
 export const dayScenes: SceneLibrary = {
   'day:ordinary': {
@@ -127,7 +141,6 @@ export const dayScenes: SceneLibrary = {
         branches: [
           { requires: [{ flag: { key: 'day-omen', equals: 'wounded' } }], next: 'omen:wounded' },
           { requires: [{ flag: { key: 'day-omen', equals: 'book' } }], next: 'omen:book' },
-          { requires: [{ flag: { key: 'day-omen', equals: 'merchant' } }], next: 'omen:merchant' },
         ],
         next: 'afternoon',
       },
@@ -208,7 +221,6 @@ export const dayScenes: SceneLibrary = {
         branches: [
           { requires: [{ flag: { key: 'day-omen', equals: 'wounded' } }], next: 'omen:wounded' },
           { requires: [{ flag: { key: 'day-omen', equals: 'book' } }], next: 'omen:book' },
-          { requires: [{ flag: { key: 'day-omen', equals: 'merchant' } }], next: 'omen:merchant' },
         ],
         next: 'evening',
       },
@@ -251,7 +263,6 @@ export const dayScenes: SceneLibrary = {
         branches: [
           { requires: [{ flag: { key: 'day-omen', equals: 'wounded' } }], next: 'omen:wounded' },
           { requires: [{ flag: { key: 'day-omen', equals: 'book' } }], next: 'omen:book' },
-          { requires: [{ flag: { key: 'day-omen', equals: 'merchant' } }], next: 'omen:merchant' },
         ],
         next: 'close',
       },
