@@ -248,7 +248,24 @@ export const kinScenes: SceneLibrary = {
       told: {
         id: 'told',
         onEnter: [
-          { type: 'recall', id: 'mother', chapter: 'mother-far-home' },
+          /*
+           * ⚠️ 这三处的 chapter id 从前写的是 `mother-far-home` /
+           * `mother-learned` / `mother-famine`，**而娘身上没有那三件**。
+           *
+           * 立基掷给长辈的往事是【通用的十件】（`birth.ts` 的 ELDER_PAST），
+           * id 不带 `mother-` 前缀。而 `recall` 找不到那件往事就
+           * `return false` ——**静默失败，什么也不做**。
+           *
+           * 实测：500 世里读到这一段的 109 世，而娘的往事
+           * **一件也没被翻开（0 世）**。正文写得完完整整，
+           * 而它背后那笔世界事实三处全部落空。
+           *
+           * 三件对得上正文语义：
+           *     far-home         娘家在很远的地方，此后再没回去过
+           *     learned-letters  小时候认过几个字，后来忘得差不多了
+           *     famine           小时候逃过一次荒
+           */
+          { type: 'recall', id: 'mother', chapter: 'far-home' },
           { type: 'attribute', key: 'insight', delta: 2 },
         ],
         blocks: [
@@ -263,7 +280,7 @@ export const kinScenes: SceneLibrary = {
       letters: {
         id: 'letters',
         onEnter: [
-          { type: 'recall', id: 'mother', chapter: 'mother-learned' },
+          { type: 'recall', id: 'mother', chapter: 'learned-letters' },
           { type: 'attribute', key: 'memory', delta: 2 },
         ],
         blocks: [
@@ -282,7 +299,7 @@ export const kinScenes: SceneLibrary = {
       famine: {
         id: 'famine',
         onEnter: [
-          { type: 'recall', id: 'mother', chapter: 'mother-famine' },
+          { type: 'recall', id: 'mother', chapter: 'famine' },
           { type: 'attribute', key: 'will', delta: 3 },
         ],
         blocks: [
