@@ -464,7 +464,7 @@ for (const event of lifeEvents) {
  * > 只有完成角色判定后，才能决定它是否进入主体缺口统计。
  *
  * 就是说：这一栏 95% 判成岔口也行，**但必须是逐条看过之后**，
- * 不能事先写一条「`branches` 里的都不算」。所以这一栏现在**全部是未判**，
+ * 不能事先写一条「`branches` 里的都不算」。所以这一栏是【一族一族判下来】的，
  * 而那个数摆在明处——**自动那半永远完整，人工那半永远显式暴露缺口**。
  *
  * ## ⚠️ 候选的身份由「来源位置 + 具体条件实例」共同决定
@@ -489,6 +489,73 @@ for (const event of lifeEvents) {
  * 而这一栏本身也值得读：要是判完发现「岔口 80 / 主体 20」，
  * 那就得查**为什么有这么多分流条件其实在描述人物自身的经历**。
  */
+
+/**
+ * 第二栏（`branches`）判过的候选。
+ *
+ * ⚠️ **键跟第一栏分开**——按 GPT 定的：候选的身份由「来源位置 + 具体条件实例」
+ * 共同决定，`requires + father` 和 `branches + father` 是两条不同的候选，
+ * 哪怕解析到同一个人。所以这儿的键前面加 `branch:`。
+ *
+ * ⚠️ 而**不按「卷 × 人」归并**：同一卷里同一个人可能在一支是岔口、
+ * 在另一支是主体。这儿共用一条登记的，是**结论确实同一个**的那些
+ * （十三卷出身的 `open → kept` 是同一件事的十三种家境版本）。
+ */
+const BRANCH_CALLED: readonly { key: string; role: string; why: string }[] = [
+  {
+    key: 'branch:bond:兄',
+    role: '关系双方（8 条）+ 岔口（2 条）',
+    why: [
+      '八条在 kindred:newyear「正月里」和 kindred:nephew-grown / grandnephew 里：',
+      '  · father-son-sour  「哥跟{call:nephew}一顿饭没说一句话。」',
+      '  · lane-brother     「走的时候哥送你到巷口。」',
+      '  · debt-open        「那笔粮，谁也没提。」',
+      '  **这些卷写的就是你跟哥之间那件事**——他是另一头，不是单方面的承受者。',
+      '  而那几节落的正是 tie（nephew → brother），关系双方那一格有东西。',
+      '',
+      '  另两条是 festival:midautumn 的 brother-away：',
+      '  「哥今年没回来。娘留了半块瓜在碗里。」',
+      '  ⚠️ 条件问的是「有个哥」，而**走这一支恰恰因为他不在场**——',
+      '  典型的岔口：他的存在（和缺席）改变了这一节的样子，而承受者是玩家和娘。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:mother',
+    role: '关系双方（4 条）+ 岔口（4 条）',
+    why: [
+      '四条关系双方：',
+      '  · match:offer 的 inlaws-neither-gave / inlaws-mother-gave（2026-09-13 我写的）',
+      '  · kindred:wedding 的 inlaws-sour / inlaws-fond（哥娶妻那一天）',
+      '  两处都落 tie（spouse/brother-wife → mother）——**娘是那条边的一头**。',
+      '',
+      '  四条岔口：match:offer 的 elders / elders-heard（议亲时长辈听说了没有）、',
+      '  festival:midautumn 的 brother-away（她留了半块瓜）、',
+      '  house:succeed 的 handed（承户那一刻她在不在）。',
+      '  ——她在不在决定走哪一支，而那几节的承受者是玩家或这一户。',
+    ].join('\n'),
+  },
+  {
+    key: 'branch:father',
+    role: '执行者（13 条）+ 岔口（3 条）',
+    why: [
+      '十三条是各种出身的 birth:* 里同一个分支：{ family: { id: father, present: true } } → kept。',
+      '  而那一段的注释自己写着理由：',
+      '',
+      '    取名这一幕是他在做——提笔、刻在碎木上、抱着你走二里地。',
+      '    问 present 不问 alive：出门做工的爹活得好好的，可孩子落地时',
+      '    他不在跟前，名字就该是别人取的。',
+      '    有爹的孩子，名字是爹在纸上写的、在木头上刻的。',
+      '',
+      '  **爹是执行者，而事落在【孩子】身上（他的名字）**——跟产婆同一格。',
+      '  这一生的第一条信息记在孩子那儿，不该记在爹身上。',
+      '',
+      '  另三条：match:offer 两条（议亲时长辈听说了没有）、',
+      '  mourning:over 一条（「爹的坟在二百里外，清明去不了」）',
+      '  ——都是【岔口】：他在不在决定这一节走哪一支，而承受者是玩家。',
+    ].join('\n'),
+  },
+]
+
 const branchRows: { scene: string; who: string }[] = []
 for (const [sceneId, scene] of Object.entries(lifeScenes)) {
   const touched = touchedByScene(sceneId)
@@ -708,20 +775,29 @@ console.log('  「世界记下了吗」，而那一格静态判不出来。判�
  * **另外 80 个是「落了东西的」，被滤掉了**，那正是这支尺子该做的事。
  * 这一栏数的是【没落点的那些】，不是【所有点名】。
  *
- * 这一栏现在**全部是未判**——按 GPT 那条防线，
+ * 这一栏一族一族地判——按 GPT 那条防线，
  * 「角色分类用于解释候选，不用于预先淘汰候选」，
  * 所以不能事先写一条「`branches` 里的都算岔口」把它们消掉。
  */
 const branchBy = new Map<string, number>()
 for (const one of branchRows) branchBy.set(one.who, (branchBy.get(one.who) ?? 0) + 1)
-console.log(`  ── 第二栏：branches 里点了名而没落东西（${branchRows.length} 条，全部未判）──\n`)
+console.log(`  ── 第二栏：branches 里点了名而没落东西（${branchRows.length} 条）──\n`)
+const branchJudged = new Map(BRANCH_CALLED.map((one) => [one.key, one]))
 for (const [who, n] of [...branchBy.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12)) {
-  console.log(`    ${who.padEnd(16)} ${String(n).padStart(3)} 条  ⚠️`)
+  const seen = branchJudged.get(`branch:${who}`)
+  console.log(`    ${who.padEnd(16)} ${String(n).padStart(3)} 条  ${seen ? '○' : '⚠️'}`)
 }
+for (const one of BRANCH_CALLED) {
+  console.log(`\n  ◇ ${one.key}　〔${one.role}〕`)
+  console.log(`    ${one.why.split('\n').join('\n    ')}`)
+}
+const branchLeft = [...branchBy.entries()].filter(([who]) => !branchJudged.has(`branch:${who}`))
+const branchLeftCount = branchLeft.reduce((sum, [, n]) => sum + n, 0)
 console.log(
   [
     '',
-    `    共 ${branchBy.size} 个不同的「谁」。⚠️ 全部未判——而这个数摆在明处是有意的：`,
+    `    共 ${branchBy.size} 个不同的「谁」，还没判的 ${branchLeftCount} 条（分属 ${branchLeft.length} 个「谁」）——`,
+    `    这个数摆在明处是有意的：`,
     '    自动那半永远完整，人工那半永远显式暴露缺口。',
     '',
     '    ⚠️ 这一栏预计绝大多数会判成【岔口】（有他就走这一支），因为那正是',
