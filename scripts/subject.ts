@@ -145,7 +145,9 @@ import './lib/seeded'
 
 import { createPinia, setActivePinia } from 'pinia'
 
-import { lifeEvents, lifeScenes } from '../src/content/life'
+import { lifeEvents, lifeFinale, lifeRoutine, lifeScenes } from '../src/content/life'
+import { useStory } from '../src/engine/story'
+import { useNarrativeStore } from '../src/stores/narrative'
 import { useCharacterStore } from '../src/stores/character'
 import { usePeopleStore } from '../src/stores/people'
 
@@ -413,7 +415,22 @@ const BOND_TO_ID = new Map<string, Set<string>>()
 for (let i = 0; i < 120; i += 1) {
   setActivePinia(createPinia())
   useCharacterStore()
+  const narrative = useNarrativeStore()
   const people = usePeopleStore()
+  // ⚠️ 必须把人生【演完】再收名册，不能只 createPinia 就读。
+  // 头一版只读出生那一刻的 roster，收到 24 个人——而嫂子、侄儿、儿子、配偶
+  // 这些【人生中途才立起来的人一个都不在里头】。
+  // 于是三栏都在拿一张残缺的名单当「这是不是一个人」的判据，
+  // 而被滤掉的恰恰是这一族最关心的那些人（B 链的分流承受者就是嫂子）。
+  const story = useStory(lifeScenes, { events: lifeEvents, routine: lifeRoutine, finale: lifeFinale })
+  story.begin()
+  let turns = 0
+  while (!narrative.ended && turns < 200) {
+    const open = narrative.options.filter((option) => !option.locked)
+    if (open.length === 0) break
+    story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
+    turns += 1
+  }
   for (const one of Object.values(people.roster)) PEOPLE.add(one.id)
   for (const rel of people.relations) {
     if (!BOND_TO_ID.has(rel.bond)) BOND_TO_ID.set(rel.bond, new Set())
@@ -591,9 +608,7 @@ const BRANCH_CALLED: readonly { key: string; role: string; why: string }[] = [
   {
     key: 'branch:east-head',
     role: '执行者',
-    why: [
-      '同上，regard:homecoming 的另一支。',
-    ].join('\n'),
+    why: ['同上，regard:homecoming 的另一支。'].join('\n'),
   },
   {
     key: 'branch:bond:生父',
@@ -606,16 +621,12 @@ const BRANCH_CALLED: readonly { key: string; role: string; why: string }[] = [
   {
     key: 'branch:steward',
     role: '岔口',
-    why: [
-      'royal:dismissal 的 no-steward：管家在不在，决定这一节走哪一支。',
-    ].join('\n'),
+    why: ['royal:dismissal 的 no-steward：管家在不在，决定这一节走哪一支。'].join('\n'),
   },
   {
     key: 'branch:sister',
     role: '岔口',
-    why: [
-      'house:succeed 的 handed：承户那一刻姐姐在不在。承受者是这一户。',
-    ].join('\n'),
+    why: ['house:succeed 的 handed：承户那一刻姐姐在不在。承受者是这一户。'].join('\n'),
   },
   {
     key: 'branch:bond:兄',
@@ -671,6 +682,64 @@ const BRANCH_CALLED: readonly { key: string; role: string; why: string }[] = [
   },
 ]
 
+/**
+ * 第三栏：**效果承受者来源账**——反过来问。
+ *
+ * ```
+ * 第一二栏   点了名 → 有没有落点     「说好要来的人，世界记了吗」
+ * 第三栏     落了点 → 【怎么进来的】  「世界记了的这个人，是从哪儿冒出来的」
+ * ```
+ *
+ * ⚠️ 这一栏是 B 链（`away-father-old`）逼出来的：那一卷在前两栏里
+ * **一条候选也不产**——哥身上有 `doing`，尺子就放过了整卷。
+ * 而它真正的分流承受者是**嫂子**（侄儿不回来，地由她种），
+ * 她落了效果**而从没被点名**。
+ *
+ * > 原尺子只从 `requires` 的人物入口向后走，
+ * > 却没有从 `effect` 的人物向前追溯。（GPT 的话）
+ *
+ * ## 来源分四类，而只有最后一类要人判
+ *
+ * ```
+ * created-in-scene   卷里 meet 立的（caravan-boss、baker 这类路人）  ✓ 来源闭合
+ * relation-derived   由关系解析出来的                                ✓
+ * branch-derived     家庭分流产生的（嫂子接过那几亩地）              ✓
+ * unknown            既非上述，也没有显式入口                        ● 来源异常
+ * ```
+ *
+ * ⚠️ `meet` 那一类**可以事先写死**——跟 GPT 定的：那是**引擎本身明确提供的
+ * 人物生产机制**，不是经验归纳。而写死的只是「人从哪来」这一层，
+ * **不能顺手关掉这个人后续效果的语义资格**。
+ *
+ * ## ⚠️ 而这个数不叫「23 个缺口」
+ *
+ * 叫「**146 件事件里，23 件带着需要解释来源的承受者**」。
+ * 经过来源分类，大量会落进 created-in-scene，剩下的 unknown 才值得啃。
+ */
+const originRows: { event: string; who: string; how: string }[] = []
+for (const event of lifeEvents) {
+  const named = namedInRequires(event.requires ?? [])
+  const scene = lifeScenes[event.scene]
+  if (!scene) continue
+  // 这一卷里 meet 立过谁——引擎明确的人物生产机制，来源就此闭合
+  const created = new Set<string>()
+  const dig = (one: unknown): void => {
+    if (Array.isArray(one)) return one.forEach(dig)
+    if (one === null || typeof one !== "object") return
+    const rec = one as Record<string, unknown>
+    if (rec.type === "meet" && typeof rec.id === "string") created.add(rec.id)
+    Object.values(rec).forEach(dig)
+  }
+  for (const node of Object.values(scene.nodes)) dig(node)
+
+  for (const who of touchedByScene(event.scene)) {
+    if (named.has(who)) continue
+    if ([...named].some((one) => one.startsWith("bond:") && BOND_TO_ID.get(one.slice(5))?.has(who))) continue
+    if (!PEOPLE.has(who)) continue
+    originRows.push({ event: event.id, who, how: created.has(who) ? "created-in-scene" : "unknown" })
+  }
+}
+
 const branchRows: { scene: string; who: string }[] = []
 for (const [sceneId, scene] of Object.entries(lifeScenes)) {
   const touched = touchedByScene(sceneId)
@@ -717,6 +786,62 @@ for (const [sceneId, scene] of Object.entries(lifeScenes)) {
  */
 const broken: string[] = []
 if (PEOPLE.size === 0) broken.push('人口册一个人也没收到')
+
+/**
+ * ⚠️ **观察宇宙的完备性自证**——这一条比上面那些都重要。
+ *
+ * 头一版 `PEOPLE` 是 `createPinia()` 之后**直接读 roster**，一世也没演，
+ * 收到的是**出生那一刻的名册**（24 人）。而嫂子、侄儿、儿子、配偶这些
+ * **人生中途才立起来的人一个都不在里头**——
+ * 于是三栏都在拿一张残缺的名单当「这是不是一个人」的判据，
+ * **而被滤掉的恰恰是这一族最关心的那些人**（B 链的分流承受者就是嫂子，
+ * 我正是因为她才建的第三栏，而她被这把尺子自己滤掉了）。
+ *
+ * 改成演完再收之后：24 人 → 45 人，7 种关系 → 14 种，三栏的候选数全变。
+ *
+ * ## 而「45 个人对了」不算自证
+ *
+ * 跟 GPT 定的：要自证的不是「这次数对了」，是
+ *
+ * > **演完之后收集的 `PEOPLE`，确实覆盖这一世所有实际进入世界的人物实体。**
+ *
+ * 否则下次换一条别的出现路径（轮回、事件重建、关系派生），还会再漏一次。
+ *
+ * 所以这一条拿**内容层写过的人**去对：凡是 `person` / `meet` 效果点过的 id，
+ * 都该在 `PEOPLE` 里。对不上的只有两类是正常的：
+ *
+ * ```
+ * 角色记号   elder / dam / child / playmate —— 本来就不是人的 id
+ * 稀有出身   baker（royal）、chancellor（invest）—— 120 世撞不上
+ * ```
+ *
+ * **稀有那一类不判红**（它会随种子飘），而角色记号那一类是恒定的。
+ */
+{
+  const written = new Set<string>()
+  const dig = (one: unknown): void => {
+    if (Array.isArray(one)) return one.forEach(dig)
+    if (one === null || typeof one !== "object") return
+    const rec = one as Record<string, unknown>
+    if (["person", "meet"].includes(String(rec.type)) && typeof rec.id === "string") {
+      written.add(rec.id)
+    }
+    Object.values(rec).forEach(dig)
+  }
+  for (const scene of Object.values(lifeScenes)) {
+    for (const node of Object.values(scene.nodes)) dig(node)
+  }
+  const ROLE_TOKENS = ["elder", "dam", "child", "playmate"]
+  const RARE = ["baker", "chancellor"]
+  const lost = [...written].filter(
+    (one) => !PEOPLE.has(one) && !ROLE_TOKENS.includes(one) && !RARE.includes(one),
+  )
+  if (lost.length > 0) {
+    broken.push(
+      `观察宇宙不完备：内容层写过而名册收不到的有 ${lost.length} 个（${lost.join("、")}）`,
+    )
+  }
+}
 if (BOND_TO_ID.size === 0) broken.push('关系一种也没解出来')
 if (PEOPLE.has('old-home')) broken.push('「old-home」进了人口册——那是户不是人')
 if (!BOND_TO_ID.get('兄')?.has('brother')) broken.push('「兄 → brother」没解出来')
@@ -798,7 +923,7 @@ for (const [who, one] of [...covered.entries()].sort((a, b) => b[1].named - a[1]
   // 一行的记号是【多条候选的合取】。把撑着它的那几条印出来——
   // 打断验就能自己回答「我的刀砍中了没有」，不必先去怀疑记号是死的
   for (const row of mine) {
-    const tag = !judgedOf(row) ? "未判" : realOf(row) ? "主体" : "非主体"
+    const tag = !judgedOf(row) ? '未判' : realOf(row) ? '主体' : '非主体'
     console.log(`        └ ${row.event.padEnd(22)} ${tag}`)
   }
 }
@@ -841,7 +966,8 @@ console.log(
     '    ⚠️ 行末的 ✓ 不等于「这一行的主体都有落点」——落了点的对子不会成为候选，',
     '    没人给它们标过角色。「主体且有落点」这一格这一支给不出来。',
     '',
-    '    ⚠️ 而这张图【不能拿行覆盖率排名】：`bond:兄 13/20` 混着两种东西',    '    ——哥是主体的那些卷，和「只要有个哥」这个前提。同一个人用',
+    '    ⚠️ 而这张图【不能拿行覆盖率排名】：`bond:兄 13/20` 混着两种东西',
+    '    ——哥是主体的那些卷，和「只要有个哥」这个前提。同一个人用',
     '    `id: brother` 点名时是 8/8，用 `bond: 兄` 点名时是 13/20，',
     '    差别在内容层怎么点他，不在这个人身上。',
     '',
@@ -919,6 +1045,44 @@ console.log(
     '    branches 的定义。而那必须是【逐条看过之后】的结论，不是一条预先的规则。',
     '    判完要是出现「岔口 80 / 主体 20」，就得查为什么这么多分流条件',
     '    其实在描述人物自身的经历。',
+    '',
+  ].join('\n'),
+)
+
+/**
+ * 第三栏印出来。**这个数不叫「缺口」，叫「需要解释来源的承受者」。**
+ *
+ * `created-in-scene`（卷里 `meet` 立的）来源就此闭合——那是引擎明确的
+ * 人物生产机制。剩下的 `unknown` 才值得逐条判：它可能是
+ * **分流承受者**（嫂子接过那几亩地，合法）、**关系解析出来的**（合法），
+ * 也可能是**某一卷顺手改了另一个人**（那才是问题）。
+ */
+const originBy = new Map<string, { created: number; unknown: number }>()
+for (const one of originRows) {
+  const cur = originBy.get(one.who) ?? { created: 0, unknown: 0 }
+  if (one.how === 'created-in-scene') cur.created += 1
+  else cur.unknown += 1
+  originBy.set(one.who, cur)
+}
+const unknownRows = originRows.filter((one) => one.how === 'unknown')
+console.log(
+  `  ── 第三栏：落了效果而没被点名（${originRows.length} 条，` +
+    `其中卷里 meet 立的 ${originRows.length - unknownRows.length} 条）──\n`,
+)
+for (const [who, one] of [...originBy.entries()]
+  .filter(([, x]) => x.unknown > 0)
+  .sort((a, b) => b[1].unknown - a[1].unknown)) {
+  console.log(`    ${who.padEnd(16)} 待解释 ${String(one.unknown).padStart(2)} 条  ⚠️`)
+}
+console.log(
+  [
+    '',
+    `    待解释 ${unknownRows.length} 条。⚠️ 这【不是】缺口数——`,
+    '    它可能是分流承受者（嫂子接过那几亩地）、关系解析出来的，',
+    '    也可能是某一卷顺手改了另一个人。逐条判完才知道。',
+    '',
+    '    ⚠️ 而 meet 那一类是【事先写死】的：引擎明确的人物生产机制，',
+    '    不是经验归纳。写死的只是「人从哪来」，不关他后续效果的语义资格。',
     '',
   ].join('\n'),
 )
