@@ -5,6 +5,7 @@ import { makePerson, usePeopleStore } from '@/stores/people'
 import { useWorldStore } from '@/stores/world'
 import { observerById } from '@/content/observers'
 import { bearKin, houseSurname } from '@/content/birth'
+import { doingAsLivelihood, relicOf } from '@/content/relics'
 import { HOUSEHOLD_BONDS } from './note'
 import type { Effect, InkTone, NarrativeBlock } from '@/types/game'
 
@@ -190,6 +191,72 @@ export function settleHeads(
     world.setFlag('head-passed-from', one.from)
     world.setFlag('head-passed-to', one.to)
     world.setFlag('head-passed-how', one.how)
+    /*
+     * 他留下的那几样东西。
+     *
+     * ## ⚠️ 只在【殁】的时候，交出去的不算
+     *
+     * `how` 分两种：老人还在而把家交出来（`交`），和人没了（`殁`）。
+     * **只有后者才谈得上遗物**——他还活着，那些家什还是他的。
+     *
+     * ## 三层各管一段，这儿是最上面那一层
+     *
+     * ```
+     * 引擎（这儿）  谁没了、传给了谁、是殁是交    抽象事实
+     * livelihoodOf  他靠什么过活                  人口册现算
+     * content/relics 那种营生使什么家什           【内容知识】
+     * ```
+     *
+     * 引擎不知道「务农的人留下一把镰刀」，那是 `relics.ts` 的事。
+     * 这么分是因为营生表会随内容长，而引擎不该跟着长。
+     *
+     * ## 为什么落在这儿，不落在丧事那一卷里
+     *
+     * 那一卷的正文写在 `seen` 里（「爹留下的东西不多，他用过的那几样，
+     * 你一样也没舍得扔」），而 **`seen` 只有 `requires` 和 `text` 两格，
+     * 落不下效果**。要落就得把并列的几句拆成互斥的 `branches`
+     * ——那会把叙述组合和事件分流混成一件事（见 `types/game.ts` 那一段）。
+     *
+     * 户主换人这件事本来就在这儿结算，遗物跟着它走是顺的：
+     * **它是「人没了」的后果，不是「玩家读到某一句」的后果。**
+     */
+    if (one.how !== '殁') continue
+    /*
+     * ⚠️ **不能问 `livelihoodOf`**——那一格对死人一律答 `undefined`，
+     * 而它的注释写明了那是有意的：
+     *
+     * > 死了的人问不出来。他还在册上、他的营生还在他的历……
+     * > 可「**此刻**靠什么谋生」这个问题对死人不成立。
+     *
+     * 而遗物问的是**另一个问题**：「他**生前**靠什么过活」。
+     * 两个问题不同，所以直接读他身上那一格——`Person.livelihood`
+     * 人殁了不会被抹掉，殁的是 `fate`。
+     *
+     * ## ⚠️ 而改成直接读 `livelihood` 之后，照样 0 世
+     *
+     * 在落点插 log 才看见真相：`person=有` 而
+     * **`livelihood` 和 `houseOf(…)` 两个都是 `undefined`**。
+     *
+     * ```
+     * 立基给亲属写的是 doing（他在做什么），不是 livelihood
+     * livelihood 是【户】的格子，而爹殁了已经不在任何一户里
+     * ```
+     *
+     * 所以退到 `doing`。而 `doing` 是**自由字符串**
+     * （收养人那一支写的是「讨饭的」「寺中的老僧」），
+     * 不能直接当 `Livelihood` 用——`doingAsLivelihood` 先验它在不在表里。
+     *
+     * 两版都是「不报错、不红，只是什么也没发生」，
+     * **而两次印出来完全一样**。查穿它靠的是在落点印 log，
+     * 不是接着猜第三种取法。
+     */
+    const person = people.personOf(one.from)
+    const relic = relicOf(person?.livelihood ?? doingAsLivelihood(person?.doing))
+    if (relic === undefined) continue
+    character.carry(relic.id, relic.name, 1, relic.unit, undefined, {
+      from: one.from,
+      at: world.time.year,
+    })
   }
 }
 
