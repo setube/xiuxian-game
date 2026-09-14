@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-
 /* eslint-disable no-console -- 这是一支命令行走查脚本，标准输出就是它的产物；它不进构建 */
 /**
  * 事件的另一半：入场点了名的人，世界有没有往他身上落过一笔。
@@ -144,6 +142,8 @@ import { readFileSync } from 'node:fs'
  * 跑法：bun scripts/subject.ts
  */
 import './lib/seeded'
+
+import { readFileSync } from 'node:fs'
 
 import { createPinia, setActivePinia } from 'pinia'
 
