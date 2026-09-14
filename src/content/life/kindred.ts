@@ -344,9 +344,21 @@ export const kindredScenes: SceneLibrary = {
       small: {
         id: 'small',
         blocks: [{ kind: 'narration', text: '{call:nephew}已经{age:nephew}了。' }],
+        /*
+         * ⚠️ 这一节【不分「她在不在」】，而那是量出来的。
+         *
+         * 我先给它加过一条 `alive: false` 的支（「见了你先往门后躲」），
+         * 而 `seen` 那支当场报 **0.0% 没人读到**。
+         *
+         * 真因不是条件写错，是**那个窗口里她不会死**：
+         * 走到这一节要侄儿 ≤6 岁（上头那条 branch），
+         * 而他娘那时才二十几岁。**300 世里她在的 4.0%、不在的 0.0%。**
+         *
+         * 「这一卷一个字不问他娘」这个判断是对的，只是**该补的不是这一节**
+         * ——要补在侄儿长大之后那几节（她那时真可能走了）。
+         */
         seen: [
           { requires: [{ family: { id: 'brother-wife', alive: true } }], text: '见了你先躲到{call:brother-wife}身后，过一会儿才出来。' },
-          { requires: [{ family: { id: 'brother-wife', alive: false } }], text: '见了你先往门后躲，过一会儿才出来。' },
         ],
         next: 'back',
       },
