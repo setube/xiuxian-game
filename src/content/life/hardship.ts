@@ -180,6 +180,23 @@ export const hardshipScenes: SceneLibrary = {
             ],
           },
           { type: 'chronicle', text: '父亲为了还债，离开了家乡。', tone: 'deep' },
+          /*
+           * ⚠️ 爹当年被征去修的那一年河堤。
+           *
+           * `soldiered`（「被征去修过一年河堤」）是立基掷给长辈的十件往事之一，
+           * `scripts/past.ts` 数出来：**写入端一处，读取端零。**
+           *
+           * 而这一节正是它该出声的地方：**他要去修河堤了，
+           * 而他当年被征去修过一年。** 下一句写的是「父亲决定去」
+           * ——他决定得比旁人快，是有来由的。
+           *
+           * ⚠️ 挂在【爹】身上：这一卷里出门的是他。（前一处 `old-debt`
+           * 挂在娘身上，因为那一刻追问的是她。同一族往事，
+           * 挂谁看【那一刻谁在做那件事】。）
+           *
+           * 不另写正文——`recall` 自己会印一句，落空时什么也不印。
+           */
+          { type: 'recall', id: 'father', chapter: 'soldiered' },
         ],
         blocks: [
           { kind: 'narration', text: '债还不上。' },
