@@ -338,14 +338,42 @@ let bad = 0
   const shop = gainedBy('cloth')
   const herbs = gainedBy('herb')
   const escort = gainedBy('escort')
-  const farm = gainedBy('farm')
+  // farm 那一局改由 averageKnows 多摆几次，单局的值不再用
 
   const wrong: string[] = []
   if (shop.knows === 0) wrong.push('布庄人家的孩子见往来客商，却一样东西也没记住')
-  if (shop.knows <= farm.knows) {
+  /*
+   * ⚠️ 「布庄该比农家多」这一条**不能拿单摆一局的两个数比大小**。
+   *
+   * 2026-09-14 撞红：布庄 1 条、农家 1 条。而它红的起因是**另一处改动
+   * 消耗了随机流**（给邻家老人掷往事），把后面所有掷动错开了一格
+   * ——**内容一个字没动，这条判据翻了个面**。
+   *
+   * 一手量过（各 60 局）：
+   *
+   * ```
+   * cloth  最小 2 中位 5 最大 8　均 5.08
+   * farm   最小 1 中位 4 最大 6　均 4.28
+   * ```
+   *
+   * **方向是对的，而两者的分布重叠得厉害**（布庄的最小值比农家的最大值还小）。
+   * 单摆一局比大小，翻车只是早晚的事。
+   *
+   * 改成多摆几局比**均值**。门槛仍是「多一点就行」——这一条守的是
+   * 「出身在这一节上留下了分别」，不是那个差值有多大。
+   */
+  const AVERAGE_OVER = 12
+  const averageKnows = (origin: OriginId): number => {
+    let sum = 0
+    for (let i = 0; i < AVERAGE_OVER; i += 1) sum += gainedBy(origin).knows
+    return sum / AVERAGE_OVER
+  }
+  const shopAvg = averageKnows('cloth')
+  const farmAvg = averageKnows('farm')
+  if (shopAvg <= farmAvg) {
     wrong.push(
-      `开铺子的孩子该比地里长大的多知道些：布庄 ${shop.knows} 条、农家 ${farm.knows} 条` +
-        '——出身没在这一节上留下分别',
+      `开铺子的孩子该比地里长大的多知道些：布庄均 ${shopAvg.toFixed(2)}、` +
+        `农家均 ${farmAvg.toFixed(2)}（各 ${AVERAGE_OVER} 局）——出身没在这一节上留下分别`,
     )
   }
   if (herbs.insight <= 0) wrong.push(`药铺的孩子该多认得几样东西，见识却是 ${herbs.insight}`)
@@ -361,7 +389,8 @@ let bad = 0
     bad += wrong.length
   } else {
     console.log(
-      `  ✓ memory 效果层：布庄记住 ${shop.knows} 条、农家 ${farm.knows} 条；` +
+      `  ✓ memory 效果层：布庄均 ${shopAvg.toFixed(2)} 条、农家均 ${farmAvg.toFixed(2)} 条` +
+        `（各 ${AVERAGE_OVER} 局）；` +
         `药铺见识 +${herbs.insight}、走镖心志 +${escort.will}。`,
     )
   }
