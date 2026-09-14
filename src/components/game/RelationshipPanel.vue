@@ -264,11 +264,16 @@ function pick(id: string): void {
 const opened = computed(() => {
   const id = chosen.value
   if (id === null) return null
-  if (id === 'me') return { calls: '我', bonds: [] as Bond[], note: '你自己。' }
+  if (id === 'me') return { calls: '我', bonds: [] as Bond[], note: '你自己。', past: [] }
   return {
     calls: nameOf(id),
     bonds: people.bondsWith(id).filter((bond) => !IMPLIED.includes(bond)),
     note: noteFor(id),
+    /*
+     * 这些年发生过的事。**按年份排**——攒进去的顺序本来就是时间顺序，
+     * 可读档、跨世的东西不该指望插入顺序。
+     */
+    past: [...(known.value[id]?.past ?? [])].sort((a, b) => a.at.year - b.at.year),
   }
 })
 
@@ -356,6 +361,22 @@ function noteFor(id: string): string {
         <p class="ink-branch">
           <span>{{ opened.note }}</span>
         </p>
+        <!--
+          这些年发生过的事。
+
+          ⚠️ 上头那一句是【此刻的近况】，这一串是【一路上的事】——
+          两者的分别正是 `note` 覆盖而 `past` 追加：
+          前者答「他现在怎么样」，后者答「你们是怎么走到这一步的」。
+
+          只在有两条以上时才印：一条的时候它跟上头那一句多半是同一件事，
+          印出来是重复。而「关系证据链」的意思本来就在【好几件事排起来】。
+        -->
+        <ul v-if="opened.past.length > 1" class="past">
+          <li v-for="one in opened.past" :key="one.at.year + one.text">
+            <span class="year">{{ one.at.year }} 年</span>
+            <span>{{ one.text }}</span>
+          </li>
+        </ul>
       </div>
 
       <!--
@@ -490,6 +511,25 @@ function noteFor(id: string): string {
   color: var(--color-ink-faint);
   font-size: var(--text-note);
   letter-spacing: 0.1em;
+}
+
+/*
+ * 这些年发生过的事。比上头那一句近况再轻一档——
+ * 它是**背景**，不是此刻要读的那句话。
+ */
+.past {
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-ink-faint);
+  font-size: var(--text-note);
+  line-height: 1.9;
+}
+
+.past .year {
+  margin-right: 0.6em;
+  letter-spacing: 0.08em;
+  opacity: 0.75;
 }
 
 /* 图与图外的人之间落一道线，两拨人不是一回事 */
