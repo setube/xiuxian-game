@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 /* eslint-disable no-console -- 这是一支命令行走查脚本，标准输出就是它的产物；它不进构建 */
 /**
  * 事件的另一半：入场点了名的人，世界有没有往他身上落过一笔。
@@ -1138,7 +1140,58 @@ if (PEOPLE.size === 0) broken.push('人口册一个人也没收到')
     for (const node of Object.values(scene.nodes)) dig(node)
   }
   const ROLE_TOKENS = ['elder', 'dam', 'child', 'playmate']
-  const RARE = ['baker', 'chancellor']
+  /*
+   * ⚠️ 只在【稀有出身】里才立起来的人——抽不到是常态，不是尺子坏了。
+   *
+   * 头一版这儿手写着 `['baker', 'chancellor']`，**而王府那一族还有五个
+   * 同样稀有**（`tutor`/`page`/`steward`/`gatekeeper`/`maid`）。
+   * 那张表是凭当时撞见的补的，于是这一支反复报
+   * 「观察宇宙不完备」——**而清单其实是好的（55/55 判过）。**
+   *
+   * 算一笔就明白：`manor` 出身权重 4/244 = 1.64%、`court` 2/244 = 0.82%，
+   * 而这一支跑 120 世——**期望各 2 次和 1 次，抽不到是常态。**
+   *
+   * 所以名单从 `birth.ts` 现取：**那几个人写在 `settleManorHousehold` 里，
+   * 而它挂在 `id === 'manor'` 底下。** 不手写，免得下一个稀有出身进来又漏。
+   */
+  const manorBlock = readFileSync('src/content/birth.ts', 'utf8')
+    .split('function settleManorHousehold')[1]
+    ?.split('\nfunction ')[0]
+  /*
+   * ⚠️ 还有一路：**内容层在稀有出身的分支里 `meet` 出来的人**。
+   *
+   * `tutor` 就是这么来的——`school:threshold` 按
+   * `{ origin: 'court' }` / `{ origin: 'manor' }` 分两支，各造一位西席。
+   * 他不在 `birth.ts` 里，而稀有度跟王府那四个一样（0.82% + 1.64%）。
+   *
+   * 所以两路都取：立基那张表 + 内容层挂在稀有出身分支底下的 meet。
+   */
+  const RARE_ORIGINS = ['court', 'manor']
+  const bornInRareBranch = new Set<string>()
+  for (const scene of Object.values(lifeScenes)) {
+    for (const node of Object.values(scene.nodes)) {
+      for (const branch of node.branches ?? []) {
+        const rare = branch.requires.some((one) => {
+          const o = (one as { origin?: unknown }).origin
+          return typeof o === 'string' && RARE_ORIGINS.includes(o)
+        })
+        if (!rare) continue
+        const target = scene.nodes[branch.next]
+        for (const fx of target?.onEnter ?? []) {
+          const rec = fx as { type?: string; id?: string }
+          if (rec.type === 'meet' && typeof rec.id === 'string') bornInRareBranch.add(rec.id)
+        }
+      }
+    }
+  }
+  const RARE = [
+    ...new Set([
+      'baker',
+      'chancellor',
+      ...[...(manorBlock ?? '').matchAll(/pid: '([a-z-]+)'/g)].map((one) => one[1] ?? ''),
+      ...bornInRareBranch,
+    ]),
+  ].filter((one) => one !== '')
   const lost = [...written].filter(
     (one) => !PEOPLE.has(one) && !ROLE_TOKENS.includes(one) && !RARE.includes(one),
   )
