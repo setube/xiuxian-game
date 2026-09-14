@@ -83,7 +83,7 @@ import './lib/seeded'
 
 import { lifeScenes } from '../src/content/life'
 import { ROLE_IDS } from '../src/engine/interpolate'
-import type { SceneNode } from '../src/types/game'
+import type { Condition, SceneNode } from '../src/types/game'
 
 /**
  * 会解析到不同性别的角色记号。
@@ -101,6 +101,62 @@ const MIXED = ROLE_IDS.filter((one) => !ALWAYS_ONE_SEX.includes(one))
 /** 写死性别的字。「他们」是复数，不算 */
 const GENDERED = /他(?!们)|她(?!们)/
 
+/**
+ * 这一节的条件，把人钉死了吗。
+ *
+ * ⚠️ **同一个文件里，有的钉得住有的钉不住。**
+ * `illness.ts` 那句「娘一滴泪没掉，出殡回来她把他的东西收进箱子」
+ * 看着两个代词都写死了，而它挂的那一支写着：
+ *
+ * ```ts
+ * { family: { id: 'father', alive: false } }
+ * { family: { id: 'mother', alive: true, present: true } }
+ * ```
+ *
+ * **条件把两个代词都钉死了**——「她」是娘、「他」是爹。
+ * 而同一个文件里，`gone` 那一节问的是 `{ id: 'elder' }`，钉不住。
+ *
+ * 所以这一条问：那一节的 `requires` 里有没有点名具体的人
+ * （`father`／`mother`／`brother` 这种，不是 `elder`／`playmate` 那种记号）。
+ * 有就不算候选——**那一句的性别是条件保证的，不是作者赌的**。
+ */
+const BY_NAME = /'(father|mother|brother|sister|spouse|teacher|east-head|landlord)'/
+
+/**
+ * 关系那一路也钉得住性别。
+ *
+ * ⚠️ `Bond` 里**「子」和「女」是分开的**，「兄姐弟妹」也分开
+ * ——所以 `{ bond: { kind: '子' } }` 已经把那个人钉成男的了。
+ *
+ * 头一版漏了这一路，于是 `routine:prime` 那四处（问 `bond: '子'`／`'徒'`）
+ * 全被当成候选。**而它们一处也不用改。**
+ *
+ * 「徒」是例外：那一格不分男女，所以不收进来。
+ */
+const GENDERED_BOND = /"kind":"(生父|生母|兄|姐|弟|妹|子|女|配偶)"/
+
+/**
+ * 这一条 `requires` 把人钉死了吗。
+ *
+ * ⚠️ **粒度是「一条」，不是「一个节点」。**
+ *
+ * 头一版按整个节点判，滤掉 **0 节**——因为同一个节点里
+ * 好几条 `seen` 各带各的条件，只要有一条不点名，整节就漏网。
+ * 而 `illness.ts` 那一节正是这样：
+ *
+ * ```
+ * seen[0]  { family: father alive:false } + { family: mother alive:true }   钉死了
+ * seen[1]  { flag: … }                                                      没钉
+ * ```
+ *
+ * **「滤掉 0 节」跟「这一刀没写对」印出来一模一样**
+ * ——救我的是那个 0 本身太整齐（真要滤，不会一节也滤不到）。
+ */
+const pinnedDown = (requires: readonly Condition[] | undefined): boolean => {
+  const json = JSON.stringify(requires ?? [])
+  return BY_NAME.test(json) || GENDERED_BOND.test(json)
+}
+
 interface Hit {
   scene: string
   node: string
@@ -109,6 +165,8 @@ interface Hit {
   text: string
 }
 const hits: Hit[] = []
+/** 条件把人钉死了的节点数——报出来，让人知道这一刀滤掉了多少 */
+let pinned = 0
 
 for (const scene of Object.values(lifeScenes)) {
   for (const node of Object.values(scene.nodes) as SceneNode[]) {
@@ -117,13 +175,36 @@ for (const scene of Object.values(lifeScenes)) {
     if (roles.length === 0) continue
     const where = { scene: scene.id, node: node.id, role: roles.join('/') }
 
-    for (const block of node.blocks ?? []) {
-      const text = 'text' in block ? block.text : ''
-      if (GENDERED.test(text)) hits.push({ ...where, kind: '正文', text: text.slice(0, 28) })
+    /*
+     * ⚠️ `blocks` 是无条件的，所以拿【整个节点】的分流条件来问
+     * ——那几句正文不管走哪一支都会印出来。
+     */
+    const nodeWide = [
+      ...(node.branches ?? []).flatMap((one) => one.requires ?? []),
+      ...(node.choices ?? []).flatMap((one) => one.requires ?? []),
+    ]
+    if (pinnedDown(nodeWide)) {
+      pinned += 1
+    } else {
+      for (const block of node.blocks ?? []) {
+        const text = 'text' in block ? block.text : ''
+        if (GENDERED.test(text)) hits.push({ ...where, kind: '正文', text: text.slice(0, 28) })
+      }
     }
+
+    /*
+     * 而 `seen` 是【逐条】带条件的，各判各的。
+     *
+     * ⚠️ 头一版按整个节点判，滤掉 0 节——同一节点里好几条 `seen`
+     * 各带各的条件，只要有一条不点名，整节就漏网。
+     */
     for (const one of node.seen ?? []) {
-      if (GENDERED.test(one.text))
-        hits.push({ ...where, kind: 'seen', text: one.text.slice(0, 28) })
+      if (!GENDERED.test(one.text)) continue
+      if (pinnedDown(one.requires)) {
+        pinned += 1
+        continue
+      }
+      hits.push({ ...where, kind: 'seen', text: one.text.slice(0, 28) })
     }
     for (const one of node.choices ?? []) {
       if (GENDERED.test(one.label))
@@ -136,7 +217,7 @@ for (const scene of Object.values(lifeScenes)) {
 
 console.log(`\n=== 角色记号解析到谁，正文说得准吗 ===\n`)
 console.log(`  射程：${MIXED.join('、')}（排掉恒定一种性别的：${ALWAYS_ONE_SEX.join('、')}）`)
-console.log(`  ◇ ${hits.length} 处候选（那一节点名了角色记号，而正文写死了性别）：\n`)
+console.log(`  ◇ ${hits.length} 处候选（另滤掉 ${pinned} 节：条件已经把人钉死了）：\n`)
 const byScene = new Map<string, Hit[]>()
 for (const one of hits) {
   const list = byScene.get(one.scene) ?? []
