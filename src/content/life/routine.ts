@@ -968,7 +968,7 @@ export const routineScenes: SceneLibrary = {
         seen: [
           {
             requires: [{ bond: { kind: '徒', alive: true } }],
-            text: '徒弟如今自己也能接活了。他有时还来问你，多半是问过了才自己拿主意。',
+            text: '徒弟如今自己也能接活了。有时还来问你，多半是问过了才自己拿主意。',
           },
           {
             /**

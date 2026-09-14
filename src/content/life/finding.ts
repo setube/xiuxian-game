@@ -178,11 +178,11 @@ export const findingScenes: SceneLibrary = {
       asked: {
         id: 'asked',
         blocks: [
-          { kind: 'narration', text: '回去给{elder}看。他捏了捏，闻了闻。' },
+          { kind: 'narration', text: '回去给{elder}看。捏了捏，闻了闻。' },
           { kind: 'dialogue', speaker: '{elder}', text: '不认得。' },
           {
             kind: 'narration',
-            text: '他又说：不认得的东西别往嘴里放。搁着吧，反正它也不烂。',
+            text: '又说：不认得的东西别往嘴里放。搁着吧，反正它也不烂。',
             tone: 'faint',
           },
         ],
