@@ -2305,6 +2305,27 @@ export interface Condition {
    *
    * 不写 `known` 就是不问玩家知不知道——那答的是世界事实本身
    * （她这辈子有没有过这件事），跟玩家的认知无关。
+   *
+   * ## ⚠️ 带不带 `known`，是「有没有时刻」的分界
+   *
+   * ```
+   * { id, chapter }                 他这辈子有没有过这件事
+   *                                 history 立基掷定，【此后不变】→ 问得早晚都一样
+   * { id, chapter, known: false }    这件事翻开了没有
+   *                                 recall 会把它翻过去 →【有时刻，而且单向】
+   * ```
+   *
+   * **单向那一点最要紧**：`known` 只朝一个方向走（false → true，
+   * `people.recall` 那行是 `if (chapter.known) return false`）。
+   * 所以一旦某一步里 `recall` 先跑了，后面所有问 `known: false` 的条件
+   * **就永久落空**——而症状是「那一卷再也不演」，不是任何一处报错。
+   *
+   * ⚠️ 这比 `alive` 险：人不在场了还可能回来，**而往事翻开了不会合上**。
+   *
+   * 而一步装得下好几卷（实测 36.5% 的步演不止一卷，最多一步六卷），
+   * 所以「入场判定那一刻」和「正文落笔那一刻」之间**插得进一次 `recall`**。
+   * 要躲开它：把 `roll` 和 `recall` 放进**同一个 `onEnter`**
+   * （`kin.ts` 的 `mom:past` 就是这么写的，实测开口即落地 100%，落空 0 世）。
    */
   past?: { id: string; chapter: string; known?: boolean }
   /**

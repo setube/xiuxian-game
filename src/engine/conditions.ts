@@ -515,8 +515,7 @@ const CHECKS = {
     const chapter = people.personOf(past.id)?.history.find((one) => one.id === past.chapter)
     if (chapter === undefined) return false
     return past.known === undefined ? true : chapter.known === past.known
-  },
-  /**
+  },  /**
    * 他留下的那件东西，在你身边多少年了。
    *
    * ⚠️ **先问「此刻还在不在」，再问「多少年」**——顺序要紧：
