@@ -497,6 +497,25 @@ const CHECKS = {
     if (befell.within === undefined) return true
     return world.time.year - year <= befell.within
   },
+  /**
+   * 这个人身上有没有那一件往事。
+   *
+   * ⚠️ **`known` 不写和写 `false`，是两个不同的问题**，别当同一个用：
+   *
+   *     不写           她这辈子有没有过这件事      ← 世界事实
+   *     known: false   她有，而玩家还不知道        ← 恰是 recall 会成功的那一刻
+   *
+   * 后者存在的理由是 `people.recall` 那一行：
+   * `if (!chapter || chapter.known) return false`
+   * ——**两种失败它都静默吞掉**。所以要问「这一次 recall 落不落得下去」，
+   * 得把两件事一起问，而这正是 `{ known: false }`。
+   */
+  past: (past) => {
+    const people = usePeopleStore()
+    const chapter = people.personOf(past.id)?.history.find((one) => one.id === past.chapter)
+    if (chapter === undefined) return false
+    return past.known === undefined ? true : chapter.known === past.known
+  },
 
   outlived: (outlived) => {
     const people = usePeopleStore()

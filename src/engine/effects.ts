@@ -14,6 +14,7 @@ import { attend, attendBlocks } from './attention'
 import { reconsider } from './diary'
 import { goOn } from './errand'
 import { branch, dampen, echoesOn, kindle, readingOf } from './leanings'
+import { meetsAll } from './conditions'
 import { askAround, crossed, follow, knock } from './seeking'
 import { toChineseNumber } from './describe'
 import {
@@ -1316,7 +1317,16 @@ function applyOne(
     }
     case 'roll': {
       // 世界自己掷的骰子。玩家看不到这一行，也永远不会知道另一种可能是什么
-      const outcome = pickWeighted(effect.among, (entry) => entry.weight)
+      //
+      // ⚠️ 带 `requires` 的那几面【条件不成立就不上桌】，剩下的按权重重新分。
+      // 防的是「掷出一个这个世界里没有的结果」——`mom:past` 那一卷踩过：
+      // 她说哪一件往事由这一掷定，而她身上有没有那一件是立基掷的，
+      // 两件事互不相干，于是三支合起来近八成的正文演完了而世界事实一笔没落。
+      //
+      // 滤光了就【什么也不写】：旗标保持原样，读它的 branches 一条也不满足，
+      // 自然落到 next 那一支。这让「没得可掷」和「掷中了某一面」分得开
+      const open = effect.among.filter((entry) => meetsAll(entry.requires))
+      const outcome = pickWeighted(open, (entry) => entry.weight)
       if (outcome) world.setFlag(effect.key, outcome.value)
       return null
     }
