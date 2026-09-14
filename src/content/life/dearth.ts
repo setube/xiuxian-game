@@ -375,7 +375,7 @@ export const dearthScenes: SceneLibrary = {
           { kind: 'narration', text: '那年冬天家里没有断过炊。' },
           {
             kind: 'narration',
-            text: '开春之后他没有歇。农闲的日子里，那副担子一直在门后靠着。',
+            text: '开春之后也没有歇。农闲的日子里，那副担子一直在门后靠着。',
             tone: 'faint',
           },
         ],
