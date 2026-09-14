@@ -361,6 +361,77 @@ export const neighbourScenes: SceneLibrary = {
       },
     },
   },
+  /**
+   * 两家的老人当年一块儿修过河堤。
+   *
+   * ## 这一卷把一件【早就成立】的世界事实第一次说出口
+   *
+   * 爹身上有 `soldiered`（被征去修过一年河堤），东邻老头身上也有
+   * ——**两件事在立基那一刻就掷好了，各自躺在各自的 `history` 里**，
+   * 而从前没有任何一处内容把它们放在一起看。
+   *
+   * ⚠️ **这一卷不制造事实，它只是第一个读者。**
+   * 所以它什么也不改：不加好感、不立旗、不改关系。
+   * 玩家得到的是**知道了一件本来就真的事**——那正是
+   * `recall` 那一笔的全部作用（把两个人的 `known` 翻成 true）。
+   *
+   * ## 为什么是修河堤，不是别的共有往事
+   *
+   * 两家老人共有一件往事的世数是 74（300 世里），
+   * 而这一卷只认 `soldiered` 一件。理由是**只有它有「一块儿」的性质**：
+   * 被征去修河堤是官府按里甲派的，同一个村同一年派出去的人，
+   * 多半在同一段堤上。
+   *
+   * 「都逃过荒」是两场荒，「都认过几个字」是两个私塾
+   * ——**共有一件往事不等于他们一块儿经历的**。
+   */
+  'neighbour:same-levy': {
+    id: 'neighbour:same-levy',
+    title: '同一年',
+    entry: 'open',
+    nodes: {
+      open: {
+        id: 'open',
+        onEnter: [
+          { type: 'time', days: 1 },
+          /*
+           * 两笔 `recall`，两个人各一笔。
+           *
+           * ⚠️ 少一笔就只翻开一半：玩家会知道「爹修过河堤」
+           * 而不知道「东边那个老头也去了」——**而这一卷的全部意思
+           * 就在后半句**。
+           */
+          { type: 'recall', id: 'father', chapter: 'soldiered' },
+          { type: 'recall', id: 'east-head', chapter: 'soldiered' },
+        ],
+        blocks: [
+          {
+            kind: 'narration',
+            text: '东边那家的院门开着，{elder}站在门口跟人说话。说的是修堤那年的事。',
+          },
+          {
+            kind: 'dialogue',
+            speaker: '{elder}',
+            text: '那年你也在？我在下游那一段。',
+          },
+          {
+            kind: 'narration',
+            text: '两个人算了半天，算出来是同一年，同一条堤，隔着二里地。',
+          },
+          {
+            kind: 'narration',
+            text: '他们从前没说过这个。在一条巷子里住了这么些年，谁也没提起过。',
+            tone: 'faint',
+          },
+          {
+            kind: 'narration',
+            text: '你站在旁边听。那一年你还没出生。',
+            tone: 'faint',
+          },
+        ],
+      },
+    },
+  },
 }
 
 export const neighbourEvents: readonly LifeEvent[] = [
@@ -405,5 +476,59 @@ export const neighbourEvents: readonly LifeEvent[] = [
     ],
     scene: 'neighbour:east-grown',
     weight: 12,
+  },
+  {
+    /**
+     * 两家的老人当年一块儿修过河堤。
+     *
+     * ## ⚠️ 入场那两条是这一卷的全部意思
+     *
+     * ```ts
+     * { past: { id: 'father',    chapter: 'soldiered' } }
+     * { past: { id: 'east-head', chapter: 'soldiered' } }
+     * ```
+     *
+     * 两条并排就是「并且」——**两个人身上都有这一件**。
+     * 而 `soldiered` 是「被征去修过一年河堤」：两个同村的男人
+     * 同一年被征去，本来就是常事。
+     *
+     * ## 这不是 2.md 那一节，只是它降一代的样子
+     *
+     * 2.md 要的是「你**祖父**和他**祖父**当年交情很深」，
+     * 而这个世界只立到爹娘那一代——**祖父辈不在册**。
+     *
+     * 降一代丢掉的正是「世」字：**爹这一代玩家是亲眼见过的**，
+     * 而祖父那一层的意思恰恰是「你没见过，只听说」。
+     * 所以这一卷不叫世交，它就是「两个老头当年一块儿干过活」。
+     *
+     * ## 一手量的（300 世）
+     *
+     * ```
+     * 两家老人共有至少一件往事   74 世
+     * 其中 soldiered            14 世   ← 这一卷的分母
+     * ```
+     *
+     * ⚠️ **共有一件往事 ≠ 他们一块儿经历的**：「都逃过荒」是两场荒。
+     * 挑 `soldiered` 是因为**被征去修河堤是官府按里甲派的**，
+     * 同一个村同一年派出去的人，多半在同一段堤上。
+     * 别的几件（逃荒、认字、娘家远）没有这个性质，所以这一卷只认这一件。
+     *
+     * ## 窗口 12–30
+     *
+     * 要玩家大到听得懂这种话（不是五岁），而两个老人都还在。
+     * 不开到更晚是因为**他们会殁**——入场那两条只问往事不问死活，
+     * 是有意的：**这件事他殁了也还是真的**，
+     * 而正文里说话的人是爹（`{elder}`），他得在。
+     */
+    id: 'neighbour-same-levy',
+    window: { from: 12, to: 30 },
+    requires: [
+      { family: { id: 'father', alive: true, present: true } },
+      { family: { id: 'east-head', exists: true } },
+      { past: { id: 'father', chapter: 'soldiered' } },
+      { past: { id: 'east-head', chapter: 'soldiered' } },
+    ],
+    scene: 'neighbour:same-levy',
+    weight: 10,
   },
 ]
