@@ -671,12 +671,30 @@ export const useCharacterStore = defineStore(
      * 收进或取出行囊。count 为负即失去，减到零则整条移除。
      * @returns 实际变动的数量，0 表示什么也没发生
      */
-    function carry(id: string, name: string, count: number, unit: string, note?: string): number {
+    function carry(
+      id: string,
+      name: string,
+      count: number,
+      unit: string,
+      note?: string,
+      /**
+       * 这是谁留下的、哪一年留下的（见 `InventoryItem.keepsake`）。
+       *
+       * ⚠️ **只在头一次进行囊时记，后来同一件东西再进来【不覆盖】。**
+       * 跟 `people.meet` 对 `calls` 那一条同一个道理：
+       * 认过一次就认定了。爹留下的那把镰刀，后来又收了两把一样的，
+       * 不该把「爹留下的」这件事冲掉——**那是一笔往事，不是一个属性**。
+       */
+      keepsake?: InventoryItem['keepsake'],
+    ): number {
       const existing = inventory.value.find((item) => item.id === id)
 
       if (!existing) {
         if (count <= 0) return 0
-        inventory.value = [...inventory.value, { id, name, count, unit, ...(note ? { note } : {}) }]
+        inventory.value = [
+          ...inventory.value,
+          { id, name, count, unit, ...(note ? { note } : {}), ...(keepsake ? { keepsake } : {}) },
+        ]
         return count
       }
 

@@ -172,6 +172,11 @@ if (gained.length === 0) {
  * `ascent.ts` 一直是两种走法各报一张漏斗）。
  * 拿随机走法判这条线，判的是「大多数人走不到」，那件事本来就是真的。
  *
+ * ⚠️ **2026-09-14 补了一批随机走法，而它不参与上面这条判定。**
+ * 它只回答一个问题：**这件东西是「路走不到」，还是「有心人走不到」**
+ * ——从前这两者印出来一模一样，都是「真跑到不了」。
+ * 分布、稀有度、点破率照旧只看有心人那一批。
+ *
  * ## 判「到得了」，不判「多少人到得了」
  *
  * 门槛是**零**：每一件在库里给出去的东西，得**至少有一世**真到了玩家手里。
@@ -180,6 +185,8 @@ if (gained.length === 0) {
  */
 {
   const RUNS = 600
+  /** 随便过日子那一批：只用来分辨「路走不到」和「有心人走不到」，不判分布 */
+  const CASUAL_RUNS = 300
   /** 每件东西被拿到过几世 */
   const held = new Map<string, number>()
   /** 每件东西被点破过几世 */
@@ -220,19 +227,73 @@ if (gained.length === 0) {
   }
 
   console.log(`\n  真跑（有心人 ${RUNS} 世）：`)
+  /**
+   * ⚠️ 有心人**只走一条路**，而这一支从前拿它当唯一的证据。
+   *
+   * 2026-09-14 撞穿：`exam:first#let-be-gone` 那件「先生留下的书」
+   * 被报成「真跑到不了」，而它其实在**「不去考」那一支**后面
+   * （`stayed` 的唯一入边是选项 `no`：「你说家里离不开人」）。
+   * **有心人一定去考，所以永远走不到那儿。**
+   *
+   * ```
+   * 路走不到          真缺陷
+   * 有心人走不到      这一支的策略盲区   ← 从前两者印出来一模一样
+   * ```
+   *
+   * 所以底下补一批**随便过日子**的世：有心人没拿到而这批拿到了的，
+   * 报数不判红——那是取样策略的射程，不是内容的错。
+   */
+  const casual = new Map<string, number>()
+  for (let i = 0; i < CASUAL_RUNS; i += 1) {
+    setActivePinia(createPinia())
+    const narrative = useNarrativeStore()
+    const character = useCharacterStore()
+    const story = useStory(lifeScenes, {
+      events: lifeEvents,
+      routine: lifeRoutine,
+      finale: lifeFinale,
+    })
+    story.begin()
+    let turns = 0
+    while (!narrative.ended && turns < 240) {
+      const open = narrative.options.filter((one) => !one.locked)
+      if (open.length === 0) break
+      // 随便挑一条——不按 KEEN_CHOICES 排序，这正是跟上一批的分别
+      story.choose(open[Math.floor(Math.random() * open.length)]!.choice)
+      turns += 1
+    }
+    for (const one of gained) {
+      if (character.has(one.id)) casual.set(one.id, (casual.get(one.id) ?? 0) + 1)
+    }
+  }
+
   const missing: string[] = []
+  const offPath: string[] = []
   for (const one of gained) {
     const n = held.get(one.id) ?? 0
-    console.log(`      ${one.id.padEnd(14)}拿到 ${String(n).padStart(3)} 世　「${one.name}」`)
-    if (n === 0) missing.push(`${one.scene}#${one.node} 的 ${one.id} 一世也没到玩家手里`)
+    const other = casual.get(one.id) ?? 0
+    console.log(
+      `      ${one.id.padEnd(14)}拿到 ${String(n).padStart(3)} 世　「${one.name}」` +
+        (n === 0 && other > 0 ? `　← 有心人拿不到，随便过日子的拿到 ${other} 世` : ''),
+    )
+    if (n > 0) continue
+    if (other > 0) offPath.push(`${one.scene}#${one.node} 的 ${one.id}（随便过日子 ${other} 世拿到）`)
+    else missing.push(`${one.scene}#${one.node} 的 ${one.id} 两种走法都一世没到玩家手里`)
   }
   for (const one of revealed) {
     const n = told.get(one.id) ?? 0
     console.log(`      ${one.id.padEnd(14)}点破 ${String(n).padStart(3)} 世　→　「${one.name}」`)
     if (n === 0) missing.push(`${one.scene}#${one.node} 的点破一世也没演到`)
   }
+  if (offPath.length > 0) {
+    console.log(
+      `  ◇ ${offPath.length} 处【有心人这条路上走不到】（报数不判红）：\n      ` +
+        offPath.join('\n      ') +
+        `\n      ——那是这一支取样策略的射程，不是内容的错。`,
+    )
+  }
   if (missing.length > 0) {
-    console.log(`  ✗ ${missing.length} 处只写在库里，真跑到不了：`)
+    console.log(`  ✗ ${missing.length} 处只写在库里，两种走法都跑不到：`)
     for (const one of missing) console.log(`      ${one}`)
     console.log(
       `    静态判据看不见这种坏法（条件可以没写错而方向相反）。` +

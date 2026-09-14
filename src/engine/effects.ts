@@ -384,7 +384,17 @@ function applyOne(
     case 'item': {
       const count = effect.count ?? 1
       const unit = effect.unit ?? '件'
-      const moved = character.carry(effect.id, effect.name, count, unit, effect.note)
+      /*
+       * ⚠️ 留下它的那一年【在这儿现取】，不由内容层写。
+       *
+       * 内容层写死一个年份，等于让写这一卷的人去猜它哪年演
+       * ——而这一卷什么时候演由年表定，同一卷在不同的世界里差着十几年。
+       */
+      const keepsake =
+        effect.keepsake === undefined
+          ? undefined
+          : { from: effect.keepsake.from, at: world.time.year }
+      const moved = character.carry(effect.id, effect.name, count, unit, effect.note, keepsake)
       if (moved === 0) return null
       const amount = `${toChineseNumber(Math.abs(moved))}${unit}`
       return record(`${moved > 0 ? '得' : '失'} · ${effect.name} ${amount}`)

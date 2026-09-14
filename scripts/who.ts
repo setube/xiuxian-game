@@ -72,6 +72,18 @@
  *
  * 排掉的三格也是这么定的：`knownAs` 按 kind 反查、`bond` 按关系找、
  * `outlived` 数数、`house` 读 members——**它们手里根本没有 id**。
+ *
+ * ## ⚠️ 效果层那一侧只扫了一个入口，剩下的记在账上
+ *
+ * 条件层七格之外，**效果层也点名要人**。而它那一族全叫 `effect.id`
+ * ——同一个字段名在别的效果上是物品 id、旗标 key、往事 id，
+ * 不按 `type` 分就会把一大片非人的 id 拖进来。按 type 分那一步还没做。
+ *
+ * 眼下只扫 `item.keepsake.from`（东西是谁留下的），
+ * 因为它是效果层**唯一一个不叫 `id`** 的人物 id。
+ *
+ * **不做那一步的代价写明**：`{ type: 'recall', id: '写错的名字' }`
+ * 这一族现在没人查——而 `recall` 找不到人就 `return false`，**静默**。
  */
 import './lib/seeded'
 
@@ -108,7 +120,23 @@ const scan = (conditions: readonly Condition[] | undefined, where: string): void
 /** 内容层自己造出来的人（`meet` 带 `who` 的那一族） */
 const byContent = new Set<string>()
 const eat = (effects: readonly Effect[] | undefined): void => {
-  for (const one of effects ?? []) if (one.type === 'meet') byContent.add(one.id)
+  for (const one of effects ?? []) {
+    if (one.type === 'meet') byContent.add(one.id)
+    /*
+     * ⚠️ 效果层【点名要人】的入口，眼下只扫这一个。
+     *
+     * `keepsake.from`（东西是谁留下的）是效果层唯一一个**不叫 `id`**
+     * 的人物 id——所以它扫得动。而 `meet`／`amend`／`recall` 那一族
+     * 点的人全叫 `effect.id`，**同一个字段名在别的效果上是物品 id、
+     * 旗标 key、往事 id**，不按 `type` 分就会把一大片非人的 id 拖进来。
+     *
+     * 按 type 分那一步还没做，记在这儿。而不做它的代价是明确的：
+     * **`{ type: 'recall', id: '写错的名字' }` 这一族眼下没人查。**
+     */
+    if (one.type === 'item' && one.keepsake !== undefined) {
+      want(one.keepsake.from, '效果·keepsake')
+    }
+  }
 }
 
 const walkNode = (node: SceneNode, where: string): void => {
@@ -196,6 +224,26 @@ if (orphan.length > 0) {
     process.exitCode = 1
   } else {
     console.log(`  ✓ 尺子自检：喂「${fake}」进去认得出来（干草堆里没有它）。`)
+  }
+}
+
+/*
+ * 尺子自检之二：效果层那个入口，真的在扫吗。
+ *
+ * ⚠️ **加了一个入口而它一条也没扫到，跟没加是一样的**
+ * ——而两者印出来完全相同（这一支照样绿）。
+ *
+ * `item.keepsake.from` 眼下全库只有一处（`exam.ts` 先生留下的书）。
+ * 这一条守的是「那一处还在，而且这个入口还认得它」：
+ * 内容删了会红（该去掉这条自检），扫描坏了也会红。
+ */
+{
+  const fromEffects = [...needed.values()].flat().filter((one) => one.includes('keepsake')).length
+  if (fromEffects === 0) {
+    console.log(`  ✗ 尺子自检：效果层那个入口一条也没扫到——要么内容没了，要么扫描坏了。`)
+    process.exitCode = 1
+  } else {
+    console.log(`  ✓ 尺子自检：效果层的 keepsake 入口扫到 ${fromEffects} 处，它是活的。`)
   }
 }
 
