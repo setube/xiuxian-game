@@ -157,7 +157,7 @@ export const schoolingScenes: SceneLibrary = {
           { type: 'chronicle', text: '你开蒙了。教授是长史司的属官。' },
         ],
         blocks: [
-          { kind: 'narration', text: '开蒙的日子是{elder}定的。那天前殿有客，他没有来。' },
+          { kind: 'narration', text: '开蒙的日子是{elder}定的。那天前殿有客，没有来。' },
           { kind: 'narration', text: '教授姓周，长史司的属官，每日辰时到书房，酉时回自己家。' },
           { kind: 'narration', text: '书房里只有你一个人。' },
           { kind: 'dialogue', speaker: '周教授', text: '世子请把手伸出来。' },

@@ -105,7 +105,7 @@ export const tradeScenes: SceneLibrary = {
           { kind: 'narration', text: '{elder}说，往后这种客人来了，收钱，别多问。' },
           {
             kind: 'narration',
-            text: '你问{elder}那是什么人。他想了半天，说了两个字：修士。',
+            text: '你问{elder}那是什么人。想了半天，说了两个字：修士。',
             tone: 'deep',
           },
         ],
