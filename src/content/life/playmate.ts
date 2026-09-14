@@ -102,7 +102,7 @@ export const playmateScenes: SceneLibrary = {
         choices: [
           {
             id: 'go',
-            label: '跟他去',
+            label: '跟着去',
             echo: '你翻过那道墙。',
             effects: [
               { type: 'time', days: 1 },
@@ -130,7 +130,7 @@ export const playmateScenes: SceneLibrary = {
           },
           {
             id: 'later',
-            label: '让他先走',
+            label: '让先走',
             hint: '家里的活还没做完',
             echo: '你说你等会儿去。',
             effects: [{ type: 'time', days: 1 }],
@@ -173,11 +173,11 @@ export const playmateScenes: SceneLibrary = {
         id: 'stayed',
         blocks: [
           // 不点名，理由同 `went`
-          { kind: 'narration', text: '是隔壁那个孩子。你让他先走。' },
+          { kind: 'narration', text: '是隔壁那个孩子。你让先过去。' },
           { kind: 'narration', text: '你把活做完，日头已经高了。' },
           {
             kind: 'narration',
-            text: '他傍晚才回来，隔着墙说了句今天河滩上有什么。你嗯了一声。',
+            text: '傍晚才回来，隔着墙说了句今天河滩上有什么。你嗯了一声。',
             tone: 'faint',
           },
         ],
@@ -195,7 +195,7 @@ export const playmateScenes: SceneLibrary = {
    */
   'playmate:wed': {
     id: 'playmate:wed',
-    title: '他成家那年',
+    title: '成家那年',
     entry: 'open',
     nodes: {
       open: {
@@ -219,7 +219,7 @@ export const playmateScenes: SceneLibrary = {
           { kind: 'narration', text: '你带着家里人去坐了一桌。两家的孩子在院子里跑。' },
           {
             kind: 'narration',
-            text: '散席的时候他送你到门口，说了句这下咱们都是当家的了。',
+            text: '散席的时候送你到门口，说了句这下咱们都是当家的了。',
             tone: 'faint',
           },
         ],
@@ -228,7 +228,19 @@ export const playmateScenes: SceneLibrary = {
       notyet: {
         id: 'notyet',
         onEnter: [
-          { type: 'meet', id: 'playmate', delta: 2, note: '他成亲那天你去帮了忙。' },
+          /*
+           * ⚠️ 从前写的是「**他**成亲那天你去帮了忙」，而那是穿帮。
+           *
+           * `playmate` 是**角色记号**，一手量过：**177 世里 110 世
+           * 解析到的是女的（62%）**——不是边角，是多数情形。
+           *
+           * 而这一句进的是 `Acquaintance.past`，会一直印在人际面板上
+           * （2026-09-14 那一笔之后它不再被覆盖），**错的性别会跟着人一辈子**。
+           *
+           * 改成不点性别的说法。这一句本来也不需要它——
+           * 要紧的是「你去帮了忙」，不是那天成亲的是男是女。
+           */
+          { type: 'meet', id: 'playmate', delta: 2, note: '成亲那天你去帮了忙。' },
           { type: 'time', months: 4 },
         ],
         blocks: [
@@ -374,10 +386,10 @@ export const playmateScenes: SceneLibrary = {
         onEnter: [{ type: 'flag', key: 'said-come-to-me', value: true }],
         blocks: [
           { kind: 'narration', text: '入冬前你在巷口碰见{call:known/playmate}。' },
-          { kind: 'narration', text: '他站住了，问你家里都还好。你们在巷口说了半盏茶的话。' },
+          { kind: 'narration', text: '站住了，问你家里都还好。你们在巷口说了半盏茶的话。' },
           {
             kind: 'narration',
-            text: '走的时候他说，有事言语一声。这句话你们说了几十年了。',
+            text: '走的时候说，有事言语一声。这句话你们说了几十年了。',
             tone: 'faint',
           },
         ],
@@ -387,7 +399,7 @@ export const playmateScenes: SceneLibrary = {
         id: 'apart',
         blocks: [
           { kind: 'narration', text: '入冬前你在巷口碰见{call:known/playmate}。' },
-          { kind: 'narration', text: '他点了下头，你也点了下头。' },
+          { kind: 'narration', text: '那边点了下头，你也点了下头。' },
           { kind: 'narration', text: '两个人都没停下来。' },
           {
             kind: 'narration',

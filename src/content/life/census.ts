@@ -220,15 +220,15 @@ export const censusScenes: SceneLibrary = {
            * 不是「邻居关系跨时间持续参与彼此人生」——后者这个世界还没有，
            * 而这一卷也不需要它。
            */
-          { kind: 'narration', text: '他听完就跟你出来了，路上问了两句，多是些旧事。' },
-          { kind: 'narration', text: '到了里长那儿，他没有多说什么。' },
+          { kind: 'narration', text: '听完就跟你出来了，路上问了两句，多是些旧事。' },
+          { kind: 'narration', text: '到了里长那儿，没有多说什么。' },
           {
             kind: 'dialogue',
-            text: '「这是我从小一块长大的。他家原先就在巷子东头，后来才搬的。」',
+            text: '「这是我从小一块长大的。原先就住在巷子东头，后来才搬的。」',
           },
           {
             kind: 'narration',
-            text: '里长问了两句年份，他都答得上来——哪一年搬的，那年谁还在。',
+            text: '里长问了两句年份，一一都答得上来——哪一年搬的，那年谁还在。',
           },
           { kind: 'event', text: '册子改过来了。' },
           {
