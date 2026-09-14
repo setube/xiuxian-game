@@ -204,7 +204,7 @@ export const illnessScenes: SceneLibrary = {
         ],
         blocks: [
           { kind: 'narration', text: '入冬那几天忽然重了。' },
-          { kind: 'event', text: '他没能熬过去。', tone: 'cinnabar' },
+          { kind: 'event', text: '没能熬过去。', tone: 'cinnabar' },
           { kind: 'narration', text: '办丧事的那几天你几乎没有合眼。' },
           { kind: 'divider', variant: 'ink' },
           {
@@ -224,7 +224,7 @@ export const illnessScenes: SceneLibrary = {
         seen: [
           {
             requires: [{ flag: { key: 'sat-through-illness' } }],
-            text: '你守着的那些天，他有一回醒了，看了你很久，没说话。',
+            text: '你守着的那些天，有一回醒了，看了你很久，没说话。',
           },
           {
             requires: [{ flag: { key: 'fetched-herbs' } }],
