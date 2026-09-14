@@ -35,6 +35,7 @@
  * 三  修士那四位    import 导出常量       ← 第一版漏了
  * 四  角色记号      ROLE_IDS              elder/dam/child/playmate，是位置不是人
  * 五  玩家自己      写死的 'me'           ← 第二版漏了，他不在人口册里
+ * 六  身世表里的亲属  CIRCUMSTANCES.kin     ← 第三版漏了，sister 只在一种身世里
  * ```
  *
  * ⚠️ **前两版各漏一种，各报出一次假缺口**（`herbalist-at-the-shed` 16 处、
@@ -90,6 +91,7 @@ import './lib/seeded'
 import { born } from './lib/staged'
 import { lifeEvents, lifeScenes } from '../src/content/life'
 import { CULTIVATORS } from '../src/content/cultivators'
+import { CIRCUMSTANCES } from '../src/content/circumstances'
 import { ORIGINS } from '../src/content/origins'
 import { ROLE_IDS } from '../src/engine/interpolate'
 import type { Condition, Effect, LifeEvent, SceneNode } from '../src/types/game'
@@ -175,6 +177,20 @@ for (const origin of ORIGINS) {
 const byImport = new Set(CULTIVATORS.map((one) => one.id))
 
 /*
+ * 干草堆第四路：身世表里的亲属。
+ *
+ * ⚠️ **跑世界那一路漏得掉他们。** `sister` 只在 `raised-by-sister`
+ * 那一种身世里立（权重 10），而这一支跑 104 世一次也没掷到
+ * ——于是报出「`sister` 造不出来，条件恒假」。
+ *
+ * 而它就在 `CIRCUMSTANCES` 里静态写着。跟修士那一路同一个道理：
+ * **导出常量里有的，不该靠掷骰去撞。**
+ *
+ * 这是「这个东西有几种来源」第六次给出新答案。
+ */
+const byCircumstance = new Set(CIRCUMSTANCES.flatMap((one) => one.kin.map((each) => each.id)))
+
+/*
  * 干草堆第三路：玩家自己。
  *
  * ⚠️ **`me` 不在人口册里。** 引擎到处特判他
@@ -186,7 +202,7 @@ const byImport = new Set(CULTIVATORS.map((one) => one.id))
  */
 const SELF = 'me'
 
-const made = new Set([...byBirth, ...byContent, ...byImport, ...ROLE_IDS, SELF])
+const made = new Set([...byBirth, ...byContent, ...byImport, ...byCircumstance, ...ROLE_IDS, SELF])
 
 console.log(`\n=== 内容层点名要的那个人，世界造得出来吗 ===\n`)
 console.log(

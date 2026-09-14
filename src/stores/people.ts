@@ -695,6 +695,24 @@ export const usePeopleStore = defineStore(
             ...existing,
             affinity: Math.min(100, Math.max(-100, existing.affinity + delta)),
             ...(note ? { note } : {}),
+            /*
+             * ⚠️ 旧那一句照旧覆盖（上面那行），**历史另存一份**。
+             *
+             * `note` 里装的本来就是关系证据（「荒年你匀了一半粮给他」
+             * 「娘下葬他没赶上」），而一手量过：**哥被 `meet` 带 note 六次、
+             * 侄儿四次**——从前每次覆盖，前几次的证据全丢了。
+             *
+             * 为什么先存下来而不是先判它是不是 bug：**光看代码答不了
+             * 「作者当时是不是故意的」**（没有注释不代表没想过，
+             * 而「代码已经这样跑了」也不能反过来当设计意图）。
+             *
+             * 所以按保守原则办：**意图未确认时，不要继续扩大丢失信息的行为。**
+             * 面板和读 `note` 的地方一个字不用改，而丢掉的信息
+             * 重跑一遍世界就没了。
+             */
+            ...(note
+              ? { past: [...(existing.past ?? []), { text: note, at: { ...world.time } }] }
+              : {}),
             // 认过一次就认定了。**后来的 meet 不许把它改掉**——
             // 那一格记的是历史事实，不是此刻的关系
             ...(knownAs !== undefined && existing.knownAs === undefined ? { knownAs } : {}),
@@ -710,6 +728,8 @@ export const usePeopleStore = defineStore(
           knowsName: false,
           affinity: Math.min(100, Math.max(-100, delta)),
           ...(note ? { note } : {}),
+          // 头一次也进 past——那正是「第一次接触」，25.md 那条链的起点
+          ...(note ? { past: [{ text: note, at: { ...world.time } }] } : {}),
           ...(knownAs !== undefined ? { knownAs } : {}),
           // 哪一年认识的。「二十年没变样」那类话要它才写得出来
           metInYear: world.time.year,
