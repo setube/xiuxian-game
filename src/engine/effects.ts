@@ -253,9 +253,26 @@ export function settleHeads(
     const person = people.personOf(one.from)
     const relic = relicOf(person?.livelihood ?? doingAsLivelihood(person?.doing))
     if (relic === undefined) continue
+    /*
+     * ⚠️ **年份记他殁的那一年，不是此刻。**
+     *
+     * `settleHeads` 是**按需结算**的——它在玩家某次推时间时才补记
+     * 户主变更，而那时距他殁可能已经几十年。实测：
+     *
+     * ```
+     * 此刻 81　落下 81　差 0　【而爹殁于 26】
+     * 此刻 73　落下 73　差 0　【而爹殁于 18】
+     * ```
+     *
+     * 写 `world.time.year` 的话，「他二十年前留下它」这件事
+     * **永远从 0 起算**——`{ keepsake: { years: { atLeast: 20 } } }`
+     * 那一族条件会恒假，而那一卷看着像分流坏了。
+     *
+     * 没有卒年就退回此刻（那是兜底，不是常态）。
+     */
     character.carry(relic.id, relic.name, 1, relic.unit, undefined, {
       from: one.from,
-      at: world.time.year,
+      at: person?.death?.year ?? world.time.year,
     })
   }
 }

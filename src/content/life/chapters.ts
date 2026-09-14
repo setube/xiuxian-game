@@ -20,6 +20,7 @@ import { meetingEvents, meetingScenes } from './meeting'
 import { awayEvents, awayScenes } from './away'
 import { nephewEvents, nephewScenes } from './nephew'
 import { neighbourEvents, neighbourScenes } from './neighbour'
+import { relicEvents, relicScenes } from './relic'
 import { reunionEvents, reunionScenes } from './reunion'
 import { refugeEvents, refugeScenes } from './refuge'
 import { regardEvents, regardScenes } from './regard'
@@ -473,6 +474,43 @@ export const CHAPTERS: readonly Chapter[] = [
    * 少了它，「邻居有自己的生活」就只是 `design/` 里的一句话——
    * 引擎允许，而四十四册内容里一次也没发生过。
    */
+  /**
+   * 那把镰刀：遗物穿过了时间。
+   *
+   * 遗物那一环的头一半在 `settleHeads` 里（当家的人没了，
+   * 他用过的那几样留下来）。**而落下之后它什么也不做**——
+   * 躺在行囊里，此外再无下文。一件永远躺着、从不被消费的东西，
+   * 跟一个数据结构上的标签没有分别。
+   *
+   * 这一卷不是「多年以后再提一次」（那只是把同一条事实延迟消费一遍），
+   * 它要的是：**人死了，物还在，而你已经快记不清他的样子了。**
+   *
+   * 门槛二十年是量出来的：300 世里拿到遗物的 176 世，
+   * ≥20 年还剩 147 世够得着，≥40 年只剩 64——**画在四十年
+   * 就是把这一卷写在分布的尾巴上**。
+   */
+  {
+    id: 'relic',
+    scenes: relicScenes,
+    events: relicEvents,
+    called: ['年表'],
+    to: [],
+    age: [35, 70],
+    /*
+     * ⚠️ **空的，而那正是这一卷的样子。**
+     *
+     * 它不改行囊、不加属性、不立旗——因为这一环要证明的是
+     * **「那件东西穿过了时间」**，而那件事在它被读到的那一刻
+     * 就已经成立了（世界事实是「他二十年前留下它、你现在还带着」）。
+     *
+     * 再落一笔反而稀释它：**遗物的分量来自它不变。**
+     */
+    marks: [],
+    purpose: [
+      '遗物不是一次性掉落——它穿过几十年，而那几十年里人变了它没变',
+      '「记不清他的样子了」这件事，靠一件不变的东西说出来',
+    ],
+  },
   {
     id: 'neighbour',
     scenes: neighbourScenes,

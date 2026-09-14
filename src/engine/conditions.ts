@@ -516,6 +516,26 @@ const CHECKS = {
     if (chapter === undefined) return false
     return past.known === undefined ? true : chapter.known === past.known
   },
+  /**
+   * 他留下的那件东西，在你身边多少年了。
+   *
+   * ⚠️ **先问「此刻还在不在」，再问「多少年」**——顺序要紧：
+   * 东西丢了、卖了、给人了，这一条就该不成立，
+   * **不能因为历史上曾经有过，就还说「你还留着」**。
+   *
+   * 年数从 `keepsake.at` 减出来，那是**留下的那一年**，
+   * 不是拿到手的那一年（东西可能过很多年才到手）。
+   *
+   * 不写 `years` 就是只问「这件遗物还在不在」——
+   * 那跟 `{ item: … }` 的分别是：**这一格还要求它带着来历**。
+   * 一件同 id 的东西如果是别处捡来的（没有 `keepsake`），这一条不成立。
+   */
+  keepsake: (ask, { world, character }) => {
+    const one = character.inventory.find((item) => item.id === ask.item)
+    if (one?.keepsake === undefined) return false
+    if (ask.years === undefined) return true
+    return within(world.time.year - one.keepsake.at, ask.years)
+  },
 
   outlived: (outlived) => {
     const people = usePeopleStore()

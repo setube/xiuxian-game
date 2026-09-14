@@ -127,6 +127,7 @@ import type {
   SceneLibrary,
 } from '../src/types/game'
 import { conditionsOf, effectsOf, exitsOf } from './refs'
+import { RELICS } from '../src/content/relics'
 
 const RUNS = 300
 
@@ -432,7 +433,29 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
    * 空串不会出现在那一边——所以它无害。
    */
   const madeKnownAs = new Set<string>()
-  const madeItems = new Set<string>()
+  /**
+   * 造得出来的东西。
+   *
+   * ⚠️ **不止内容层那一路。** 这一道本来只扫内容里的 `{ type: 'item' }`，
+   * 而 2026-09-14 冒出头一件**引擎自己落的东西**：遗物
+   * （`settleHeads` 在户主殁了那一刻按他的营生落一件，
+   * 候选表在 `content/relics.ts`）。
+   *
+   * 它当场把这一道打红——报「`relic-sickle` 没有任何地方产出」十条。
+   * **而那句话是对的**：内容层确实一处也不产它。
+   *
+   * 所以这儿把那张表并进来。它跟内容层那一路的分别是：
+   *
+   * ```
+   * 内容层  哪一节落的，扫得到 scene#node
+   * 引擎    没有节点，只有一个结算时机
+   * ```
+   *
+   * 往后再有第二处「引擎产出的东西」，也该在这儿并一次——
+   * **而那正是这一道会漏的地方：它的观察宇宙是内容层，
+   * 而世界事实不止从内容层来。**
+   */
+  const madeItems = new Set<string>(Object.values(RELICS).map((one) => one.id))
   const madeFlags = new Set<string>()
   const madeKnowledge = new Set<string>()
   const madeLivings = new Set<string>()
@@ -625,6 +648,18 @@ console.log('=== 前置条件验收（要的东西有没有人给）===\n')
      * 「立基掷得出的」和「内容层 recall 的」两张表。
      */
     past: null,
+    /*
+     * 遗物那一格问的 `item` **是物品 id**，跟 `{ item: … }` 同一个命名空间
+     * ——所以它归这一道查，配的是 `neededItems`。
+     *
+     * ⚠️ 写 `null` 的话，`{ keepsake: { item: '打错的名字' } }` 会安安静静
+     * 永远为假：东西照落、条件照判、那一卷零次演出，而报表全绿。
+     *
+     * 它跟隔壁 `past` 的分别正在这儿：往事是**立基掷的**，
+     * 内容层一处也造不出来（配对的另一头不存在）；
+     * 而遗物是内容层 `{ type: 'item' }` 落下的，那一头是有的。
+     */
+    keepsake: (ask) => [neededItems, ask.item],
     outlived: null,
     /**
      * 认定的历史关系。查的是**这个种类有没有人写过**。
